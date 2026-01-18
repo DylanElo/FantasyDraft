@@ -32,6 +32,32 @@ A simple Telegram bot game where players draw random Jujutsu Kaisen character ca
    python main.py
    ```
 
+## Online Deployment
+
+### Deploying to Heroku / Railway
+1. Push this repository to GitHub.
+2. Connect your GitHub account to Heroku or Railway.
+3. Create a new "Worker" or "Service".
+4. Set the `TELEGRAM_BOT_TOKEN` environment variable in the platform's settings.
+5. The `Procfile` will tell the platform to run `python main.py`.
+
+### Deploying with Docker
+1. Build the image:
+   ```bash
+   docker build -t jjk-bot .
+   ```
+2. Run the container:
+   ```bash
+   docker run -e TELEGRAM_BOT_TOKEN="your_token" jjk-bot
+   ```
+
+### Deploying to Render
+1. Create a new "Background Worker" on Render.
+2. Connect your GitHub repository.
+3. Set the Runtime to `Python`.
+4. Set the Start Command to `python main.py`.
+5. Add the `TELEGRAM_BOT_TOKEN` environment variable in the "Environment" section.
+
 ## Commands
 
 - `/start` - Initialize/Reset the game in the current chat.

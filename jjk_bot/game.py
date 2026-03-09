@@ -135,25 +135,49 @@ class Game:
             else:
                 self.state = GameState.IN_PROGRESS
 
+    def resolve_battle(self) -> List[Tuple[int, str, List[str], Dict[str, int]]]:
+        """
+        Calculates the stats for each player's team and returns the standings.
+        Returns a list of tuples: (total_stat_score, player_name, team_names, stat_breakdown)
+        sorted by total_stat_score descending.
+        """
+        results = []
+        for p_id in self.players:
+            team = self.teams[p_id]
+
+            total_hp = sum(c.hp for c in team)
+            total_attack = sum(c.attack for c in team)
+            total_defense = sum(c.defense for c in team)
+
+            # Simple combined score for now
+            combined_score = total_hp + total_attack + total_defense
+
+            stat_breakdown = {
+                "hp": total_hp,
+                "attack": total_attack,
+                "defense": total_defense
+            }
+
+            team_names = [c.name for c in team]
+            results.append((combined_score, self.player_names[p_id], team_names, stat_breakdown))
+
+        results.sort(key=lambda x: x[0], reverse=True)
+        return results
+
     def get_results(self) -> Tuple[bool, str]:
         if not self.players:
             return False, "No players in the game."
 
-        results = []
-        for p_id in self.players:
-            team = self.teams[p_id]
-            score = sum(c.score for c in team)
-            team_names = [c.name for c in team]
-            results.append((score, self.player_names[p_id], team_names))
-
-        # Sort by score descending
-        results.sort(key=lambda x: x[0], reverse=True)
+        results = self.resolve_battle()
 
         msg = "🏆 *Game Results* 🏆\n\n"
-        for i, (score, name, team) in enumerate(results):
+        for i, (score, name, team, stats) in enumerate(results):
             medal = "🥇" if i == 0 else "🥈" if i == 1 else "🥉" if i == 2 else "👤"
             team_str = ", ".join(team) if team else "Empty"
-            msg += f"{medal} *{name}*: {score} points\nTeam: {team_str}\n\n"
+
+            msg += f"{medal} *{name}*: {score} total power\n"
+            msg += f"⚔️ ATK: {stats['attack']} | 🛡️ DEF: {stats['defense']} | ❤️ HP: {stats['hp']}\n"
+            msg += f"Team: {team_str}\n\n"
 
         if self.state == GameState.FINISHED:
             winner = results[0][1]

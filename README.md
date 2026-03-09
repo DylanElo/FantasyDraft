@@ -12,7 +12,7 @@ A simple Telegram bot game where players draw random Jujutsu Kaisen character ca
 
 ## Setup Instructions
 
-1. **Get a Telegram Bot Token**:
+1. **Get a Telegram Bot Token** (For Telegram usage only):
    - Message [@BotFather](https://t.me/botfather) on Telegram.
    - Use `/newbot` and follow the instructions to get your API token.
 
@@ -21,16 +21,23 @@ A simple Telegram bot game where players draw random Jujutsu Kaisen character ca
    pip install -r requirements.txt
    ```
 
-3. **Set Environment Variable**:
+3. **Set Environment Variable** (For Telegram usage only):
    Set your bot token as an environment variable:
    ```bash
    export TELEGRAM_BOT_TOKEN="your_token_here"
    ```
 
-4. **Run the Bot**:
+4. **Run the Telegram Bot**:
    ```bash
    python main.py
    ```
+
+5. **Run the Web UI**:
+   If you want to play using the new Modern Web UI (Clash Royale style cards, real-time sync with friends):
+   ```bash
+   python web/app.py
+   ```
+   Open `http://localhost:5000` in your browser.
 
 ## Online Deployment
 

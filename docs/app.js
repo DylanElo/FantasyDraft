@@ -325,13 +325,10 @@ document.getElementById('btn-new-game').addEventListener('click', () => {
 });
 
 // ─── Load Characters ──────────────────────────────────────────────────────────
-fetch('characters.json')
-    .then(r => r.json())
-    .then(data => {
-        allCharacters = data;
-        console.log(`Loaded ${allCharacters.length} characters.`);
-    })
-    .catch(err => {
-        console.error('Failed to load characters:', err);
-        document.getElementById('game-status').textContent = 'Error loading character data.';
-    });
+// CHARACTERS_DATA is injected by characters_data.js (no server fetch needed)
+allCharacters = typeof CHARACTERS_DATA !== 'undefined' ? CHARACTERS_DATA : [];
+if (allCharacters.length === 0) {
+    document.getElementById('game-status').textContent = 'Error: character data missing.';
+} else {
+    console.log(`Loaded ${allCharacters.length} characters.`);
+}

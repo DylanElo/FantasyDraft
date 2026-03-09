@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JJK Arena Draft</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>JJK Arena Draft</h1>
+            <div id="game-status"></div>
+        </header>
+
+        <main>
+            <!-- Setup Screen -->
+            <section id="setup" class="active">
+                <div class="panel setup-panel">
+                    <h2>New Draft</h2>
+                    <p class="subtitle">2–4 players, same device. Each player drafts a team of 5 JJK characters.</p>
+                    <div id="player-inputs">
+                        <div class="player-input-row">
+                            <label>Player 1</label>
+                            <input type="text" placeholder="Name" class="player-name-input" data-idx="0">
+                        </div>
+                        <div class="player-input-row">
+                            <label>Player 2</label>
+                            <input type="text" placeholder="Name" class="player-name-input" data-idx="1">
+                        </div>
+                    </div>
+                    <button id="btn-add-player" class="btn secondary">+ Add Player</button>
+                    <button id="btn-start" class="btn primary">Start Draft</button>
+                </div>
+            </section>
+
+            <!-- Draft Screen -->
+            <section id="draft">
+                <div class="panel arena-header">
+                    <div id="turn-info">
+                        <span id="turn-player-name"></span>'s turn
+                        <span id="turn-sub"></span>
+                    </div>
+                    <div id="draft-progress"></div>
+                </div>
+
+                <!-- Drawn Card Area -->
+                <div id="action-area" class="panel" style="display:none;">
+                    <h3 id="action-title">Drew a card!</h3>
+                    <div id="drawn-card-container"></div>
+                    <div id="action-buttons">
+                        <button id="btn-keep" class="btn success">Keep</button>
+                        <button id="btn-pass" class="btn danger">Pass (Redraw)</button>
+                    </div>
+                </div>
+
+                <button id="btn-draw" class="btn primary large" style="display:none;">Draw Card</button>
+
+                <!-- All Player Teams -->
+                <div id="teams-area"></div>
+            </section>
+
+            <!-- Results Screen -->
+            <section id="results">
+                <div class="panel results-panel">
+                    <h2>Draft Complete!</h2>
+                    <div id="results-content"></div>
+                    <button id="btn-new-game" class="btn primary">New Draft</button>
+                </div>
+            </section>
+        </main>
+
+        <!-- Log -->
+        <aside id="log-panel" class="panel">
+            <h3>Draft Log</h3>
+            <div id="log"></div>
+        </aside>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

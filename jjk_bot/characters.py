@@ -18,162 +18,1328 @@ class Character:
     skills: List[Skill] = field(default_factory=list)
 
 
+# ─────────────────────────────────────────────
+#  TOKYO JUJUTSU HIGH
+# ─────────────────────────────────────────────
+
 CHARACTERS = [
     Character(
         name="Satoru Gojo",
         description="The strongest jujutsu sorcerer in the world. He possesses both the Limitless cursed technique and the Six Eyes.",
         image_url="https://i.imgur.com/K1iZJqP.jpeg",
         skills=[
-            Skill(name="Cursed Technique Lapse: Blue", description="Gojo creates a vacuum that pulls in everything around it, dealing 20 damage to an enemy and stunning them for 1 turn.", cooldown="1", energy=["blue", "random"], classes="Strategic,Instant"),
-            Skill(name="Cursed Technique Reversal: Red", description="Gojo creates a repelling force, dealing 35 damage to one enemy. This ignores damage reduction.", cooldown="2", energy=["red", "red"], classes="Physical,Instant"),
-            Skill(name="Hollow Technique: Purple", description="Gojo combines Blue and Red to erase everything in its path, dealing 60 damage to one enemy. If the enemy dies, they cannot be resurrected.", cooldown="4", energy=["blue", "red", "black"], classes="Ninjutsu,Instant"),
-            Skill(name="Infinity", description="Gojo becomes completely invulnerable to all damage and negative effects for 1 turn. While active, he cannot use 'Hollow Technique: Purple'.", cooldown="3", energy=["white"], classes="Mental,Instant")
+            Skill(
+                name="Cursed Technique Lapse: Blue",
+                description="Gojo creates a vacuum that pulls in everything around it, dealing 20 damage to one enemy and stunning them for 1 turn.",
+                cooldown="1",
+                energy=["blue", "random"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Cursed Technique Reversal: Red",
+                description="Gojo creates a repelling force, dealing 35 damage to one enemy. This ignores damage reduction.",
+                cooldown="2",
+                energy=["red", "red"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Hollow Technique: Purple",
+                description="Gojo combines Blue and Red to erase everything in its path, dealing 60 damage to one enemy. If the enemy dies, they cannot be resurrected.",
+                cooldown="4",
+                energy=["blue", "red", "black"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Infinity",
+                description="Gojo becomes completely invulnerable to all damage and negative effects for 1 turn. While active, he cannot use 'Hollow Technique: Purple'.",
+                cooldown="3",
+                energy=["white"],
+                classes="Mental,Instant"
+            ),
         ]
     ),
-    Character(
-        name="Ryomen Sukuna",
-        description="The undisputed King of Curses. An immensely powerful cursed spirit from the Heian Era.",
-        image_url="https://i.imgur.com/6U6z9fG.jpeg",
-        skills=[
-            Skill(name="Dismantle", description="Sukuna sends a slashing attack at his target, dealing 25 damage to one enemy. This deals an additional 10 damage to summoned entities.", cooldown="None", energy=["black"], classes="Physical,Instant"),
-            Skill(name="Cleave", description="Sukuna adjusts the strength of his slash to the target's toughness, dealing 30 damage that ignores invulnerability.", cooldown="1", energy=["black", "random"], classes="Physical,Instant"),
-            Skill(name="Malevolent Shrine", description="Sukuna opens his Domain, applying 'Shrine' to all enemies. While 'Shrine' is active, all enemies take 15 damage at the start of their turn for 3 turns.", cooldown="4", energy=["black", "red", "white"], classes="Strategic,Action"),
-            Skill(name="Fire Arrow", description="Sukuna unleashes a devastating arrow of flames. Deals 40 damage to one enemy. If 'Malevolent Shrine' is active, this deals 70 damage instead.", cooldown="2", energy=["red", "random", "random"], classes="Ninjutsu,Instant")
-        ]
-    ),
-    Character(
-        name="Yuta Okkotsu",
-        description="A special grade jujutsu sorcerer who possesses immense cursed energy and is accompanied by the vengeful cursed spirit Rika.",
-        image_url="https://i.imgur.com/5V3wKzH.jpeg",
-        skills=[
-            Skill(name="Katana Strike", description="Yuta strikes the enemy with his katana infused with cursed energy, dealing 15 damage. If 'Rika Manifestation' is active, this deals 25 damage instead.", cooldown="None", energy=["green"], classes="Physical,Instant"),
-            Skill(name="Cursed Speech", description="Yuta uses a copied cursed technique to command his target. The target enemy is stunned for 1 turn.", cooldown="2", energy=["blue"], classes="Mental,Instant"),
-            Skill(name="Reverse Cursed Technique", description="Yuta uses positive energy to heal. Restores 30 health to one allied character or himself.", cooldown="1", energy=["white", "random"], classes="Strategic,Instant"),
-            Skill(name="Rika Manifestation", description="Yuta fully manifests Rika for 3 turns. During this time, he gains 15 damage reduction, his skills are enhanced, and he reflects 10 damage back to attackers.", cooldown="4", energy=["black", "green", "random"], classes="Strategic,Action")
-        ]
-    ),
-    Character(
-        name="Megumi Fushiguro",
-        description="A grade 2 jujutsu sorcerer and descendant of the Zenin Clan, using the Ten Shadows Technique.",
-        image_url="https://i.imgur.com/placeholder.png",
-        skills=[
-            Skill(name="Divine Dogs", description="Megumi summons his Divine Dogs to attack, dealing 20 damage to one enemy. This skill costs 1 less energy if a summon is already active.", cooldown="None", energy=["green", "random"], classes="Physical,Instant"),
-            Skill(name="Nue", description="Megumi summons Nue, shocking one enemy for 15 damage and stunning them for 1 turn.", cooldown="1", energy=["blue", "green"], classes="Ninjutsu,Instant"),
-            Skill(name="Toad", description="Megumi summons a Toad to protect an ally. The target ally becomes invulnerable to the next enemy skill.", cooldown="2", energy=["green", "random"], classes="Strategic,Instant"),
-            Skill(name="Chimera Shadow Garden", description="Megumi expands his incomplete Domain. For 3 turns, all of Megumi's skills cost 1 random energy less, and he deals an extra 10 damage with every attack.", cooldown="4", energy=["black", "green", "random", "random"], classes="Strategic,Action")
-        ]
-    ),
+
     Character(
         name="Yuji Itadori",
-        description="A physically gifted high school student who became the vessel of Ryomen Sukuna.",
+        description="A physically gifted high school student who became the vessel of Ryomen Sukuna. He fights with extraordinary strength and cursed energy-infused blows.",
         image_url="https://i.imgur.com/placeholder.png",
         skills=[
-            Skill(name="Martial Arts", description="Yuji uses his incredible physical prowess to strike an enemy, dealing 20 damage.", cooldown="None", energy=["green"], classes="Physical,Instant"),
-            Skill(name="Divergent Fist", description="Yuji strikes an enemy, dealing 15 damage. The enemy receives an additional 15 damage at the start of their next turn.", cooldown="1", energy=["black", "random"], classes="Physical,Instant"),
-            Skill(name="Black Flash", description="Yuji unleashes a strike with a spatial distortion, dealing 45 damage to one enemy. This skill has a 25% chance to cost 0 energy.", cooldown="2", energy=["black", "green", "random"], classes="Physical,Instant"),
-            Skill(name="Unyielding Resolve", description="Yuji's sheer willpower keeps him fighting. For 2 turns, any damage that would reduce Yuji's health below 1 instead leaves him at 1 health.", cooldown="3", energy=["white", "random"], classes="Mental,Instant")
+            Skill(
+                name="Martial Arts",
+                description="Yuji uses his incredible physical prowess to strike an enemy, dealing 20 damage.",
+                cooldown="None",
+                energy=["green"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Divergent Fist",
+                description="Yuji strikes an enemy for 15 damage. A second cursed energy wave hits the target at the start of their next turn for 15 additional damage.",
+                cooldown="1",
+                energy=["black", "random"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Black Flash",
+                description="Yuji unleashes a strike with a spatial distortion, dealing 45 damage to one enemy. This skill has a 25% chance to cost 0 energy.",
+                cooldown="2",
+                energy=["black", "green", "random"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Unyielding Resolve",
+                description="Yuji's sheer willpower keeps him fighting. For 2 turns, any damage that would reduce Yuji's health below 1 instead leaves him at 1 health.",
+                cooldown="3",
+                energy=["white", "random"],
+                classes="Mental,Instant"
+            ),
         ]
     ),
+
+    Character(
+        name="Megumi Fushiguro",
+        description="A grade 2 jujutsu sorcerer and descendant of the Zenin Clan, using the Ten Shadows Technique to manifest shikigami from shadows.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Divine Dogs",
+                description="Megumi summons his Divine Dogs to attack, dealing 20 damage to one enemy. Costs 1 less random energy if a shikigami is already active.",
+                cooldown="None",
+                energy=["green", "random"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Nue",
+                description="Megumi summons Nue, shocking one enemy for 15 damage and stunning them for 1 turn.",
+                cooldown="1",
+                energy=["blue", "green"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Toad",
+                description="Megumi summons a Toad to protect an ally. The target ally becomes invulnerable to the next harmful skill aimed at them.",
+                cooldown="2",
+                energy=["green", "random"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Chimera Shadow Garden",
+                description="Megumi expands his incomplete Domain. For 3 turns, all of Megumi's skills cost 1 random energy less and he deals 10 extra damage with every attack.",
+                cooldown="4",
+                energy=["black", "green", "random", "random"],
+                classes="Strategic,Action"
+            ),
+        ]
+    ),
+
     Character(
         name="Nobara Kugisaki",
         description="A confident grade 3 jujutsu sorcerer who uses a hammer, nails, and straw dolls for her Straw Doll Technique.",
         image_url="https://i.imgur.com/placeholder.png",
         skills=[
-            Skill(name="Nail Toss", description="Nobara throws cursed energy-infused nails, dealing 15 damage to one enemy.", cooldown="None", energy=["random"], classes="Physical,Instant"),
-            Skill(name="Hairpin", description="Nobara detonates her cursed energy. Deals 25 damage to an enemy. If 'Nail Toss' was used on the target last turn, this deals 15 additional damage.", cooldown="1", energy=["red", "random"], classes="Ninjutsu,Instant"),
-            Skill(name="Resonance", description="Nobara strikes her straw doll. Deals 30 damage to one enemy and ignores invulnerability and damage reduction.", cooldown="2", energy=["black", "red"], classes="Ninjutsu,Instant"),
-            Skill(name="Straw Doll Connection", description="Nobara links herself to an enemy for 2 turns. Any damage Nobara takes is also dealt to the linked enemy.", cooldown="3", energy=["black", "white"], classes="Strategic,Instant")
+            Skill(
+                name="Nail Toss",
+                description="Nobara throws cursed energy-infused nails at one enemy, dealing 15 damage.",
+                cooldown="None",
+                energy=["random"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Hairpin",
+                description="Nobara detonates her nails with cursed energy. Deals 25 damage to one enemy. If 'Nail Toss' was used on that target last turn, this deals 15 additional damage.",
+                cooldown="1",
+                energy=["red", "random"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Resonance",
+                description="Nobara strikes her straw doll, transmitting damage through the soul. Deals 30 damage to one enemy, ignoring invulnerability and damage reduction.",
+                cooldown="2",
+                energy=["black", "red"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Straw Doll Connection",
+                description="Nobara links herself to one enemy for 2 turns. Any damage Nobara takes is also dealt to the linked enemy.",
+                cooldown="3",
+                energy=["black", "white"],
+                classes="Strategic,Instant"
+            ),
         ]
     ),
-    Character(
-        name="Maki Zenin",
-        description="A student with a Heavenly Restriction that grants her immense physical strength in exchange for having no cursed energy.",
-        image_url="https://i.imgur.com/placeholder.png",
-        skills=[
-            Skill(name="Playful Cloud", description="Maki strikes with her three-section staff, dealing 25 damage to one enemy.", cooldown="None", energy=["green", "random"], classes="Physical,Instant"),
-            Skill(name="Dragon-Bone", description="Maki absorbs force to unleash it. She gains 10 damage reduction this turn, and her next attack deals 15 additional damage.", cooldown="1", energy=["white"], classes="Strategic,Instant"),
-            Skill(name="Split Soul Katana", description="Maki slashes her target, dealing 30 damage. This attack reduces the target's maximum health by the damage dealt.", cooldown="2", energy=["black", "green"], classes="Physical,Instant"),
-            Skill(name="Heavenly Restriction", description="Maki's physical senses peak. For 3 turns, she evades all non-Physical skills and counter-attacks any Physical skills aimed at her for 15 damage.", cooldown="3", energy=["white", "green", "random"], classes="Physical,Action")
-        ]
-    ),
-    Character(
-        name="Toge Inumaki",
-        description="A semi-grade 1 jujutsu sorcerer and descendant of the Inumaki clan who uses Cursed Speech.",
-        image_url="https://i.imgur.com/placeholder.png",
-        skills=[
-            Skill(name="Don't Move", description="Toge commands an enemy to halt, stunning them for 1 turn. Toge takes 5 damage in recoil.", cooldown="1", energy=["blue"], classes="Mental,Instant"),
-            Skill(name="Blast Away", description="Toge unleashes a shockwave, dealing 25 damage to one enemy. Toge takes 10 damage in recoil.", cooldown="1", energy=["blue", "random"], classes="Ninjutsu,Instant"),
-            Skill(name="Plummet", description="Toge creates an intense gravitational force, dealing 15 damage to all enemies. Toge takes 15 damage in recoil.", cooldown="2", energy=["blue", "black"], classes="Ninjutsu,Instant"),
-            Skill(name="Throat Medicine", description="Toge drinks cough syrup to soothe his throat, restoring 25 health to himself and curing all negative effects.", cooldown="2", energy=["white", "random"], classes="Strategic,Instant")
-        ]
-    ),
+
     Character(
         name="Kento Nanami",
-        description="A grade 1 jujutsu sorcerer who uses the Ratio Technique to divide his target with a 7:3 ratio to create a weak spot.",
+        description="A grade 1 jujutsu sorcerer who uses the Ratio Technique to divide his target with a 7:3 ratio, creating a mandatory weak spot.",
         image_url="https://i.imgur.com/placeholder.png",
         skills=[
-            Skill(name="Blunt Strike", description="Nanami strikes the enemy with his wrapped cleaver, dealing 20 damage.", cooldown="None", energy=["green"], classes="Physical,Instant"),
-            Skill(name="Ratio Technique: 7:3", description="Nanami forcibly creates a weak spot. For 2 turns, all damage dealt to the target enemy is increased by 15.", cooldown="1", energy=["black"], classes="Strategic,Instant"),
-            Skill(name="Collapse", description="Nanami strikes the ground to destroy the environment. Deals 20 damage to all enemies. If a target has a '7:3' weak spot, they are stunned for 1 turn.", cooldown="2", energy=["green", "black"], classes="Physical,Instant"),
-            Skill(name="Overtime", description="Nanami unleashes his restricted cursed energy. For 3 turns, all of his skills deal double damage.", cooldown="4", energy=["white", "random", "random"], classes="Strategic,Action")
+            Skill(
+                name="Blunt Strike",
+                description="Nanami strikes the enemy with his bandaged cleaver, dealing 20 damage.",
+                cooldown="None",
+                energy=["green"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Ratio Technique: 7:3",
+                description="Nanami forcibly creates a weak spot on a target. For 2 turns, all damage dealt to that enemy is increased by 15.",
+                cooldown="1",
+                energy=["black"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Collapse",
+                description="Nanami strikes the ground to destroy the environment. Deals 20 damage to all enemies. Enemies affected by '7:3' are also stunned for 1 turn.",
+                cooldown="2",
+                energy=["green", "black"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Overtime",
+                description="Nanami lifts his time restriction, unleashing restricted cursed energy. For 3 turns, all of his skills deal double damage.",
+                cooldown="4",
+                energy=["white", "random", "random"],
+                classes="Strategic,Action"
+            ),
         ]
     ),
+
+    Character(
+        name="Yuta Okkotsu",
+        description="A special grade jujutsu sorcerer with immense cursed energy, accompanied by the vengeful cursed spirit Rika Orimoto.",
+        image_url="https://i.imgur.com/5V3wKzH.jpeg",
+        skills=[
+            Skill(
+                name="Katana Strike",
+                description="Yuta strikes with his katana infused with cursed energy, dealing 15 damage. If 'Rika Manifestation' is active, this deals 25 damage instead.",
+                cooldown="None",
+                energy=["green"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Cursed Speech",
+                description="Yuta uses a copied cursed speech technique to command his target. The target enemy is stunned for 1 turn.",
+                cooldown="2",
+                energy=["blue"],
+                classes="Mental,Instant"
+            ),
+            Skill(
+                name="Reverse Cursed Technique",
+                description="Yuta uses positive energy to heal an ally or himself for 30 health.",
+                cooldown="1",
+                energy=["white", "random"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Rika Manifestation",
+                description="Yuta fully manifests Rika for 3 turns. He gains 15 damage reduction, his skills are enhanced, and melee attackers receive 10 reflected damage.",
+                cooldown="4",
+                energy=["black", "green", "random"],
+                classes="Strategic,Action"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Hakari Kinji",
+        description="A grade 1 sorcerer suspended from Jujutsu High, Hakari's Domain 'Idle Death Gamble' spins a pachinko machine — hitting the jackpot grants him infinite cursed energy.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Pachinko Slam",
+                description="Hakari delivers a cursed-energy-enhanced punch, dealing 20 damage to one enemy.",
+                cooldown="None",
+                energy=["green", "random"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Restless Love",
+                description="Hakari throws himself into the fight recklessly. Deals 30 damage to one enemy and heals Hakari for 15 health.",
+                cooldown="1",
+                energy=["black", "green"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Idle Death Gamble",
+                description="Hakari expands his Domain and spins the jackpot. There is a 33% chance the jackpot hits: if it does, Hakari regenerates 20 health at the start of each turn for 4 turns and all his skills cost 0 energy during that time. If the jackpot misses, this skill is wasted.",
+                cooldown="3",
+                energy=["black", "black", "random"],
+                classes="Strategic,Action"
+            ),
+            Skill(
+                name="Jackpot: Infinity Strikes",
+                description="During 'Idle Death Gamble' jackpot, Hakari is near-immortal. This skill deals 50 damage to one enemy and ignores all defensive effects. Can only be used while the jackpot effect is active.",
+                cooldown="2",
+                energy=["black"],
+                classes="Physical,Instant"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Panda",
+        description="Not actually a panda — a cursed corpse created by Principal Yaga, capable of switching between three distinct combat cores: Panda, Gorilla, and Trident.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Claw Strike",
+                description="Panda slashes an enemy with his claws, dealing 20 damage.",
+                cooldown="None",
+                energy=["green"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Gorilla Mode",
+                description="Panda switches to his Gorilla core. For 2 turns, his attacks deal 15 extra damage and he gains 10 damage reduction.",
+                cooldown="2",
+                energy=["black", "random"],
+                classes="Strategic,Action"
+            ),
+            Skill(
+                name="Drum Beat",
+                description="In Gorilla mode, Panda pounds the ground for a shockwave dealing 30 damage to all enemies. Outside Gorilla mode, this deals only 15 damage.",
+                cooldown="2",
+                energy=["green", "black"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Trident Mode",
+                description="Panda switches to his Trident (Triceratops) core, channeling stored energy. He instantly heals 40 health and removes all negative effects.",
+                cooldown="4",
+                energy=["white", "black"],
+                classes="Strategic,Instant"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Shoko Ieiri",
+        description="A grade 1 sorcerer and doctor at Jujutsu High who masters Reverse Cursed Technique, the rarest healing ability in the jujutsu world.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Scalpel Strike",
+                description="Shoko uses her surgical precision to strike a vital point, dealing 15 damage to one enemy.",
+                cooldown="None",
+                energy=["random"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Emergency Treatment",
+                description="Shoko applies Reverse Cursed Technique to heal an ally for 25 health and remove one negative effect.",
+                cooldown="1",
+                energy=["white", "random"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Reverse Cursed Technique",
+                description="Shoko channels powerful positive energy, fully restoring 40 health to one heavily wounded ally.",
+                cooldown="2",
+                energy=["white", "white"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Stabilize",
+                description="Shoko places one ally in a stabilized state for 2 turns. During this time, any damage that would kill that ally instead leaves them at 1 health.",
+                cooldown="3",
+                energy=["white", "blue", "random"],
+                classes="Strategic,Action"
+            ),
+        ]
+    ),
+
+    # ─────────────────────────────────────────────
+    #  KYOTO JUJUTSU HIGH
+    # ─────────────────────────────────────────────
+
     Character(
         name="Aoi Todo",
-        description="A grade 1 jujutsu sorcerer from Kyoto High who possesses immense physical strength and the Boogie Woogie technique.",
+        description="A grade 1 jujutsu sorcerer from Kyoto High with overwhelming physical strength and the Boogie Woogie technique.",
         image_url="https://i.imgur.com/placeholder.png",
         skills=[
-            Skill(name="Crushing Blow", description="Todo delivers a heavy punch, dealing 25 damage to one enemy.", cooldown="None", energy=["green", "random"], classes="Physical,Instant"),
-            Skill(name="Boogie Woogie", description="Todo claps his hands to swap positions. One target ally swaps places with another, removing all negative effects from both and evading all attacks aimed at them this turn.", cooldown="1", energy=["blue", "random"], classes="Strategic,Instant"),
-            Skill(name="Disorienting Swap", description="Todo swaps places with the enemy right before attacking, confusing them. Deals 20 damage and makes the enemy's next skill cost 1 random energy more.", cooldown="1", energy=["green", "blue"], classes="Physical,Instant"),
-            Skill(name="Best Friend", description="Todo fights alongside his 'brother'. For 3 turns, whenever an ally attacks, Todo performs a follow-up attack dealing 10 damage to the same target.", cooldown="3", energy=["white", "green"], classes="Strategic,Action")
+            Skill(
+                name="Crushing Blow",
+                description="Todo delivers a heavy punch, dealing 25 damage to one enemy.",
+                cooldown="None",
+                energy=["green", "random"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Boogie Woogie",
+                description="Todo claps his hands, swapping positions between two targets. One ally swaps with one enemy, removing all negative effects from the ally and causing the enemy to miss their next skill.",
+                cooldown="1",
+                energy=["blue", "random"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Disorienting Swap",
+                description="Todo swaps positions with the enemy right before striking, dealing 20 damage and making the enemy's next skill cost 1 additional random energy.",
+                cooldown="1",
+                energy=["green", "blue"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Best Friend",
+                description="Todo fights alongside his 'brother'. For 3 turns, whenever an ally attacks, Todo performs a follow-up strike on the same target for 10 damage.",
+                cooldown="3",
+                energy=["white", "green"],
+                classes="Strategic,Action"
+            ),
         ]
     ),
+
+    Character(
+        name="Maki Zenin",
+        description="A student from the Zenin Clan with a Heavenly Restriction that strips away her cursed energy in exchange for superhuman physical ability.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Playful Cloud",
+                description="Maki strikes with her three-section staff, dealing 25 damage to one enemy.",
+                cooldown="None",
+                energy=["green", "random"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Dragon-Bone",
+                description="Maki absorbs incoming force and redirects it. She gains 10 damage reduction this turn, and her next attack deals 15 additional damage.",
+                cooldown="1",
+                energy=["white"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Split Soul Katana",
+                description="Maki slashes her target with a special grade weapon, dealing 30 damage. This attack permanently reduces the target's maximum health by the damage dealt.",
+                cooldown="2",
+                energy=["black", "green"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Heavenly Restriction",
+                description="Maki's physical senses reach their peak. For 3 turns, she evades all non-Physical skills and counter-attacks any Physical skill aimed at her for 15 damage.",
+                cooldown="3",
+                energy=["white", "green", "random"],
+                classes="Physical,Action"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Toge Inumaki",
+        description="A semi-grade 1 sorcerer descended from the Inumaki clan who uses Cursed Speech — his words carry the power to force reality to obey.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Don't Move",
+                description="Toge commands an enemy to halt, stunning them for 1 turn. Toge takes 5 damage in recoil from overusing his voice.",
+                cooldown="1",
+                energy=["blue"],
+                classes="Mental,Instant"
+            ),
+            Skill(
+                name="Blast Away",
+                description="Toge unleashes a Cursed Speech shockwave, dealing 25 damage to one enemy. Toge takes 10 damage in recoil.",
+                cooldown="1",
+                energy=["blue", "random"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Plummet",
+                description="Toge creates a crushing gravitational command, dealing 15 damage to all enemies. Toge takes 15 damage in recoil.",
+                cooldown="2",
+                energy=["blue", "black"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Throat Medicine",
+                description="Toge drinks cough syrup to soothe his strained throat, restoring 25 health to himself and curing all negative effects.",
+                cooldown="2",
+                energy=["white", "random"],
+                classes="Strategic,Instant"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Noritoshi Kamo",
+        description="A grade 2 sorcerer and heir to the Kamo clan who uses Blood Manipulation to control his own blood as a weapon at superhuman speed.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Blood Sword",
+                description="Kamo hardens his blood into a blade and slashes an enemy for 20 damage.",
+                cooldown="None",
+                energy=["red", "random"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Convergence",
+                description="Kamo compresses his blood into a dense sphere and fires it at high speed. Deals 30 damage to one enemy, ignoring damage reduction.",
+                cooldown="1",
+                energy=["red", "black"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Crimson Binding",
+                description="Kamo ensnares an enemy in hardened blood. The target is stunned for 1 turn and takes 10 damage per turn for 2 turns.",
+                cooldown="2",
+                energy=["red", "blue"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Eight-Handled Divergent Sword: Technique Absolute",
+                description="Kamo sacrifices 15 of his own health to empower his blood. Deals 50 damage to one enemy and applies bleeding (10 damage per turn for 3 turns).",
+                cooldown="3",
+                energy=["red", "red", "black"],
+                classes="Ninjutsu,Action"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Kasumi Miwa",
+        description="A grade 3 sorcerer from Kyoto High who uses the New Shadow Style and Simple Domain — a self-taught counter to Domain Expansions.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Batto Sword Draw",
+                description="Miwa draws her sword and slashes in one fluid motion, dealing 20 damage. If used on the first turn after she is targeted, this deals 10 additional damage.",
+                cooldown="None",
+                energy=["green"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Simple Domain",
+                description="Miwa activates her Simple Domain, automatically countering one enemy's Domain Expansion or high-cost skill this turn. That skill's effect is negated.",
+                cooldown="2",
+                energy=["white", "blue"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Three Flashes",
+                description="Miwa performs three rapid sword strikes on one enemy, dealing 10 damage per hit (30 total).",
+                cooldown="1",
+                energy=["green", "random"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="New Shadow Style: Flawless",
+                description="Miwa channels her full swordsmanship. Deals 40 damage to one enemy and makes Miwa evade the next skill aimed at her.",
+                cooldown="3",
+                energy=["black", "green", "random"],
+                classes="Physical,Instant"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Mai Zenin",
+        description="A grade 3 sorcerer from the Zenin Clan who resents her forced path in jujutsu. Her Construction technique lets her conjure one bullet from nothing each turn.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Revolver Shot",
+                description="Mai fires a cursed-energy-infused bullet at one enemy for 15 damage.",
+                cooldown="None",
+                energy=["random"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Construction",
+                description="Mai constructs one bullet from pure cursed energy at great personal cost. She loses 5 health, but her next 'Revolver Shot' deals 25 additional damage.",
+                cooldown="1",
+                energy=["white"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Rapid Fire",
+                description="Mai unloads multiple shots, dealing 10 damage to all enemies.",
+                cooldown="2",
+                energy=["red", "random"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Constructed Bullet: Armor-Piercing",
+                description="Mai builds a special bullet that bypasses all defenses. Deals 35 damage to one enemy, ignoring invulnerability and damage reduction.",
+                cooldown="3",
+                energy=["black", "white", "random"],
+                classes="Ninjutsu,Instant"
+            ),
+        ]
+    ),
+
+    # ─────────────────────────────────────────────
+    #  OTHER SORCERERS
+    # ─────────────────────────────────────────────
+
+    Character(
+        name="Mei Mei",
+        description="A grade 1 sorcerer who works as a mercenary. She uses Black Bird Manipulation to control crows and is ruthlessly money-motivated.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Bird Strike",
+                description="Mei Mei sends a flock of crows to assault one enemy, dealing 20 damage.",
+                cooldown="None",
+                energy=["black", "random"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Avid Mercenary",
+                description="Mei Mei fights with extra motivation. For 2 turns, whenever she or an ally defeats an enemy, all allies heal 15 health.",
+                cooldown="2",
+                energy=["white", "random"],
+                classes="Strategic,Action"
+            ),
+            Skill(
+                name="Black Bird Manipulation: Dive Bomb",
+                description="Mei Mei commands a crow to dive-bomb an enemy carrying cursed energy, dealing 30 damage. This skill cannot be countered.",
+                cooldown="1",
+                energy=["black", "black"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Maximum: Black Feather",
+                description="Mei Mei sacrifices one of her crows in a devastating explosion. Deals 50 damage to one enemy. This skill ignores all defensive effects.",
+                cooldown="3",
+                energy=["black", "black", "random"],
+                classes="Ninjutsu,Instant"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Naobito Zenin",
+        description="The 26th Head of the Zenin Clan and the fastest special grade sorcerer after Gojo. His Projection Sorcery freezes targets in a 24-frame animation cycle.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Flash Strike",
+                description="Naobito moves faster than the eye can follow, striking one enemy for 25 damage. This skill cannot be countered.",
+                cooldown="None",
+                energy=["green", "random"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Projection Sorcery",
+                description="Naobito maps an enemy into a 24-frame animation. If the target moves outside their preset path, they freeze — stunning them for 1 turn and dealing 15 damage.",
+                cooldown="1",
+                energy=["blue", "black"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="1/24 Frames",
+                description="Naobito accelerates to his maximum speed, performing multiple strikes. Deals 40 damage to one enemy split across several hits, each of which ignores barriers.",
+                cooldown="2",
+                energy=["green", "black"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Speed of Flash: Full Burst",
+                description="Naobito moves at the absolute limit of his ability. For 2 turns, he evades all incoming attacks and deals 10 bonus damage with each strike.",
+                cooldown="3",
+                energy=["white", "green", "random"],
+                classes="Physical,Action"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Toji Fushiguro",
+        description="Known as the Sorcerer Killer. Toji traded all of his cursed energy for a Heavenly Restriction that grants superhuman physical ability — he fights without cursed techniques.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Brutal Strike",
+                description="Toji delivers a devastating unarmed blow to one enemy, dealing 25 damage.",
+                cooldown="None",
+                energy=["green"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Inverted Spear of Heaven",
+                description="Toji wields his signature weapon, nullifying all cursed technique effects on the target. Deals 30 damage and removes all buffs from the enemy.",
+                cooldown="1",
+                energy=["black", "green"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Heavenly Restriction: Peak Body",
+                description="Toji pushes his cursed-energy-free body to its absolute limit. For 2 turns, he deals 15 extra damage with all attacks and evades all non-Physical skills.",
+                cooldown="2",
+                energy=["white", "green"],
+                classes="Physical,Action"
+            ),
+            Skill(
+                name="Playful Cloud: Sorcerer Killer",
+                description="Toji wields Playful Cloud with lethal precision, striking a target 3 times for 20 damage each (60 total). One hit ignores invulnerability.",
+                cooldown="3",
+                energy=["black", "green", "random"],
+                classes="Physical,Instant"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Yuki Tsukumo",
+        description="A special grade sorcerer and one of only four in the world. She uses Star Rage — manipulating mass to crush opponents, often alongside her shikigami Garuda.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Massive Strike",
+                description="Yuki increases her own mass and delivers a crushing blow, dealing 25 damage to one enemy.",
+                cooldown="None",
+                energy=["black", "random"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Star Rage",
+                description="Yuki applies a virtual mass to her fist and slams one enemy with gravitational force, dealing 35 damage that ignores damage reduction.",
+                cooldown="1",
+                energy=["black", "black"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Garuda Summon",
+                description="Yuki summons her shikigami Garuda. While active, all enemies take 10 damage at the start of each turn. Garuda lasts 3 turns.",
+                cooldown="3",
+                energy=["black", "white"],
+                classes="Strategic,Action"
+            ),
+            Skill(
+                name="Anti-Gravity: Open to All",
+                description="Yuki releases a gravitational shockwave, removing anti-cursed energy from the area. Deals 25 damage to all enemies and reduces their skill energy costs by forcing exhaustion — each enemy loses 1 random energy.",
+                cooldown="4",
+                energy=["black", "black", "white"],
+                classes="Ninjutsu,Instant"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Kusakabe",
+        description="A grade 1 sorcerer and instructor who specializes in the New Shadow Style sword technique and is remarkably pragmatic in battle.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Sword Draw",
+                description="Kusakabe draws his sword in one precise motion, dealing 20 damage to one enemy.",
+                cooldown="None",
+                energy=["green"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Simple Domain",
+                description="Kusakabe deploys his Simple Domain, automatically neutralizing one incoming Domain Expansion or action-type skill this turn.",
+                cooldown="2",
+                energy=["white", "blue"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="New Shadow Style: Batto",
+                description="Kusakabe performs a lightning-fast draw, striking one enemy for 30 damage before they can react. This skill cannot be interrupted.",
+                cooldown="1",
+                energy=["green", "black"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Veteran's Resolve",
+                description="Kusakabe uses years of experience to take a defensive position. For 2 turns, he reduces all incoming damage by 20 and counters Physical attacks for 10 damage.",
+                cooldown="3",
+                energy=["white", "green"],
+                classes="Strategic,Action"
+            ),
+        ]
+    ),
+
+    # ─────────────────────────────────────────────
+    #  ANTAGONISTS / GETO GROUP
+    # ─────────────────────────────────────────────
+
+    Character(
+        name="Suguru Geto",
+        description="A former special grade sorcerer turned curse user who can absorb and manipulate cursed spirits. He believes cursed spirits should rule over non-sorcerers.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Cursed Spirit Projectile",
+                description="Geto releases a low-grade cursed spirit at one enemy, dealing 20 damage.",
+                cooldown="None",
+                energy=["black", "random"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Cursed Spirit Manipulation",
+                description="Geto absorbs a cursed spirit from his stock. For 2 turns, the next time an enemy ability is used, Geto counters with a cursed spirit for 25 damage.",
+                cooldown="1",
+                energy=["black", "blue"],
+                classes="Strategic,Action"
+            ),
+            Skill(
+                name="Uzumaki",
+                description="Geto fuses multiple cursed spirits into one enormous entity and slams it into all enemies, dealing 35 damage to each.",
+                cooldown="3",
+                energy=["black", "black", "random"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Maximum: Uzumaki",
+                description="Geto fuses every cursed spirit he possesses into a single catastrophic explosion. Deals 60 damage to all enemies and applies a curse mark that deals 10 damage per turn for 2 turns.",
+                cooldown="5",
+                energy=["black", "black", "black", "white"],
+                classes="Ninjutsu,Action"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Kenjaku",
+        description="An ancient sorcerer over 1000 years old who transplants his brain into other bodies. Currently in Suguru Geto's body, he engineered the Culling Game and possesses all of Geto's techniques.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Parasitic Soul: Unleash",
+                description="Kenjaku unleashes a cursed spirit implanted in an unsuspecting target, dealing 25 damage to one enemy and applying a weakening effect that reduces their damage by 10 for 2 turns.",
+                cooldown="1",
+                energy=["black", "random"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Cursed Technique Implantation",
+                description="Kenjaku copies and implants a foreign cursed technique. He gains the use of one random skill class (Physical, Mental, Ninjutsu, or Strategic) that costs 0 energy for 1 turn.",
+                cooldown="2",
+                energy=["blue", "black"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Resurrection of Tragedy",
+                description="Kenjaku uses his ancient knowledge to heal himself for 30 health and remove all negative effects.",
+                cooldown="2",
+                energy=["white", "black"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Uzumaki: Ancient Form",
+                description="Kenjaku unleashes the full power of Geto's cursed spirit arsenal in its ancient form. Deals 50 damage to all enemies. Enemies killed by this skill cannot have their deaths reversed.",
+                cooldown="4",
+                energy=["black", "black", "blue", "white"],
+                classes="Ninjutsu,Action"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Uraume",
+        description="A loyal servant of Ryomen Sukuna from the Heian era with the ice-based cursed technique Frost Calm — capable of freezing anything, including the blood of enemies.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Frost Calm",
+                description="Uraume freezes the moisture in the air around one enemy, dealing 15 damage and reducing their movement — the target's next skill costs 1 additional random energy.",
+                cooldown="None",
+                energy=["blue", "random"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Ice Formation",
+                description="Uraume raises a wall of ice in front of one ally, giving them 20 damage reduction for 2 turns.",
+                cooldown="1",
+                energy=["white", "blue"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Frost Freeze: Piercing Cold",
+                description="Uraume freezes an enemy from the inside out, dealing 35 damage and stunning them for 1 turn. This cannot be evaded.",
+                cooldown="2",
+                energy=["blue", "blue", "random"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Reversed Frozen Burst",
+                description="Uraume reverses their technique to create a concussive ice explosion, dealing 25 damage to all enemies and reducing all enemy damage by 10 for 2 turns.",
+                cooldown="3",
+                energy=["blue", "black", "white"],
+                classes="Ninjutsu,Instant"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Naoya Zenin",
+        description="A special grade sorcerer from the Zenin Clan who uses Projection Sorcery at exceptional speed. His arrogance is matched only by his ruthless efficiency.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Speed Rush",
+                description="Naoya moves faster than any defense can react, striking one enemy for 25 damage. This skill cannot be blocked or countered.",
+                cooldown="None",
+                energy=["green"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Projection Sorcery: Animation Lock",
+                description="Naoya maps one enemy into a 24-frame cycle. They are stunned for 1 turn. Any buff they had this turn is also removed.",
+                cooldown="1",
+                energy=["blue", "black"],
+                classes="Mental,Instant"
+            ),
+            Skill(
+                name="Ruthless Barrage",
+                description="Naoya attacks in a pattern too fast to dodge, dealing 35 damage to one enemy. If the target is stunned, this deals an additional 20 damage.",
+                cooldown="2",
+                energy=["green", "green"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Cursed Womb: Vengeance",
+                description="After death, Naoya returns as a vengeful cursed spirit. Permanently grants a cursed mark to one enemy — they take 15 damage at the start of each turn indefinitely until cured.",
+                cooldown="4",
+                energy=["black", "white", "random"],
+                classes="Ninjutsu,Action"
+            ),
+        ]
+    ),
+
+    # ─────────────────────────────────────────────
+    #  SPECIAL GRADE CURSED SPIRITS
+    # ─────────────────────────────────────────────
+
+    Character(
+        name="Ryomen Sukuna",
+        description="The undisputed King of Curses. An immensely powerful cursed spirit from the Heian Era who now resides within Yuji Itadori.",
+        image_url="https://i.imgur.com/6U6z9fG.jpeg",
+        skills=[
+            Skill(
+                name="Dismantle",
+                description="Sukuna sends a slashing attack at his target, dealing 25 damage to one enemy. This deals an additional 10 damage to summoned entities.",
+                cooldown="None",
+                energy=["black"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Cleave",
+                description="Sukuna adjusts the strength of his slash to the target's toughness, dealing 30 damage that ignores invulnerability.",
+                cooldown="1",
+                energy=["black", "random"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Malevolent Shrine",
+                description="Sukuna opens his Domain, applying 'Shrine' to all enemies. While 'Shrine' is active, all enemies take 15 damage at the start of their turn for 3 turns.",
+                cooldown="4",
+                energy=["black", "red", "white"],
+                classes="Strategic,Action"
+            ),
+            Skill(
+                name="Fire Arrow",
+                description="Sukuna unleashes a devastating arrow of flames. Deals 40 damage to one enemy. If 'Malevolent Shrine' is active, this deals 70 damage instead.",
+                cooldown="2",
+                energy=["red", "random", "random"],
+                classes="Ninjutsu,Instant"
+            ),
+        ]
+    ),
+
     Character(
         name="Mahito",
-        description="A special grade cursed spirit born from humanity's hatred and fear of each other.",
+        description="A special grade cursed spirit born from humanity's hatred and fear of each other. He can reshape souls through touch.",
         image_url="https://i.imgur.com/placeholder.png",
         skills=[
-            Skill(name="Soul Strike", description="Mahito attacks the enemy's soul directly, dealing 20 damage. This damage cannot be healed.", cooldown="None", energy=["black", "random"], classes="Ninjutsu,Instant"),
-            Skill(name="Idle Transfiguration", description="Mahito alters the shape of the enemy's soul. Deals 30 damage. If the target's health drops below 20%, they are instantly killed.", cooldown="2", energy=["black", "red"], classes="Ninjutsu,Instant"),
-            Skill(name="Body Repel", description="Mahito manipulates his own soul to regenerate. He heals 25 health and removes all negative effects.", cooldown="1", energy=["white", "random"], classes="Strategic,Instant"),
-            Skill(name="Self-Embodiment of Perfection", description="Mahito expands his Domain. For 3 turns, he becomes invulnerable, and 'Idle Transfiguration' targets all enemies and costs no energy.", cooldown="4", energy=["black", "red", "white", "random"], classes="Strategic,Action")
+            Skill(
+                name="Soul Strike",
+                description="Mahito attacks the enemy's soul directly, dealing 20 damage. This damage cannot be healed by any means.",
+                cooldown="None",
+                energy=["black", "random"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Idle Transfiguration",
+                description="Mahito alters the shape of the enemy's soul. Deals 30 damage. If the target's health is below 20%, they are instantly killed.",
+                cooldown="2",
+                energy=["black", "red"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Body Repel",
+                description="Mahito manipulates his own soul to regenerate his body. He heals 25 health and removes all negative effects.",
+                cooldown="1",
+                energy=["white", "random"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Self-Embodiment of Perfection",
+                description="Mahito expands his Domain. For 3 turns, he becomes invulnerable, and 'Idle Transfiguration' targets all enemies and costs no energy.",
+                cooldown="4",
+                energy=["black", "red", "white", "random"],
+                classes="Strategic,Action"
+            ),
         ]
     ),
+
     Character(
         name="Jogo",
-        description="A special grade cursed spirit born from the fear of the earth, possessing intense fire and lava abilities.",
+        description="A special grade cursed spirit born from the fear of volcanic disasters. He wields devastating fire and lava abilities and looks down on humans.",
         image_url="https://i.imgur.com/placeholder.png",
         skills=[
-            Skill(name="Ember Bugs", description="Jogo summons explosive insects. Deals 15 damage to one enemy. The insects explode again next turn for 15 damage.", cooldown="None", energy=["red"], classes="Ninjutsu,Instant"),
-            Skill(name="Disaster Flames", description="Jogo unleashes a torrent of fire, dealing 30 damage to one enemy and applying a burn that deals 10 damage for 2 turns.", cooldown="1", energy=["red", "random"], classes="Ninjutsu,Instant"),
-            Skill(name="Maximum: Meteor", description="Jogo summons a massive fiery meteor. After 1 turn delay, deals 60 damage to all enemies. Enemies can spend 1 random energy to evade this.", cooldown="3", energy=["red", "red", "black"], classes="Ninjutsu,Action"),
-            Skill(name="Coffin of the Iron Mountain", description="Jogo expands his Domain. For 3 turns, all enemies take 20 fire damage at the end of their turn, and all of Jogo's skills deal 10 extra damage.", cooldown="4", energy=["red", "black", "white"], classes="Strategic,Action")
+            Skill(
+                name="Ember Bugs",
+                description="Jogo summons explosive insects that attach to one enemy. Deals 15 damage now and 15 more damage at the start of the target's next turn.",
+                cooldown="None",
+                energy=["red"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Disaster Flames",
+                description="Jogo unleashes a torrent of cursed fire, dealing 30 damage to one enemy and applying a burn that deals 10 damage per turn for 2 turns.",
+                cooldown="1",
+                energy=["red", "random"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Maximum: Meteor",
+                description="Jogo summons a massive fiery meteor. After a 1-turn delay, it crashes down for 60 damage to all enemies. Enemies may spend 1 random energy to evade it.",
+                cooldown="3",
+                energy=["red", "red", "black"],
+                classes="Ninjutsu,Action"
+            ),
+            Skill(
+                name="Coffin of the Iron Mountain",
+                description="Jogo expands his Domain. For 3 turns, all enemies take 20 fire damage at the end of their turn, and all of Jogo's skills deal 10 extra damage.",
+                cooldown="4",
+                energy=["red", "black", "white"],
+                classes="Strategic,Action"
+            ),
         ]
     ),
+
     Character(
         name="Hanami",
-        description="A special grade cursed spirit born from the fear of nature.",
+        description="A special grade cursed spirit born from the fear of the natural world. He draws power from the earth and fights to eradicate humanity.",
         image_url="https://i.imgur.com/placeholder.png",
         skills=[
-            Skill(name="Wooden Roots", description="Hanami attacks with roots, dealing 15 damage and healing Hanami for 15 health.", cooldown="None", energy=["green"], classes="Physical,Instant"),
-            Skill(name="Cursed Buds", description="Hanami launches buds that drain energy. Deals 10 damage. The target loses 1 random energy and Hanami gains 1 random energy.", cooldown="1", energy=["green", "blue"], classes="Ninjutsu,Instant"),
-            Skill(name="Flower Field", description="Hanami releases a scent that pacifies enemies. All enemies have their damage reduced by 50% for 2 turns.", cooldown="2", energy=["white", "random"], classes="Mental,Instant"),
-            Skill(name="Ceremonial Sea of Light", description="Hanami expands a Domain of light. Deals 40 damage to one enemy and stuns them for 1 turn. This skill cannot be evaded.", cooldown="3", energy=["white", "green", "black"], classes="Ninjutsu,Action")
+            Skill(
+                name="Wooden Roots",
+                description="Hanami attacks with bursting roots, dealing 15 damage to one enemy and healing himself for 15 health.",
+                cooldown="None",
+                energy=["green"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Cursed Buds",
+                description="Hanami launches draining buds into an enemy. Deals 10 damage, the target loses 1 random energy, and Hanami gains 1 random energy.",
+                cooldown="1",
+                energy=["green", "blue"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Flower Field",
+                description="Hanami releases a pacifying scent that saps the will to fight. All enemies have their damage output reduced by 50% for 2 turns.",
+                cooldown="2",
+                energy=["white", "random"],
+                classes="Mental,Instant"
+            ),
+            Skill(
+                name="Ceremonial Sea of Light",
+                description="Hanami unleashes a domain of blinding natural light. Deals 40 damage to one enemy and stuns them for 1 turn. This skill cannot be evaded.",
+                cooldown="3",
+                energy=["white", "green", "black"],
+                classes="Ninjutsu,Action"
+            ),
         ]
     ),
+
     Character(
         name="Choso",
-        description="A Death Painting Womb who uses Blood Manipulation to protect his brothers.",
+        description="A Death Painting Womb — a hybrid of human and cursed spirit — who uses Blood Manipulation to devastating effect and seeks to protect his brothers.",
         image_url="https://i.imgur.com/placeholder.png",
         skills=[
-            Skill(name="Slicing Exorcism", description="Choso forms a wheel of blood and hurls it. Deals 20 damage to one enemy and applies bleeding (5 damage per turn for 3 turns).", cooldown="None", energy=["red", "random"], classes="Physical,Instant"),
-            Skill(name="Piercing Blood", description="Choso fires a highly pressurized beam of blood. Deals 35 damage to one enemy. This skill ignores all damage reduction and invulnerability.", cooldown="1", energy=["red", "black"], classes="Ninjutsu,Instant"),
-            Skill(name="Supernova", description="Choso scatters blood orbs that detonate like buckshot. Deals 20 damage to all enemies.", cooldown="2", energy=["red", "red", "random"], classes="Ninjutsu,Instant"),
-            Skill(name="Flowing Red Scale", description="Choso manipulates his blood to enhance his body. For 3 turns, he gains 15 damage reduction, and all his skills cost 1 random energy less.", cooldown="3", energy=["white", "red"], classes="Strategic,Action")
+            Skill(
+                name="Slicing Exorcism",
+                description="Choso forms a razor wheel of blood and hurls it, dealing 20 damage to one enemy and applying bleeding (5 damage per turn for 3 turns).",
+                cooldown="None",
+                energy=["red", "random"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Piercing Blood",
+                description="Choso fires a highly pressurized beam of blood, dealing 35 damage to one enemy. This skill ignores all damage reduction and invulnerability.",
+                cooldown="1",
+                energy=["red", "black"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Supernova",
+                description="Choso scatters blood orbs that detonate simultaneously like buckshot, dealing 20 damage to all enemies.",
+                cooldown="2",
+                energy=["red", "red", "random"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Flowing Red Scale",
+                description="Choso manipulates his blood to enhance his body's performance. For 3 turns, he gains 15 damage reduction and all his skills cost 1 random energy less.",
+                cooldown="3",
+                energy=["white", "red"],
+                classes="Strategic,Action"
+            ),
         ]
-    )
+    ),
+
+    Character(
+        name="Dagon",
+        description="A special grade cursed spirit born from the fear of the deep sea who evolved from a Death Painting. He commands tides, schools of fish, and the terror of the ocean floor.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Tidal Bore",
+                description="Dagon sends a powerful wave crashing into one enemy, dealing 20 damage.",
+                cooldown="None",
+                energy=["blue", "random"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Death Swarm",
+                description="Dagon summons a school of deep-sea fish that tear into all enemies for 15 damage each.",
+                cooldown="1",
+                energy=["black", "blue"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Shutter of Lethality",
+                description="Dagon forms water into a blade that cuts at the soul level. Deals 35 damage to one enemy, ignoring all barriers and shields.",
+                cooldown="2",
+                energy=["blue", "black", "random"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Horizon of the Captivating Skandha",
+                description="Dagon expands his Domain, trapping all enemies in a watery abyss. For 3 turns, all enemies take 20 damage at the start of their turn from the relentless fish swarm, and all of Dagon's skills cost 1 less energy.",
+                cooldown="4",
+                energy=["black", "blue", "blue", "white"],
+                classes="Strategic,Action"
+            ),
+        ]
+    ),
+
+    # ─────────────────────────────────────────────
+    #  CULLING GAME PLAYERS
+    # ─────────────────────────────────────────────
+
+    Character(
+        name="Hiromi Higuruma",
+        description="A brilliant defense lawyer turned culling game player whose Domain 'Deadly Sentencing' summons the shikigami Judgeman — a trial that can confiscate a target's cursed technique.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Gavel Strike",
+                description="Higuruma swings his giant gavel, dealing 20 damage to one enemy.",
+                cooldown="None",
+                energy=["black", "random"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Trial Testimony",
+                description="Higuruma calls Judgeman to evaluate an enemy. The target must 'testify' — their highest-cost skill is disabled for 2 turns.",
+                cooldown="2",
+                energy=["blue", "black"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Confiscation",
+                description="Judgeman hands down a Confiscation ruling. The target loses all their current energy and cannot gain energy next turn.",
+                cooldown="2",
+                energy=["black", "blue"],
+                classes="Mental,Instant"
+            ),
+            Skill(
+                name="Deadly Sentencing",
+                description="Higuruma expands his Domain. Judgeman passes a Deadly Sentence — the target enemy is marked. The next skill used against the marked enemy deals 60 bonus damage. This cannot be negated.",
+                cooldown="4",
+                energy=["black", "black", "blue"],
+                classes="Strategic,Action"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Fumihiko Takaba",
+        description="A failed comedian who became one of the most dangerous players in the Culling Game. His cursed technique manifests comedy into reality — whatever he believes is funny becomes real.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Stand-Up Routine",
+                description="Takaba delivers a terrible punchline. The target enemy is so confused they lose their next action (stunned for 1 turn).",
+                cooldown="1",
+                energy=["blue"],
+                classes="Mental,Instant"
+            ),
+            Skill(
+                name="Comedian",
+                description="Takaba's reality-warping comedy manifests randomly. Deals a random amount of damage to all enemies (between 10 and 40) — completely unpredictable.",
+                cooldown="1",
+                energy=["random"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="The Bit",
+                description="Takaba commits fully to a comedic scenario, making one enemy 'play along'. The target is charmed — they cannot target Takaba for 2 turns.",
+                cooldown="2",
+                energy=["blue", "random"],
+                classes="Mental,Instant"
+            ),
+            Skill(
+                name="Comedy: Absolute",
+                description="Takaba achieves the perfect joke, bending reality. For 3 turns, Takaba becomes completely invulnerable — all attacks aimed at him are negated as the universe rewrites them as part of the act.",
+                cooldown="4",
+                energy=["white", "blue", "random"],
+                classes="Mental,Action"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Hajime Kashimo",
+        description="A legendary sorcerer from 400 years ago resurrected for the Culling Game. He uses Genju Kohasaku, an electric-element cursed technique, and seeks to fight Sukuna as the ultimate challenge.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Thunderclap Fist",
+                description="Kashimo charges his fist with electric cursed energy and strikes, dealing 25 damage to one enemy.",
+                cooldown="None",
+                energy=["black", "random"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Electric Discharge",
+                description="Kashimo releases an arc of electric energy that chains to multiple targets. Deals 20 damage to all enemies.",
+                cooldown="1",
+                energy=["black", "blue"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Genju Kohasaku: Charged Body",
+                description="Kashimo electrifies his own body. For 2 turns, any enemy who strikes him with a Physical attack takes 20 electric damage in return.",
+                cooldown="2",
+                energy=["black", "white"],
+                classes="Strategic,Action"
+            ),
+            Skill(
+                name="Mythical Beast Amber",
+                description="Kashimo transforms his body into living lightning, releasing all stored electric energy in a devastating burst. Deals 65 damage to one enemy, ignoring all defensive effects. After using this skill, Kashimo loses all damage reduction for 2 turns.",
+                cooldown="4",
+                energy=["black", "black", "black"],
+                classes="Ninjutsu,Action"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Hana Kurusu",
+        description="A Culling Game player who is the vessel for Angel, an ancient sorcerer with the cursed technique Jacob's Ladder — capable of nullifying any cursed technique, including Prison Realm seals.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Holy Spear",
+                description="Hana fires a lance of purifying energy at one enemy, dealing 20 damage.",
+                cooldown="None",
+                energy=["white", "random"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Jacob's Ladder",
+                description="Angel descends and nullifies all cursed technique effects on one enemy target. All of the target's active buffs and technique-based effects are removed.",
+                cooldown="2",
+                energy=["white", "blue"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Cursed Technique Nullification",
+                description="Angel fully purifies one ally, removing all negative effects, curses, and damage-over-time effects from them and restoring 20 health.",
+                cooldown="2",
+                energy=["white", "white"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Divine Judgement",
+                description="Angel unleashes her full power, firing a beam of divine light. Deals 50 damage to one enemy that bypasses all defenses and invulnerability. All of the target's technique-based protections are destroyed.",
+                cooldown="4",
+                energy=["white", "white", "blue", "random"],
+                classes="Ninjutsu,Action"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Takako Uro",
+        description="A former captain of the Sun, Moon, and Stars assassination squad who uses Sky Manipulation — able to treat the sky as a tangible, malleable object.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Sky Slash",
+                description="Uro cuts through space itself, directing an aerial slash at one enemy for 20 damage.",
+                cooldown="None",
+                energy=["blue", "random"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Sky Manipulation: Fold",
+                description="Uro folds the sky to redirect an incoming attack. She becomes invulnerable to the next skill aimed at her and deflects it back for 15 damage to the attacker.",
+                cooldown="1",
+                energy=["white", "blue"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Torn Sky",
+                description="Uro tears a rift in the sky and drives it into one enemy. Deals 35 damage that ignores all invulnerability and barriers.",
+                cooldown="2",
+                energy=["blue", "black"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Aerial Supremacy",
+                description="Uro bends all airspace around the battlefield. For 3 turns, all enemy ranged and Ninjutsu-class skills are deflected, dealing 10 damage to their caster instead.",
+                cooldown="3",
+                energy=["blue", "blue", "white"],
+                classes="Strategic,Action"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Kirara Hoshi",
+        description="A loyal ally of Hakari who uses the Star Chart cursed technique — assigning astronomical symbols to targets and creating magnetic attraction or repulsion forces between them.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Stellar Tag",
+                description="Kirara assigns a star symbol to one enemy. While tagged, all allies' skills that target that enemy deal 10 additional damage.",
+                cooldown="None",
+                energy=["blue", "random"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Attract",
+                description="Kirara forces two tagged targets toward each other. One ally and one enemy are swapped in position — the enemy loses all evasion effects this turn.",
+                cooldown="1",
+                energy=["blue", "black"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Repel",
+                description="Kirara reverses the magnetic force on a tagged enemy, hurling them away. Deals 25 damage to one enemy and knocks them out of defensive positioning — removing all damage reduction for 1 turn.",
+                cooldown="2",
+                energy=["blue", "random"],
+                classes="Ninjutsu,Instant"
+            ),
+            Skill(
+                name="Star Chart: Constellation Lock",
+                description="Kirara locks all enemies into star positions. For 2 turns, enemies cannot swap targets or use movement-based skills. All tagged enemies take 15 damage per turn.",
+                cooldown="3",
+                energy=["blue", "blue", "black"],
+                classes="Strategic,Action"
+            ),
+        ]
+    ),
 ]
+
 
 def get_random_character() -> Character:
     return random.choice(CHARACTERS)

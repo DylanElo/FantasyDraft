@@ -69,7 +69,7 @@ class Game:
         if self.passes_used[player_id]:
             # Already used pass, must keep
             self.teams[player_id].append(char)
-            msg = f"{self.player_names[player_id]} drew {char.name} ({char.tier} Tier). You've already used your pass, so you keep this card!"
+            msg = f"{self.player_names[player_id]} drew {char.name}. You've already used your pass, so you keep this card!"
             self._next_turn()
             if self.state == GameState.FINISHED:
                 msg += "\n\nAll players have 5 characters! Use /result to see the winner."
@@ -78,7 +78,7 @@ class Game:
             return True, msg, char
         else:
             self.state = GameState.DECIDING
-            msg = f"{self.player_names[player_id]} drew {char.name} ({char.tier} Tier). Do you want to /keep or /pass?"
+            msg = f"{self.player_names[player_id]} drew {char.name}. Do you want to /keep or /pass?"
             return True, msg, char
 
     def keep(self, player_id: int) -> Tuple[bool, str]:
@@ -109,7 +109,7 @@ class Game:
         self.passes_used[player_id] = True
         new_char = get_random_character()
         self.teams[player_id].append(new_char)
-        msg = f"{self.player_names[player_id]} passed! Their new draw is {new_char.name} ({new_char.tier} Tier), which they must keep."
+        msg = f"{self.player_names[player_id]} passed! Their new draw is {new_char.name}, which they must keep."
 
         self._next_turn()
         if self.state == GameState.FINISHED:
@@ -135,31 +135,20 @@ class Game:
             else:
                 self.state = GameState.IN_PROGRESS
 
-    def resolve_battle(self) -> List[Tuple[int, str, List[str], Dict[str, int]]]:
+    def resolve_battle(self) -> List[Tuple[int, str, List[str]]]:
         """
-        Calculates the stats for each player's team and returns the standings.
-        Returns a list of tuples: (total_stat_score, player_name, team_names, stat_breakdown)
-        sorted by total_stat_score descending.
+        Since we moved to a purely ability-based card game (no arbitrary stats),
+        we'll just use a simple arbitrary score or just return teams for now to signify completion.
+        In a real scenario, this would trigger an actual Naruto Arena style battle phase.
         """
         results = []
         for p_id in self.players:
             team = self.teams[p_id]
-
-            total_hp = sum(c.hp for c in team)
-            total_attack = sum(c.attack for c in team)
-            total_defense = sum(c.defense for c in team)
-
-            # Simple combined score for now
-            combined_score = total_hp + total_attack + total_defense
-
-            stat_breakdown = {
-                "hp": total_hp,
-                "attack": total_attack,
-                "defense": total_defense
-            }
+            # Arbitrary score for draft phase completion standings
+            score = len(team) * 10
 
             team_names = [c.name for c in team]
-            results.append((combined_score, self.player_names[p_id], team_names, stat_breakdown))
+            results.append((score, self.player_names[p_id], team_names))
 
         results.sort(key=lambda x: x[0], reverse=True)
         return results
@@ -170,20 +159,19 @@ class Game:
 
         results = self.resolve_battle()
 
-        msg = "🏆 *Game Results* 🏆\n\n"
-        for i, (score, name, team, stats) in enumerate(results):
+        msg = "🏆 *Draft Results* 🏆\n\n"
+        for i, (score, name, team) in enumerate(results):
             medal = "🥇" if i == 0 else "🥈" if i == 1 else "🥉" if i == 2 else "👤"
             team_str = ", ".join(team) if team else "Empty"
 
-            msg += f"{medal} *{name}*: {score} total power\n"
-            msg += f"⚔️ ATK: {stats['attack']} | 🛡️ DEF: {stats['defense']} | ❤️ HP: {stats['hp']}\n"
+            msg += f"{medal} *{name}*\n"
             msg += f"Team: {team_str}\n\n"
 
         if self.state == GameState.FINISHED:
             winner = results[0][1]
-            msg += f"The winner is *{winner}*! 🎉"
+            msg += f"Draft phase is complete! Ready for battle!"
         else:
-            msg += "Game is still in progress!"
+            msg += "Draft is still in progress!"
 
         return True, msg
 

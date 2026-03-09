@@ -98,22 +98,43 @@ function hashCode(str) {
 function createCardHTML(char) {
     if (!char) return '';
 
-    // Convert S+ to S-plus for CSS class safety
-    const safeTier = char.tier.replace('+', '\\+');
+    let skillsHTML = '';
+    if (char.skills && char.skills.length > 0) {
+        char.skills.forEach(skill => {
+            let energyHTML = '';
+            skill.energy.forEach(e => {
+                energyHTML += `<div class="energy-icon energy-${e.toLowerCase()}" title="${e}"></div>`;
+            });
+
+            skillsHTML += `
+                <div class="skill">
+                    <div class="skill-header">
+                        <span class="skill-name">${skill.name}</span>
+                        <div class="energy-costs">${energyHTML}</div>
+                    </div>
+                    <div class="skill-desc">${skill.description}</div>
+                    <div class="skill-meta">
+                        <span>Cooldown: ${skill.cooldown}</span>
+                        <span>${skill.classes}</span>
+                    </div>
+                </div>
+            `;
+        });
+    }
 
     return `
-        <div class="card tier-${safeTier}">
-            <div class="card-header tier-${safeTier}">
-                <p class="card-name">${char.name}</p>
-                <p class="card-tier">${char.tier}</p>
+        <div class="card">
+            <div class="card-image-container">
+                <div class="card-image" style="background-image: url('${char.image_url}')"></div>
+                <div class="card-header">
+                    <p class="card-name">${char.name}</p>
+                </div>
             </div>
-            <div class="card-image" style="background-image: url('${char.image_url}');"
-                 onerror="this.style.backgroundImage='url(${char.image_url.replace('.jpg', '.png')})'"></div>
             <div class="card-body">
-                <div class="card-stat"><span>ATK</span><span>${char.attack}</span></div>
-                <div class="card-stat"><span>DEF</span><span>${char.defense}</span></div>
-                <div class="card-stat"><span>HP</span><span>${char.hp}</span></div>
-                <div class="card-skill">${char.skill}</div>
+                <div class="card-desc">${char.description}</div>
+                <div class="skills-container">
+                    ${skillsHTML}
+                </div>
             </div>
         </div>
     `;
@@ -171,8 +192,7 @@ function renderGame(state) {
         info.innerHTML = `
             <h3>${p.name} ${p.id === myPlayerId ? '(You)' : ''}</h3>
             <div>
-                Pass Used: ${p.passes_used ? 'Yes' : 'No'} |
-                Team Power: ${p.stats.total_power} (A:${p.stats.attack} D:${p.stats.defense} H:${p.stats.hp})
+                Pass Used: ${p.passes_used ? 'Yes' : 'No'} | Characters: ${p.team.length}/5
             </div>
         `;
 

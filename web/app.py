@@ -4,6 +4,7 @@ import os
 import uuid
 import sys
 import logging
+import zlib
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -18,18 +19,23 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 game_manager = GameManager()
 
+def skill_to_dict(skill):
+    return {
+        'name': skill.name,
+        'description': skill.description,
+        'cooldown': skill.cooldown,
+        'energy': skill.energy,
+        'classes': skill.classes
+    }
+
 def character_to_dict(char: Character):
     if not char:
         return None
     return {
         'name': char.name,
-        'tier': char.tier,
-        'score': char.score,
-        'hp': char.hp,
-        'attack': char.attack,
-        'defense': char.defense,
-        'skill': char.skill,
-        'image_url': char.image_url
+        'description': char.description,
+        'image_url': char.image_url,
+        'skills': [skill_to_dict(s) for s in char.skills]
     }
 
 def get_game_state_dict(game):
@@ -40,22 +46,11 @@ def get_game_state_dict(game):
     for pid in game.players:
         team = [character_to_dict(c) for c in game.teams[pid]]
 
-        total_hp = sum(c.hp for c in game.teams[pid])
-        total_attack = sum(c.attack for c in game.teams[pid])
-        total_defense = sum(c.defense for c in game.teams[pid])
-        combined_score = total_hp + total_attack + total_defense
-
         players_data.append({
             'id': pid,
             'name': game.player_names[pid],
             'team': team,
-            'passes_used': game.passes_used[pid],
-            'stats': {
-                'hp': total_hp,
-                'attack': total_attack,
-                'defense': total_defense,
-                'total_power': combined_score
-            }
+            'passes_used': game.passes_used[pid]
         })
 
     return {
@@ -87,10 +82,6 @@ def on_join(data):
     chat_id = hash(room_id) % 1000000000
     session['chat_id'] = chat_id
 
-    # Send string ID directly, use same for JS and Python
-    # Python's built-in hash() is seeded randomly per process, so JS and Python won't match.
-    # We will use a consistent numeric hash based on the uuid string.
-    import zlib
     int_player_id = zlib.adler32(player_id.encode('utf-8'))
     session['int_player_id'] = int_player_id
 

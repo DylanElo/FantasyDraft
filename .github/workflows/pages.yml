@@ -32,7 +32,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Regenerate characters.json from characters.py
+      - name: Regenerate character data files from characters.py
         run: |
           python3 -c "
           import json, sys
@@ -57,7 +57,11 @@ jobs:
               })
           with open('docs/characters.json', 'w') as f:
               json.dump(data, f, indent=2)
-          print(f'Exported {len(data)} characters to docs/characters.json')
+          with open('docs/characters_data.js', 'w') as f:
+              f.write('const CHARACTERS_DATA = ')
+              json.dump(data, f)
+              f.write(';')
+          print(f'Exported {len(data)} characters')
           "
 
       - name: Deploy to GitHub Pages

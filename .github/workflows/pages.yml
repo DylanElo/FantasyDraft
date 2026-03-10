@@ -5,10 +5,7 @@ on:
     branches:
       - master
       - main
-    paths:
-      - 'docs/**'
-      - 'jjk_bot/characters.py'
-      - '.github/workflows/pages.yml'
+      - claude/jjk-characters-skills-emsze
   workflow_dispatch:
 
 permissions:

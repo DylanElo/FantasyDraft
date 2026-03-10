@@ -2,7 +2,7 @@
   {
     "name": "Satoru Gojo",
     "description": "The strongest jujutsu sorcerer in the world. He possesses both the Limitless cursed technique and the Six Eyes.",
-    "image_url": "https://i.imgur.com/K1iZJqP.jpeg",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/e/ef/Satoru_Gojo_%28Anime_2%29.png/revision/latest?cb=20250726003655",
     "skills": [
       {
         "name": "Cursed Technique Lapse: Blue",
@@ -10,9 +10,9 @@
         "cooldown": "1",
         "energy": [
           "blue",
-          "random"
+          "black"
         ],
-        "classes": "Strategic,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Cursed Technique Reversal: Red",
@@ -20,36 +20,37 @@
         "cooldown": "2",
         "energy": [
           "red",
-          "red"
+          "blue"
         ],
-        "classes": "Physical,Instant"
+        "classes": "Bloodline,Instant"
       },
       {
         "name": "Hollow Technique: Purple",
         "description": "Gojo combines Blue and Red to erase everything in its path, dealing 60 damage to one enemy. If the enemy dies, they cannot be resurrected.",
         "cooldown": "4",
         "energy": [
-          "blue",
           "red",
-          "black"
+          "blue",
+          "white"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Infinity",
         "description": "Gojo becomes completely invulnerable to all damage and negative effects for 1 turn. While active, he cannot use 'Hollow Technique: Purple'.",
         "cooldown": "3",
         "energy": [
+          "white",
           "white"
         ],
-        "classes": "Mental,Instant"
+        "classes": "Strategic,Instant"
       }
     ]
   },
   {
     "name": "Yuji Itadori",
     "description": "A physically gifted high school student who became the vessel of Ryomen Sukuna. He fights with extraordinary strength and cursed energy-infused blows.",
-    "image_url": "https://i.imgur.com/placeholder.png",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/3/35/Yuji_Itadori_%28Anime_4%29.png/revision/latest?cb=20251230155050",
     "skills": [
       {
         "name": "Martial Arts",
@@ -65,8 +66,8 @@
         "description": "Yuji strikes an enemy for 15 damage. A second cursed energy wave hits the target at the start of their next turn for 15 additional damage.",
         "cooldown": "1",
         "energy": [
-          "black",
-          "random"
+          "green",
+          "blue"
         ],
         "classes": "Physical,Instant"
       },
@@ -75,11 +76,11 @@
         "description": "Yuji unleashes a strike with a spatial distortion, dealing 45 damage to one enemy. This skill has a 25% chance to cost 0 energy.",
         "cooldown": "2",
         "energy": [
-          "black",
+          "blue",
           "green",
-          "random"
+          "black"
         ],
-        "classes": "Physical,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Unyielding Resolve",
@@ -87,16 +88,16 @@
         "cooldown": "3",
         "energy": [
           "white",
-          "random"
+          "black"
         ],
-        "classes": "Mental,Instant"
+        "classes": "Strategic,Instant"
       }
     ]
   },
   {
     "name": "Megumi Fushiguro",
     "description": "A grade 2 jujutsu sorcerer and descendant of the Zenin Clan, using the Ten Shadows Technique to manifest shikigami from shadows.",
-    "image_url": "https://i.imgur.com/placeholder.png",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/6/6e/Megumi_Fushiguro_%28Anime_4%29.png/revision/latest?cb=20251230155327",
     "skills": [
       {
         "name": "Divine Dogs",
@@ -104,7 +105,7 @@
         "cooldown": "None",
         "energy": [
           "green",
-          "random"
+          "black"
         ],
         "classes": "Physical,Instant"
       },
@@ -114,17 +115,17 @@
         "cooldown": "1",
         "energy": [
           "blue",
-          "green"
+          "black"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Toad",
         "description": "Megumi summons a Toad to protect an ally. The target ally becomes invulnerable to the next harmful skill aimed at them.",
         "cooldown": "2",
         "energy": [
-          "green",
-          "random"
+          "white",
+          "black"
         ],
         "classes": "Strategic,Instant"
       },
@@ -133,10 +134,9 @@
         "description": "Megumi expands his incomplete Domain. For 3 turns, all of Megumi's skills cost 1 random energy less and he deals 10 extra damage with every attack.",
         "cooldown": "4",
         "energy": [
-          "black",
+          "blue",
           "green",
-          "random",
-          "random"
+          "white"
         ],
         "classes": "Strategic,Action"
       }
@@ -145,14 +145,14 @@
   {
     "name": "Nobara Kugisaki",
     "description": "A confident grade 3 jujutsu sorcerer who uses a hammer, nails, and straw dolls for her Straw Doll Technique.",
-    "image_url": "https://i.imgur.com/placeholder.png",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/d/dd/Nobara_Kugisaki_%28Anime_2%29.png/revision/latest?cb=20240621133809",
     "skills": [
       {
         "name": "Nail Toss",
         "description": "Nobara throws cursed energy-infused nails at one enemy, dealing 15 damage.",
         "cooldown": "None",
         "energy": [
-          "random"
+          "black"
         ],
         "classes": "Physical,Instant"
       },
@@ -161,28 +161,28 @@
         "description": "Nobara detonates her nails with cursed energy. Deals 25 damage to one enemy. If 'Nail Toss' was used on that target last turn, this deals 15 additional damage.",
         "cooldown": "1",
         "energy": [
-          "red",
-          "random"
+          "blue",
+          "black"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Resonance",
         "description": "Nobara strikes her straw doll, transmitting damage through the soul. Deals 30 damage to one enemy, ignoring invulnerability and damage reduction.",
         "cooldown": "2",
         "energy": [
-          "black",
-          "red"
+          "red",
+          "blue"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Bloodline,Instant"
       },
       {
         "name": "Straw Doll Connection",
         "description": "Nobara links herself to one enemy for 2 turns. Any damage Nobara takes is also dealt to the linked enemy.",
         "cooldown": "3",
         "energy": [
-          "black",
-          "white"
+          "white",
+          "black"
         ],
         "classes": "Strategic,Instant"
       }
@@ -191,7 +191,7 @@
   {
     "name": "Kento Nanami",
     "description": "A grade 1 jujutsu sorcerer who uses the Ratio Technique to divide his target with a 7:3 ratio, creating a mandatory weak spot.",
-    "image_url": "https://i.imgur.com/placeholder.png",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/b/b0/Kento_Nanami_%28Anime%29.png/revision/latest?cb=20240618014214",
     "skills": [
       {
         "name": "Blunt Strike",
@@ -207,9 +207,10 @@
         "description": "Nanami forcibly creates a weak spot on a target. For 2 turns, all damage dealt to that enemy is increased by 15.",
         "cooldown": "1",
         "energy": [
+          "red",
           "black"
         ],
-        "classes": "Strategic,Instant"
+        "classes": "Bloodline,Instant"
       },
       {
         "name": "Collapse",
@@ -227,8 +228,7 @@
         "cooldown": "4",
         "energy": [
           "white",
-          "random",
-          "random"
+          "white"
         ],
         "classes": "Strategic,Action"
       }
@@ -237,7 +237,7 @@
   {
     "name": "Yuta Okkotsu",
     "description": "A special grade jujutsu sorcerer with immense cursed energy, accompanied by the vengeful cursed spirit Rika Orimoto.",
-    "image_url": "https://i.imgur.com/5V3wKzH.jpeg",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/e/e6/Yuta_Okkotsu_%28Anime_2%29.png/revision/latest?cb=20251230155621",
     "skills": [
       {
         "name": "Katana Strike",
@@ -253,9 +253,10 @@
         "description": "Yuta uses a copied cursed speech technique to command his target. The target enemy is stunned for 1 turn.",
         "cooldown": "2",
         "energy": [
-          "blue"
+          "blue",
+          "white"
         ],
-        "classes": "Mental,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Reverse Cursed Technique",
@@ -263,7 +264,7 @@
         "cooldown": "1",
         "energy": [
           "white",
-          "random"
+          "blue"
         ],
         "classes": "Strategic,Instant"
       },
@@ -272,26 +273,25 @@
         "description": "Yuta fully manifests Rika for 3 turns. He gains 15 damage reduction, his skills are enhanced, and melee attackers receive 10 reflected damage.",
         "cooldown": "4",
         "energy": [
-          "black",
-          "green",
-          "random"
+          "red",
+          "blue",
+          "white"
         ],
-        "classes": "Strategic,Action"
+        "classes": "Bloodline,Action"
       }
     ]
   },
   {
     "name": "Hakari Kinji",
     "description": "A grade 1 sorcerer suspended from Jujutsu High, Hakari's Domain 'Idle Death Gamble' spins a pachinko machine \u2014 hitting the jackpot grants him infinite cursed energy.",
-    "image_url": "https://i.imgur.com/placeholder.png",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/c/cf/Kinji_Hakari_%28Anime%29.png/revision/latest?cb=20251230185947",
     "skills": [
       {
         "name": "Pachinko Slam",
         "description": "Hakari delivers a cursed-energy-enhanced punch, dealing 20 damage to one enemy.",
         "cooldown": "None",
         "energy": [
-          "green",
-          "random"
+          "green"
         ],
         "classes": "Physical,Instant"
       },
@@ -300,37 +300,38 @@
         "description": "Hakari throws himself into the fight recklessly. Deals 30 damage to one enemy and heals Hakari for 15 health.",
         "cooldown": "1",
         "energy": [
-          "black",
-          "green"
+          "blue",
+          "black"
         ],
-        "classes": "Physical,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Idle Death Gamble",
         "description": "Hakari expands his Domain and spins the jackpot. There is a 33% chance the jackpot hits: if it does, Hakari regenerates 20 health at the start of each turn for 4 turns and all his skills cost 0 energy during that time. If the jackpot misses, this skill is wasted.",
         "cooldown": "3",
         "energy": [
-          "black",
-          "black",
-          "random"
+          "red",
+          "blue",
+          "black"
         ],
-        "classes": "Strategic,Action"
+        "classes": "Bloodline,Action"
       },
       {
         "name": "Jackpot: Infinity Strikes",
         "description": "During 'Idle Death Gamble' jackpot, Hakari is near-immortal. This skill deals 50 damage to one enemy and ignores all defensive effects. Can only be used while the jackpot effect is active.",
         "cooldown": "2",
         "energy": [
+          "red",
           "black"
         ],
-        "classes": "Physical,Instant"
+        "classes": "Bloodline,Instant"
       }
     ]
   },
   {
     "name": "Panda",
     "description": "Not actually a panda \u2014 a cursed corpse created by Principal Yaga, capable of switching between three distinct combat cores: Panda, Gorilla, and Trident.",
-    "image_url": "https://i.imgur.com/placeholder.png",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/2/2b/Panda_%28Anime_2%29.png/revision/latest?cb=20211225181425",
     "skills": [
       {
         "name": "Claw Strike",
@@ -346,10 +347,10 @@
         "description": "Panda switches to his Gorilla core. For 2 turns, his attacks deal 15 extra damage and he gains 10 damage reduction.",
         "cooldown": "2",
         "energy": [
-          "black",
-          "random"
+          "red",
+          "green"
         ],
-        "classes": "Strategic,Action"
+        "classes": "Bloodline,Action"
       },
       {
         "name": "Drum Beat",
@@ -357,7 +358,7 @@
         "cooldown": "2",
         "energy": [
           "green",
-          "black"
+          "blue"
         ],
         "classes": "Physical,Instant"
       },
@@ -367,7 +368,7 @@
         "cooldown": "4",
         "energy": [
           "white",
-          "black"
+          "red"
         ],
         "classes": "Strategic,Instant"
       }
@@ -383,7 +384,7 @@
         "description": "Shoko uses her surgical precision to strike a vital point, dealing 15 damage to one enemy.",
         "cooldown": "None",
         "energy": [
-          "random"
+          "black"
         ],
         "classes": "Physical,Instant"
       },
@@ -393,7 +394,7 @@
         "cooldown": "1",
         "energy": [
           "white",
-          "random"
+          "black"
         ],
         "classes": "Strategic,Instant"
       },
@@ -413,8 +414,8 @@
         "cooldown": "3",
         "energy": [
           "white",
-          "blue",
-          "random"
+          "white",
+          "blue"
         ],
         "classes": "Strategic,Action"
       }
@@ -423,15 +424,14 @@
   {
     "name": "Aoi Todo",
     "description": "A grade 1 jujutsu sorcerer from Kyoto High with overwhelming physical strength and the Boogie Woogie technique.",
-    "image_url": "https://i.imgur.com/placeholder.png",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/7/79/Aoi_Todo_%28Anime%29.png/revision/latest?cb=20240621022047",
     "skills": [
       {
         "name": "Crushing Blow",
         "description": "Todo delivers a heavy punch, dealing 25 damage to one enemy.",
         "cooldown": "None",
         "energy": [
-          "green",
-          "random"
+          "green"
         ],
         "classes": "Physical,Instant"
       },
@@ -440,20 +440,20 @@
         "description": "Todo claps his hands, swapping positions between two targets. One ally swaps with one enemy, removing all negative effects from the ally and causing the enemy to miss their next skill.",
         "cooldown": "1",
         "energy": [
-          "blue",
-          "random"
+          "red",
+          "black"
         ],
-        "classes": "Strategic,Instant"
+        "classes": "Bloodline,Instant"
       },
       {
         "name": "Disorienting Swap",
         "description": "Todo swaps positions with the enemy right before striking, dealing 20 damage and making the enemy's next skill cost 1 additional random energy.",
         "cooldown": "1",
         "energy": [
-          "green",
+          "red",
           "blue"
         ],
-        "classes": "Physical,Instant"
+        "classes": "Bloodline,Instant"
       },
       {
         "name": "Best Friend",
@@ -470,15 +470,14 @@
   {
     "name": "Maki Zenin",
     "description": "A student from the Zenin Clan with a Heavenly Restriction that strips away her cursed energy in exchange for superhuman physical ability.",
-    "image_url": "https://i.imgur.com/placeholder.png",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/2/2c/Maki_Zen%27in_%28Anime_4%29.png/revision/latest?cb=20251230144642",
     "skills": [
       {
         "name": "Playful Cloud",
         "description": "Maki strikes with her three-section staff, dealing 25 damage to one enemy.",
         "cooldown": "None",
         "energy": [
-          "green",
-          "random"
+          "green"
         ],
         "classes": "Physical,Instant"
       },
@@ -496,8 +495,8 @@
         "description": "Maki slashes her target with a special grade weapon, dealing 30 damage. This attack permanently reduces the target's maximum health by the damage dealt.",
         "cooldown": "2",
         "energy": [
-          "black",
-          "green"
+          "green",
+          "black"
         ],
         "classes": "Physical,Instant"
       },
@@ -506,18 +505,17 @@
         "description": "Maki's physical senses reach their peak. For 3 turns, she evades all non-Physical skills and counter-attacks any Physical skill aimed at her for 15 damage.",
         "cooldown": "3",
         "energy": [
-          "white",
-          "green",
-          "random"
+          "red",
+          "green"
         ],
-        "classes": "Physical,Action"
+        "classes": "Bloodline,Action"
       }
     ]
   },
   {
     "name": "Toge Inumaki",
     "description": "A semi-grade 1 sorcerer descended from the Inumaki clan who uses Cursed Speech \u2014 his words carry the power to force reality to obey.",
-    "image_url": "https://i.imgur.com/placeholder.png",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/c/cb/Toge_Inumaki_%28Anime_2%29.png/revision/latest?cb=20240622024715",
     "skills": [
       {
         "name": "Don't Move",
@@ -526,7 +524,7 @@
         "energy": [
           "blue"
         ],
-        "classes": "Mental,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Blast Away",
@@ -534,9 +532,9 @@
         "cooldown": "1",
         "energy": [
           "blue",
-          "random"
+          "blue"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Plummet",
@@ -544,9 +542,10 @@
         "cooldown": "2",
         "energy": [
           "blue",
+          "blue",
           "black"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Throat Medicine",
@@ -554,7 +553,7 @@
         "cooldown": "2",
         "energy": [
           "white",
-          "random"
+          "black"
         ],
         "classes": "Strategic,Instant"
       }
@@ -563,7 +562,7 @@
   {
     "name": "Noritoshi Kamo",
     "description": "A grade 2 sorcerer and heir to the Kamo clan who uses Blood Manipulation to control his own blood as a weapon at superhuman speed.",
-    "image_url": "https://i.imgur.com/placeholder.png",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/d/d5/Noritoshi_Kamo_(Anime).png/revision/latest?cb=20240620131805",
     "skills": [
       {
         "name": "Blood Sword",
@@ -571,9 +570,9 @@
         "cooldown": "None",
         "energy": [
           "red",
-          "random"
+          "black"
         ],
-        "classes": "Physical,Instant"
+        "classes": "Bloodline,Instant"
       },
       {
         "name": "Convergence",
@@ -583,7 +582,7 @@
           "red",
           "black"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Bloodline,Instant"
       },
       {
         "name": "Crimson Binding",
@@ -593,7 +592,7 @@
           "red",
           "blue"
         ],
-        "classes": "Strategic,Instant"
+        "classes": "Bloodline,Instant"
       },
       {
         "name": "Eight-Handled Divergent Sword: Technique Absolute",
@@ -602,16 +601,16 @@
         "energy": [
           "red",
           "red",
-          "black"
+          "blue"
         ],
-        "classes": "Ninjutsu,Action"
+        "classes": "Bloodline,Action"
       }
     ]
   },
   {
     "name": "Kasumi Miwa",
     "description": "A grade 3 sorcerer from Kyoto High who uses the New Shadow Style and Simple Domain \u2014 a self-taught counter to Domain Expansions.",
-    "image_url": "https://i.imgur.com/placeholder.png",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/6/64/Kasumi_Miwa_(Anime).png/revision/latest?cb=20240621021537",
     "skills": [
       {
         "name": "Batto Sword Draw",
@@ -638,7 +637,7 @@
         "cooldown": "1",
         "energy": [
           "green",
-          "random"
+          "black"
         ],
         "classes": "Physical,Instant"
       },
@@ -647,9 +646,9 @@
         "description": "Miwa channels her full swordsmanship. Deals 40 damage to one enemy and makes Miwa evade the next skill aimed at her.",
         "cooldown": "3",
         "energy": [
-          "black",
           "green",
-          "random"
+          "green",
+          "black"
         ],
         "classes": "Physical,Instant"
       }
@@ -658,14 +657,14 @@
   {
     "name": "Mai Zenin",
     "description": "A grade 3 sorcerer from the Zenin Clan who resents her forced path in jujutsu. Her Construction technique lets her conjure one bullet from nothing each turn.",
-    "image_url": "https://i.imgur.com/placeholder.png",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/8/86/Mai_Zen%27in_(Anime_4).png/revision/latest?cb=20260122164350",
     "skills": [
       {
         "name": "Revolver Shot",
         "description": "Mai fires a cursed-energy-infused bullet at one enemy for 15 damage.",
         "cooldown": "None",
         "energy": [
-          "random"
+          "black"
         ],
         "classes": "Physical,Instant"
       },
@@ -674,17 +673,18 @@
         "description": "Mai constructs one bullet from pure cursed energy at great personal cost. She loses 5 health, but her next 'Revolver Shot' deals 25 additional damage.",
         "cooldown": "1",
         "energy": [
-          "white"
+          "red",
+          "black"
         ],
-        "classes": "Strategic,Instant"
+        "classes": "Bloodline,Instant"
       },
       {
         "name": "Rapid Fire",
         "description": "Mai unloads multiple shots, dealing 10 damage to all enemies.",
         "cooldown": "2",
         "energy": [
-          "red",
-          "random"
+          "green",
+          "black"
         ],
         "classes": "Physical,Instant"
       },
@@ -693,28 +693,28 @@
         "description": "Mai builds a special bullet that bypasses all defenses. Deals 35 damage to one enemy, ignoring invulnerability and damage reduction.",
         "cooldown": "3",
         "energy": [
-          "black",
-          "white",
-          "random"
+          "red",
+          "green",
+          "black"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Bloodline,Instant"
       }
     ]
   },
   {
     "name": "Mei Mei",
     "description": "A grade 1 sorcerer who works as a mercenary. She uses Black Bird Manipulation to control crows and is ruthlessly money-motivated.",
-    "image_url": "https://i.imgur.com/placeholder.png",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/a/a8/Mei_Mei_(Anime_2).png/revision/latest?cb=20231124134449",
     "skills": [
       {
         "name": "Bird Strike",
         "description": "Mei Mei sends a flock of crows to assault one enemy, dealing 20 damage.",
         "cooldown": "None",
         "energy": [
-          "black",
-          "random"
+          "green",
+          "black"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Physical,Instant"
       },
       {
         "name": "Avid Mercenary",
@@ -722,7 +722,7 @@
         "cooldown": "2",
         "energy": [
           "white",
-          "random"
+          "black"
         ],
         "classes": "Strategic,Action"
       },
@@ -731,21 +731,21 @@
         "description": "Mei Mei commands a crow to dive-bomb an enemy carrying cursed energy, dealing 30 damage. This skill cannot be countered.",
         "cooldown": "1",
         "energy": [
-          "black",
-          "black"
+          "blue",
+          "blue"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Maximum: Black Feather",
         "description": "Mei Mei sacrifices one of her crows in a devastating explosion. Deals 50 damage to one enemy. This skill ignores all defensive effects.",
         "cooldown": "3",
         "energy": [
-          "black",
-          "black",
-          "random"
+          "blue",
+          "blue",
+          "black"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Energy,Instant"
       }
     ]
   },
@@ -759,8 +759,7 @@
         "description": "Naobito moves faster than the eye can follow, striking one enemy for 25 damage. This skill cannot be countered.",
         "cooldown": "None",
         "energy": [
-          "green",
-          "random"
+          "green"
         ],
         "classes": "Physical,Instant"
       },
@@ -769,38 +768,38 @@
         "description": "Naobito maps an enemy into a 24-frame animation. If the target moves outside their preset path, they freeze \u2014 stunning them for 1 turn and dealing 15 damage.",
         "cooldown": "1",
         "energy": [
-          "blue",
+          "red",
           "black"
         ],
-        "classes": "Strategic,Instant"
+        "classes": "Bloodline,Instant"
       },
       {
         "name": "1/24 Frames",
         "description": "Naobito accelerates to his maximum speed, performing multiple strikes. Deals 40 damage to one enemy split across several hits, each of which ignores barriers.",
         "cooldown": "2",
         "energy": [
-          "green",
-          "black"
+          "red",
+          "green"
         ],
-        "classes": "Physical,Instant"
+        "classes": "Bloodline,Instant"
       },
       {
         "name": "Speed of Flash: Full Burst",
         "description": "Naobito moves at the absolute limit of his ability. For 2 turns, he evades all incoming attacks and deals 10 bonus damage with each strike.",
         "cooldown": "3",
         "energy": [
-          "white",
-          "green",
-          "random"
+          "red",
+          "red",
+          "green"
         ],
-        "classes": "Physical,Action"
+        "classes": "Bloodline,Action"
       }
     ]
   },
   {
     "name": "Toji Fushiguro",
     "description": "Known as the Sorcerer Killer. Toji traded all of his cursed energy for a Heavenly Restriction that grants superhuman physical ability \u2014 he fights without cursed techniques.",
-    "image_url": "https://i.imgur.com/placeholder.png",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/d/db/Toji_Fushiguro_%28Anime%29.png/revision/latest?cb=20250726005401",
     "skills": [
       {
         "name": "Brutal Strike",
@@ -826,19 +825,19 @@
         "description": "Toji pushes his cursed-energy-free body to its absolute limit. For 2 turns, he deals 15 extra damage with all attacks and evades all non-Physical skills.",
         "cooldown": "2",
         "energy": [
-          "white",
+          "red",
           "green"
         ],
-        "classes": "Physical,Action"
+        "classes": "Bloodline,Action"
       },
       {
         "name": "Playful Cloud: Sorcerer Killer",
         "description": "Toji wields Playful Cloud with lethal precision, striking a target 3 times for 20 damage each (60 total). One hit ignores invulnerability.",
         "cooldown": "3",
         "energy": [
-          "black",
           "green",
-          "random"
+          "green",
+          "black"
         ],
         "classes": "Physical,Instant"
       }
@@ -854,8 +853,8 @@
         "description": "Yuki increases her own mass and delivers a crushing blow, dealing 25 damage to one enemy.",
         "cooldown": "None",
         "energy": [
-          "black",
-          "random"
+          "green",
+          "black"
         ],
         "classes": "Physical,Instant"
       },
@@ -864,18 +863,18 @@
         "description": "Yuki applies a virtual mass to her fist and slams one enemy with gravitational force, dealing 35 damage that ignores damage reduction.",
         "cooldown": "1",
         "energy": [
-          "black",
+          "red",
           "black"
         ],
-        "classes": "Physical,Instant"
+        "classes": "Bloodline,Instant"
       },
       {
         "name": "Garuda Summon",
         "description": "Yuki summons her shikigami Garuda. While active, all enemies take 10 damage at the start of each turn. Garuda lasts 3 turns.",
         "cooldown": "3",
         "energy": [
-          "black",
-          "white"
+          "white",
+          "blue"
         ],
         "classes": "Strategic,Action"
       },
@@ -884,18 +883,18 @@
         "description": "Yuki releases a gravitational shockwave, removing anti-cursed energy from the area. Deals 25 damage to all enemies and reduces their skill energy costs by forcing exhaustion \u2014 each enemy loses 1 random energy.",
         "cooldown": "4",
         "energy": [
-          "black",
-          "black",
-          "white"
+          "red",
+          "red",
+          "blue"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Bloodline,Instant"
       }
     ]
   },
   {
     "name": "Kusakabe",
     "description": "A grade 1 sorcerer and instructor who specializes in the New Shadow Style sword technique and is remarkably pragmatic in battle.",
-    "image_url": "https://i.imgur.com/placeholder.png",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/9/9f/Atsuya_Kusakabe_(Anime_2).png/revision/latest?cb=20231124131252",
     "skills": [
       {
         "name": "Sword Draw",
@@ -941,77 +940,76 @@
   {
     "name": "Suguru Geto",
     "description": "A former special grade sorcerer turned curse user who can absorb and manipulate cursed spirits. He believes cursed spirits should rule over non-sorcerers.",
-    "image_url": "https://i.imgur.com/placeholder.png",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/c/c2/Suguru_Geto_%28Prequel_Anime%29.png/revision/latest?cb=20250726004422",
     "skills": [
       {
         "name": "Cursed Spirit Projectile",
         "description": "Geto releases a low-grade cursed spirit at one enemy, dealing 20 damage.",
         "cooldown": "None",
         "energy": [
-          "black",
-          "random"
+          "blue",
+          "black"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Cursed Spirit Manipulation",
         "description": "Geto absorbs a cursed spirit from his stock. For 2 turns, the next time an enemy ability is used, Geto counters with a cursed spirit for 25 damage.",
         "cooldown": "1",
         "energy": [
-          "black",
+          "red",
           "blue"
         ],
-        "classes": "Strategic,Action"
+        "classes": "Bloodline,Action"
       },
       {
         "name": "Uzumaki",
         "description": "Geto fuses multiple cursed spirits into one enormous entity and slams it into all enemies, dealing 35 damage to each.",
         "cooldown": "3",
         "energy": [
-          "black",
-          "black",
-          "random"
+          "blue",
+          "blue",
+          "black"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Maximum: Uzumaki",
         "description": "Geto fuses every cursed spirit he possesses into a single catastrophic explosion. Deals 60 damage to all enemies and applies a curse mark that deals 10 damage per turn for 2 turns.",
         "cooldown": "5",
         "energy": [
-          "black",
-          "black",
-          "black",
-          "white"
+          "blue",
+          "blue",
+          "red"
         ],
-        "classes": "Ninjutsu,Action"
+        "classes": "Energy,Action"
       }
     ]
   },
   {
     "name": "Kenjaku",
     "description": "An ancient sorcerer over 1000 years old who transplants his brain into other bodies. Currently in Suguru Geto's body, he engineered the Culling Game and possesses all of Geto's techniques.",
-    "image_url": "https://i.imgur.com/placeholder.png",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/2/2b/Kenjaku_%28Anime%29.png/revision/latest?cb=20250726010244",
     "skills": [
       {
         "name": "Parasitic Soul: Unleash",
         "description": "Kenjaku unleashes a cursed spirit implanted in an unsuspecting target, dealing 25 damage to one enemy and applying a weakening effect that reduces their damage by 10 for 2 turns.",
         "cooldown": "1",
         "energy": [
-          "black",
-          "random"
+          "red",
+          "black"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Bloodline,Instant"
       },
       {
         "name": "Cursed Technique Implantation",
         "description": "Kenjaku copies and implants a foreign cursed technique. He gains the use of one random skill class (Physical, Mental, Ninjutsu, or Strategic) that costs 0 energy for 1 turn.",
         "cooldown": "2",
         "energy": [
-          "blue",
-          "black"
+          "red",
+          "blue"
         ],
-        "classes": "Strategic,Instant"
+        "classes": "Bloodline,Instant"
       },
       {
         "name": "Resurrection of Tragedy",
@@ -1028,12 +1026,11 @@
         "description": "Kenjaku unleashes the full power of Geto's cursed spirit arsenal in its ancient form. Deals 50 damage to all enemies. Enemies killed by this skill cannot have their deaths reversed.",
         "cooldown": "4",
         "energy": [
-          "black",
-          "black",
+          "red",
           "blue",
           "white"
         ],
-        "classes": "Ninjutsu,Action"
+        "classes": "Bloodline,Action"
       }
     ]
   },
@@ -1048,19 +1045,19 @@
         "cooldown": "None",
         "energy": [
           "blue",
-          "random"
+          "black"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Ice Formation",
         "description": "Uraume raises a wall of ice in front of one ally, giving them 20 damage reduction for 2 turns.",
         "cooldown": "1",
         "energy": [
-          "white",
-          "blue"
+          "blue",
+          "black"
         ],
-        "classes": "Strategic,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Frost Freeze: Piercing Cold",
@@ -1068,10 +1065,9 @@
         "cooldown": "2",
         "energy": [
           "blue",
-          "blue",
-          "random"
+          "blue"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Reversed Frozen Burst",
@@ -1079,17 +1075,17 @@
         "cooldown": "3",
         "energy": [
           "blue",
-          "black",
+          "blue",
           "white"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Energy,Instant"
       }
     ]
   },
   {
     "name": "Naoya Zenin",
     "description": "A special grade sorcerer from the Zenin Clan who uses Projection Sorcery at exceptional speed. His arrogance is matched only by his ruthless efficiency.",
-    "image_url": "https://i.imgur.com/placeholder.png",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/2/27/Naoya_Zenin_(Anime).png/revision/latest?cb=20251230174702",
     "skills": [
       {
         "name": "Speed Rush",
@@ -1105,10 +1101,10 @@
         "description": "Naoya maps one enemy into a 24-frame cycle. They are stunned for 1 turn. Any buff they had this turn is also removed.",
         "cooldown": "1",
         "energy": [
-          "blue",
+          "red",
           "black"
         ],
-        "classes": "Mental,Instant"
+        "classes": "Bloodline,Instant"
       },
       {
         "name": "Ruthless Barrage",
@@ -1125,18 +1121,18 @@
         "description": "After death, Naoya returns as a vengeful cursed spirit. Permanently grants a cursed mark to one enemy \u2014 they take 15 damage at the start of each turn indefinitely until cured.",
         "cooldown": "4",
         "energy": [
-          "black",
+          "red",
           "white",
-          "random"
+          "black"
         ],
-        "classes": "Ninjutsu,Action"
+        "classes": "Bloodline,Action"
       }
     ]
   },
   {
     "name": "Ryomen Sukuna",
     "description": "The undisputed King of Curses. An immensely powerful cursed spirit from the Heian Era who now resides within Yuji Itadori.",
-    "image_url": "https://i.imgur.com/6U6z9fG.jpeg",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/8/8d/SukunaP_%28Anime%29.png/revision/latest?cb=20241110021424",
     "skills": [
       {
         "name": "Dismantle",
@@ -1152,21 +1148,10 @@
         "description": "Sukuna adjusts the strength of his slash to the target's toughness, dealing 30 damage that ignores invulnerability.",
         "cooldown": "1",
         "energy": [
-          "black",
-          "random"
-        ],
-        "classes": "Physical,Instant"
-      },
-      {
-        "name": "Malevolent Shrine",
-        "description": "Sukuna opens his Domain, applying 'Shrine' to all enemies. While 'Shrine' is active, all enemies take 15 damage at the start of their turn for 3 turns.",
-        "cooldown": "4",
-        "energy": [
-          "black",
           "red",
-          "white"
+          "black"
         ],
-        "classes": "Strategic,Action"
+        "classes": "Bloodline,Instant"
       },
       {
         "name": "Fire Arrow",
@@ -1174,37 +1159,47 @@
         "cooldown": "2",
         "energy": [
           "red",
-          "random",
-          "random"
+          "blue"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Bloodline,Instant"
+      },
+      {
+        "name": "Malevolent Shrine",
+        "description": "Sukuna opens his Domain, applying 'Shrine' to all enemies. While 'Shrine' is active, all enemies take 15 damage at the start of their turn for 3 turns.",
+        "cooldown": "4",
+        "energy": [
+          "red",
+          "blue",
+          "white"
+        ],
+        "classes": "Bloodline,Action"
       }
     ]
   },
   {
     "name": "Mahito",
     "description": "A special grade cursed spirit born from humanity's hatred and fear of each other. He can reshape souls through touch.",
-    "image_url": "https://i.imgur.com/placeholder.png",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/4/4e/Mahito_%28Anime%29.png/revision/latest?cb=20240618013419",
     "skills": [
       {
         "name": "Soul Strike",
         "description": "Mahito attacks the enemy's soul directly, dealing 20 damage. This damage cannot be healed by any means.",
         "cooldown": "None",
         "energy": [
-          "black",
-          "random"
+          "blue",
+          "black"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Idle Transfiguration",
         "description": "Mahito alters the shape of the enemy's soul. Deals 30 damage. If the target's health is below 20%, they are instantly killed.",
         "cooldown": "2",
         "energy": [
-          "black",
+          "red",
           "red"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Bloodline,Instant"
       },
       {
         "name": "Body Repel",
@@ -1212,7 +1207,7 @@
         "cooldown": "1",
         "energy": [
           "white",
-          "random"
+          "black"
         ],
         "classes": "Strategic,Instant"
       },
@@ -1221,38 +1216,37 @@
         "description": "Mahito expands his Domain. For 3 turns, he becomes invulnerable, and 'Idle Transfiguration' targets all enemies and costs no energy.",
         "cooldown": "4",
         "energy": [
-          "black",
           "red",
-          "white",
-          "random"
+          "blue",
+          "white"
         ],
-        "classes": "Strategic,Action"
+        "classes": "Bloodline,Action"
       }
     ]
   },
   {
     "name": "Jogo",
     "description": "A special grade cursed spirit born from the fear of volcanic disasters. He wields devastating fire and lava abilities and looks down on humans.",
-    "image_url": "https://i.imgur.com/placeholder.png",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/2/29/Jogo_%28Anime%29.png/revision/latest?cb=20210109005534",
     "skills": [
       {
         "name": "Ember Bugs",
         "description": "Jogo summons explosive insects that attach to one enemy. Deals 15 damage now and 15 more damage at the start of the target's next turn.",
         "cooldown": "None",
         "energy": [
-          "red"
+          "blue"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Disaster Flames",
         "description": "Jogo unleashes a torrent of cursed fire, dealing 30 damage to one enemy and applying a burn that deals 10 damage per turn for 2 turns.",
         "cooldown": "1",
         "energy": [
-          "red",
-          "random"
+          "blue",
+          "red"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Maximum: Meteor",
@@ -1260,10 +1254,10 @@
         "cooldown": "3",
         "energy": [
           "red",
-          "red",
+          "blue",
           "black"
         ],
-        "classes": "Ninjutsu,Action"
+        "classes": "Bloodline,Action"
       },
       {
         "name": "Coffin of the Iron Mountain",
@@ -1271,17 +1265,17 @@
         "cooldown": "4",
         "energy": [
           "red",
-          "black",
+          "blue",
           "white"
         ],
-        "classes": "Strategic,Action"
+        "classes": "Bloodline,Action"
       }
     ]
   },
   {
     "name": "Hanami",
     "description": "A special grade cursed spirit born from the fear of the natural world. He draws power from the earth and fights to eradicate humanity.",
-    "image_url": "https://i.imgur.com/placeholder.png",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/7/76/Hanami_%28Anime%29.png/revision/latest?cb=20210318193331",
     "skills": [
       {
         "name": "Wooden Roots",
@@ -1297,10 +1291,10 @@
         "description": "Hanami launches draining buds into an enemy. Deals 10 damage, the target loses 1 random energy, and Hanami gains 1 random energy.",
         "cooldown": "1",
         "energy": [
-          "green",
-          "blue"
+          "blue",
+          "black"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Flower Field",
@@ -1308,27 +1302,27 @@
         "cooldown": "2",
         "energy": [
           "white",
-          "random"
+          "blue"
         ],
-        "classes": "Mental,Instant"
+        "classes": "Strategic,Instant"
       },
       {
         "name": "Ceremonial Sea of Light",
         "description": "Hanami unleashes a domain of blinding natural light. Deals 40 damage to one enemy and stuns them for 1 turn. This skill cannot be evaded.",
         "cooldown": "3",
         "energy": [
+          "blue",
           "white",
-          "green",
-          "black"
+          "green"
         ],
-        "classes": "Ninjutsu,Action"
+        "classes": "Energy,Action"
       }
     ]
   },
   {
     "name": "Choso",
     "description": "A Death Painting Womb \u2014 a hybrid of human and cursed spirit \u2014 who uses Blood Manipulation to devastating effect and seeks to protect his brothers.",
-    "image_url": "https://i.imgur.com/placeholder.png",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/c/c6/Choso_%28Anime_3%29.png/revision/latest?cb=20251230164541",
     "skills": [
       {
         "name": "Slicing Exorcism",
@@ -1336,9 +1330,9 @@
         "cooldown": "None",
         "energy": [
           "red",
-          "random"
+          "black"
         ],
-        "classes": "Physical,Instant"
+        "classes": "Bloodline,Instant"
       },
       {
         "name": "Piercing Blood",
@@ -1348,7 +1342,7 @@
           "red",
           "black"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Bloodline,Instant"
       },
       {
         "name": "Supernova",
@@ -1357,26 +1351,26 @@
         "energy": [
           "red",
           "red",
-          "random"
+          "black"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Bloodline,Instant"
       },
       {
         "name": "Flowing Red Scale",
         "description": "Choso manipulates his blood to enhance his body's performance. For 3 turns, he gains 15 damage reduction and all his skills cost 1 random energy less.",
         "cooldown": "3",
         "energy": [
-          "white",
-          "red"
+          "red",
+          "white"
         ],
-        "classes": "Strategic,Action"
+        "classes": "Bloodline,Action"
       }
     ]
   },
   {
     "name": "Dagon",
     "description": "A special grade cursed spirit born from the fear of the deep sea who evolved from a Death Painting. He commands tides, schools of fish, and the terror of the ocean floor.",
-    "image_url": "https://i.imgur.com/placeholder.png",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/5/5b/Dagon_%28Anime_2%29.png/revision/latest?cb=20231026164038",
     "skills": [
       {
         "name": "Tidal Bore",
@@ -1384,19 +1378,19 @@
         "cooldown": "None",
         "energy": [
           "blue",
-          "random"
+          "black"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Death Swarm",
         "description": "Dagon summons a school of deep-sea fish that tear into all enemies for 15 damage each.",
         "cooldown": "1",
         "energy": [
-          "black",
-          "blue"
+          "blue",
+          "black"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Shutter of Lethality",
@@ -1404,22 +1398,20 @@
         "cooldown": "2",
         "energy": [
           "blue",
-          "black",
-          "random"
+          "blue"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Horizon of the Captivating Skandha",
         "description": "Dagon expands his Domain, trapping all enemies in a watery abyss. For 3 turns, all enemies take 20 damage at the start of their turn from the relentless fish swarm, and all of Dagon's skills cost 1 less energy.",
         "cooldown": "4",
         "energy": [
-          "black",
           "blue",
           "blue",
           "white"
         ],
-        "classes": "Strategic,Action"
+        "classes": "Energy,Action"
       }
     ]
   },
@@ -1433,8 +1425,7 @@
         "description": "Higuruma swings his giant gavel, dealing 20 damage to one enemy.",
         "cooldown": "None",
         "energy": [
-          "black",
-          "random"
+          "black"
         ],
         "classes": "Physical,Instant"
       },
@@ -1443,7 +1434,7 @@
         "description": "Higuruma calls Judgeman to evaluate an enemy. The target must 'testify' \u2014 their highest-cost skill is disabled for 2 turns.",
         "cooldown": "2",
         "energy": [
-          "blue",
+          "white",
           "black"
         ],
         "classes": "Strategic,Instant"
@@ -1453,28 +1444,28 @@
         "description": "Judgeman hands down a Confiscation ruling. The target loses all their current energy and cannot gain energy next turn.",
         "cooldown": "2",
         "energy": [
-          "black",
-          "blue"
+          "red",
+          "black"
         ],
-        "classes": "Mental,Instant"
+        "classes": "Bloodline,Instant"
       },
       {
         "name": "Deadly Sentencing",
         "description": "Higuruma expands his Domain. Judgeman passes a Deadly Sentence \u2014 the target enemy is marked. The next skill used against the marked enemy deals 60 bonus damage. This cannot be negated.",
         "cooldown": "4",
         "energy": [
-          "black",
-          "black",
-          "blue"
+          "red",
+          "blue",
+          "white"
         ],
-        "classes": "Strategic,Action"
+        "classes": "Bloodline,Action"
       }
     ]
   },
   {
     "name": "Fumihiko Takaba",
     "description": "A failed comedian who became one of the most dangerous players in the Culling Game. His cursed technique manifests comedy into reality \u2014 whatever he believes is funny becomes real.",
-    "image_url": "https://i.imgur.com/placeholder.png",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/5/5f/Fumihiko_Takaba_(Anime).png/revision/latest?cb=20251230190319",
     "skills": [
       {
         "name": "Stand-Up Routine",
@@ -1483,16 +1474,16 @@
         "energy": [
           "blue"
         ],
-        "classes": "Mental,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Comedian",
         "description": "Takaba's reality-warping comedy manifests randomly. Deals a random amount of damage to all enemies (between 10 and 40) \u2014 completely unpredictable.",
         "cooldown": "1",
         "energy": [
-          "random"
+          "black"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Physical,Instant"
       },
       {
         "name": "The Bit",
@@ -1500,35 +1491,35 @@
         "cooldown": "2",
         "energy": [
           "blue",
-          "random"
+          "black"
         ],
-        "classes": "Mental,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Comedy: Absolute",
         "description": "Takaba achieves the perfect joke, bending reality. For 3 turns, Takaba becomes completely invulnerable \u2014 all attacks aimed at him are negated as the universe rewrites them as part of the act.",
         "cooldown": "4",
         "energy": [
-          "white",
           "blue",
-          "random"
+          "white",
+          "black"
         ],
-        "classes": "Mental,Action"
+        "classes": "Energy,Action"
       }
     ]
   },
   {
     "name": "Hajime Kashimo",
     "description": "A legendary sorcerer from 400 years ago resurrected for the Culling Game. He uses Genju Kohasaku, an electric-element cursed technique, and seeks to fight Sukuna as the ultimate challenge.",
-    "image_url": "https://i.imgur.com/placeholder.png",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/0/02/Hajime_Kashimo_(Anime).png/revision/latest?cb=20260205162107",
     "skills": [
       {
         "name": "Thunderclap Fist",
         "description": "Kashimo charges his fist with electric cursed energy and strikes, dealing 25 damage to one enemy.",
         "cooldown": "None",
         "energy": [
-          "black",
-          "random"
+          "green",
+          "black"
         ],
         "classes": "Physical,Instant"
       },
@@ -1537,18 +1528,18 @@
         "description": "Kashimo releases an arc of electric energy that chains to multiple targets. Deals 20 damage to all enemies.",
         "cooldown": "1",
         "energy": [
-          "black",
-          "blue"
+          "blue",
+          "black"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Genju Kohasaku: Charged Body",
         "description": "Kashimo electrifies his own body. For 2 turns, any enemy who strikes him with a Physical attack takes 20 electric damage in return.",
         "cooldown": "2",
         "energy": [
-          "black",
-          "white"
+          "white",
+          "black"
         ],
         "classes": "Strategic,Action"
       },
@@ -1557,38 +1548,37 @@
         "description": "Kashimo transforms his body into living lightning, releasing all stored electric energy in a devastating burst. Deals 65 damage to one enemy, ignoring all defensive effects. After using this skill, Kashimo loses all damage reduction for 2 turns.",
         "cooldown": "4",
         "energy": [
-          "black",
-          "black",
-          "black"
+          "red",
+          "blue",
+          "white"
         ],
-        "classes": "Ninjutsu,Action"
+        "classes": "Bloodline,Action"
       }
     ]
   },
   {
     "name": "Hana Kurusu",
     "description": "A Culling Game player who is the vessel for Angel, an ancient sorcerer with the cursed technique Jacob's Ladder \u2014 capable of nullifying any cursed technique, including Prison Realm seals.",
-    "image_url": "https://i.imgur.com/placeholder.png",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/d/df/Hana_Kurusu_%28Volume_24%29.png/revision/latest?cb=20230919122646",
     "skills": [
       {
         "name": "Holy Spear",
         "description": "Hana fires a lance of purifying energy at one enemy, dealing 20 damage.",
         "cooldown": "None",
         "energy": [
-          "white",
-          "random"
+          "white"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Strategic,Instant"
       },
       {
         "name": "Jacob's Ladder",
         "description": "Angel descends and nullifies all cursed technique effects on one enemy target. All of the target's active buffs and technique-based effects are removed.",
         "cooldown": "2",
         "energy": [
-          "white",
-          "blue"
+          "blue",
+          "white"
         ],
-        "classes": "Strategic,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Cursed Technique Nullification",
@@ -1607,10 +1597,9 @@
         "energy": [
           "white",
           "white",
-          "blue",
-          "random"
+          "blue"
         ],
-        "classes": "Ninjutsu,Action"
+        "classes": "Strategic,Action"
       }
     ]
   },
@@ -1624,8 +1613,8 @@
         "description": "Uro cuts through space itself, directing an aerial slash at one enemy for 20 damage.",
         "cooldown": "None",
         "energy": [
-          "blue",
-          "random"
+          "green",
+          "black"
         ],
         "classes": "Physical,Instant"
       },
@@ -1634,38 +1623,38 @@
         "description": "Uro folds the sky to redirect an incoming attack. She becomes invulnerable to the next skill aimed at her and deflects it back for 15 damage to the attacker.",
         "cooldown": "1",
         "energy": [
-          "white",
-          "blue"
+          "red",
+          "white"
         ],
-        "classes": "Strategic,Instant"
+        "classes": "Bloodline,Instant"
       },
       {
         "name": "Torn Sky",
         "description": "Uro tears a rift in the sky and drives it into one enemy. Deals 35 damage that ignores all invulnerability and barriers.",
         "cooldown": "2",
         "energy": [
-          "blue",
-          "black"
+          "red",
+          "blue"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Bloodline,Instant"
       },
       {
         "name": "Aerial Supremacy",
         "description": "Uro bends all airspace around the battlefield. For 3 turns, all enemy ranged and Ninjutsu-class skills are deflected, dealing 10 damage to their caster instead.",
         "cooldown": "3",
         "energy": [
-          "blue",
+          "red",
           "blue",
           "white"
         ],
-        "classes": "Strategic,Action"
+        "classes": "Bloodline,Action"
       }
     ]
   },
   {
     "name": "Kirara Hoshi",
     "description": "A loyal ally of Hakari who uses the Star Chart cursed technique \u2014 assigning astronomical symbols to targets and creating magnetic attraction or repulsion forces between them.",
-    "image_url": "https://i.imgur.com/placeholder.png",
+    "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/2/21/Kirara_Hoshi_(Anime).png/revision/latest?cb=20251230190130",
     "skills": [
       {
         "name": "Stellar Tag",
@@ -1673,40 +1662,40 @@
         "cooldown": "None",
         "energy": [
           "blue",
-          "random"
+          "black"
         ],
-        "classes": "Strategic,Instant"
+        "classes": "Energy,Instant"
       },
       {
         "name": "Attract",
         "description": "Kirara forces two tagged targets toward each other. One ally and one enemy are swapped in position \u2014 the enemy loses all evasion effects this turn.",
         "cooldown": "1",
         "energy": [
-          "blue",
+          "red",
           "black"
         ],
-        "classes": "Strategic,Instant"
+        "classes": "Bloodline,Instant"
       },
       {
         "name": "Repel",
         "description": "Kirara reverses the magnetic force on a tagged enemy, hurling them away. Deals 25 damage to one enemy and knocks them out of defensive positioning \u2014 removing all damage reduction for 1 turn.",
         "cooldown": "2",
         "energy": [
-          "blue",
-          "random"
+          "red",
+          "blue"
         ],
-        "classes": "Ninjutsu,Instant"
+        "classes": "Bloodline,Instant"
       },
       {
         "name": "Star Chart: Constellation Lock",
         "description": "Kirara locks all enemies into star positions. For 2 turns, enemies cannot swap targets or use movement-based skills. All tagged enemies take 15 damage per turn.",
         "cooldown": "3",
         "energy": [
+          "red",
           "blue",
-          "blue",
-          "black"
+          "white"
         ],
-        "classes": "Strategic,Action"
+        "classes": "Bloodline,Action"
       }
     ]
   }

@@ -4,77 +4,93 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JJK Arena Draft</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="app">
-        <header>
-            <h1>JJK Arena Draft</h1>
-            <div id="game-status"></div>
-        </header>
+    <div id="particles"></div>
 
-        <main>
-            <!-- Setup Screen -->
-            <section id="setup" class="active">
-                <div class="panel setup-panel">
-                    <h2>New Draft</h2>
-                    <p class="subtitle">2–4 players, same device. Each player drafts a team of 5 JJK characters.</p>
-                    <div id="player-inputs">
-                        <div class="player-input-row">
-                            <label>Player 1</label>
-                            <input type="text" placeholder="Name" class="player-name-input" data-idx="0">
-                        </div>
-                        <div class="player-input-row">
-                            <label>Player 2</label>
-                            <input type="text" placeholder="Name" class="player-name-input" data-idx="1">
-                        </div>
-                    </div>
-                    <button id="btn-add-player" class="btn secondary">+ Add Player</button>
-                    <button id="btn-start" class="btn primary">Start Draft</button>
+    <header>
+        <div class="logo">
+            <span class="logo-jjk">JJK</span>
+            <span class="logo-arena">ARENA DRAFT</span>
+        </div>
+        <div id="game-status"></div>
+    </header>
+
+    <main>
+
+        <!-- ── SETUP ── -->
+        <section id="setup" class="active">
+            <div class="setup-card">
+                <div class="setup-title">
+                    <h2>NEW DRAFT</h2>
+                    <p>Draft a team of 5 characters. 2–4 players, same device.</p>
                 </div>
-            </section>
+                <div id="player-inputs"></div>
+                <button id="btn-add-player" class="btn ghost">+ Add Player</button>
+                <button id="btn-start" class="btn primary glow">START DRAFT</button>
+            </div>
+        </section>
 
-            <!-- Draft Screen -->
-            <section id="draft">
-                <div class="panel arena-header">
-                    <div id="turn-info">
-                        <span id="turn-player-name"></span>'s turn
-                        <span id="turn-sub"></span>
-                    </div>
-                    <div id="draft-progress"></div>
+        <!-- ── DRAFT ── -->
+        <section id="draft">
+
+            <!-- Header bar -->
+            <div class="draft-header">
+                <div class="turn-info">
+                    <div class="turn-label">CURRENT TURN</div>
+                    <div class="turn-name" id="turn-player-name">—</div>
                 </div>
-
-                <!-- Drawn Card Area -->
-                <div id="action-area" class="panel" style="display:none;">
-                    <h3 id="action-title">Drew a card!</h3>
-                    <div id="drawn-card-container"></div>
-                    <div id="action-buttons">
-                        <button id="btn-keep" class="btn success">Keep</button>
-                        <button id="btn-pass" class="btn danger">Pass (Redraw)</button>
-                    </div>
+                <div id="draft-progress-bar">
+                    <div class="progress-label">DRAFT PROGRESS</div>
+                    <div id="progress-track"></div>
                 </div>
+                <div class="turn-action" id="turn-sub"></div>
+            </div>
 
-                <button id="btn-draw" class="btn primary large" style="display:none;">Draw Card</button>
+            <!-- Draw button -->
+            <div id="draw-zone">
+                <button id="btn-draw" class="btn draw-btn">
+                    <span class="draw-icon">⚡</span>
+                    <span>DRAW CARD</span>
+                </button>
+            </div>
 
-                <!-- All Player Teams -->
-                <div id="teams-area"></div>
-            </section>
-
-            <!-- Results Screen -->
-            <section id="results">
-                <div class="panel results-panel">
-                    <h2>Draft Complete!</h2>
-                    <div id="results-content"></div>
-                    <button id="btn-new-game" class="btn primary">New Draft</button>
+            <!-- Card reveal -->
+            <div id="action-area" class="action-zone" style="display:none;">
+                <div class="action-header" id="action-title">Drew a card!</div>
+                <div id="drawn-card-container" class="drawn-card-wrapper"></div>
+                <div class="action-btns">
+                    <button id="btn-keep" class="btn success">✓ KEEP</button>
+                    <button id="btn-pass" class="btn danger">✕ PASS</button>
                 </div>
-            </section>
-        </main>
+            </div>
 
-        <!-- Log -->
-        <aside id="log-panel" class="panel">
-            <h3>Draft Log</h3>
+            <!-- Teams -->
+            <div id="teams-area"></div>
+
+        </section>
+
+        <!-- ── RESULTS ── -->
+        <section id="results">
+            <div class="results-wrap">
+                <div class="results-title">DRAFT COMPLETE</div>
+                <div id="results-content"></div>
+                <button id="btn-new-game" class="btn primary glow">NEW DRAFT</button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Log -->
+    <div id="log-panel">
+        <div id="log-inner">
+            <div class="log-title">COMBAT LOG</div>
             <div id="log"></div>
-        </aside>
+        </div>
     </div>
 
     <script src="characters_data.js"></script>

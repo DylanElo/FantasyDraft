@@ -327,7 +327,7 @@ CHARACTERS = [
     Character(
         name="Shoko Ieiri",
         description="A grade 1 sorcerer and doctor at Jujutsu High who masters Reverse Cursed Technique, the rarest healing ability in the jujutsu world.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/a/af/Shoko_Ieiri_%28Anime_2%29.png/revision/latest?cb=20231124131631",
         skills=[
             Skill(
                 name="Scalpel Strike",
@@ -623,7 +623,7 @@ CHARACTERS = [
     Character(
         name="Naobito Zenin",
         description="The 26th Head of the Zenin Clan and the fastest special grade sorcerer after Gojo. His Projection Sorcery freezes targets in a 24-frame animation cycle.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/1/17/Naobito_Zenin_%28Anime_2%29.png/revision/latest?cb=20230903191639",
         skills=[
             Skill(
                 name="Flash Strike",
@@ -695,7 +695,7 @@ CHARACTERS = [
     Character(
         name="Yuki Tsukumo",
         description="A special grade sorcerer and one of only four in the world. She uses Star Rage — manipulating mass to crush opponents, often alongside her shikigami Garuda.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/2/22/Yuki_Tsukumo_%28Anime_3%29.png/revision/latest?cb=20251230190559",
         skills=[
             Skill(
                 name="Massive Strike",
@@ -843,7 +843,7 @@ CHARACTERS = [
     Character(
         name="Uraume",
         description="A loyal servant of Ryomen Sukuna from the Heian era with the ice-based cursed technique Frost Calm — capable of freezing anything, including the blood of enemies.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/9/98/Uraume_%28Anime%29.png/revision/latest?cb=20231012185056",
         skills=[
             Skill(
                 name="Frost Calm",
@@ -1139,7 +1139,7 @@ CHARACTERS = [
     Character(
         name="Hiromi Higuruma",
         description="A brilliant defense lawyer turned culling game player whose Domain 'Deadly Sentencing' summons the shikigami Judgeman — a trial that can confiscate a target's cursed technique.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/6/62/Hiromi_Higuruma_%28Anime%29.png/revision/latest?cb=20251230190230",
         skills=[
             Skill(
                 name="Gavel Strike",
@@ -1283,7 +1283,7 @@ CHARACTERS = [
     Character(
         name="Takako Uro",
         description="A former captain of the Sun, Moon, and Stars assassination squad who uses Sky Manipulation — able to treat the sky as a tangible, malleable object.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/e/e6/Takako_Uro.png/revision/latest?cb=20220313051339",
         skills=[
             Skill(
                 name="Sky Slash",

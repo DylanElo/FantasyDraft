@@ -1,6 +1,44 @@
 import unittest
 from jjk_bot.game import Game, GameState
-from jjk_bot.characters import Character
+from jjk_bot.characters import Character, Skill
+from jjk_bot.game import Game, GameState, GameManager
+
+class TestGameManager(unittest.TestCase):
+    def test_get_game_creates_new_game(self):
+        manager = GameManager()
+
+        # Verify no games exist initially
+        self.assertEqual(len(manager.games), 0)
+
+        # Get a game for a new chat_id
+        game = manager.get_game(123)
+
+        # Verify game was created and stored
+        self.assertEqual(len(manager.games), 1)
+        self.assertIn(123, manager.games)
+        self.assertIsInstance(game, Game)
+        self.assertEqual(game.chat_id, 123)
+
+    def test_get_game_returns_existing_game(self):
+        manager = GameManager()
+
+        # Create a game first
+        game1 = manager.get_game(456)
+
+        # Modify the game state to ensure we get the exact same instance back
+        game1.state = GameState.FINISHED
+
+        # Get game for the same chat_id again
+        game2 = manager.get_game(456)
+
+        # Verify it's the exact same instance
+        self.assertIs(game1, game2)
+        self.assertEqual(game2.state, GameState.FINISHED)
+
+        # Verify another chat_id gets a different game
+        game3 = manager.get_game(789)
+        self.assertIsNot(game1, game3)
+        self.assertEqual(len(manager.games), 2)
 
 class TestGame(unittest.TestCase):
     def test_game_flow(self):
@@ -79,8 +117,8 @@ class TestGame(unittest.TestCase):
         self.assertEqual(game.state, GameState.FINISHED)
         success, results = game.get_results()
         self.assertTrue(success)
-        self.assertIn("Draft Results", results)
-        self.assertIn("Draft phase is complete! Ready for battle!", results)
+        self.assertIn("Game Results", results)
+        self.assertIn("The winner is", results)
 
     def test_resolve_battle(self):
         game = Game(789)
@@ -89,9 +127,10 @@ class TestGame(unittest.TestCase):
         game.add_player(3, "Charlie")
 
         # Create dummy characters
-        char1 = Character(name="Char1", description="", image_url="", skills=[])
-        char2 = Character(name="Char2", description="", image_url="", skills=[])
-        char3 = Character(name="Char3", description="", image_url="", skills=[])
+        skill1 = Skill(name="Skill1", description="", cooldown="", energy=["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"], classes="")
+        char1 = Character(name="Char1", description="", image_url="", skills=[skill1])
+        char2 = Character(name="Char2", description="", image_url="", skills=[skill1])
+        char3 = Character(name="Char3", description="", image_url="", skills=[skill1])
 
         # Alice gets 3 characters
         game.teams[1] = [char1, char2, char3]
@@ -129,7 +168,8 @@ class TestGame(unittest.TestCase):
         game.add_player(1, "Alice")
         game.add_player(2, "Bob")
 
-        char1 = Character(name="Char1", description="", image_url="", skills=[])
+        skill1 = Skill(name="Skill1", description="", cooldown="", energy=["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"], classes="")
+        char1 = Character(name="Char1", description="", image_url="", skills=[skill1])
 
         # Both get 1 character
         game.teams[1] = [char1]
@@ -153,6 +193,8 @@ class TestGame(unittest.TestCase):
         self.assertEqual(results[0][1], "Alice")
         self.assertEqual(results[0][2], [])
 
+        _, msg = game.get_results()
+        self.assertIn("Draft is still in progress!", msg)
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,18 @@
+INFO:werkzeug: * Restarting with stat
+WARNING:werkzeug: * Debugger is active!
+INFO:werkzeug: * Debugger PIN: 118-483-853
+(3031) wsgi starting up on http://0.0.0.0:5000
+(3031) accepted ('127.0.0.1', 53516)
+Index route: Session player_id: 63dbb700-6b95-4ad0-8a92-87ed7dcc1517
+127.0.0.1 - - [13/Mar/2026 09:21:08] "GET / HTTP/1.1" 200 3404 0.031790
+127.0.0.1 - - [13/Mar/2026 09:21:09] "GET /static/style.css HTTP/1.1" 200 6197 0.005780
+(3031) accepted ('127.0.0.1', 53530)
+127.0.0.1 - - [13/Mar/2026 09:21:09] "GET /static/app.js HTTP/1.1" 200 8003 0.001238
+127.0.0.1 - - [13/Mar/2026 09:21:09] "GET /socket.io/?EIO=4&transport=polling&t=PpcV-vJ HTTP/1.1" 200 300 0.000624
+127.0.0.1 - - [13/Mar/2026 09:21:09] "POST /socket.io/?EIO=4&transport=polling&t=PpcV-vw&sid=VFJAXo6olpjdhZu6AAAA HTTP/1.1" 200 219 0.000828
+127.0.0.1 - - [13/Mar/2026 09:21:09] "GET /socket.io/?EIO=4&transport=polling&t=PpcV-wU&sid=VFJAXo6olpjdhZu6AAAA HTTP/1.1" 200 213 0.000307
+(3031) accepted ('127.0.0.1', 53536)
+127.0.0.1 - - [13/Mar/2026 09:21:09] "GET /socket.io/?EIO=4&transport=polling&t=PpcV-wi&sid=VFJAXo6olpjdhZu6AAAA HTTP/1.1" 200 181 0.000206
+127.0.0.1 - - [13/Mar/2026 09:21:09] "GET /socket.io/?EIO=4&transport=polling&t=PpcV-xH&sid=VFJAXo6olpjdhZu6AAAA HTTP/1.1" 200 181 0.000229
+Join Room: str_id=63dbb700-6b95-4ad0-8a92-87ed7dcc1517, int_id=2919041399
+127.0.0.1 - - [13/Mar/2026 09:21:10] "GET /socket.io/?EIO=4&transport=websocket&sid=VFJAXo6olpjdhZu6AAAA HTTP/1.1" 200 0 0.604120

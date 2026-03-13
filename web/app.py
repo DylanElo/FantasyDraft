@@ -4,7 +4,6 @@ import os
 import uuid
 import sys
 import logging
-import zlib
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -78,19 +77,17 @@ def on_join(data):
     join_room(room_id)
     session['room_id'] = room_id
     session['player_name'] = player_name
+    session['player_id'] = player_id
 
     chat_id = hash(room_id) % 1000000000
     session['chat_id'] = chat_id
 
-    int_player_id = zlib.adler32(player_id.encode('utf-8'))
-    session['int_player_id'] = int_player_id
-
-    print(f"Join Room: str_id={player_id}, int_id={int_player_id}", flush=True)
+    print(f"Join Room: str_id={player_id}", flush=True)
 
     game = game_manager.get_game(chat_id)
 
     if game.state == GameState.WAITING_FOR_PLAYERS:
-        success, msg = game.add_player(int_player_id, player_name)
+        success, msg = game.add_player(player_id, player_name)
 
     emit('game_update', get_game_state_dict(game), room=room_id)
     emit('message', {'text': f"{player_name} joined room {room_id}"}, room=room_id)
@@ -110,10 +107,10 @@ def on_start_game():
 def on_draw_card():
     chat_id = session.get('chat_id')
     room_id = session.get('room_id')
-    int_player_id = session.get('int_player_id')
+    player_id = session.get('player_id')
 
     game = game_manager.get_game(chat_id)
-    success, msg, char = game.draw(int_player_id)
+    success, msg, char = game.draw(player_id)
 
     emit('message', {'text': msg}, room=room_id)
     emit('game_update', get_game_state_dict(game), room=room_id)
@@ -126,10 +123,10 @@ def on_draw_card():
 def on_keep_card():
     chat_id = session.get('chat_id')
     room_id = session.get('room_id')
-    int_player_id = session.get('int_player_id')
+    player_id = session.get('player_id')
 
     game = game_manager.get_game(chat_id)
-    success, msg = game.keep(int_player_id)
+    success, msg = game.keep(player_id)
 
     emit('message', {'text': msg}, room=room_id)
     emit('game_update', get_game_state_dict(game), room=room_id)
@@ -142,10 +139,10 @@ def on_keep_card():
 def on_pass_card():
     chat_id = session.get('chat_id')
     room_id = session.get('room_id')
-    int_player_id = session.get('int_player_id')
+    player_id = session.get('player_id')
 
     game = game_manager.get_game(chat_id)
-    success, msg, char = game.pass_card(int_player_id)
+    success, msg, char = game.pass_card(player_id)
 
     emit('message', {'text': msg}, room=room_id)
     emit('game_update', get_game_state_dict(game), room=room_id)

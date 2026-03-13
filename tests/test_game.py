@@ -78,8 +78,8 @@ class TestGame(unittest.TestCase):
         self.assertEqual(game.state, GameState.FINISHED)
         success, results = game.get_results()
         self.assertTrue(success)
-        self.assertIn("Game Results", results)
-        self.assertIn("The winner is", results)
+        self.assertIn("Draft Results", results)
+        self.assertIn("Draft phase is complete! Ready for battle!", results)
 
 if __name__ == "__main__":
     unittest.main()

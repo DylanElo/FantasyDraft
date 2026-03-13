@@ -5,6 +5,7 @@ import uuid
 import sys
 import logging
 import zlib
+import hashlib
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -79,7 +80,7 @@ def on_join(data):
     session['room_id'] = room_id
     session['player_name'] = player_name
 
-    chat_id = hash(room_id) % 1000000000
+    chat_id = int(hashlib.sha256(room_id.encode('utf-8')).hexdigest(), 16) % 1000000000
     session['chat_id'] = chat_id
 
     int_player_id = zlib.adler32(player_id.encode('utf-8'))

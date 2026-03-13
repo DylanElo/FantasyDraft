@@ -1,5 +1,6 @@
 import unittest
 from jjk_bot.game import Game, GameState
+from jjk_bot.characters import Character
 
 class TestGame(unittest.TestCase):
     def test_game_flow(self):
@@ -78,8 +79,80 @@ class TestGame(unittest.TestCase):
         self.assertEqual(game.state, GameState.FINISHED)
         success, results = game.get_results()
         self.assertTrue(success)
-        self.assertIn("Game Results", results)
-        self.assertIn("The winner is", results)
+        self.assertIn("Draft Results", results)
+        self.assertIn("Draft phase is complete! Ready for battle!", results)
+
+    def test_resolve_battle(self):
+        game = Game(789)
+        game.add_player(1, "Alice")
+        game.add_player(2, "Bob")
+        game.add_player(3, "Charlie")
+
+        # Create dummy characters
+        char1 = Character(name="Char1", description="", image_url="", skills=[])
+        char2 = Character(name="Char2", description="", image_url="", skills=[])
+        char3 = Character(name="Char3", description="", image_url="", skills=[])
+
+        # Alice gets 3 characters
+        game.teams[1] = [char1, char2, char3]
+        # Bob gets 1 character
+        game.teams[2] = [char1]
+        # Charlie gets 2 characters
+        game.teams[3] = [char1, char2]
+
+        results = game.resolve_battle()
+
+        # Alice should have 3 * 10 = 30 points
+        # Bob should have 1 * 10 = 10 points
+        # Charlie should have 2 * 10 = 20 points
+        # Order should be Alice, Charlie, Bob
+
+        self.assertEqual(len(results), 3)
+
+        # Alice
+        self.assertEqual(results[0][0], 30)
+        self.assertEqual(results[0][1], "Alice")
+        self.assertEqual(results[0][2], ["Char1", "Char2", "Char3"])
+
+        # Charlie
+        self.assertEqual(results[1][0], 20)
+        self.assertEqual(results[1][1], "Charlie")
+        self.assertEqual(results[1][2], ["Char1", "Char2"])
+
+        # Bob
+        self.assertEqual(results[2][0], 10)
+        self.assertEqual(results[2][1], "Bob")
+        self.assertEqual(results[2][2], ["Char1"])
+
+    def test_resolve_battle_tie(self):
+        game = Game(999)
+        game.add_player(1, "Alice")
+        game.add_player(2, "Bob")
+
+        char1 = Character(name="Char1", description="", image_url="", skills=[])
+
+        # Both get 1 character
+        game.teams[1] = [char1]
+        game.teams[2] = [char1]
+
+        results = game.resolve_battle()
+
+        self.assertEqual(len(results), 2)
+        # Both have 10 points, order is preserved from player list or Python's stable sort
+        self.assertEqual(results[0][0], 10)
+        self.assertEqual(results[1][0], 10)
+
+    def test_resolve_battle_empty(self):
+        game = Game(888)
+        game.add_player(1, "Alice")
+
+        results = game.resolve_battle()
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0][0], 0)
+        self.assertEqual(results[0][1], "Alice")
+        self.assertEqual(results[0][2], [])
+
 
 if __name__ == "__main__":
     unittest.main()

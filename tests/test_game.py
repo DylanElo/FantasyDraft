@@ -1,5 +1,5 @@
 import unittest
-from jjk_bot.game import Game, GameState
+from jjk_bot.game import Game, GameState, GameManager
 
 class TestGame(unittest.TestCase):
     def test_game_flow(self):
@@ -78,8 +78,27 @@ class TestGame(unittest.TestCase):
         self.assertEqual(game.state, GameState.FINISHED)
         success, results = game.get_results()
         self.assertTrue(success)
-        self.assertIn("Game Results", results)
-        self.assertIn("The winner is", results)
+        self.assertIn("Draft Results", results)
+        self.assertIn("Draft phase is complete", results)
+
+class TestGameManager(unittest.TestCase):
+    def test_reset_game(self):
+        manager = GameManager()
+        chat_id = 789
+
+        # Get a game and modify it
+        game1 = manager.get_game(chat_id)
+        game1.add_player(1, "Player 1")
+        self.assertEqual(len(game1.players), 1)
+
+        # Reset the game
+        manager.reset_game(chat_id)
+
+        # Get the game again and verify it's a new instance
+        game2 = manager.get_game(chat_id)
+        self.assertNotEqual(game1, game2)
+        self.assertEqual(len(game2.players), 0)
+        self.assertEqual(game2.chat_id, chat_id)
 
 if __name__ == "__main__":
     unittest.main()

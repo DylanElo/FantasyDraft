@@ -21,7 +21,9 @@ def escape_markdown(text: str) -> str:
     # For MarkdownV2, there are many characters to escape.
     # For legacy Markdown, it's simpler.
     escape_chars = r"_*`["
-    return "".join(f"\\{c}" if c in escape_chars else c for c in text)
+    for char in escape_chars:
+        text = text.replace(char, "\\" + char)
+    return text
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id

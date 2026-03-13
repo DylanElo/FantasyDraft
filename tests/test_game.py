@@ -1,5 +1,42 @@
 import unittest
-from jjk_bot.game import Game, GameState
+from jjk_bot.game import Game, GameState, GameManager
+
+class TestGameManager(unittest.TestCase):
+    def test_get_game_creates_new_game(self):
+        manager = GameManager()
+
+        # Verify no games exist initially
+        self.assertEqual(len(manager.games), 0)
+
+        # Get a game for a new chat_id
+        game = manager.get_game(123)
+
+        # Verify game was created and stored
+        self.assertEqual(len(manager.games), 1)
+        self.assertIn(123, manager.games)
+        self.assertIsInstance(game, Game)
+        self.assertEqual(game.chat_id, 123)
+
+    def test_get_game_returns_existing_game(self):
+        manager = GameManager()
+
+        # Create a game first
+        game1 = manager.get_game(456)
+
+        # Modify the game state to ensure we get the exact same instance back
+        game1.state = GameState.FINISHED
+
+        # Get game for the same chat_id again
+        game2 = manager.get_game(456)
+
+        # Verify it's the exact same instance
+        self.assertIs(game1, game2)
+        self.assertEqual(game2.state, GameState.FINISHED)
+
+        # Verify another chat_id gets a different game
+        game3 = manager.get_game(789)
+        self.assertIsNot(game1, game3)
+        self.assertEqual(len(manager.games), 2)
 
 class TestGame(unittest.TestCase):
     def test_game_flow(self):
@@ -78,8 +115,8 @@ class TestGame(unittest.TestCase):
         self.assertEqual(game.state, GameState.FINISHED)
         success, results = game.get_results()
         self.assertTrue(success)
-        self.assertIn("Game Results", results)
-        self.assertIn("The winner is", results)
+        self.assertIn("Draft Results", results)
+        self.assertIn("Draft phase is complete!", results)
 
 if __name__ == "__main__":
     unittest.main()

@@ -1223,6 +1223,151 @@ CHARACTERS = [
         ]
     ),
 
+    Character(
+        name="Haruta Shigemo",
+        description="A member of Kenjaku's forces who stores everyday miracles as markings on his face. These stored miracles release automatically to help him survive otherwise lethal attacks.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Lucky Strike",
+                description="Shigemo attacks an enemy for 20 damage. He has a 30% chance to evade the next counterattack this turn.",
+                cooldown="None",
+                energy=["black", "black"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Miracle Release",
+                description="Shigemo expends a stored miracle to survive a fatal blow. His next lethal attack is negated and he recovers 25 HP.",
+                cooldown="3",
+                energy=["white", "black"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Stacked Luck",
+                description="Shigemo releases multiple miracles simultaneously, dealing 35 damage to one enemy and granting himself 40% evasion for 1 turn.",
+                cooldown="3",
+                energy=["white", "white", "black"],
+                classes="Strategic,Instant"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Jiro Awasaka",
+        description="A member of Kenjaku's forces who possesses the Inverse technique—an ability that flips the power relationship of incoming attacks, making strong hits gentle and weak hits devastating.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Inverse Counter",
+                description="Awasaka endures a strong attack and inverts it, reducing damage from attacks above 30 to 5. If the blocked attack was strong, he deals 20 damage back to the attacker.",
+                cooldown="1",
+                energy=["white", "black"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Reinforcement Stack",
+                description="Awasaka layers cursed energy reinforcement over his Inverse, becoming nearly immune to heavy blows for 1 turn. Attacks over 25 deal only 5 damage to him.",
+                cooldown="2",
+                energy=["white", "white"],
+                classes="Strategic,Action"
+            ),
+            Skill(
+                name="Inverse Deception",
+                description="Awasaka baits enemies with deliberately weak attacks to lure stronger hits, then inverts them for lethal effect. Deals 40 damage to one enemy and forces them to attack him next turn.",
+                cooldown="3",
+                energy=["red", "white", "black"],
+                classes="Bloodline,Instant"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Larue",
+        description="A member of the Geto group with the Heart Catch technique, manifesting a massive virtual hand to grab and slam targets from afar, or disrupt their mental focus.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Heart Catch: Grab",
+                description="Larue manifests his virtual hand to grab one enemy, dealing 20 damage and immobilizing them for 1 turn.",
+                cooldown="1",
+                energy=["blue", "black"],
+                classes="Energy,Instant"
+            ),
+            Skill(
+                name="Slam",
+                description="Larue hurls a grabbed enemy into a wall for 35 damage. Requires the target to have been grabbed this turn or last turn.",
+                cooldown="1",
+                energy=["blue", "black"],
+                classes="Energy,Instant"
+            ),
+            Skill(
+                name="Attention Snatch",
+                description="Larue uses the virtual hand to grab an enemy's focus, disrupting their awareness. The target misses their next skill and deals 30% reduced damage for 1 turn.",
+                cooldown="3",
+                energy=["blue", "blue", "white"],
+                classes="Strategic,Instant"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Mimiko Hasaba",
+        description="One of Geto's followers who uses a stuffed doll and noose to inflict fatal sympathetic damage on targets, reflecting all harm done to the doll onto the victim's vitals.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Doll Torment",
+                description="Mimiko inflicts pain through her doll, dealing 20 damage to one enemy while bypassing physical armor.",
+                cooldown="None",
+                energy=["red", "black"],
+                classes="Bloodline,Instant"
+            ),
+            Skill(
+                name="Hangman's Noose",
+                description="Mimiko hangs her doll by the neck, transmitting choking damage to the target. Deals 30 damage and reduces the target's attack by 20% for 2 turns.",
+                cooldown="2",
+                energy=["red", "blue"],
+                classes="Bloodline,Instant"
+            ),
+            Skill(
+                name="Fatal Noose",
+                description="Mimiko applies maximum force to the noose, dealing 50 damage to one target that bypasses all defenses. If the target is below 30% HP, they are instantly defeated.",
+                cooldown="4",
+                energy=["red", "red", "blue"],
+                classes="Bloodline,Instant"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Nanako Hasaba",
+        description="One of Geto's followers who uses her cellphone camera to manipulate the physical state of any subject she photographs, and teleport herself with rapid spatial displacement.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Photo Capture",
+                description="Nanako photographs an enemy, locking them in a state where they cannot move or change their HP for 1 turn.",
+                cooldown="1",
+                energy=["blue", "black"],
+                classes="Energy,Instant"
+            ),
+            Skill(
+                name="State Manipulation",
+                description="Nanako alters the physical state of a captured target, dealing 35 damage and applying a weakness that causes them to take 15 extra damage from all sources for 2 turns.",
+                cooldown="2",
+                energy=["blue", "blue"],
+                classes="Energy,Instant"
+            ),
+            Skill(
+                name="Self Displacement",
+                description="Nanako photographs herself to instantly displace, becoming untargetable for 1 turn and repositioning to deal 20 damage to any enemy.",
+                cooldown="3",
+                energy=["blue", "blue", "white"],
+                classes="Strategic,Instant"
+            ),
+        ]
+    ),
+
     # ─────────────────────────────────────────────
     #  SPECIAL GRADE CURSED SPIRITS
     # ─────────────────────────────────────────────
@@ -1443,6 +1588,93 @@ CHARACTERS = [
         ]
     ),
 
+    Character(
+        name="Eso",
+        description="The eldest of the three Death Painting Womb brothers. His Rot Technique uses toxic dark blood that decomposes targets, and he can reshape his blood into wings for lethal aerial strikes.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Toxic Blood Splash",
+                description="Eso sprays his corrosive dark blood, dealing 20 damage to one enemy and applying a burn that deals 10 damage per turn for 2 turns.",
+                cooldown="1",
+                energy=["red", "black"],
+                classes="Bloodline,Instant"
+            ),
+            Skill(
+                name="Decay",
+                description="Eso infects a target with Rot Technique's floral decay pattern, dealing 15 damage immediately and 20 additional damage per turn for 3 turns as their body decomposes.",
+                cooldown="3",
+                energy=["red", "red"],
+                classes="Bloodline,Action"
+            ),
+            Skill(
+                name="Maximum: Wing King",
+                description="Eso reshapes his blood into massive wasp-like wings, performing sweeping aerial blood strikes for 45 damage to one enemy.",
+                cooldown="3",
+                energy=["red", "blue", "black"],
+                classes="Bloodline,Instant"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Kechizu",
+        description="One of the Death Painting Womb brothers. His blood carries the same Rot Technique decay properties as his brother Eso's, and he excels in sustained close-range toxic combat.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Corrosive Blood Strike",
+                description="Kechizu strikes with his toxic blood, dealing 20 damage and reducing the target's defense by 15% for 1 turn.",
+                cooldown="None",
+                energy=["red", "black"],
+                classes="Bloodline,Instant"
+            ),
+            Skill(
+                name="Rot Infection",
+                description="Kechizu deeply infects a target with Decay, dealing 20 damage this turn and 15 per turn for 2 turns. If the target uses a technique while infected, the damage doubles.",
+                cooldown="2",
+                energy=["red", "red"],
+                classes="Bloodline,Action"
+            ),
+            Skill(
+                name="Sibling Rot",
+                description="Kechizu channels his bond with Eso to synchronize their toxic blood. Deals 40 damage to one enemy; if Eso's Decay is already on the target, this deals 80 damage instead.",
+                cooldown="3",
+                energy=["red", "red", "blue"],
+                classes="Bloodline,Instant"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Kurourushi",
+        description="A Special Grade cursed spirit resembling a giant cockroach that commands overwhelming insect swarms. Its Festering Life Sword fires cursed insect eggs that burst out of victims' flesh.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Cockroach Swarm",
+                description="Kurourushi unleashes a massive roach swarm, dealing 20 damage to one enemy and reducing their visibility—they have 20% chance to miss their next attack.",
+                cooldown="1",
+                energy=["black", "black"],
+                classes="Physical,Action"
+            ),
+            Skill(
+                name="Festering Life Sword",
+                description="Kurourushi fires cursed insect eggs into a target, dealing 15 damage immediately. The eggs hatch after 1 turn, dealing 35 additional damage and a bleeding effect.",
+                cooldown="2",
+                energy=["red", "blue"],
+                classes="Bloodline,Action"
+            ),
+            Skill(
+                name="Insect Burst",
+                description="Kurourushi detonates all planted eggs simultaneously, dealing 50 damage to all infected targets. Non-infected enemies take 20 damage from the burst.",
+                cooldown="3",
+                energy=["red", "blue", "black"],
+                classes="Energy,Instant"
+            ),
+        ]
+    ),
+
     # ─────────────────────────────────────────────
     #  CULLING GAME PLAYERS
     # ─────────────────────────────────────────────
@@ -1659,6 +1891,267 @@ CHARACTERS = [
                 cooldown="3",
                 energy=["red", "blue", "white"],
                 classes="Bloodline,Action"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Yorozu",
+        description="A reincarnated ancient sorcerer from the Heian era who manifests permanent physical matter from raw cursed energy, constructing insect armor and liquid metal weapons.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Insect Armor",
+                description="Yorozu encases herself in hyper-dense insect-biomorphic armor, gaining 30 damage reduction for 2 turns and the ability to fly.",
+                cooldown="2",
+                energy=["white", "blue"],
+                classes="Strategic,Action"
+            ),
+            Skill(
+                name="Liquid Metal Strike",
+                description="Yorozu reshapes her liquid metal into a weapon and attacks, dealing 35 damage to one enemy. If her armor is active, this deals 45 damage instead.",
+                cooldown="1",
+                energy=["blue", "black"],
+                classes="Energy,Instant"
+            ),
+            Skill(
+                name="Threefold Affliction: True Sphere",
+                description="Domain Expansion. Yorozu conjures a theoretically perfect sphere exerting infinite pressure with a sure-hit effect, dealing 60 damage to one enemy that ignores all defenses.",
+                cooldown="4",
+                energy=["red", "blue", "white"],
+                classes="Bloodline,Instant"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Ryu Ishigori",
+        description="A reincarnated Heian sorcerer with immense innate cursed energy. He releases hyper-concentrated blasts from his distinctive pompadour, maintaining the same devastating power even after burning out his technique.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Cursed Discharge",
+                description="Ishigori releases a concentrated cursed energy burst, dealing 30 damage to one enemy.",
+                cooldown="None",
+                energy=["blue", "blue"],
+                classes="Energy,Instant"
+            ),
+            Skill(
+                name="Granite Blast",
+                description="Ishigori fires his signature hyper-dense cursed energy beam, dealing 55 damage to one enemy and destroying any barriers on the target.",
+                cooldown="3",
+                energy=["blue", "blue", "blue"],
+                classes="Energy,Instant"
+            ),
+            Skill(
+                name="Relentless Output",
+                description="Ishigori's biological constitution allows him to maintain full power output even post-burnout. He fires a rapid volley of cursed blasts for 20 damage three times to random enemies.",
+                cooldown="2",
+                energy=["blue", "black", "black"],
+                classes="Energy,Instant"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Reggie Star",
+        description="A Culling Game player who uses cursed receipts and contracts to materialize the physical objects written on them into reality, deploying them as shikigami-like familiars.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Receipt Materialization",
+                description="Reggie burns a cursed receipt to instantly materialize the described object as a weapon, dealing 20 damage to one enemy.",
+                cooldown="None",
+                energy=["blue", "black"],
+                classes="Energy,Instant"
+            ),
+            Skill(
+                name="Contract Familiar",
+                description="Reggie manifests a complex contract item as a durable shikigami familiar. The familiar blocks 20 damage for Reggie for 2 turns then attacks for 25 damage.",
+                cooldown="2",
+                energy=["blue", "blue"],
+                classes="Energy,Action"
+            ),
+            Skill(
+                name="Grand Contractual Barrage",
+                description="Reggie burns multiple high-value contracts simultaneously, materializing a devastating multi-object assault dealing 50 damage to one enemy.",
+                cooldown="3",
+                energy=["blue", "blue", "black"],
+                classes="Energy,Instant"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Charles Bernard",
+        description="A manga artist turned Culling Game player who wields the G-Warstaff—a pen-shaped spear. By drawing an opponent's blood, he gains the ability to see their immediate future movements.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="G-Warstaff Thrust",
+                description="Charles thrusts his pen-spear, dealing 20 damage to one enemy.",
+                cooldown="None",
+                energy=["green", "black"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Blood Ink Mark",
+                description="Charles draws blood from an enemy with his pen tip, dealing 15 damage and gaining foresight for 2 turns—he automatically dodges the first attack each turn.",
+                cooldown="2",
+                energy=["red", "blue"],
+                classes="Bloodline,Action"
+            ),
+            Skill(
+                name="Reader's Foresight",
+                description="Charles reads an opponent's future moves with perfect clarity, dealing 35 damage to one enemy and predicting their next 2 actions—negating both attacks completely.",
+                cooldown="3",
+                energy=["red", "blue", "white"],
+                classes="Bloodline,Instant"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Dhruv Lakdawalla",
+        description="A Culling Game player who summons grotesque rodent-like shikigami whose intersecting orbital flight paths form an inviolable domain barrier, slashing anyone trapped within.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Orbital Shikigami",
+                description="Dhruv summons a rodent shikigami on an orbital path, dealing 20 damage per turn to enemies who enter its trajectory for 2 turns.",
+                cooldown="1",
+                energy=["blue", "black"],
+                classes="Energy,Action"
+            ),
+            Skill(
+                name="Intersecting Trajectories",
+                description="Dhruv deploys multiple orbital paths that intersect, dealing 30 damage to all enemies caught in the overlapping trajectories.",
+                cooldown="2",
+                energy=["blue", "blue"],
+                classes="Energy,Instant"
+            ),
+            Skill(
+                name="Orbital Domain Trap",
+                description="Dhruv creates a full orbital domain network, dealing 25 damage per turn to all enemies for 3 turns and preventing escape techniques.",
+                cooldown="4",
+                energy=["red", "blue", "blue"],
+                classes="Bloodline,Action"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Hagane Daido",
+        description="A reincarnated Heian sorcerer with zero cursed energy but peerless swordsmanship. Despite having no sorcery, he accurately senses and bisects curses using environmental awareness.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Sword Strike",
+                description="Daido slashes an enemy with expert swordsmanship, dealing 25 damage. Deals 10 extra damage to curse-type enemies.",
+                cooldown="None",
+                energy=["green", "black"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Curse Sense Slash",
+                description="Daido reads the environment to locate curses, dealing 35 damage to one enemy and bypassing all concealment or stealth effects.",
+                cooldown="2",
+                energy=["green", "green"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Soul Bisection",
+                description="Daido strikes with his Split Soul Katana proxy, cutting directly into the soul for 55 damage that ignores all physical defenses.",
+                cooldown="3",
+                energy=["green", "red", "blue"],
+                classes="Physical,Instant"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Rokujushi Miyo",
+        description="A Culling Game player whose Sumo Simple Domain creates an isolated wrestling barrier requiring challenger consent, focusing entirely on pure physical grappling strength.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Sumo Grapple",
+                description="Miyo grabs an enemy and forces a grappling contest, dealing 20 damage and reducing their movement-based skills for 1 turn.",
+                cooldown="None",
+                energy=["green", "black"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Simple Domain Barrier",
+                description="Miyo creates his sumo wrestling domain, granting himself 20 damage reduction and dealing 15 damage to any enemy who attacks him for 2 turns.",
+                cooldown="2",
+                energy=["white", "blue"],
+                classes="Strategic,Action"
+            ),
+            Skill(
+                name="Grand Throw",
+                description="Miyo executes his decisive sumo throw, dealing 45 damage to one enemy and stunning them for 1 turn.",
+                cooldown="3",
+                energy=["green", "green", "black"],
+                classes="Physical,Instant"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Haba",
+        description="A Culling Game participant who uses Airplane Hair to morph their hair into a jet-shaped form with fiery boosters, enabling high-speed aerial ramming attacks.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Airplane Hair: Takeoff",
+                description="Haba activates their jet-hair boosters, gaining aerial movement. Their next attack deals 10 extra damage.",
+                cooldown="None",
+                energy=["blue", "black"],
+                classes="Energy,Action"
+            ),
+            Skill(
+                name="Sky Ram",
+                description="Haba rockets forward at high velocity and rams an enemy, dealing 35 damage.",
+                cooldown="2",
+                energy=["green", "blue"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Fiery Dive Bomb",
+                description="Haba launches a full-power aerial dive bomb, dealing 50 damage to one enemy. If used after Airplane Hair: Takeoff this turn, it deals 65 damage.",
+                cooldown="3",
+                energy=["green", "blue", "blue"],
+                classes="Physical,Instant"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Hanyu",
+        description="Haba's partner in the Culling Game who shares the Airplane Hair technique. Together they perform devastating synchronized aerial ram attacks.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Airplane Hair: Boost",
+                description="Hanyu supercharges their boosters, increasing speed. For 1 turn, Hanyu's attacks cannot be dodged.",
+                cooldown="None",
+                energy=["blue", "black"],
+                classes="Energy,Action"
+            ),
+            Skill(
+                name="Coordinated Strike",
+                description="Hanyu and their partner execute a synchronized aerial ram, dealing 30 damage and 15 additional damage if any ally attacked the same target this turn.",
+                cooldown="1",
+                energy=["green", "blue"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Twin Bomber Formation",
+                description="Hanyu and their partner converge from two angles simultaneously, dealing 55 damage to one enemy. This attack ignores 20 damage reduction.",
+                cooldown="3",
+                energy=["green", "green", "blue"],
+                classes="Physical,Instant"
             ),
         ]
     ),

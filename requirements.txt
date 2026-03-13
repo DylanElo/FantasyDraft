@@ -1,4 +1,3 @@
-python-telegram-bot>=20.0
-flask>=2.3.0
-flask-socketio>=5.3.0
-eventlet>=0.33.3
+# No runtime dependencies — the app runs entirely in the browser.
+# Python is only used for optional local dev server (python3 main.py)
+# and for regenerating docs/characters_data.js from jjk_bot/characters.py.

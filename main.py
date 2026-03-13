@@ -1,13 +1,24 @@
-import os
+"""
+JJK Fantasy Draft — static web app.
+Open docs/index.html in a browser, or serve the docs/ folder via any static host
+(GitHub Pages, Netlify, etc.).
+
+To preview locally:
+    python3 -m http.server 8080 --directory docs
+Then visit http://localhost:8080
+"""
+import subprocess
 import sys
-from jjk_bot.bot import run_bot
+
+
+def main():
+    print("JJK Fantasy Draft")
+    print("=================")
+    print("Serving docs/ at http://localhost:8080 …  (Ctrl+C to stop)\n")
+    subprocess.run(
+        [sys.executable, "-m", "http.server", "8080", "--directory", "docs"],
+    )
+
 
 if __name__ == "__main__":
-    token = os.environ.get("TELEGRAM_BOT_TOKEN")
-    if not token:
-        print("Error: TELEGRAM_BOT_TOKEN environment variable is not set.")
-        print("Please set it and try again.")
-        sys.exit(1)
-
-    print("Starting Jujutsu Kaisen Bot...")
-    run_bot(token)
+    main()

@@ -91,7 +91,7 @@ def on_join(data):
     game = game_manager.get_game(chat_id)
 
     if game.state == GameState.WAITING_FOR_PLAYERS:
-        success, msg = game.add_player(int_player_id, player_name)
+        _ = game.add_player(int_player_id, player_name)
 
     emit('game_update', get_game_state_dict(game), room=room_id)
     emit('message', {'text': f"{player_name} joined room {room_id}"}, room=room_id)
@@ -102,7 +102,7 @@ def on_start_game():
     room_id = session.get('room_id')
 
     game = game_manager.get_game(chat_id)
-    success, msg = game.start_game()
+    _, msg = game.start_game()
 
     emit('message', {'text': msg}, room=room_id)
     emit('game_update', get_game_state_dict(game), room=room_id)
@@ -114,7 +114,7 @@ def on_draw_card():
     int_player_id = session.get('int_player_id')
 
     game = game_manager.get_game(chat_id)
-    success, msg, char = game.draw(int_player_id)
+    _, msg, _ = game.draw(int_player_id)
 
     emit('message', {'text': msg}, room=room_id)
     emit('game_update', get_game_state_dict(game), room=room_id)
@@ -130,7 +130,7 @@ def on_keep_card():
     int_player_id = session.get('int_player_id')
 
     game = game_manager.get_game(chat_id)
-    success, msg = game.keep(int_player_id)
+    _, msg = game.keep(int_player_id)
 
     emit('message', {'text': msg}, room=room_id)
     emit('game_update', get_game_state_dict(game), room=room_id)
@@ -146,7 +146,7 @@ def on_pass_card():
     int_player_id = session.get('int_player_id')
 
     game = game_manager.get_game(chat_id)
-    success, msg, char = game.pass_card(int_player_id)
+    _, msg, _ = game.pass_card(int_player_id)
 
     emit('message', {'text': msg}, room=room_id)
     emit('game_update', get_game_state_dict(game), room=room_id)

@@ -79,19 +79,25 @@ class TestGame(unittest.TestCase):
         self.assertEqual(game.state, GameState.FINISHED)
         success, results = game.get_results()
         self.assertTrue(success)
-        self.assertIn("Draft Results", results)
-        self.assertIn("Draft phase is complete! Ready for battle!", results)
+        self.assertIn("Game Results", results)
+        self.assertIn("The winner is", results)
 
     def test_resolve_battle(self):
+        from jjk_bot.characters import Skill
+
         game = Game(789)
         game.add_player(1, "Alice")
         game.add_player(2, "Bob")
         game.add_player(3, "Charlie")
 
+        # Create dummy skills with specific energy counts
+        # Each energy token counts as 1 point. Let's make each skill have 10 energy to match the old test logic.
+        skill_10_energy = Skill(name="Dummy Skill", description="", classes=[], energy=["Taijutsu"] * 10, cooldown=0)
+
         # Create dummy characters
-        char1 = Character(name="Char1", description="", image_url="", skills=[])
-        char2 = Character(name="Char2", description="", image_url="", skills=[])
-        char3 = Character(name="Char3", description="", image_url="", skills=[])
+        char1 = Character(name="Char1", description="", image_url="", skills=[skill_10_energy])
+        char2 = Character(name="Char2", description="", image_url="", skills=[skill_10_energy])
+        char3 = Character(name="Char3", description="", image_url="", skills=[skill_10_energy])
 
         # Alice gets 3 characters
         game.teams[1] = [char1, char2, char3]
@@ -125,11 +131,14 @@ class TestGame(unittest.TestCase):
         self.assertEqual(results[2][2], ["Char1"])
 
     def test_resolve_battle_tie(self):
+        from jjk_bot.characters import Skill
+
         game = Game(999)
         game.add_player(1, "Alice")
         game.add_player(2, "Bob")
 
-        char1 = Character(name="Char1", description="", image_url="", skills=[])
+        skill_10_energy = Skill(name="Dummy Skill", description="", classes=[], energy=["Taijutsu"] * 10, cooldown=0)
+        char1 = Character(name="Char1", description="", image_url="", skills=[skill_10_energy])
 
         # Both get 1 character
         game.teams[1] = [char1]

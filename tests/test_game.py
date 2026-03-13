@@ -79,8 +79,8 @@ class TestGame(unittest.TestCase):
         self.assertEqual(game.state, GameState.FINISHED)
         success, results = game.get_results()
         self.assertTrue(success)
-        self.assertIn("Draft Results", results)
-        self.assertIn("Draft phase is complete! Ready for battle!", results)
+        self.assertIn("Game Results", results)
+        self.assertIn("The winner is", results)
 
     def test_resolve_battle(self):
         game = Game(789)
@@ -88,10 +88,14 @@ class TestGame(unittest.TestCase):
         game.add_player(2, "Bob")
         game.add_player(3, "Charlie")
 
-        # Create dummy characters
-        char1 = Character(name="Char1", description="", image_url="", skills=[])
-        char2 = Character(name="Char2", description="", image_url="", skills=[])
-        char3 = Character(name="Char3", description="", image_url="", skills=[])
+        from jjk_bot.characters import Skill
+
+        # Create dummy characters with skills that have energy costs
+        skill1 = Skill(name="S1", description="", cooldown="", energy=["black"] * 10, classes="")
+
+        char1 = Character(name="Char1", description="", image_url="", skills=[skill1])
+        char2 = Character(name="Char2", description="", image_url="", skills=[skill1])
+        char3 = Character(name="Char3", description="", image_url="", skills=[skill1])
 
         # Alice gets 3 characters
         game.teams[1] = [char1, char2, char3]
@@ -129,7 +133,10 @@ class TestGame(unittest.TestCase):
         game.add_player(1, "Alice")
         game.add_player(2, "Bob")
 
-        char1 = Character(name="Char1", description="", image_url="", skills=[])
+        from jjk_bot.characters import Skill
+        skill1 = Skill(name="S1", description="", cooldown="", energy=["black"] * 10, classes="")
+
+        char1 = Character(name="Char1", description="", image_url="", skills=[skill1])
 
         # Both get 1 character
         game.teams[1] = [char1]

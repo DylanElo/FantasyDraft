@@ -363,7 +363,7 @@ CHARACTERS = [
     Character(
         name="Masamichi Yaga",
         description="The principal of Tokyo Jujutsu High and master doll-maker. He can create fully autonomous cursed corpses with independent souls, including the sentient Panda.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/e/ee/Masamichi_Yaga_%28Anime_3%29.png/revision/latest?cb=20260129200521",
         skills=[
             Skill(
                 name="Cursed Corpse: Deploy",
@@ -399,7 +399,7 @@ CHARACTERS = [
     Character(
         name="Takuma Ino",
         description="A Grade 2 sorcerer who internalizes the powers of mythological beasts by becoming a spiritual medium. He is fiercely loyal to Gojo's group.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/9/9a/Takuma_Ino_%28Anime_2%29.png/revision/latest?cb=20231124134442",
         skills=[
             Skill(
                 name="Kaichi: Homing Horn",
@@ -435,7 +435,7 @@ CHARACTERS = [
     Character(
         name="Arata Nitta",
         description="A Jujutsu High student with a purely supportive technique. While he cannot heal existing wounds, his Pain Killer ability perfectly halts all injury progression and bleeding.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/3/33/Arata_Nitta_%28Anime%29.png/revision/latest?cb=20231207183844",
         skills=[
             Skill(
                 name="Pain Killer",
@@ -684,7 +684,7 @@ CHARACTERS = [
     Character(
         name="Utahime Iori",
         description="The supervisor of Kyoto Jujutsu High and holder of the Solo Forbidden Area technique, which amplifies the cursed energy of allied sorcerers through ritual performance.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/b/b0/Utahime_Iori_%28Anime_2%29.png/revision/latest?cb=20231124133701",
         skills=[
             Skill(
                 name="Cursed Energy Boost",
@@ -713,7 +713,7 @@ CHARACTERS = [
     Character(
         name="Yoshinobu Gakuganji",
         description="The conservative principal of Kyoto Jujutsu High who weaponizes the sound waves of his electric guitar into powerful cursed shockwaves.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/3/3c/Yoshinobu_Gakuganji_%28Anime%29.png/revision/latest?cb=20201025154546",
         skills=[
             Skill(
                 name="Guitar Shockwave",
@@ -742,7 +742,7 @@ CHARACTERS = [
     Character(
         name="Momo Nishimiya",
         description="A Kyoto Jujutsu High student who uses her broomstick for aerial reconnaissance and launching cursed wind blades at enemies.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/9/98/Momo_Nishimiya_%28Anime%29.png/revision/latest?cb=20240621021443",
         skills=[
             Skill(
                 name="Broomstick Recon",
@@ -955,7 +955,7 @@ CHARACTERS = [
     Character(
         name="Kokichi Muta",
         description="A Kyoto student born with severe physical deformities under a Heavenly Restriction that grants vast cursed energy. He remotely pilots mechanical proxy bodies across Japan.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/e/ea/Kokichi_Muta_%28Anime%29.png/revision/latest?cb=20230903190822",
         skills=[
             Skill(
                 name="Ultra Cannon",
@@ -991,7 +991,7 @@ CHARACTERS = [
     Character(
         name="Ui Ui",
         description="Mei Mei's younger brother with a unique teleportation technique. He can transport himself and allies instantaneously, and with permission, swap two people's souls.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/8/88/Ui_Ui_%28Anime%29.png/revision/latest?cb=20230911015234",
         skills=[
             Skill(
                 name="Tactical Teleport",
@@ -1020,7 +1020,7 @@ CHARACTERS = [
     Character(
         name="Miguel Oduol",
         description="A powerful African sorcerer who uses his Prayer Song technique to simultaneously enhance his own abilities while actively driving away and weakening curses.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/8/8e/Miguel_%28Anime%29.png/revision/latest?cb=20211129042928",
         skills=[
             Skill(
                 name="Prayer Song: Hakuna Rana",
@@ -1049,7 +1049,7 @@ CHARACTERS = [
     Character(
         name="Master Tengen",
         description="An immortal sorcerer who has lived for over a thousand years. Tengen maintains the mystical barriers protecting Jujutsu High campuses and the Tombs of the Star Corridor.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/1/16/Tengen_%28Anime%29.png/revision/latest?cb=20251119121513",
         skills=[
             Skill(
                 name="Barrier Reinforcement",
@@ -1226,7 +1226,7 @@ CHARACTERS = [
     Character(
         name="Haruta Shigemo",
         description="A member of Kenjaku's forces who stores everyday miracles as markings on his face. These stored miracles release automatically to help him survive otherwise lethal attacks.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/f/fb/Haruta_Shigemo_%28Anime%29.png/revision/latest?cb=20230903193020",
         skills=[
             Skill(
                 name="Lucky Strike",
@@ -1255,7 +1255,7 @@ CHARACTERS = [
     Character(
         name="Jiro Awasaka",
         description="A member of Kenjaku's forces who possesses the Inverse technique—an ability that flips the power relationship of incoming attacks, making strong hits gentle and weak hits devastating.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/b/be/Jiro_Awasaka_%28Anime%29.png/revision/latest?cb=20231009143419",
         skills=[
             Skill(
                 name="Inverse Counter",
@@ -1284,7 +1284,7 @@ CHARACTERS = [
     Character(
         name="Larue",
         description="A member of the Geto group with the Heart Catch technique, manifesting a massive virtual hand to grab and slam targets from afar, or disrupt their mental focus.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/9/99/Larue_%28Anime_2%29.png/revision/latest?cb=20230903194243",
         skills=[
             Skill(
                 name="Heart Catch: Grab",
@@ -1313,7 +1313,7 @@ CHARACTERS = [
     Character(
         name="Mimiko Hasaba",
         description="One of Geto's followers who uses a stuffed doll and noose to inflict fatal sympathetic damage on targets, reflecting all harm done to the doll onto the victim's vitals.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/8/8e/Mimiko_Hasaba_%28Anime_2%29.png/revision/latest?cb=20230903193652",
         skills=[
             Skill(
                 name="Doll Torment",
@@ -1342,7 +1342,7 @@ CHARACTERS = [
     Character(
         name="Nanako Hasaba",
         description="One of Geto's followers who uses her cellphone camera to manipulate the physical state of any subject she photographs, and teleport herself with rapid spatial displacement.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/9/92/Nanako_Hasaba_%28Anime_2%29.png/revision/latest?cb=20230903193940",
         skills=[
             Skill(
                 name="Photo Capture",
@@ -1591,7 +1591,7 @@ CHARACTERS = [
     Character(
         name="Eso",
         description="The eldest of the three Death Painting Womb brothers. His Rot Technique uses toxic dark blood that decomposes targets, and he can reshape his blood into wings for lethal aerial strikes.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/5/5f/Eso_%28Anime%29.png/revision/latest?cb=20210308013541",
         skills=[
             Skill(
                 name="Toxic Blood Splash",
@@ -1620,7 +1620,7 @@ CHARACTERS = [
     Character(
         name="Kechizu",
         description="One of the Death Painting Womb brothers. His blood carries the same Rot Technique decay properties as his brother Eso's, and he excels in sustained close-range toxic combat.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/6/66/Kechizu_%28Anime%29.png/revision/latest?cb=20210308013652",
         skills=[
             Skill(
                 name="Corrosive Blood Strike",
@@ -1649,7 +1649,7 @@ CHARACTERS = [
     Character(
         name="Kurourushi",
         description="A Special Grade cursed spirit resembling a giant cockroach that commands overwhelming insect swarms. Its Festering Life Sword fires cursed insect eggs that burst out of victims' flesh.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/3/30/Kurourushi.png/revision/latest?cb=20220222043330",
         skills=[
             Skill(
                 name="Cockroach Swarm",
@@ -1898,7 +1898,7 @@ CHARACTERS = [
     Character(
         name="Yorozu",
         description="A reincarnated ancient sorcerer from the Heian era who manifests permanent physical matter from raw cursed energy, constructing insect armor and liquid metal weapons.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/7/7d/Yorozu.png/revision/latest?cb=20230417195203",
         skills=[
             Skill(
                 name="Insect Armor",
@@ -1927,7 +1927,7 @@ CHARACTERS = [
     Character(
         name="Ryu Ishigori",
         description="A reincarnated Heian sorcerer with immense innate cursed energy. He releases hyper-concentrated blasts from his distinctive pompadour, maintaining the same devastating power even after burning out his technique.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/f/f9/Ryu_Ishigori_%28Volume_20%29.png/revision/latest?cb=20220704162906",
         skills=[
             Skill(
                 name="Cursed Discharge",
@@ -1956,7 +1956,7 @@ CHARACTERS = [
     Character(
         name="Reggie Star",
         description="A Culling Game player who uses cursed receipts and contracts to materialize the physical objects written on them into reality, deploying them as shikigami-like familiars.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/0/01/Reggie_Star_%28Anime%29.png/revision/latest?cb=20251230190446",
         skills=[
             Skill(
                 name="Receipt Materialization",
@@ -1985,7 +1985,7 @@ CHARACTERS = [
     Character(
         name="Charles Bernard",
         description="A manga artist turned Culling Game player who wields the G-Warstaff—a pen-shaped spear. By drawing an opponent's blood, he gains the ability to see their immediate future movements.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/6/6e/Charles_Bernard.png/revision/latest?cb=20220429151609",
         skills=[
             Skill(
                 name="G-Warstaff Thrust",
@@ -2014,7 +2014,7 @@ CHARACTERS = [
     Character(
         name="Dhruv Lakdawalla",
         description="A Culling Game player who summons grotesque rodent-like shikigami whose intersecting orbital flight paths form an inviolable domain barrier, slashing anyone trapped within.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/1/16/Dhruv_Lakdawalla.png/revision/latest?cb=20220221062845",
         skills=[
             Skill(
                 name="Orbital Shikigami",
@@ -2043,7 +2043,7 @@ CHARACTERS = [
     Character(
         name="Hagane Daido",
         description="A reincarnated Heian sorcerer with zero cursed energy but peerless swordsmanship. Despite having no sorcery, he accurately senses and bisects curses using environmental awareness.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/5/51/Hagane_Daido.png/revision/latest?cb=20220829150329",
         skills=[
             Skill(
                 name="Sword Strike",
@@ -2072,7 +2072,7 @@ CHARACTERS = [
     Character(
         name="Rokujushi Miyo",
         description="A Culling Game player whose Sumo Simple Domain creates an isolated wrestling barrier requiring challenger consent, focusing entirely on pure physical grappling strength.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/0/08/Rokujushi_Miyo.png/revision/latest?cb=20220906012956",
         skills=[
             Skill(
                 name="Sumo Grapple",
@@ -2101,7 +2101,7 @@ CHARACTERS = [
     Character(
         name="Haba",
         description="A Culling Game participant who uses Airplane Hair to morph their hair into a jet-shaped form with fiery boosters, enabling high-speed aerial ramming attacks.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/9/9a/Haba_%28Anime%29.png/revision/latest?cb=20260301042022",
         skills=[
             Skill(
                 name="Airplane Hair: Takeoff",
@@ -2130,7 +2130,7 @@ CHARACTERS = [
     Character(
         name="Hanyu",
         description="Haba's partner in the Culling Game who shares the Airplane Hair technique. Together they perform devastating synchronized aerial ram attacks.",
-        image_url="https://i.imgur.com/placeholder.png",
+        image_url="https://static.wikia.nocookie.net/jujutsu-kaisen/images/c/c6/Hanyu_%28Anime%29.png/revision/latest?cb=20260301042734",
         skills=[
             Skill(
                 name="Airplane Hair: Boost",

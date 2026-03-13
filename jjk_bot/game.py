@@ -161,20 +161,19 @@ class Game:
 
         results = self.resolve_battle()
 
-        msg = "🏆 *Game Results* 🏆\n\n"
+        msg_parts = ["🏆 *Game Results* 🏆\n\n"]
         for i, (score, name, team) in enumerate(results):
             medal = "🥇" if i == 0 else "🥈" if i == 1 else "🥉" if i == 2 else "👤"
             team_str = ", ".join(team) if team else "Empty"
-            msg += f"{medal} *{name}* — {score} pts\n"
-            msg += f"Team: {team_str}\n\n"
+            msg_parts.append(f"{medal} *{name}* — {score} pts\nTeam: {team_str}\n\n")
 
         if self.state == GameState.FINISHED:
             winner = results[0][1]
-            msg += f"The winner is *{winner}*! Congratulations! 🎉"
+            msg_parts.append(f"The winner is *{winner}*! Congratulations! 🎉")
         else:
-            msg += "Draft is still in progress!"
+            msg_parts.append("Draft is still in progress!")
 
-        return True, msg
+        return True, "".join(msg_parts)
 
 class GameManager:
     def __init__(self):

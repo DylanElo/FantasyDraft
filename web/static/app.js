@@ -43,7 +43,7 @@ socket.on('game_update', (data) => {
 });
 
 socket.on('game_over', (data) => {
-    resultsText.innerHTML = data.text.replace(/\n/g, '<br>');
+    resultsText.innerHTML = escapeHTML(data.text).replace(/\n/g, '<br>');
     gameOverModal.style.display = 'flex';
 });
 
@@ -78,6 +78,16 @@ document.getElementById('btn-play-again').addEventListener('click', () => {
 });
 
 // Helper Functions
+function escapeHTML(str) {
+    if (typeof str !== 'string') return '';
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 function addLog(msg) {
     const el = document.createElement('div');
     el.className = 'log-entry';
@@ -190,7 +200,7 @@ function renderGame(state) {
         const info = document.createElement('div');
         info.className = 'player-info';
         info.innerHTML = `
-            <h3>${p.name} ${p.id === myPlayerId ? '(You)' : ''}</h3>
+            <h3>${escapeHTML(p.name)} ${p.id === myPlayerId ? '(You)' : ''}</h3>
             <div>
                 Pass Used: ${p.passes_used ? 'Yes' : 'No'} | Characters: ${p.team.length}/5
             </div>

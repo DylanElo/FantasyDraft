@@ -360,6 +360,107 @@ CHARACTERS = [
         ]
     ),
 
+    Character(
+        name="Masamichi Yaga",
+        description="The principal of Tokyo Jujutsu High and master doll-maker. He can create fully autonomous cursed corpses with independent souls, including the sentient Panda.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Cursed Corpse: Deploy",
+                description="Yaga deploys a combat doll to attack an enemy for 20 damage. The doll stays active for 2 turns, blocking 15 damage for Yaga each turn.",
+                cooldown="1",
+                energy=["blue", "black"],
+                classes="Strategic,Action"
+            ),
+            Skill(
+                name="Puppet Assault",
+                description="Yaga commands his dolls to swarm a target, dealing 30 damage to one enemy. Requires an active doll; the doll is consumed.",
+                cooldown="2",
+                energy=["blue", "black", "black"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Master Craftsman",
+                description="Yaga repairs and upgrades a doll, restoring the doll's blocking function for 2 more turns and granting himself 20 HP.",
+                cooldown="2",
+                energy=["white", "black"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Autonomous Army",
+                description="Yaga unleashes his full doll arsenal on all enemies, dealing 25 damage to each. For 2 turns, any doll defeated in combat is immediately replaced.",
+                cooldown="4",
+                energy=["blue", "blue", "white"],
+                classes="Strategic,Action"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Takuma Ino",
+        description="A Grade 2 sorcerer who internalizes the powers of mythological beasts by becoming a spiritual medium. He is fiercely loyal to Gojo's group.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Kaichi: Homing Horn",
+                description="Ino fires a homing cursed energy horn that seeks its target, dealing 25 damage to one enemy. This attack cannot be evaded.",
+                cooldown="1",
+                energy=["blue", "black"],
+                classes="Energy,Instant"
+            ),
+            Skill(
+                name="Reiki: Water Cushion",
+                description="Ino summons a telekinetic water cushion, gaining 20% evasion and dealing 15 damage to attackers who hit him for 2 turns.",
+                cooldown="2",
+                energy=["white", "blue"],
+                classes="Strategic,Action"
+            ),
+            Skill(
+                name="Kirin: Pain Nullifier",
+                description="Ino activates Kirin's intracerebral doping, ignoring all damage below 30 for 2 turns. This drains his stamina—he takes 10 extra damage after the effect ends.",
+                cooldown="2",
+                energy=["white", "black"],
+                classes="Strategic,Action"
+            ),
+            Skill(
+                name="Ryu: Dragon Crush",
+                description="Ino generates a massive serpentine dragon from his hands, dealing 50 damage to one enemy and reducing their damage output by 25% for 1 turn.",
+                cooldown="3",
+                energy=["blue", "green", "blue"],
+                classes="Energy,Instant"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Arata Nitta",
+        description="A Jujutsu High student with a purely supportive technique. While he cannot heal existing wounds, his Pain Killer ability perfectly halts all injury progression and bleeding.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Pain Killer",
+                description="Nitta stabilizes an ally, preventing any ongoing damage effects from worsening for 2 turns. The target also receives 20 damage reduction.",
+                cooldown="1",
+                energy=["white"],
+                classes="Strategic,Action"
+            ),
+            Skill(
+                name="Emergency Stabilization",
+                description="Nitta fully stabilizes a critically injured ally. For 1 turn, that ally cannot be reduced below 1 HP from any single attack.",
+                cooldown="3",
+                energy=["white", "white"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Wound Suppression",
+                description="Nitta stops all bleeding effects on the target and grants them 15 bonus HP (overheal).",
+                cooldown="2",
+                energy=["white", "black"],
+                classes="Strategic,Instant"
+            ),
+        ]
+    ),
+
     # ─────────────────────────────────────────────
     #  KYOTO JUJUTSU HIGH
     # ─────────────────────────────────────────────
@@ -580,6 +681,93 @@ CHARACTERS = [
         ]
     ),
 
+    Character(
+        name="Utahime Iori",
+        description="The supervisor of Kyoto Jujutsu High and holder of the Solo Forbidden Area technique, which amplifies the cursed energy of allied sorcerers through ritual performance.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Cursed Energy Boost",
+                description="Utahime amplifies an ally's cursed energy, granting them +20% damage output for 2 turns.",
+                cooldown="1",
+                energy=["white", "black"],
+                classes="Strategic,Action"
+            ),
+            Skill(
+                name="Solo Forbidden Area",
+                description="Utahime performs her ritual dance, amplifying ALL allies' cursed energy capacity by 120% for 2 turns. While active, all ally techniques cost 1 fewer energy.",
+                cooldown="4",
+                energy=["white", "white", "white"],
+                classes="Strategic,Action"
+            ),
+            Skill(
+                name="Ritual Incantation",
+                description="Utahime channels her dance and song to create a 2-turn persistent energy field, granting all allies 15 bonus damage per attack.",
+                cooldown="2",
+                energy=["white", "blue"],
+                classes="Strategic,Action"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Yoshinobu Gakuganji",
+        description="The conservative principal of Kyoto Jujutsu High who weaponizes the sound waves of his electric guitar into powerful cursed shockwaves.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Guitar Shockwave",
+                description="Gakuganji plays his guitar, converting sound into a mid-range cursed shockwave dealing 25 damage to one enemy.",
+                cooldown="1",
+                energy=["blue", "black"],
+                classes="Energy,Instant"
+            ),
+            Skill(
+                name="Cursed Resonance",
+                description="Gakuganji amplifies his guitar's output to send out a wide destructive wave dealing 20 damage to all enemies.",
+                cooldown="2",
+                energy=["blue", "blue"],
+                classes="Energy,Instant"
+            ),
+            Skill(
+                name="Maximum Feedback",
+                description="Gakuganji unleashes the full power of his sound amplification, dealing 50 damage to one enemy and stunning them for 1 turn.",
+                cooldown="3",
+                energy=["blue", "blue", "black"],
+                classes="Energy,Instant"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Momo Nishimiya",
+        description="A Kyoto Jujutsu High student who uses her broomstick for aerial reconnaissance and launching cursed wind blades at enemies.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Broomstick Recon",
+                description="Momo surveys the battlefield from above, granting her team 15 damage reduction for 1 turn and revealing enemy positioning.",
+                cooldown="1",
+                energy=["white", "black"],
+                classes="Strategic,Action"
+            ),
+            Skill(
+                name="Wind Sickle",
+                description="Momo swings her broom to launch a powerful wind blade dealing 30 damage to one enemy.",
+                cooldown="1",
+                energy=["blue", "black"],
+                classes="Energy,Instant"
+            ),
+            Skill(
+                name="Kamaitachi Barrage",
+                description="Momo launches multiple cursed wind blades incorporating debris, dealing 20 damage to all enemies.",
+                cooldown="2",
+                energy=["blue", "blue"],
+                classes="Energy,Instant"
+            ),
+        ]
+    ),
+
     # ─────────────────────────────────────────────
     #  OTHER SORCERERS
     # ─────────────────────────────────────────────
@@ -760,6 +948,129 @@ CHARACTERS = [
                 cooldown="3",
                 energy=["white", "green"],
                 classes="Strategic,Action"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Kokichi Muta",
+        description="A Kyoto student born with severe physical deformities under a Heavenly Restriction that grants vast cursed energy. He remotely pilots mechanical proxy bodies across Japan.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Ultra Cannon",
+                description="Mechamaru fires a concentrated palm blast, dealing 25 damage to one enemy.",
+                cooldown="1",
+                energy=["blue", "black"],
+                classes="Energy,Instant"
+            ),
+            Skill(
+                name="Ultra Spin",
+                description="Mechamaru delivers rapid rotational strikes, dealing 20 damage to one enemy twice.",
+                cooldown="1",
+                energy=["green", "black"],
+                classes="Physical,Instant"
+            ),
+            Skill(
+                name="Mode: Albatross",
+                description="Mechamaru opens his mouth cannons and unleashes a spread barrage, dealing 35 damage to one enemy.",
+                cooldown="2",
+                energy=["blue", "blue"],
+                classes="Energy,Instant"
+            ),
+            Skill(
+                name="Mode: Absolute",
+                description="Mechamaru deploys his massive construct powered by seventeen years of stored cursed energy, dealing 65 damage to one enemy. This skill can only be used once per game.",
+                cooldown="4",
+                energy=["blue", "blue", "blue"],
+                classes="Energy,Instant"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Ui Ui",
+        description="Mei Mei's younger brother with a unique teleportation technique. He can transport himself and allies instantaneously, and with permission, swap two people's souls.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Tactical Teleport",
+                description="Ui Ui teleports himself and one ally to any location on the battlefield, making the teleported ally untargetable for 1 turn.",
+                cooldown="1",
+                energy=["blue", "white"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Soul Swap",
+                description="Ui Ui exchanges the souls of two targets (requires consent), causing massive confusion. Both targets deal 50% reduced damage and take 20 extra damage for 2 turns.",
+                cooldown="4",
+                energy=["red", "blue", "white"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Sheet Transport",
+                description="Ui Ui drapes his sheet over an ally, shielding them from the next attack entirely and repositioning them safely.",
+                cooldown="2",
+                energy=["white", "black"],
+                classes="Strategic,Instant"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Miguel Oduol",
+        description="A powerful African sorcerer who uses his Prayer Song technique to simultaneously enhance his own abilities while actively driving away and weakening curses.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Prayer Song: Hakuna Rana",
+                description="Miguel dances to his Prayer Song, granting himself +25% damage and reducing one enemy's damage output by 25% for 2 turns.",
+                cooldown="2",
+                energy=["green", "blue"],
+                classes="Physical,Action"
+            ),
+            Skill(
+                name="Curse Repulsion",
+                description="Miguel's song drives away cursed energy, dealing 30 damage to one curse-type enemy and reducing their cursed technique damage by 40% for 1 turn.",
+                cooldown="2",
+                energy=["blue", "white"],
+                classes="Energy,Instant"
+            ),
+            Skill(
+                name="War Rhythm",
+                description="Miguel unleashes his full combat prowess, dealing 45 damage to one enemy and applying persistent song disruption for 2 turns.",
+                cooldown="3",
+                energy=["green", "green", "blue"],
+                classes="Physical,Instant"
+            ),
+        ]
+    ),
+
+    Character(
+        name="Master Tengen",
+        description="An immortal sorcerer who has lived for over a thousand years. Tengen maintains the mystical barriers protecting Jujutsu High campuses and the Tombs of the Star Corridor.",
+        image_url="https://i.imgur.com/placeholder.png",
+        skills=[
+            Skill(
+                name="Barrier Reinforcement",
+                description="Tengen strengthens all protective barriers, granting all allies 25 damage reduction for 2 turns.",
+                cooldown="2",
+                energy=["white", "white"],
+                classes="Strategic,Action"
+            ),
+            Skill(
+                name="Pure Barrier",
+                description="Tengen erects a perfect barrier around one ally, making them completely immune to all damage for 1 turn.",
+                cooldown="3",
+                energy=["white", "white", "blue"],
+                classes="Strategic,Instant"
+            ),
+            Skill(
+                name="Immortal Existence",
+                description="Tengen's eternal body resists death. If he would be reduced to 0 HP, he instead survives at 1 HP. This effect can only trigger once per game. Additionally, he restores 20 HP this turn.",
+                cooldown="4",
+                energy=["white", "red", "white"],
+                classes="Strategic,Instant"
             ),
         ]
     ),

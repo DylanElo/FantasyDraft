@@ -137,20 +137,22 @@ class Game:
 
     def resolve_battle(self) -> List[Tuple[int, str, List[str]]]:
         """
-        Since we moved to a purely ability-based card game (no arbitrary stats),
-        we'll just use a simple arbitrary score or just return teams for now to signify completion.
-        In a real scenario, this would trigger an actual Naruto Arena style battle phase.
+        Score each team by the total energy cost across all skills of all characters.
+        A skill's energy cost = the number of energy tokens in its energy list.
+        Higher total = more powerful team. Ties are broken randomly.
         """
         results = []
         for p_id in self.players:
             team = self.teams[p_id]
-            # Arbitrary score for draft phase completion standings
-            score = len(team) * 10
-
+            score = sum(
+                len(skill.energy)
+                for char in team
+                for skill in char.skills
+            )
             team_names = [c.name for c in team]
             results.append((score, self.player_names[p_id], team_names))
 
-        results.sort(key=lambda x: x[0], reverse=True)
+        results.sort(key=lambda x: (x[0], random.random()), reverse=True)
         return results
 
     def get_results(self) -> Tuple[bool, str]:
@@ -159,17 +161,16 @@ class Game:
 
         results = self.resolve_battle()
 
-        msg = "🏆 *Draft Results* 🏆\n\n"
+        msg = "🏆 *Game Results* 🏆\n\n"
         for i, (score, name, team) in enumerate(results):
             medal = "🥇" if i == 0 else "🥈" if i == 1 else "🥉" if i == 2 else "👤"
             team_str = ", ".join(team) if team else "Empty"
-
-            msg += f"{medal} *{name}*\n"
+            msg += f"{medal} *{name}* — {score} pts\n"
             msg += f"Team: {team_str}\n\n"
 
         if self.state == GameState.FINISHED:
             winner = results[0][1]
-            msg += f"Draft phase is complete! Ready for battle!"
+            msg += f"The winner is *{winner}*! Congratulations! 🎉"
         else:
             msg += "Draft is still in progress!"
 

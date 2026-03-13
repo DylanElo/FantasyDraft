@@ -18,17 +18,8 @@ const FACTION = {
 };
 
 const FACTION_LABEL = {
-    tokyo: 'Tokyo',  kyoto: 'Kyoto',  other: 'Sorcerer',
+    tokyo: 'Tokyo', kyoto: 'Kyoto', other: 'Sorcerer',
     villain: 'Villain', curse: 'Curse', culling: 'Culling',
-};
-
-const FACTION_BG = {
-    tokyo:   'linear-gradient(135deg,#1e2a4a,#0d1a3a)',
-    kyoto:   'linear-gradient(135deg,#0d2a3a,#0a1a2a)',
-    other:   'linear-gradient(135deg,#1a1a3a,#2a1a4a)',
-    villain: 'linear-gradient(135deg,#2a0d0d,#1a0a1a)',
-    curse:   'linear-gradient(135deg,#2a0a0a,#1a0505)',
-    culling: 'linear-gradient(135deg,#2a1a00,#1a1000)',
 };
 
 // ── GAME LOGIC ────────────────────────────────────────────────────────────────
@@ -37,6 +28,7 @@ const GameState = { IN_PROGRESS: 0, DECIDING: 1, FINISHED: 2 };
 
 let game = null;
 let allChars = [];
+let pCount = 2;
 
 class Game {
     constructor(names) {
@@ -53,7 +45,7 @@ class Game {
 
     draw() {
         if (this.state !== GameState.IN_PROGRESS) return null;
-        const card = this.deck.pop() ?? randChar();
+        const card = this.deck.length ? this.deck.pop() : randChar();
         this.drawn = card;
 
         if (this.cur.passUsed) {
@@ -78,7 +70,7 @@ class Game {
     pass() {
         if (this.state !== GameState.DECIDING || this.cur.passUsed) return null;
         this.cur.passUsed = true;
-        const card = this.deck.pop() ?? randChar();
+        const card = this.deck.length ? this.deck.pop() : randChar();
         this.drawn = card;
         const name = this.cur.name;
         this.cur.team.push(card);
@@ -107,20 +99,30 @@ function shuffle(a) {
     }
     return a;
 }
+
 function randChar() { return allChars[Math.floor(Math.random() * allChars.length)]; }
 
-// ── RENDER UTILS ──────────────────────────────────────────────────────────────
+function scoreTeams(players) {
+    return players.map(p => ({
+        name: p.name,
+        score: p.team.reduce((s, c) =>
+            s + (c.skills || []).reduce((ss, sk) => ss + (sk.energy || []).length, 0), 0),
+        team: p.team,
+    })).sort((a, b) => b.score - a.score || Math.random() - 0.5);
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
 function esc(s) {
     return String(s ?? '')
-        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function skillTypeClass(classes) {
     const c = (classes || '').toLowerCase();
-    if (c.includes('physical')) return 'type-physical';
+    if (c.includes('physical'))  return 'type-physical';
     if (c.includes('bloodline')) return 'type-bloodline';
-    if (c.includes('energy')) return 'type-energy';
+    if (c.includes('energy'))    return 'type-energy';
     if (c.includes('strategic')) return 'type-strategic';
     return '';
 }
@@ -132,211 +134,337 @@ function orbsHTML(energyArr) {
     }).join('');
 }
 
-function cardHTML(char, highlight = false) {
-    const faction = FACTION[char.name] || 'other';
-    const bg = FACTION_BG[faction];
-    const fLabel = FACTION_LABEL[faction] || '';
-    const hasImg = char.image_url && !char.image_url.includes('placeholder');
+// ── SCREEN SWITCHER ───────────────────────────────────────────────────────────
+function show(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+}
 
-    const artContent = hasImg
-        ? `<div class="card-art" style="background-image:url('${char.image_url}')"></div>`
-        : `<div class="card-art"><div class="card-art-fallback" style="background:${bg}">${esc(char.name.split(' ').map(w=>w[0]).join('')).toUpperCase()}</div></div>`;
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function toast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ── CARD HTML ─────────────────────────────────────────────────────────────────
+function charCardHTML(char) {
+    const faction = FACTION[char.name] || 'other';
+    const fLabel  = FACTION_LABEL[faction] || '';
+    const hasImg  = char.image_url && !char.image_url.includes('placeholder');
+
+    const art = hasImg
+        ? `<div class="char-art" style="background-image:url('${char.image_url}')"></div>`
+        : `<div class="char-art"><div class="char-art-fallback">${esc(char.name.split(' ').map(w => w[0]).join('').toUpperCase())}</div></div>`;
 
     const skills = (char.skills || []).map(s => {
+        const cd        = (!s.cooldown || s.cooldown === 'None' || s.cooldown === '0') ? 'None' : s.cooldown;
         const typeClass = skillTypeClass(s.classes);
-        const cd = s.cooldown === 'None' || s.cooldown === '0' ? 'None' : s.cooldown;
         return `
-        <div class="skill ${typeClass}">
-            <div class="skill-header">
+        <div class="skill-item ${typeClass}">
+            <div class="skill-top">
                 <span class="skill-name">${esc(s.name)}</span>
-                <div class="energy-row">${orbsHTML(s.energy)}</div>
+                <div class="orbs">${orbsHTML(s.energy)}</div>
             </div>
             <div class="skill-desc">${esc(s.description)}</div>
-            <div class="skill-footer">
-                <span class="skill-cd">CD: <span>${esc(cd)}</span></span>
-                <span class="skill-class">${esc((s.classes||'').split(',')[0])}</span>
+            <div class="skill-meta">
+                <span>CD: ${esc(cd)}</span>
+                <span class="skill-class">${esc((s.classes || '').split(',')[0].trim())}</span>
             </div>
         </div>`;
     }).join('');
 
     return `
-    <div class="card faction-${faction}${highlight ? ' new-card' : ''}">
-        ${artContent}
-        <div class="card-name-bar">
-            <div class="card-name">${esc(char.name)}</div>
-            <div class="card-faction-badge">${esc(fLabel)}</div>
+    <div class="char-card faction-${faction}">
+        ${art}
+        <div class="char-namebar">
+            <div class="char-name">${esc(char.name)}</div>
+            <div class="faction-badge">${esc(fLabel)}</div>
         </div>
-        <div class="card-body">
-            <div class="card-desc">${esc(char.description)}</div>
-            ${skills}
+        <div class="char-body">
+            <p class="char-desc">${esc(char.description)}</p>
+            <div class="skills-list">${skills}</div>
         </div>
     </div>`;
 }
 
-// ── SECTIONS ──────────────────────────────────────────────────────────────────
-function show(id) {
-    document.querySelectorAll('main > section').forEach(s => s.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
+// ── SETUP ─────────────────────────────────────────────────────────────────────
+function buildNameInputs() {
+    const container = document.getElementById('name-inputs');
+    container.innerHTML = '';
+    for (let i = 0; i < pCount; i++) {
+        const div = document.createElement('div');
+        div.className = 'form-group';
+        div.innerHTML = `
+            <div class="form-label">Player ${i + 1}</div>
+            <input class="name-field pname" type="text" placeholder="Enter name…" data-idx="${i}" autocomplete="off">`;
+        container.appendChild(div);
+    }
 }
 
-// ── RENDER DRAFT ─────────────────────────────────────────────────────────────
+buildNameInputs();
+
+document.querySelectorAll('.count-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.count-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        pCount = parseInt(btn.dataset.n, 10);
+        buildNameInputs();
+    });
+});
+
+document.getElementById('btn-start').addEventListener('click', () => {
+    if (!allChars.length) { toast('Characters not loaded yet.'); return; }
+    const names = [...document.querySelectorAll('.pname')]
+        .map((el, i) => el.value.trim() || `Player ${i + 1}`);
+    game = new Game(names);
+    show('draft');
+    renderDraft();
+});
+
+document.getElementById('btn-browse-open').addEventListener('click', () => {
+    activeFaction = 'all';
+    document.querySelectorAll('.f-tab').forEach(t => t.classList.toggle('active', t.dataset.f === 'all'));
+    renderCharGrid();
+    show('browse');
+});
+
+// ── DRAFT RENDER ─────────────────────────────────────────────────────────────
 function renderDraft() {
     if (!game) return;
     const { state, cur, players } = game;
 
-    // Turn header
-    document.getElementById('turn-player-name').textContent = cur.name;
-    document.getElementById('game-status').textContent =
-        `Round ${Math.min(Math.floor(players.reduce((s,p)=>s+p.team.length,0)/players.length)+1,MAX_TEAM)} / ${MAX_TEAM}`;
+    // Round badge
+    const pickedTotal = players.reduce((s, p) => s + p.team.length, 0);
+    const roundNum    = Math.min(Math.floor(pickedTotal / players.length) + 1, MAX_TEAM);
+    document.getElementById('round-badge').textContent = `R${roundNum} / ${MAX_TEAM}`;
 
-    const sub = state === GameState.DECIDING ? 'Keep or pass?' : 'Your turn to draw';
-    document.getElementById('turn-sub').textContent = sub;
+    // Turn bar
+    document.getElementById('turn-avatar').textContent = cur.name[0].toUpperCase();
+    document.getElementById('turn-name').textContent   = cur.name;
 
-    // Progress pips
-    const total = players.length * MAX_TEAM;
-    const filled = players.reduce((s,p)=>s+p.team.length,0);
-    document.getElementById('progress-track').innerHTML =
-        Array.from({length:total},(_,i)=>
-            `<div class="pip${i<filled?' filled':''}"></div>`
-        ).join('');
+    // Pips (one per slot across all players, filled = already picked)
+    const pipsEl = document.getElementById('turn-pips');
+    pipsEl.innerHTML = players.map(p =>
+        Array.from({ length: MAX_TEAM }, (_, i) =>
+            `<div class="pip${i < p.team.length ? ' done' : ''}"></div>`
+        ).join('')
+    ).join('');
 
-    // Draw / action area
-    const drawZone = document.getElementById('draw-zone');
-    const actionArea = document.getElementById('action-area');
+    // States
+    const drawState   = document.getElementById('draw-state');
+    const decideState = document.getElementById('decide-state');
 
     if (state === GameState.IN_PROGRESS) {
-        drawZone.style.display = 'flex';
-        actionArea.style.display = 'none';
+        drawState.classList.remove('hidden');
+        decideState.classList.add('hidden');
+        document.getElementById('turn-hint').textContent = 'Tap Draw to get a card';
+        document.getElementById('btn-draw').classList.remove('hidden');
+        document.getElementById('btn-keep').classList.add('hidden');
+        document.getElementById('btn-pass').classList.add('hidden');
     } else if (state === GameState.DECIDING) {
-        drawZone.style.display = 'none';
-        actionArea.style.display = 'flex';
-        document.getElementById('action-title').textContent = `Drew: ${game.drawn.name}`;
-        document.getElementById('drawn-card-container').innerHTML = cardHTML(game.drawn, true);
+        drawState.classList.add('hidden');
+        decideState.classList.remove('hidden');
+        document.getElementById('card-slot').innerHTML = charCardHTML(game.drawn);
+        const hint = cur.passUsed ? 'Keep or redraw (pass used)?' : 'Keep or pass once?';
+        document.getElementById('turn-hint').textContent = hint;
+        document.getElementById('btn-draw').classList.add('hidden');
+        document.getElementById('btn-keep').classList.remove('hidden');
+        document.getElementById('btn-pass').classList.remove('hidden');
         document.getElementById('btn-pass').disabled = cur.passUsed;
     }
-
-    // Teams
-    document.getElementById('teams-area').innerHTML = players.map(p => {
-        const isActive = (p.id === cur.id && state !== GameState.FINISHED);
-        const slots = Array.from({length:MAX_TEAM},(_,i) =>
-            p.team[i] ? cardHTML(p.team[i]) : `<div class="card-empty"><div class="slot-icon">✦</div><span>Slot ${i+1}</span></div>`
-        ).join('');
-        const passText = p.passUsed ? '<span style="color:#ef4444">used</span>' : '<span style="color:#22c55e">available</span>';
-        return `
-        <div class="player-board${isActive?' active-board':''}">
-            <div class="board-header">
-                <div class="board-name">
-                    ${esc(p.name)}
-                    ${isActive ? '<span class="active-badge">ACTIVE</span>' : ''}
-                </div>
-                <div class="board-meta">
-                    ${p.team.length}/${MAX_TEAM} cards &nbsp;·&nbsp; Pass: ${passText}
-                </div>
-            </div>
-            <div class="player-team">${slots}</div>
-        </div>`;
-    }).join('');
 }
 
-// ── RENDER RESULTS ────────────────────────────────────────────────────────────
-function renderResults() {
-    const medals = ['🥇','🥈','🥉','4️⃣'];
-    document.getElementById('results-content').innerHTML =
-        game.players.map((p,i) => `
-        <div class="result-row">
-            <div class="result-rank">${medals[i]||'·'}</div>
-            <div>
-                <div class="result-name">${esc(p.name)}</div>
-                <div class="result-team">${p.team.map(c=>esc(c.name)).join(' · ') || '—'}</div>
-            </div>
-        </div>`).join('');
-    document.getElementById('game-status').textContent = 'Draft complete!';
-}
-
-// ── SETUP UI ──────────────────────────────────────────────────────────────────
-let pCount = 2;
-
-function buildPlayerInputs() {
-    const container = document.getElementById('player-inputs');
-    container.innerHTML = '';
-    for (let i = 0; i < pCount; i++) {
-        const row = document.createElement('div');
-        row.className = 'player-row';
-        row.innerHTML = `
-            <label>Player ${i+1}</label>
-            <input type="text" placeholder="Enter name" class="pname" data-idx="${i}">`;
-        container.appendChild(row);
-    }
-}
-
-buildPlayerInputs();
-
-document.getElementById('btn-add-player').addEventListener('click', () => {
-    if (pCount >= 4) return;
-    pCount++;
-    buildPlayerInputs();
-    if (pCount >= 4) document.getElementById('btn-add-player').disabled = true;
+// Tap face-down card = draw
+document.getElementById('face-down').addEventListener('click', () => {
+    if (game && game.state === GameState.IN_PROGRESS)
+        document.getElementById('btn-draw').click();
 });
 
-document.getElementById('btn-start').addEventListener('click', () => {
-    if (!allChars.length) { alert('Characters not loaded yet.'); return; }
-    const names = [...document.querySelectorAll('.pname')]
-        .map((el,i) => el.value.trim() || `Player ${i+1}`);
-    game = new Game(names);
-    show('draft');
-    renderDraft();
-    addLog(`Draft started! ${names.join(' vs ')}`, true);
-});
-
-// ── DRAFT ACTIONS ─────────────────────────────────────────────────────────────
 document.getElementById('btn-draw').addEventListener('click', () => {
     if (!game || game.state !== GameState.IN_PROGRESS) return;
     const r = game.draw();
     if (!r) return;
-    addLog(r.msg, r.auto);
-    if (r.auto && game.state === GameState.FINISHED) { renderResults(); show('results'); }
-    else renderDraft();
+    toast(r.msg);
+    if (r.auto && game.state === GameState.FINISHED) { showResults(); return; }
+    renderDraft();
 });
 
 document.getElementById('btn-keep').addEventListener('click', () => {
     if (!game || game.state !== GameState.DECIDING) return;
     const msg = game.keep();
     if (!msg) return;
-    addLog(msg);
-    if (game.state === GameState.FINISHED) { renderResults(); show('results'); }
-    else renderDraft();
+    toast(msg);
+    if (game.state === GameState.FINISHED) { showResults(); return; }
+    renderDraft();
 });
 
 document.getElementById('btn-pass').addEventListener('click', () => {
     if (!game || game.state !== GameState.DECIDING) return;
     const r = game.pass();
     if (!r) return;
-    addLog(r.msg, true);
-    if (game.state === GameState.FINISHED) { renderResults(); show('results'); }
-    else renderDraft();
+    toast(r.msg);
+    if (game.state === GameState.FINISHED) { showResults(); return; }
+    renderDraft();
 });
 
+// ── RESULTS ───────────────────────────────────────────────────────────────────
+function showResults() {
+    if (!game) return;
+    const results = scoreTeams(game.players);
+    const medals  = ['🥇', '🥈', '🥉', '4️⃣'];
+
+    document.getElementById('winner-name').textContent = results[0].name;
+    document.getElementById('standings').innerHTML = results.map((r, i) => `
+        <div class="standing-row">
+            <div class="stand-rank">${medals[i] || '·'}</div>
+            <div class="stand-info">
+                <div class="stand-name">${esc(r.name)}</div>
+                <div class="stand-pts">${r.score} pts</div>
+                <div class="stand-team">${r.team.map(c => esc(c.name)).join(' · ') || '—'}</div>
+            </div>
+        </div>`).join('');
+
+    show('results');
+}
+
 document.getElementById('btn-new-game').addEventListener('click', () => {
-    game = null; pCount = 2;
-    buildPlayerInputs();
-    document.getElementById('btn-add-player').disabled = false;
-    document.getElementById('game-status').textContent = '';
+    game = null;
+    pCount = 2;
+    document.querySelectorAll('.count-btn').forEach(b => b.classList.toggle('active', b.dataset.n === '2'));
+    buildNameInputs();
     show('setup');
 });
 
-// ── LOG ───────────────────────────────────────────────────────────────────────
-function addLog(msg, important = false) {
-    const el = document.createElement('div');
-    el.className = 'log-entry' + (important ? ' important' : '');
-    el.textContent = msg;
-    document.getElementById('log').prepend(el);
+// ── TEAMS PANEL ───────────────────────────────────────────────────────────────
+document.getElementById('btn-teams-open').addEventListener('click', openTeamsPanel);
+document.getElementById('btn-teams-close').addEventListener('click', closeTeamsPanel);
+
+function openTeamsPanel() {
+    if (!game) return;
+    renderTeamsPanel(game.idx);
+    document.getElementById('teams-panel').classList.add('open');
+    document.getElementById('scrim').classList.remove('hidden');
 }
 
+function closeTeamsPanel() {
+    document.getElementById('teams-panel').classList.remove('open');
+    if (document.getElementById('char-modal').classList.contains('hidden'))
+        document.getElementById('scrim').classList.add('hidden');
+}
+
+function renderTeamsPanel(activeIdx) {
+    const { players } = game;
+
+    document.getElementById('panel-tabs').innerHTML = players.map((p, i) => `
+        <button class="p-tab${i === activeIdx ? ' active' : ''}" data-i="${i}">${esc(p.name)}</button>
+    `).join('');
+
+    document.querySelectorAll('.p-tab').forEach(btn => {
+        btn.addEventListener('click', () => renderTeamsPanel(parseInt(btn.dataset.i, 10)));
+    });
+
+    const p     = players[activeIdx];
+    const slots = Array.from({ length: MAX_TEAM }, (_, i) =>
+        p.team[i] ? miniCardHTML(p.team[i]) : `<div class="mini-empty"><div class="mini-empty-plus">+</div>Slot ${i + 1}</div>`
+    ).join('');
+
+    document.getElementById('panel-body').innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <span style="font-family:'Cinzel',serif;font-weight:800;font-size:14px">${esc(p.name)}</span>
+            <span style="font-size:11px;color:${p.passUsed ? 'var(--red)' : 'var(--green)'}">${p.passUsed ? '⚡ Pass used' : '✓ Pass available'}</span>
+        </div>
+        <div class="mini-grid">${slots}</div>`;
+
+    document.querySelectorAll('.mini-card').forEach(el => {
+        el.addEventListener('click', () => {
+            closeTeamsPanel();
+            openCharModal(el.dataset.name);
+        });
+    });
+}
+
+function miniCardHTML(char) {
+    const faction = FACTION[char.name] || 'other';
+    const hasImg  = char.image_url && !char.image_url.includes('placeholder');
+    const artStyle = hasImg ? `background-image:url('${char.image_url}')` : '';
+    return `
+    <div class="mini-card faction-${faction}" data-name="${esc(char.name)}">
+        <div class="mini-art" style="${artStyle}"></div>
+        <div class="mini-name">${esc(char.name)}</div>
+    </div>`;
+}
+
+// ── BROWSE ────────────────────────────────────────────────────────────────────
+let activeFaction = 'all';
+
+document.getElementById('btn-browse-back').addEventListener('click', () => show('setup'));
+
+document.querySelectorAll('.f-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.f-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        activeFaction = tab.dataset.f;
+        renderCharGrid();
+    });
+});
+
+function renderCharGrid() {
+    const filtered = activeFaction === 'all'
+        ? allChars
+        : allChars.filter(c => (FACTION[c.name] || 'other') === activeFaction);
+
+    document.getElementById('char-grid').innerHTML = filtered.map(c => {
+        const faction = FACTION[c.name] || 'other';
+        const hasImg  = c.image_url && !c.image_url.includes('placeholder');
+        const artStyle = hasImg ? `background-image:url('${c.image_url}')` : '';
+        return `
+        <div class="char-thumb" data-name="${esc(c.name)}">
+            <div class="char-thumb-art" style="${artStyle}">
+                <div class="char-thumb-info">
+                    <div class="char-thumb-name">${esc(c.name)}</div>
+                    <div class="char-thumb-faction">${esc(FACTION_LABEL[faction] || '')}</div>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+
+    document.querySelectorAll('.char-thumb').forEach(el => {
+        el.addEventListener('click', () => openCharModal(el.dataset.name));
+    });
+}
+
+// ── CHAR MODAL ────────────────────────────────────────────────────────────────
+function openCharModal(name) {
+    const char = allChars.find(c => c.name === name);
+    if (!char) return;
+    document.getElementById('char-modal-sheet').innerHTML = `
+        <div style="display:flex;justify-content:flex-end;padding:12px 14px 0">
+            <button class="icon-btn" id="btn-modal-close" aria-label="Close">✕</button>
+        </div>
+        ${charCardHTML(char)}`;
+    document.getElementById('char-modal').classList.remove('hidden');
+    document.getElementById('scrim').classList.remove('hidden');
+    document.getElementById('btn-modal-close').addEventListener('click', closeCharModal);
+}
+
+function closeCharModal() {
+    document.getElementById('char-modal').classList.add('hidden');
+    if (!document.getElementById('teams-panel').classList.contains('open'))
+        document.getElementById('scrim').classList.add('hidden');
+}
+
+document.getElementById('scrim').addEventListener('click', () => {
+    closeCharModal();
+    closeTeamsPanel();
+});
+
 // ── LOAD DATA ─────────────────────────────────────────────────────────────────
-// CHARACTERS_DATA is injected by characters_data.js
 allChars = typeof CHARACTERS_DATA !== 'undefined' ? CHARACTERS_DATA : [];
 if (!allChars.length) {
-    document.getElementById('game-status').textContent = '⚠ Character data missing';
+    console.warn('⚠ characters_data.js not loaded or CHARACTERS_DATA is empty');
 } else {
     console.log(`Loaded ${allChars.length} characters.`);
 }

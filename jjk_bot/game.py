@@ -24,7 +24,7 @@ class Game:
     def add_player(self, player_id: int, name: str) -> Tuple[bool, str]:
         if self.state != GameState.WAITING_FOR_PLAYERS:
             return False, "Game already started or finished."
-        if player_id in self.players:
+        if player_id in self.player_names:
             return False, f"{name}, you're already in the game!"
 
         self.players.append(player_id)

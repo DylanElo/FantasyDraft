@@ -117,8 +117,9 @@ class TestGame(unittest.TestCase):
         self.assertEqual(game.state, GameState.FINISHED)
         success, results = game.get_results()
         self.assertTrue(success)
-        self.assertIn("Draft Results", results)
-        self.assertIn("Draft phase is complete", results)
+        self.assertIn("Game Results", results)
+        self.assertIn("Alice", results)
+        self.assertIn("Bob", results)
 
     def test_resolve_battle(self):
         game = Game(789)

@@ -283,7 +283,7 @@ html, body {
 .char-card.faction-culling { border-color: rgba(245,158,11,0.5); }
 
 .char-art {
-  width: 100%; aspect-ratio: 16/9;
+  width: 100%; aspect-ratio: 3/4;
   background: var(--surf2); background-size: cover; background-position: center top;
   position: relative;
 }

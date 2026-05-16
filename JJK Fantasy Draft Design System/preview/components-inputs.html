@@ -1,0 +1,35 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><link rel="stylesheet" href="_card.css">
+<style>
+.name-field {
+  width: 100%; height: 52px; padding: 0 16px;
+  background: #0e0e26; border: 1.5px solid rgba(255,255,255,0.08);
+  border-radius: 12px; color: #f0f0ff;
+  font-size: 16px; font-family: 'Inter',sans-serif; outline: none;
+}
+.name-field:focus { border-color: #7c3aed; }
+.name-field.focused { border-color: #7c3aed; }
+.count-row { display:flex; gap:10px; }
+.count-btn {
+  flex:1; height:52px; background:#0e0e26; border:1.5px solid rgba(255,255,255,0.08);
+  border-radius:12px; color:#6b7094; font-size:19px; font-weight:800; font-family:'Inter',sans-serif; cursor:pointer;
+}
+.count-btn.active { border-color:#7c3aed; color:#a855f7; background:rgba(124,58,237,0.12); box-shadow:0 0 14px rgba(124,58,237,0.22); }
+.form-label { font-size:11px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:#6b7094; margin-bottom:8px; }
+</style>
+</head><body>
+<div class="card">
+  <div class="row" style="gap:18px;align-items:flex-start">
+    <div style="flex:1">
+      <div class="form-label">Players</div>
+      <div class="count-row">
+        <button class="count-btn">2</button>
+        <button class="count-btn active">3</button>
+        <button class="count-btn">4</button>
+      </div>
+    </div>
+    <div style="flex:1.4">
+      <div class="form-label">Player 1</div>
+      <input class="name-field focused" placeholder="Enter name…" value="Gojo"/>
+    </div>
+  </div>
+</div></body></html>

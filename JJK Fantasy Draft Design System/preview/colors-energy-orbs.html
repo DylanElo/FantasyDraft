@@ -1,0 +1,30 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><link rel="stylesheet" href="_card.css">
+<style>
+.orb-row { display:flex; gap:28px; align-items:flex-start; flex-wrap:wrap; }
+.orb-cell { display:flex; flex-direction:column; align-items:center; gap:8px; min-width: 96px; }
+.orb-big {
+  width: 38px; height: 38px; border-radius: 50%; position: relative; flex-shrink: 0;
+}
+.orb-big::after {
+  content:''; position:absolute; top:8px; left:8px; width:9px; height:9px; border-radius:50%;
+  background: rgba(255,255,255,0.5);
+}
+.orb-green { background:#22c55e; box-shadow:0 0 14px rgba(34,197,94,0.55); }
+.orb-red   { background:#ef4444; box-shadow:0 0 14px rgba(239,68,68,0.55); }
+.orb-blue  { background:#3b82f6; box-shadow:0 0 14px rgba(59,130,246,0.55); }
+.orb-white { background:#e2e8f0; box-shadow:0 0 14px rgba(226,232,240,0.3); }
+.orb-black { background:#374151; border:1.5px solid #6b7280; }
+.orb-name { font-size: 11px; font-weight: 700; }
+.orb-role { font-size: 10px; color: var(--jjk-muted); }
+</style>
+</head><body>
+<div class="card">
+  <div class="orb-row">
+    <div class="orb-cell"><div class="orb-big orb-green"></div><div class="orb-name" style="color:#22c55e">Physical</div><div class="orb-role">Green</div></div>
+    <div class="orb-cell"><div class="orb-big orb-red"></div><div class="orb-name" style="color:#f87171">Bloodline</div><div class="orb-role">Red</div></div>
+    <div class="orb-cell"><div class="orb-big orb-blue"></div><div class="orb-name" style="color:#60a5fa">Curse Energy</div><div class="orb-role">Blue</div></div>
+    <div class="orb-cell"><div class="orb-big orb-white"></div><div class="orb-name" style="color:#e2e8f0">Strategic</div><div class="orb-role">White</div></div>
+    <div class="orb-cell"><div class="orb-big orb-black"></div><div class="orb-name" style="color:#9ca3af">General</div><div class="orb-role">Black / neutral</div></div>
+  </div>
+  <div class="label" style="margin-top:18px;font-size:9px;color:#6b7094">Five energy types power every skill — orbs glow at 0 0 5–14px • &lt;color, 55%&gt;. Black is the only orb without a glow.</div>
+</div></body></html>

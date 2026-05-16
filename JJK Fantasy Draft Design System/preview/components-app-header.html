@@ -1,0 +1,45 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><link rel="stylesheet" href="_card.css">
+<style>
+.frame { background:#07071a; border-radius:14px; overflow:hidden; border:1px solid var(--jjk-border); }
+.app-header {
+  height:56px; padding:0 14px;
+  display:flex; align-items:center; justify-content:space-between;
+  background:rgba(7,7,26,0.96); border-bottom:1px solid rgba(255,255,255,0.08);
+}
+.header-left, .header-right { display:flex; align-items:center; gap:8px; }
+.header-logo { font-size:20px; color:#a855f7; font-family:'Cinzel',serif; }
+.header-title { font-family:'Cinzel',serif; font-size:14px; font-weight:700; }
+.round-badge { font-size:11px; font-weight:700; padding:4px 10px; border-radius:100px; background:rgba(124,58,237,0.15); border:1px solid rgba(124,58,237,0.4); color:#a855f7; }
+.icon-btn { width:40px; height:40px; display:flex; align-items:center; justify-content:center; background:#0e0e26; border:1px solid var(--jjk-border); border-radius:10px; color:#f0f0ff; }
+.turn-bar { padding:12px 14px; display:flex; align-items:center; gap:12px; background:#0e0e26; border-bottom:1px solid var(--jjk-border); }
+.turn-avatar { width:46px; height:46px; background:#7c3aed; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:900; box-shadow:0 0 18px rgba(124,58,237,0.35); }
+.turn-name { font-family:'Cinzel',serif; font-size:15px; font-weight:900; color:#fcd34d; text-shadow:0 0 12px rgba(245,158,11,0.35); }
+.turn-hint { font-size:11.5px; color:#6b7094; margin-top:1px; }
+.pip { width:10px; height:10px; border-radius:50%; background:#161630; border:1.5px solid rgba(255,255,255,0.08); }
+.pip.done { background:#7c3aed; border-color:#7c3aed; box-shadow:0 0 6px rgba(124,58,237,0.35); }
+</style>
+</head><body>
+<div class="card" style="padding:18px 32px">
+  <div class="frame">
+    <div class="app-header">
+      <div class="header-left">
+        <span class="header-logo">呪</span>
+        <span class="header-title">Fantasy Draft</span>
+      </div>
+      <div class="header-right">
+        <div class="round-badge">R3 / 5</div>
+        <button class="icon-btn">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="turn-bar">
+      <div class="turn-avatar">G</div>
+      <div style="flex:1">
+        <div class="turn-name">Gojo</div>
+        <div class="turn-hint">Tap Draw to get a card</div>
+      </div>
+      <div style="display:flex;gap:4px"><div class="pip done"></div><div class="pip done"></div><div class="pip done"></div><div class="pip"></div><div class="pip"></div></div>
+    </div>
+  </div>
+</div></body></html>

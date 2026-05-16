@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jujutsu Kaisen Arena Card Game</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>Jujutsu Kaisen Arena Card Game</h1>
+            <div id="connection-status">Disconnected</div>
+        </header>
+
+        <main>
+            <!-- Lobby Screen -->
+            <section id="lobby" class="active">
+                <div class="lobby-container card-panel">
+                    <h2>Join a Battle</h2>
+                    <input type="text" id="player-name" placeholder="Enter your name">
+                    <input type="text" id="room-id" placeholder="Enter room ID (default: lobby)">
+                    <button id="btn-join" class="btn primary">Join Room</button>
+                </div>
+            </section>
+
+            <!-- Game Arena Screen -->
+            <section id="game-arena">
+                <div class="arena-header card-panel">
+                    <div id="game-info">
+                        <h2>Room: <span id="current-room"></span></h2>
+                        <div id="game-state-text">Waiting for players...</div>
+                    </div>
+                    <div id="controls">
+                        <button id="btn-start" class="btn success" style="display:none;">Start Game</button>
+                        <button id="btn-draw" class="btn primary" style="display:none;">Draw Card</button>
+                        <button id="btn-keep" class="btn success" style="display:none;">Keep Card</button>
+                        <button id="btn-pass" class="btn danger" style="display:none;">Pass Card</button>
+                    </div>
+                </div>
+
+                <!-- Last Drawn Card Area -->
+                <div id="action-area" class="card-panel" style="display:none;">
+                    <h3>Drawn Card</h3>
+                    <div id="drawn-card-container"></div>
+                </div>
+
+                <!-- Players' Teams -->
+                <div id="players-area">
+                    <!-- Dynamic player boards will be injected here -->
+                </div>
+            </section>
+
+            <!-- Notification Log -->
+            <aside id="log-panel" class="card-panel">
+                <h3>Battle Log</h3>
+                <div id="messages"></div>
+            </aside>
+        </main>
+
+        <!-- Game Over Modal -->
+        <div id="game-over-modal" class="modal">
+            <div class="modal-content card-panel">
+                <h2>Game Over!</h2>
+                <div id="results-text"></div>
+                <button id="btn-play-again" class="btn primary">Play Again</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pass Python session ID to JS -->
+    <script>
+        const PLAYER_SESSION_ID = "{{ player_id }}";
+    </script>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

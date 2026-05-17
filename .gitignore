@@ -6,3 +6,19 @@ venv/
 env/
 .vscode/
 .idea/
+
+# Local model system files and logs
+.claude/
+SKILL.md
+references/
+debug-state.json
+server.log
+nul
+
+# Reference downloads/analyses (unneeded in git)
+naruto-unison-master/
+naruto-arena-app-master.zip
+naruto_analysis.txt
+naruto_kit_patterns.txt
+analyze_naruto.py
+write_script.py

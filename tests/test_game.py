@@ -114,7 +114,9 @@ class TestGame(unittest.TestCase):
         game.draw(2)
         game.keep(2)
 
-        self.assertEqual(game.state, GameState.FINISHED)
+        # After drafting, game transitions to TEAM_SELECTION (not FINISHED)
+        self.assertEqual(game.state, GameState.TEAM_SELECTION)
+        # get_results is available via resolve_battle
         success, results = game.get_results()
         self.assertTrue(success)
         self.assertIn("Game Results", results)
@@ -128,7 +130,7 @@ class TestGame(unittest.TestCase):
         game.add_player(3, "Charlie")
 
         # Create dummy characters
-        skill1 = Skill(name="Skill1", description="", cooldown="", energy=["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"], classes="")
+        skill1 = Skill(name="Skill1", desc="", cost=["black"]*10, classes=[], effects=[])
         char1 = Character(name="Char1", description="", image_url="", skills=[skill1])
         char2 = Character(name="Char2", description="", image_url="", skills=[skill1])
         char3 = Character(name="Char3", description="", image_url="", skills=[skill1])
@@ -169,7 +171,7 @@ class TestGame(unittest.TestCase):
         game.add_player(1, "Alice")
         game.add_player(2, "Bob")
 
-        skill1 = Skill(name="Skill1", description="", cooldown="", energy=["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"], classes="")
+        skill1 = Skill(name="Skill1", desc="", cost=["black"]*10, classes=[], effects=[])
         char1 = Character(name="Char1", description="", image_url="", skills=[skill1])
 
         # Both get 1 character

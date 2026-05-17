@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=10">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
 </head>
 <body>
@@ -53,6 +53,10 @@
             <span class="orb orb-black"></span> General
           </div>
         </div>
+        <div class="history-section">
+          <div class="legend-title">Match History</div>
+          <div id="history-block" class="history-block"></div>
+        </div>
       </div>
     </div>
   </section>
@@ -71,6 +75,9 @@
             <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
             <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
           </svg>
+        </button>
+        <button class="icon-btn btn-reset-room" aria-label="Reset room" title="Reset room">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.34"/></svg>
         </button>
       </div>
     </header>
@@ -96,21 +103,21 @@
       </div>
     </div>
 
-    <div id="battle-container" class="hidden"></div>
+
 
     <div class="action-bar">
-      <button id="btn-start" class="action-btn btn-draw" style="display:none;">
+      <button id="btn-start" class="action-btn btn-draw hidden">
         Ignite Battle
       </button>
-      <button id="btn-draw"  class="action-btn btn-draw" style="display:none;">
+      <button id="btn-draw"  class="action-btn btn-draw hidden">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.34"/></svg>
         Draw
       </button>
-      <button id="btn-keep"  class="action-btn btn-keep" style="display:none;">
+      <button id="btn-keep"  class="action-btn btn-keep hidden">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         Keep
       </button>
-      <button id="btn-pass"  class="action-btn btn-pass" style="display:none;">
+      <button id="btn-pass"  class="action-btn btn-pass hidden">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         Pass
       </button>
@@ -120,6 +127,97 @@
         <div id="messages"></div>
     </aside>
   </section>
+
+  <!-- ── TEAM SELECTION ── -->
+  <section id="team-selection" class="screen">
+    <header class="app-header">
+      <div class="header-left">
+        <span class="header-title">Select Team (3)</span>
+      </div>
+      <div class="header-right">
+        <button class="icon-btn btn-reset-room" aria-label="Reset room" title="Reset room">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.34"/></svg>
+        </button>
+      </div>
+    </header>
+    <div class="draft-body" style="justify-content:flex-start; padding-top:20px; overflow-y:auto;">
+      <p id="selection-hint" style="text-align:center; margin-bottom: 20px; font-weight: bold; color: var(--gold);">Choose 3 fighters to enter combat</p>
+      <div id="selection-grid" class="char-grid" style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin-bottom:20px;"></div>
+      <div id="synergy-summary" class="hidden" style="max-width:420px;margin:0 auto 16px;padding:12px;background:var(--surf);border:1px solid var(--border);border-radius:var(--r-sm);"></div>
+    </div>
+    <div class="action-bar">
+      <button id="btn-lock-team" class="btn-primary" disabled style="opacity: 0.5;">Lock In Team</button>
+    </div>
+  </section>
+
+  <!-- ── BATTLE ARENA ── -->
+  <section id="battle-arena" class="screen">
+    <header class="app-header">
+      <div class="header-left">
+        <span class="header-logo">呪</span>
+        <span class="header-title">Cursed Clash</span>
+      </div>
+      <div class="header-right">
+        <div class="round-badge" id="battle-turn-badge">Turn 1</div>
+        <button class="icon-btn btn-reset-room" aria-label="Reset room" title="Reset room">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.34"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Turn indicator bar -->
+    <div class="turn-bar" id="battle-turn-bar">
+      <div class="turn-avatar" id="battle-turn-avatar">?</div>
+      <div class="turn-text">
+        <div class="turn-name" id="battle-turn-name">—</div>
+        <div class="turn-hint" id="battle-turn-hint">Awaiting action…</div>
+      </div>
+    </div>
+
+    <!-- Energy panel -->
+    <div class="energy-panel" id="energy-panel">
+      <div class="energy-panel-label">YOUR ENERGY</div>
+      <div class="energy-panel-pools" id="my-energy-pool"></div>
+    </div>
+
+    <!-- Main battle grid -->
+    <div class="battle-body" id="battle-body">
+
+      <!-- Opponent team (top) -->
+      <div class="battle-team battle-team--opponent" id="team-opponent">
+        <div class="team-label">OPPONENT</div>
+        <div class="battle-chars" id="chars-opponent"></div>
+      </div>
+
+      <!-- Skill selection panel (slides up from bottom) -->
+      <div class="skill-panel hidden" id="skill-panel">
+        <div class="skill-panel-header">
+          <span id="skill-panel-char-name">—</span>
+          <button class="icon-btn" id="btn-skill-cancel">✕</button>
+        </div>
+        <div class="skill-list-battle" id="skill-list-battle"></div>
+      </div>
+
+      <!-- My team (bottom) -->
+      <div class="battle-team battle-team--mine" id="team-mine">
+        <div class="team-label">MY TEAM</div>
+        <div class="battle-chars" id="chars-mine"></div>
+      </div>
+
+    </div>
+
+    <!-- Action log -->
+    <div class="battle-log" id="battle-log"></div>
+
+    <!-- Target selection prompt -->
+    <div class="target-prompt hidden" id="target-prompt">Select a target</div>
+
+  </section>
+
+  <!-- ── BATTLE BREAKDOWN ── -->
+  <div class="breakdown-overlay hidden" id="breakdown-overlay">
+    <div class="breakdown-sheet" id="breakdown-sheet"></div>
+  </div>
 
   <!-- ── RESULTS ── -->
   <section id="results" class="screen">
@@ -162,7 +260,7 @@
   <script>
     const PLAYER_SESSION_ID = "{{ player_id }}";
   </script>
-  <script src="{{ url_for('static', filename='characters_data.js') }}"></script>
-  <script src="{{ url_for('static', filename='app.js') }}"></script>
+  <script src="{{ url_for('static', filename='characters_data.js') }}?v=10"></script>
+  <script src="{{ url_for('static', filename='app.js') }}?v=10"></script>
 </body>
 </html>

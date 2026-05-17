@@ -10,51 +10,78 @@ sys.modules['flask_socketio'] = MagicMock()
 # Add root directory to sys.path to import jjk_bot and web
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from web.app import skill_to_dict, character_to_dict
+from web.app import skill_to_dict, char_to_dict
 from jjk_bot.characters import Skill, Character
 
 class TestWebHelpers(unittest.TestCase):
     def test_skill_to_dict(self):
         skill = Skill(
             name="Test Skill",
-            description="Test Description",
-            cooldown="1",
-            energy=["blue", "black"],
-            classes="Energy,Instant"
+            desc="Test Description",
+            cooldown=1,
+            cost=["blue", "black"],
+            classes=["Energy", "Instant"],
+            effects=[]
         )
         expected = {
             'name': "Test Skill",
             'description': "Test Description",
-            'cooldown': "1",
+            'cooldown': 1,
+            'cooldown_int': 1,
             'energy': ["blue", "black"],
-            'classes': "Energy,Instant"
+            'classes': "Energy, Instant",
+            'target_type': 'enemy',
+            'is_aoe': False,
+            'damage': 0,
+            'heal': 0,
+            'stun_turns': 0,
+            'invuln_turns': 0,
+            'dot_damage': 0,
+            'dot_turns': 0,
+            'damage_reduction': 0,
+            'ignores_dr': False,
+            'ignores_invuln': False,
         }
         self.assertEqual(skill_to_dict(skill), expected)
 
     def test_skill_to_dict_empty(self):
         skill = Skill(
             name="",
-            description="",
-            cooldown="",
-            energy=[],
-            classes=""
+            desc="",
+            cooldown=0,
+            cost=[],
+            classes=[],
+            effects=[]
         )
         expected = {
             'name': "",
             'description': "",
-            'cooldown': "",
+            'cooldown': 0,
+            'cooldown_int': 0,
             'energy': [],
-            'classes': ""
+            'classes': "",
+            'target_type': 'enemy',
+            'is_aoe': False,
+            'damage': 0,
+            'heal': 0,
+            'stun_turns': 0,
+            'invuln_turns': 0,
+            'dot_damage': 0,
+            'dot_turns': 0,
+            'damage_reduction': 0,
+            'ignores_dr': False,
+            'ignores_invuln': False,
         }
         self.assertEqual(skill_to_dict(skill), expected)
 
     def test_character_to_dict(self):
         skill = Skill(
             name="Test Skill",
-            description="Test Description",
-            cooldown="1",
-            energy=["blue"],
-            classes="Energy"
+            desc="Test Description",
+            cooldown=1,
+            cost=["blue"],
+            classes=["Energy"],
+            effects=[]
         )
         char = Character(
             name="Test Char",
@@ -69,15 +96,27 @@ class TestWebHelpers(unittest.TestCase):
             'skills': [{
                 'name': "Test Skill",
                 'description': "Test Description",
-                'cooldown': "1",
+                'cooldown': 1,
+                'cooldown_int': 1,
                 'energy': ["blue"],
-                'classes': "Energy"
+                'classes': "Energy",
+                'target_type': 'enemy',
+                'is_aoe': False,
+                'damage': 0,
+                'heal': 0,
+                'stun_turns': 0,
+                'invuln_turns': 0,
+                'dot_damage': 0,
+                'dot_turns': 0,
+                'damage_reduction': 0,
+                'ignores_dr': False,
+                'ignores_invuln': False,
             }]
         }
-        self.assertEqual(character_to_dict(char), expected)
+        self.assertEqual(char_to_dict(char), expected)
 
     def test_character_to_dict_none(self):
-        self.assertIsNone(character_to_dict(None))
+        self.assertIsNone(char_to_dict(None))
 
     def test_character_to_dict_no_skills(self):
         char = Character(
@@ -92,7 +131,7 @@ class TestWebHelpers(unittest.TestCase):
             'image_url': "http://example.com/none.png",
             'skills': []
         }
-        self.assertEqual(character_to_dict(char), expected)
+        self.assertEqual(char_to_dict(char), expected)
 
 if __name__ == "__main__":
     unittest.main()

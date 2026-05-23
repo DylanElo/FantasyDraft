@@ -1,0 +1,41 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><link rel="stylesheet" href="_card.css">
+<style>
+.tilt-stage { perspective: 1200px; display: inline-block; }
+.tilt-card {
+  width: 220px; height: 300px; border-radius: 18px;
+  background: linear-gradient(135deg, #1a0a36 0%, #0e0624 50%, #07071a 100%);
+  border: 1.5px solid rgba(124,58,237,0.5);
+  box-shadow: 0 20px 60px rgba(124,58,237,0.25);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Cinzel',serif; font-size: 84px; color: rgba(168,85,247,0.6);
+  transform: rotateX(-10deg) rotateY(18deg) scale3d(1.02,1.02,1.02);
+  transition: transform 0.4s cubic-bezier(0.2,0.8,0.2,1);
+}
+.axis-overlay {
+  position: absolute; pointer-events: none; inset: 0;
+  display: flex; align-items: flex-end; justify-content: flex-end;
+  padding: 12px;
+  font-family: var(--jjk-font-mono); font-size: 10px; color: rgba(168,85,247,0.7);
+}
+</style>
+</head><body>
+<div class="card" style="padding:18px 32px">
+  <div class="row" style="gap:32px;align-items:center">
+    <div class="tilt-stage" style="position:relative">
+      <div class="tilt-card">呪</div>
+      <div class="axis-overlay">rX −10°&nbsp;&nbsp;rY +18°</div>
+    </div>
+    <div style="flex:1">
+      <div style="font-family:'Cinzel',serif;font-weight:900;font-size:16px;color:#f0f0ff">3D mouse tilt</div>
+      <div style="font-size:11px;color:#6b7094;line-height:1.6;margin-top:8px">
+        Card sits in a <code style="background:rgba(255,255,255,0.05);padding:1px 5px;border-radius:3px;font-family:var(--jjk-font-mono)">perspective(1400px)</code> parent. On mousemove inside the card frame:
+        <div style="font-family:var(--jjk-font-mono);font-size:10px;color:#3a3a5c;margin-top:8px;line-height:1.6">
+          rotateX = ((y − cy)/cy) × −12<br>
+          rotateY = ((x − cx)/cx) × +12<br>
+          scale3d(1.02, 1.02, 1.02)
+        </div>
+        <div style="font-size:11px;color:#6b7094;margin-top:8px">Snaps back to neutral on mouseleave with a 400ms <code style="font-family:var(--jjk-font-mono);font-size:10px">cubic-bezier(0.2, 0.8, 0.2, 1)</code> ease.</div>
+      </div>
+    </div>
+  </div>
+</div></body></html>

@@ -1,0 +1,46 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><link rel="stylesheet" href="_card.css">
+<style>
+.brush-stage {
+  background: radial-gradient(ellipse at center, rgba(245,158,11,0.12), transparent 70%);
+  padding: 24px 16px; border-radius: 14px;
+  text-align: center; flex: 1; min-width: 0;
+}
+.brush-name {
+  font-family: 'Cinzel Decorative', 'Cinzel', serif;
+  font-weight: 900; font-size: 44px;
+  background: linear-gradient(180deg, #fff 0%, #fcd34d 60%, #f59e0b 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  letter-spacing: 1px;
+  -webkit-mask: linear-gradient(90deg, #000 0%, #000 var(--p,100%), transparent calc(var(--p,100%) + 8%));
+          mask: linear-gradient(90deg, #000 0%, #000 var(--p,100%), transparent calc(var(--p,100%) + 8%));
+  animation: brushSweep 2.4s ease-in-out infinite;
+}
+@keyframes brushSweep {
+  0%   { --p: 0%; }
+  50%  { --p: 100%; }
+  60%  { --p: 100%; }
+  100% { --p: 0%; }
+}
+.brush-sub {
+  font-family: 'Cinzel', serif; font-size: 11px;
+  color: #fcd34d; letter-spacing: 4px; text-transform: uppercase;
+  margin-top: 8px; opacity: 0.85;
+}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&display=swap" rel="stylesheet">
+</head><body>
+<div class="card" style="padding:18px 32px">
+  <div class="row" style="gap:18px;align-items:center">
+    <div class="brush-stage">
+      <div class="brush-name">Sukuna</div>
+      <div class="brush-sub">Wins the Draft</div>
+    </div>
+    <div style="flex:1">
+      <div style="font-family:'Cinzel',serif;font-weight:900;font-size:16px;color:#f0f0ff">Ink‑brush reveal</div>
+      <div style="font-size:11px;color:#6b7094;line-height:1.6;margin-top:8px">
+        A horizontal linear‑gradient <strong>mask</strong> sweeps the winner name into view over 1.4s. The font is <code style="background:rgba(255,255,255,0.05);padding:1px 5px;border-radius:3px;font-family:var(--jjk-font-mono)">Cinzel Decorative</code>, a more ornate cut for ceremonial moments.
+        <div style="font-family:var(--jjk-font-mono);font-size:10px;color:#3a3a5c;margin-top:6px">cubic-bezier(0.65, 0, 0.35, 1) · masked from 0% → 108%</div>
+      </div>
+    </div>
+  </div>
+</div></body></html>

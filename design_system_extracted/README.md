@@ -23,12 +23,13 @@ A design system for **JJK Fantasy Draft**, a Jujutsu Kaisen–themed multiplayer
 |---|---|
 | `README.md` | This document. Start here. |
 | `SKILL.md` | Agent‑Skills entry point — load this if you're using the system to design new artifacts. |
-| `colors_and_type.css` | All design tokens (color, type, spacing, radius, shadow) as CSS custom properties + semantic helper classes. |
-| `fonts/` | Font notes. Cinzel + Inter are loaded from Google Fonts; no self‑hosted TTFs. |
-| `assets/` | Logo lockups, kanji marks, faction badges, energy orb SVGs, background textures, sample character art. |
-| `ui_kits/web-app/` | High‑fidelity React recreation of the mobile web UI (Setup → Draft → Results → Browse) as a clickable prototype. |
-| `preview/` | Atomic design‑system cards (colors, type, components, brand) rendered for the Design System tab. |
+| `AAA-DIRECTION.md` | The "Domain Expansion" elevation playbook — 3D tilt cards, holographic foils, ink‑brush reveals, sub‑bass SFX. Use this when the user asks for something cinematic. |
 | `heuristic-eval.md` | UX audit + gap analysis (mental‑model deviations, missing standard interactions, friction points). |
+| `colors_and_type.css` | All design tokens (color, type, spacing, radius, shadow, motion) as CSS custom properties + semantic helper classes. |
+| `fonts/` | Font notes. Cinzel + Inter are loaded from Google Fonts; no self‑hosted TTFs. |
+| `assets/` | Logo lockups, energy orb SVGs, Lucide‑family icons. |
+| `ui_kits/web-app/` | High‑fidelity React recreation of the mobile web UI (Lobby → Draft → Results → Browse) with the AAA upgrades baked in and toggle‑able via Tweaks. |
+| `preview/` | Atomic design‑system cards rendered for the Design System tab. |
 | `docs/`, `web/`, `jjk_bot/` | Imported source code from the repo, kept for reference. |
 
 ---

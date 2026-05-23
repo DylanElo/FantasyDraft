@@ -1,0 +1,1153 @@
+JJK CHARACTER ABILITY RESEARCH - TOKYO JUJUTSU HIGH
+=====================================================
+Research compiled from JJK manga (chapters 1-271), JJK 0 prequel, and anime.
+Generated: 2026-05-18
+=====================================================
+
+===========================================================================
+1. YUTA OKKOTSU
+===========================================================================
+
+OVERVIEW:
+Yuta Okkotsu is a Special Grade sorcerer and one of the four Special Grade
+sorcerers recognized by Jujutsu High. By the end of the series he is arguably
+the most versatile sorcerer alive, functioning as a copy-and-amplify engine
+with near-limitless cursed energy supplied through Rika.
+
+---------------------------------------------------------------------------
+CORE ABILITY: RIKA (Cursed Spirit / Queen of Curses)
+---------------------------------------------------------------------------
+Origin: Rika Orimoto was Yuta's childhood friend who died in an accident and
+became bound to him as a cursed spirit. In JJK 0 (prequel) she exists as a
+massive, monstrous incomplete cursed spirit of unquantifiable cursed energy.
+At the end of JJK 0, Yuta releases her soul so she can rest in peace.
+
+In the main series (post-Culling Game), Yuta reconstructs Rika from his own
+boundless cursed energy. This new Rika is not a lingering spirit -- she is a
+cursed spirit that Yuta actively generates and maintains from his own reserves.
+She is his primary power source and the vessel through which he performs Copy.
+She can manifest physically as a massive entity to fight, protect, or amplify.
+
+Damage type: Physical (manifestation attacks), Energy (cursed energy projection)
+Debuff: None inherently; her presence suppresses opponents psychologically
+Unique property: Because Yuta generates Rika himself rather than inheriting
+her, she has effectively no cursed energy ceiling -- she is as powerful as
+Yuta's reserves allow. His reserves are described as among the largest of any
+living sorcerer.
+
+---------------------------------------------------------------------------
+CORE ABILITY: COPY (Innate Cursed Technique)
+---------------------------------------------------------------------------
+Mechanics: Yuta's innate cursed technique. He can copy and store any cursed
+technique he witnesses or experiences directly, using Rika as the medium to
+store and replicate the copied technique. He does not need to fully understand
+the technique -- Rika retains it and allows him to reproduce it.
+
+Limitations: Cannot copy techniques requiring a bloodline or physiology he
+does not possess. He copies technique-based outputs, not inheritable genetics.
+Damage type: Varies by copied technique
+Unique property: He can use multiple copied techniques in a single engagement.
+By the Shinjuku arc, he has a large stored library of techniques.
+
+---------------------------------------------------------------------------
+CONFIRMED COPIED TECHNIQUES
+---------------------------------------------------------------------------
+
+A) CURSED SPEECH (copied from Toge Inumaki)
+   Mechanics: Inumaki's lineage technique -- words spoken with cursed energy
+   compel reality to obey their literal meaning. Yuta copies this and uses it
+   with a megaphone in JJK 0 to amplify the command volume and range.
+   Confirmed command used: "Twist" (Nejire) -- causes the target's body to
+   internally collapse and contort catastrophically.
+   Damage type: Affliction (soul-level compulsion, bypasses physical defenses)
+   Debuff: "Don't Move"/"Stop" = full paralysis/stun. "Twist" = lethal internal
+   structural damage. Commands scale in power with cursed energy output.
+   Unique property: Yuta appears to use Cursed Speech without the same severe
+   throat damage Inumaki suffers, likely because Rika mediates the output cost.
+
+B) CLEAVE (copied from Ryomen Sukuna)
+   Mechanics: An invisible adaptive slash of cursed energy. The cut
+   automatically scales its power to match the target's durability and cursed
+   energy level. Against an uncursed human, one slash is instantly lethal.
+   Against a hardened Grade 1 sorcerer, it scales proportionally stronger.
+   Damage type: Affliction-class (cursed technique slash, not a physical blade;
+   bypasses conventional physical defenses)
+   Debuff: None -- pure adaptive damage
+   Unique property: Cleave's power is not fixed -- it adjusts automatically.
+   This makes it equally effective against weak and powerful targets alike.
+
+C) DISMANTLE (copied from Ryomen Sukuna)
+   Mechanics: Fixed-output cursed energy slash (unlike the adaptive Cleave).
+   Produces multiple small cutting slashes simultaneously that fan outward.
+   Used for area suppression or multi-hit attacks against single targets.
+   Damage type: Affliction-class (cursed technique cutting damage)
+   Debuff: None -- pure fixed damage
+   Unique property: More controllable than Cleave. Yuta uses Dismantle in the
+   Shinjuku arc. The fixed output means it is less situationally variable.
+
+D) DHRUV LAKDAWALLA'S TECHNIQUE -- VECTOR
+   Mechanics: Dhruv's CT manipulates vectors (direction and magnitude of
+   forces). Any force (physical strikes, cursed energy blasts, projectiles)
+   that contacts the user can be redirected, amplified, or fully negated.
+   Damage type: Physical (redirected kinetic force) or Energy (redirected
+   cursed energy blasts); redirected attacks carry the original damage value
+   Debuff: None directly, but attackers can be hit by their own redirected
+   attacks -- a de facto counter
+   Unique property: Extremely powerful defensively. Yuta using Vector means
+   any physical technique directed at him can theoretically be turned back on
+   the attacker. One of the most useful defensive copies in his arsenal.
+
+E) REVERSE CURSED TECHNIQUE (RCT) / HEALING
+   Mechanics: Yuta can use RCT to heal himself and others. Positive cursed
+   energy (the inversion of negative cursed energy) is channeled to regenerate
+   wounds, restore flesh, and cure cursed damage.
+   Damage type: N/A -- healing
+   Debuff: N/A
+   Unique property: Very few sorcerers can use RCT to heal others. Shoko Ieiri
+   is the primary known exception outside Yuta. He can apply RCT through Rika
+   to heal allies mid-combat. His enormous reserves mean sustained healing is
+   viable in extended fights.
+
+---------------------------------------------------------------------------
+KATANA / SWORD COMBAT
+---------------------------------------------------------------------------
+Mechanics: Yuta is an elite swordfighter. He wields a katana and is noted as
+physically exceptional in close combat even when not using techniques.
+His swordsmanship is enhanced by cursed energy output channeled through Rika,
+making each slash carry enormous force beyond a normal blade strike.
+Damage type: Physical (blade cutting)
+Debuff: None
+Unique property: His sword is frequently infused with his copied techniques
+(e.g., striking with a blade while applying Cleave or Dismantle simultaneously
+for compounded damage output).
+
+---------------------------------------------------------------------------
+TRUE FORM: RIKA
+---------------------------------------------------------------------------
+Mechanics: When Yuta releases Rika fully -- pouring his cursed energy into her
+without restriction -- she manifests as a massive ancient-power-level entity.
+In this state her raw cursed energy output is at Special Grade level or above.
+Damage type: Physical + Energy (massive combined output)
+Debuff: The sheer cursed energy pressure can stun/suppress weaker opponents
+Unique property: Yuta's own body is protected inside/alongside Rika during
+this state. She functions simultaneously as extreme offense and defense.
+This is Yuta's ultimate form; the cost is enormous cursed energy expenditure.
+
+---------------------------------------------------------------------------
+DOMAIN EXPANSION: AUTHENTIC MUTUAL LOVE
+---------------------------------------------------------------------------
+Mechanics: Yuta's domain creates a bounded space filled with Rika's
+overwhelming cursed energy. Unlike most damage-dealing domains (e.g., Malevolent
+Shrine's slashes, Unlimited Void's information flood), Authentic Mutual Love
+is an AMPLIFICATION domain. Its sure-hit property ensures every technique Yuta
+uses inside automatically makes contact -- Rika guarantees this.
+Effect on targets: All Yuta's copied techniques (Cleave, Dismantle, Cursed
+Speech commands) cannot be dodged or blocked through movement. They land with
+mathematical certainty due to the domain's guaranteed-hit property.
+Damage type: Varies -- the domain itself does not deal a specific damage type;
+it is an amplification chamber for Yuta's diverse technique library.
+Debuff: All techniques used inside gain sure-hit property
+Unique property: Has an open/incomplete deployment (used as a barrier or aura)
+and a full territorial expansion. The full expansion places all targets inside.
+Unlike most domains, the "hit" is not a single effect but a guarantee that
+all his diverse copied techniques land simultaneously or in sequence.
+
+===========================================================================
+2. SATORU GOJO
+===========================================================================
+
+OVERVIEW:
+Satoru Gojo is the strongest jujutsu sorcerer in the world at the time of the
+series. He possesses both the Limitless cursed technique and the Six Eyes --
+a combination that appears once per generation in the Gojo clan. His power
+is described as a systemic threat to the entire jujutsu establishment.
+
+---------------------------------------------------------------------------
+CURSED TECHNIQUE: LIMITLESS (Mugen)
+---------------------------------------------------------------------------
+Gojo's innate technique manipulates space at an atomic/mathematical level.
+It operates by applying the concept of infinite convergence to real space.
+Three distinct states:
+
+A) INFINITY (Passive / Active Defense)
+   Mechanics: The baseline state of Limitless. Gojo slows all matter
+   approaching him to infinitely small increments using the mathematical
+   concept of convergence (Zeno's paradox applied physically). Nothing ever
+   fully reaches him -- the gap between an attack and Gojo always contains an
+   infinite number of subdivisions, so impact is mathematically impossible.
+   Damage type: None -- purely defensive
+   Debuff: None applied to enemies
+   Active vs. Passive: Normally runs passively (always on). Gojo can
+   consciously deactivate it (he does this to conserve energy or allow allies
+   to touch him). He can also tune Infinity selectively -- allowing some things
+   through while stopping others.
+   Unique property: This is not a "shield" with HP -- it is a mathematical
+   law applied to space. It cannot be broken through by raw force alone.
+   The Six Eyes allow Gojo to instantly calculate whether any incoming stimulus
+   can breach Infinity and adjust its parameters accordingly in real time.
+   Against techniques: Infinity stops technique effects that have physical
+   propagation (slashes, blasts, projectiles). Effects that target the soul
+   directly (affliction-class) may bypass it.
+
+B) CURSED TECHNIQUE LAPSE: BLUE
+   Mechanics: The "negative" application of Limitless. Amplifies the convergence
+   property beyond its natural state to create a zone of absolute spatial
+   attraction -- a vacuum/singularity point that pulls everything around it
+   inward with tremendous force.
+   Effect: Creates a point where space collapses inward. Targets near the Blue
+   convergence point are pulled violently into it, taking damage from the
+   compressed spatial pressure and forced movement.
+   Damage type: Physical/Energy (spatial compression force; the pull itself
+   does not distinguish between material types)
+   Debuff: Can trap or immobilize targets caught in the pull -- effectively a
+   stun or positional lockdown
+   Cooldown: Moderate (requires energy to amplify beyond passive Infinity level)
+   Unique property: The pull affects everything uniformly including non-living
+   matter. Highly environmental -- can collapse structures, pull debris as
+   shrapnel, and displace multiple targets simultaneously.
+
+C) CURSED TECHNIQUE REVERSAL: RED
+   Mechanics: The "positive" (reversed) application, achieved by inverting
+   Limitless's negative cursed energy into positive energy. Creates the exact
+   opposite of Blue -- a point of absolute repulsion rather than attraction.
+   Effect: A blast of explosive repulsive force radiating from a single point.
+   Whatever the Red convergence point contacts is launched away with enormous
+   kinetic force.
+   Damage type: Physical/Energy (kinetic repulsion force)
+   Debuff: Extreme knockback -- targets are launched, losing positioning and
+   potentially being slammed into walls/terrain for additional impact damage
+   Unique property: Because it uses positive (reversed) cursed energy, it is
+   more energetically costly than Blue but deals more direct forceful damage.
+   Red can also function as a healing method if directed inward (when used as
+   Reverse Cursed Technique on Gojo himself). The repulsion is explosive --
+   unlike Blue's sustained pull, Red is an instantaneous detonation.
+
+D) HOLLOW TECHNIQUE: PURPLE (Imaginary Technique: Hollow Purple)
+   Mechanics: The combination of Blue and Red applied simultaneously and merged.
+   The convergence of attraction and repulsion creates an "imaginary" mass that
+   does not exist in nature. This imaginary mass "erases" everything it passes
+   through -- matter, cursed energy constructs, and living beings contacted by
+   Purple are simply deleted from existence as it passes.
+   Effect: A sphere or beam of imaginary mass. It does not explode, cut, or
+   burn. It erases. Structures struck by Purple have a clean void left where
+   the mass passed. Sorcerers and cursed spirits struck are removed.
+   Damage type: Affliction (the erasure bypasses all conventional defenses --
+   you cannot block something composed of imaginary mass)
+   Debuff: None -- targets erased by Purple leave no target to debuff
+   Unique property: Purple is the only technique Gojo cannot use while Infinity
+   is active. The concurrent generation of Blue and Red destabilizes his own
+   spatial field, so he must consciously deactivate Infinity to fire Purple.
+   This creates a brief window of vulnerability. Purple travels in a straight
+   line and cannot be redirected after firing.
+
+---------------------------------------------------------------------------
+SIX EYES (Rikugan)
+---------------------------------------------------------------------------
+Mechanics: Not a technique -- an innate ocular ability that accompanies
+Limitless. Only one person per generation can possess both Six Eyes and
+Limitless simultaneously (they appear together in the Gojo clan bloodline).
+Capabilities:
+- See cursed energy at maximum resolution (precise measurement of any
+  sorcerer's output, reserves, and technique signatures)
+- Read technique signatures in real time -- identifies any technique the
+  moment it is initiated
+- Map opponent's cursed energy pathways (allows Gojo to predict how an
+  attack will propagate)
+- Calculate optimal Infinity parameters instantly -- adjusts what Infinity
+  blocks or allows through with zero lag
+- Perceive truth about cursed techniques at a depth no other sorcerer can match
+Practical effect in combat: Near-zero cursed energy waste running Infinity.
+The Six Eyes optimize every application so efficiently that Infinity costs
+Gojo almost nothing to maintain passively. Any other sorcerer attempting to
+run a comparable always-on defense would exhaust themselves in minutes.
+Damage type: N/A -- perception ability
+Debuff: N/A
+Unique property: The Six Eyes are why Gojo can run Infinity constantly.
+Without them, Limitless would be too costly to use as a passive defense.
+The Six Eyes also make Gojo essentially impossible to surprise -- he sees
+technique activations before they manifest.
+
+---------------------------------------------------------------------------
+DOMAIN EXPANSION: UNLIMITED VOID (Muryokusho)
+---------------------------------------------------------------------------
+DETAILED MANGA MECHANICS:
+Unlimited Void creates a bounded space that represents the interior of true
+Infinity -- not a defensive field, but an experiential space that exposes
+targets to the fundamental nature of Gojo's technique.
+
+What happens to targets inside:
+Anyone caught inside is exposed to infinite simultaneous information: every
+piece of knowledge, sensation, data, and stimulus in existence hits their
+consciousness all at once, continuously. The effect is not pain or fire or
+a cutting force. The victim's mind cannot process infinite concurrent input,
+so it processes effectively none of it. The brain locks up trying to handle
+unbounded simultaneous stimuli -- targets can perceive everything happening
+around them but their nervous system cannot issue any motor commands or make
+any decisions. They are fully conscious but completely paralyzed.
+
+Duration effects:
+- Sustained exposure of 0.2 seconds real time: Leaves a sorcerer incapacitated
+  for days or weeks after leaving the domain. Their nervous system remains
+  overloaded long after the domain closes.
+- Brief exposure (less than 0.2 sec): Immediate full-body paralysis while
+  inside; recovery is faster but still significant.
+
+Effect type: Full stun (while inside) + lasting weaken/nervous system debuff
+(persisting after the domain ends)
+
+The sure-hit property: Like all fully realized domains, the technique inside
+guarantees contact. The information flood cannot be dodged or physically blocked
+because it is not a physical attack -- it is pure experiential stimulus
+delivered directly to the mind. There is no moving out of the way of
+omnipresent infinite information.
+
+Does not deal traditional damage: The incapacitation is the primary weapon.
+A sorcerer paralyzed inside Unlimited Void is defenseless against Gojo
+attacking them conventionally while they are locked up.
+
+Against other domain users: If two domains clash, the stronger (more refined/
+denser) domain overwrites the other. Unlimited Void is considered essentially
+unbeatable in domain clash until the Sukuna fight.
+
+===========================================================================
+3. MEGUMI FUSHIGURO -- TEN SHADOWS TECHNIQUE
+===========================================================================
+
+OVERVIEW:
+The Ten Shadows Technique (Jushiki no Jutsu) allows the user to summon
+shikigami using cursed energy channeled through shadows. The user must tame
+each shikigami through a ritual combat -- if they lose, the shikigami is
+permanently destroyed. Once tamed, each is a distinct entity with unique
+abilities. Megumi can use shadows as a medium for partial shikigami constructs
+and shadow clones even outside of full summons.
+
+---------------------------------------------------------------------------
+SHIKIGAMI: DIVINE DOGS (Byakuya -- White / Kokuyou -- Black)
+---------------------------------------------------------------------------
+Two wolf-like shikigami, one white and one black.
+Effect: Physical attack shikigami. They chase and bite targets. They are
+especially effective against cursed spirits (bonus tracking/damage vs. curses).
+Damage type: Physical (fang/claw attacks)
+Debuff: None
+Unique property: They track cursed spirits relentlessly using a form of
+cursed energy scent-tracking. Against sorcerers they function as standard
+physical attackers. They can act independently once summoned.
+
+---------------------------------------------------------------------------
+SHIKIGAMI: DIVINE DOGS: TOTALITY
+---------------------------------------------------------------------------
+Unlocked condition: One Divine Dog must be killed in combat first.
+Mechanics: The surviving dog absorbs the power and essence of the dead one.
+It grows massively in size and strength -- larger body, greater speed,
+significantly enhanced durability and attack power.
+Effect: A single, substantially more powerful wolf that supersedes both
+original Divine Dogs.
+Damage type: Physical (enhanced fang/claw -- stronger than either original)
+Debuff: None
+Unique property: This is a permanent upgrade path, not a temporary mode.
+Totality is what Megumi deploys after losing one dog in his early battles.
+The transformation is irreversible -- once merged, they cannot revert.
+
+---------------------------------------------------------------------------
+SHIKIGAMI: NUE
+---------------------------------------------------------------------------
+A chimeric owl-like shikigami with enormous wingspan.
+Effect: Aerial attacker. Dives at high speed toward targets and delivers an
+electric thunderclap shock on impact.
+Damage type: Energy (lightning/electric discharge)
+Debuff: The electric shock can stun/briefly paralyze the target (shown in the
+anime -- targets hit visibly spasm from the electric discharge). Short duration.
+Unique property: Nue can be fused with Toad to create a combined entity.
+Nue also provides aerial reconnaissance and can attack at range by swooping,
+making it useful against opponents who are strong at close range.
+
+---------------------------------------------------------------------------
+SHIKIGAMI: GREAT SERPENT (Orochi)
+---------------------------------------------------------------------------
+An enormous serpent shikigami of massive scale.
+Effect: Primarily used to restrain, bind, or block. Megumi summons it to
+ensnare enemies, create terrain obstacles, or cut off escape routes.
+Damage type: Physical (constriction/crushing if it coils around a target)
+Debuff: Restraint/bind -- enemies ensnared by the serpent cannot move freely.
+Functions as a stun/immobilize effect.
+Unique property: Primary value is control and area denial rather than raw
+damage. Megumi frequently uses it to hold an opponent in place while delivering
+a follow-up attack. The serpent can also be used to block incoming attacks.
+
+---------------------------------------------------------------------------
+SHIKIGAMI: TOAD (Gama)
+---------------------------------------------------------------------------
+A large toad shikigami.
+Effect: Defensive/utility. Can swallow allies to teleport them away from
+danger (the ally emerges from a different shadow location). Can also swallow
+projectiles to absorb/negate incoming ranged attacks.
+Damage type: None -- purely defensive utility
+Debuff: None
+Unique property: When fused with Nue, creates "Max Nue" -- a chimeric
+owl-toad hybrid. Max Nue can grab and abduct targets mid-air, transporting
+them to a different location (offensive repositioning: throw enemies into
+hazards or separate them from allies).
+
+---------------------------------------------------------------------------
+SHIKIGAMI: MAX ELEPHANT (Bai)
+---------------------------------------------------------------------------
+A massive elephant shikigami of enormous scale.
+Effect: Summons a torrent of high-pressure water from its trunk, dealing
+massive area damage and terrain destruction in a wide cone or stream.
+Damage type: Physical (high-pressure water impact/blunt force)
+Debuff: Knockback from the water torrent; terrain destruction can forcibly
+displace enemies and destroy cover/structures
+Unique property: Enormous cursed energy cost. One of Megumi's most draining
+summons. Used for area clearing or against entrenched opponents. The water
+volume is extreme -- enough to flood enclosed spaces rapidly.
+
+---------------------------------------------------------------------------
+SHIKIGAMI: RABBIT ESCAPE (Usagi Escape)
+---------------------------------------------------------------------------
+Summons a massive swarm of small rabbit shikigami.
+Effect: Evasion and distraction utility. The rabbits overwhelm the area,
+occupying and confusing enemies while Megumi repositions or retreats.
+Damage type: None -- the rabbits do not deal meaningful damage
+Debuff: None
+Unique property: This is explicitly NOT a combat technique. It is a tactical
+withdrawal and evasion tool. The swarm creates visual chaos and forces enemies
+to deal with hundreds of small targets, buying Megumi time to escape or reset
+his positioning.
+
+---------------------------------------------------------------------------
+SHIKIGAMI: EIGHT-HANDLED SWORD DIVERGENT SILA DIVINE GENERAL MAHORAGA
+---------------------------------------------------------------------------
+The most powerful shikigami in the Ten Shadows system.
+Taming status: UNTAMEABLE. No Ten Shadows user in history has ever
+successfully tamed Mahoraga. Megumi cannot control it.
+Summoning method: An exorcism ritual (the Summoning Bell). Once the ritual
+begins, Mahoraga is released and attacks indiscriminately -- it has no allegiance
+to the summoner.
+Effect: Extreme physical combat. Mahoraga fights at a level capable of
+challenging Special Grade threats. It attacks everything in range.
+Damage type: Physical (sword strikes from its massive blade)
+
+THE WHEEL OF ADAPTATION:
+Mahoraga has a spinning eight-handled sword wheel above its head. This wheel
+represents its adaptation ability. Each time Mahoraga receives a type of damage
+or encounters a technique it has not experienced before, the wheel spins.
+After sufficient rotations, Mahoraga fully adapts and becomes immune or
+resistant to that specific stimulus, technique, or attack type.
+- Adaptation extends to its offensive weapon: Mahoraga's sword eventually adapts
+  to cut through ANY defense, including Gojo's Infinity (shown in the manga --
+  an adapted Mahoraga's blade physically cuts through Infinity)
+- Adaptation to Gojo's Infinity is what makes Sukuna's use of Mahoraga
+  (in Megumi's body) so devastating against Gojo
+Debuff: None applied by Mahoraga to opponents (it simply attacks)
+Unique property: Megumi uses Mahoraga as a last resort or self-sacrifice move --
+he summons it to kill himself and his opponent simultaneously, relying on his
+own survival instinct or a collaborator to manage the aftermath. Sukuna (while
+possessing Megumi) weaponized Mahoraga by using his own technique variety to
+prevent full adaptation, then using World Slash (Cleave applied to the entire
+surrounding environment) to destroy it after it had adapted to Gojo's Infinity.
+
+---------------------------------------------------------------------------
+DOMAIN EXPANSION: CHIMERA SHADOW GARDEN (Incomplete)
+---------------------------------------------------------------------------
+INCOMPLETE vs. COMPLETE DOMAIN -- DETAILED EXPLANATION:
+
+A COMPLETE domain creates a bounded space with a sure-hit technique effect
+inside. Any target inside cannot avoid the guaranteed contact with the
+domain's interior technique. A complete Chimera Shadow Garden would
+presumably fill a space with infinite shadow constructs guaranteeing all
+of Megumi's shikigami always make contact with targets.
+
+MEGUMI'S DOMAIN IS INCOMPLETE -- it lacks the sure-hit interior effect.
+
+What the incomplete domain DOES:
+1. Creates a bounded shadow-filled space
+2. Massively amplifies the Ten Shadows Technique within the space:
+   - Shikigami can be summoned at reduced cursed energy cost
+   - Shadow constructs and clones can be generated from the abundant shadow
+     material permeating the space
+   - Partial shikigami can be created without full summoning cost
+3. Shadows can be used to obscure positioning, create decoy shadow-clones
+   of Megumi, and generate terrain from shadow material
+4. Because it lacks the sure-hit, a skilled opponent can still evade
+   attacks from Megumi's shikigami within it
+
+STRATEGIC ADVANTAGE of the incomplete domain:
+Megumi uses Chimera Shadow Garden as an amplification and information-asymmetry
+tool rather than a kill chamber. He has perfect awareness of every shadow in
+the space; his opponents do not. He can attack from unexpected angles using the
+shadow network simultaneously with physical and shikigami pressure.
+
+===========================================================================
+4. YUJI ITADORI
+===========================================================================
+
+OVERVIEW:
+Yuji Itadori is physically gifted to a superhuman degree even before cursed
+energy training -- his baseline strength, speed, and durability are far beyond
+a normal human. As Sukuna's vessel he absorbs aspects of Sukuna's power
+throughout the series, culminating in the revelation that he has inherited
+Sukuna's innate cursed technique as his own.
+
+---------------------------------------------------------------------------
+DIVERGENT FIST
+---------------------------------------------------------------------------
+Mechanics: Yuji's innate issue early in the series -- his body was not trained
+to synchronize cursed energy release with physical impact. Instead his energy
+comes out in two waves: the physical fist impact, then a delayed second burst
+of cursed energy hitting a fraction of a second after. This "divergence" means
+opponents who reinforce with cursed energy against the first hit are caught
+off-guard by the secondary energy wave before they release their reinforcement.
+Damage type: Physical (first hit) + Energy (delayed second cursed energy burst)
+Debuff: None directly -- the value is the double-impact damage application
+Unique property: As Yuji improves cursed energy control, the divergence
+diminishes. However, in the final arc he uses Divergent Fist intentionally as
+a refined tool where the delayed energy wave is timed to hit the SOUL separately
+from the body -- a significant upgrade over his early uncontrolled version.
+
+---------------------------------------------------------------------------
+BLACK FLASH (Kokusen)
+---------------------------------------------------------------------------
+Mechanics: A technique any sorcerer can theoretically use but almost none can
+do on command. Black Flash requires applying cursed energy to a strike within
+0.000001 seconds of physical impact. When timed correctly, it creates a spatial
+distortion at the point of contact -- a visible black flash of warped space.
+The resulting strike deals 2.5 times the normal damage of that hit (this
+multiplier is explicitly stated in the manga).
+Damage type: Physical + Energy (spatial distortion at impact; 2.5x multiplier
+applies to the total output)
+Debuff: None, but the power spike can break through cursed energy reinforcement
+that would normally withstand the base strike
+Post-Black Flash state: After landing Black Flash, the sorcerer enters a
+heightened state of cursed energy sensitivity. For a period after, they can
+feel their cursed energy with far greater precision, making subsequent Black
+Flashes easier to land. This heightened state also opens access to the core
+concepts of cursed energy. This is the mechanism by which Yuji went from
+struggling with basic control to understanding his inherited technique -- he
+chained multiple Black Flashes and entered the heightened state.
+Unique property: Yuji is exceptional at Black Flash. He can chain them more
+reliably than almost any other sorcerer in the series.
+
+---------------------------------------------------------------------------
+SHRINE (Innate Cursed Technique -- Sukuna's CT inherited by Yuji)
+---------------------------------------------------------------------------
+MAJOR REVELATION (late manga / Shinjuku arc):
+Yuji does not merely contain Sukuna. He has inherited Sukuna's innate cursed
+technique -- Shrine -- as his own personal technique. This was confirmed in the
+Shinjuku arc. The technique manifests naturally from Yuji himself, completely
+independent of Sukuna's presence.
+
+CLEAVE:
+Mechanics: A single adaptive slash of cursed energy. The cut automatically
+adjusts its output to match the target's durability and cursed energy level.
+Against an uncursed human: instantly lethal. Against a Grade 1 sorcerer:
+scales proportionally to require multiple exchanges or one devastating blow.
+Damage type: Affliction-class (cursed technique slash; not a physical cutting
+action -- bypasses conventional physical defenses)
+Debuff: None -- pure scaling damage
+Unique property: The adaptive scaling makes Cleave equally dangerous against
+any tier of opponent. It cannot be tanked by simply being durable.
+
+DISMANTLE:
+Mechanics: Fixed-output barrage of small cursed energy slashes. Not adaptive --
+the total power is set regardless of target strength. Multiple cuts fan outward
+in a spread pattern. Used against multiple targets or to overwhelm defenses
+through volume of smaller cuts rather than one powerful slash.
+Damage type: Affliction-class (cursed technique cutting damage, fixed output)
+Debuff: None -- pure fixed damage
+Unique property: More controllable and versatile than Cleave. More useful for
+multi-target situations. Less devastating against single hardened opponents.
+
+---------------------------------------------------------------------------
+SOUL-MANIPULATION / SOUL PUNCHES (Shinjuku / Final Arc)
+---------------------------------------------------------------------------
+Mechanics: Yuji discovers he can imbue his physical strikes with the ability
+to damage the soul directly -- not just the body. This is a result of his
+extended time as Sukuna's vessel (absorbing aspects of Shrine's deeper nature).
+His punches become soul-attacks in addition to physical impacts.
+Effect: Physical strikes deal damage to the opponent's actual soul, not just
+their physical body. Healed flesh does not fully negate soul damage -- the
+victim's soul accumulates damage independently of body healing.
+Damage type: Affliction (soul damage -- bypasses physical defenses and RCT
+healing of physical wounds since the soul is not the body)
+Debuff: Cumulative soul damage weakens the opponent even if they continuously
+heal their body
+Unique property: This makes Yuji one of the few sorcerers whose physical
+attacks cannot simply be healed away. A target using RCT to fix body wounds
+still accumulates soul damage from his strikes.
+
+===========================================================================
+5. NOBARA KUGISAKI -- STRAW DOLL TECHNIQUE (Wara Ningyo no Jutsu)
+===========================================================================
+
+OVERVIEW:
+Nobara's technique connects cursed objects (nails, straw dolls) to targets
+through cursed energy. Once a connection is established, damage to the
+corresponding doll/nail transmits to the target's soul. This allows her to
+damage opponents who are otherwise physically unreachable, invulnerable, or
+heavily reinforced.
+
+---------------------------------------------------------------------------
+NAILS (Basic Technique)
+---------------------------------------------------------------------------
+Mechanics: Nobara uses a hammer to drive cursed-energy-infused nails into
+targets directly or into straw dolls connected to targets. When a nail is
+physically driven into a target, cursed energy is embedded into their body,
+creating an energy link.
+Damage type: Physical (nail impact) + Energy (cursed energy infusion on impact)
+Debuff: The embedded nail creates a connection that subsequent techniques
+(Hairpin, Resonance) can exploit for amplified follow-up damage
+Unique property: Nails can be thrown as ranged projectiles (driven by hammer
+or tossed) or used in melee with the hammer directly.
+
+---------------------------------------------------------------------------
+HAIRPIN (Kanzashi)
+---------------------------------------------------------------------------
+Mechanics: Nobara snaps her fingers -- the "Hairpin" gesture -- to detonate
+the cursed energy stored in previously embedded nails. The stored energy
+explodes outward from the nail's position at the point of embedding.
+Damage type: Energy (cursed energy explosion at the nail site)
+Debuff: None directly -- pure detonation damage payoff
+Unique property: Requires a nail to be embedded in the target first (combo
+setup prerequisite). The explosion damage is proportional to how much cursed
+energy was charged into the nail. Can be used to detonate multiple nails
+simultaneously for area or multi-target explosions.
+
+---------------------------------------------------------------------------
+RESONANCE (Kyoumei)
+---------------------------------------------------------------------------
+Mechanics: Nobara's defining technique. She drives a nail into her straw doll
+(which is connected to a target) and by the curse connection, the damage
+transmits directly to the soul of the linked target. The damage bypasses
+physical armor, cursed energy reinforcement, invulnerability barriers, and
+defensive techniques because it targets the soul, not the body.
+Damage type: Affliction (soul damage -- bypasses ALL conventional defenses)
+Debuff: None beyond the soul damage itself
+Unique property: This is what makes Nobara exceptional against otherwise
+durable opponents. Physical toughness and energy reinforcement are irrelevant
+to Resonance. She can damage a target who is physically untouchable simply
+by striking the doll. Works at range -- she does not need to be near the target
+at the moment of the Resonance strike.
+
+---------------------------------------------------------------------------
+SUPERNOVA
+---------------------------------------------------------------------------
+Mechanics: Nobara drives a nail through her own cheek/face. This act of
+self-harm and the cursed energy generated by her own pain is used as a
+catalyst to amplify the Resonance effect to a maximum level -- a massive
+burst of soul-targeting cursed energy transmitted through the doll connection.
+Damage type: Affliction (amplified soul damage -- her most powerful output)
+Debuff: Nobara takes significant self-damage from the nail through her face
+Unique property: Her most powerful single technique, reserved as a last resort.
+The self-harm serves as both the catalyst and the Binding Vow mechanism --
+by paying a physical price on her own soul/body, she amplifies the transmitted
+soul damage exponentially.
+
+---------------------------------------------------------------------------
+DOMAIN EXPANSION: NONE
+---------------------------------------------------------------------------
+Nobara Kugisaki does not possess a Domain Expansion in the manga.
+She is a Grade 3 sorcerer (whose practical ability exceeds her grade) but
+does not develop a domain during the series. Her combat identity is built
+entirely around the Straw Doll Technique and its soul-damage applications.
+
+===========================================================================
+6. KENTO NANAMI -- RATIO TECHNIQUE
+===========================================================================
+
+OVERVIEW:
+Kento Nanami is a Grade 1 sorcerer who operates as a professional. His
+Ratio Technique creates a universal mandatory weak point that bypasses the
+usual advantage cursed energy reinforcement gives to durable opponents.
+He fights with a bandaged cleaver blunt weapon (not a sharpened blade).
+
+---------------------------------------------------------------------------
+RATIO TECHNIQUE: 7:3 (Shichi-san no Kotowari)
+---------------------------------------------------------------------------
+Mechanics: Nanami divides any target object into a 7:3 ratio. The point at
+the exact 7:3 position along any axis of the target becomes a mandatory weak
+point -- a location where cursed energy structurally fails to maintain
+reinforcement. It is like forcing a structural fault line into any object.
+By striking this precise spot, Nanami ensures the target takes full amplified
+damage regardless of their cursed energy reinforcement elsewhere.
+Damage type: Physical (the strike is physical; the weak-point forces the
+cursed energy reinforcement to fail there, effectively bypassing DR that
+reinforcement would normally provide -- functionally piercing)
+Debuff: None -- the technique creates the weak point automatically on any
+object/person and Nanami locates and strikes it
+Unique property: Works on anything with an identifiable physical shape --
+people, buildings, cursed spirits, objects. The 7:3 ratio creates a universal
+structural fault applicable to any material. Nanami identifies the 7:3 point
+visually and tactilely, then strikes it with his cleaver.
+
+---------------------------------------------------------------------------
+COLLAPSE
+---------------------------------------------------------------------------
+Mechanics: Nanami applies his Ratio Technique to a large structure (wall,
+floor, ceiling, pillar) and strikes the 7:3 point of the structure, causing
+catastrophic structural failure. The collapsing structure deals area damage
+to everyone in the debris zone.
+Damage type: Physical (falling debris, structural collapse, impact force)
+Debuff: Area knockdown; terrain destruction displaces enemies and destroys cover
+Unique property: Environmentally dependent -- requires a usable structure.
+Highly effective in indoor or urban combat. Against opponents in open fields
+it cannot be used. Against multiple opponents clustered near a structure,
+Collapse is one of his most efficient AoE options.
+
+---------------------------------------------------------------------------
+OVERTIME (Jikan-gai)
+---------------------------------------------------------------------------
+Mechanics: Not a cursed technique in the traditional sense -- a Binding Vow
+(Jujutsu contract) Nanami made with his own cursed energy. During defined
+"work hours" he caps his cursed energy output artificially as a sacrifice.
+The compensation for this restriction is that after work hours (or when he
+explicitly invokes "Overtime"), the cap lifts entirely and his cursed energy
+output dramatically increases, proportionally boosting all technique damage.
+Damage type: N/A -- self-buff (power ceiling removal)
+Debuff: None applied to enemies
+Unique property: The Binding Vow mechanism means his power ceiling is
+artificially suppressed most of the time. Overtime removes this cap. His
+Ratio Technique damage under Overtime is substantially higher than standard
+output. Nanami treats this as a literal work/life separation -- he intentionally
+does not use his full power during defined work hours as part of his philosophy.
+
+---------------------------------------------------------------------------
+DOMAIN EXPANSION: NONE
+---------------------------------------------------------------------------
+No confirmed Domain Expansion for Kento Nanami in the manga. He never uses one.
+Nanami is a fundamentals-based sorcerer who relies entirely on Ratio Technique
+mastery, physical combat skill, and tactical intelligence rather than a domain.
+
+===========================================================================
+7. HAKARI KINJI -- IDLE DEATH GAMBLE
+===========================================================================
+
+OVERVIEW:
+Hakari Kinji is a student at Tokyo Jujutsu High who was suspended for fighting
+with higher-ups. He has enormous cursed energy reserves described as among the
+highest of his generation. His cursed energy is "passionate" and unstable --
+his Domain reflects his personality: a gambling machine that offers near-
+immortality as the jackpot.
+
+---------------------------------------------------------------------------
+DOMAIN EXPANSION: IDLE DEATH GAMBLE (Shinjitsu Issun Koumyou Issen)
+---------------------------------------------------------------------------
+Hakari's entire combat identity is built around this domain. He deploys it
+actively in combat and it runs continuously while active.
+
+THE PACHINKO MACHINE:
+Inside the domain, a Pachinko game plays out. The domain's interior logic
+follows the plot of a real doujin manga called "Ding-Dong! Dash" -- a
+romantic comedy that Hakari is obsessed with. The domain recreates the
+manga's setting and runs through its story. The Pachinko machine's balls
+represent the cursed energy cycle of the domain.
+
+JACKPOT MECHANICS (detailed):
+- Each round, the Pachinko machine runs through its trajectory
+- The Jackpot is determined by the manga's plot resolution -- the romantic
+  climax of "Ding-Dong! Dash" playing out successfully within the domain
+- When Jackpot triggers: Hakari's Reverse Cursed Technique activates
+  continuously at MAXIMUM output for approximately 4 minutes
+- During Jackpot: Hakari's body regenerates in real time at a rate that
+  makes him functionally immortal. ANY damage done to him is reversed:
+    * Dismemberment: limbs reattach or regrow
+    * Lethal strikes through vital organs: organs regenerate within seconds
+    * Complete destruction of body parts: reversed within the window
+  He cannot be killed during the Jackpot window by conventional means.
+- After Jackpot expires (approximately 4 minutes): domain resets and the
+  machine runs again for a new round
+- Hakari can re-deploy the domain to start a new round
+
+NON-JACKPOT COMBAT:
+Outside of Jackpot, Hakari is an exceptional physical brawler. He fights
+with powerful strikes enhanced by his enormous cursed energy reinforcement.
+His cursed energy output is high enough that even without Jackpot he is
+a Grade 1 level threat through raw power alone.
+
+THE NEAR-IMMORTALITY IN COMBAT -- PRACTICAL DESCRIPTION:
+Fighting Hakari during Jackpot:
+- Opponents must survive for the full 4-minute Jackpot window (extremely
+  difficult given he brawls recklessly knowing he cannot die)
+- OR find a way to deal damage that RCT cannot reverse:
+    * Soul damage (affliction-class techniques targeting the soul directly)
+    * Cursed technique-level destruction that overwhelms the RCT rate
+    * Techniques that prevent RCT from functioning
+- Hakari's strategy: enter domain, force Jackpot, then brawl with zero
+  self-preservation instinct because he genuinely cannot die during the window
+
+SURE-HIT PROPERTY:
+Inside Idle Death Gamble's active space, the sure-hit applies the Pachinko
+narrative -- the domain forces the internal game to run on all targets inside.
+The "hit" is not a damage technique but the imposition of the Jackpot cycle
+on the battlefield. This is an unusual domain whose guaranteed interior
+effect is a condition (the gambling mechanic) rather than direct damage.
+
+---------------------------------------------------------------------------
+RESTLESS LOVE (Physical Brawling)
+---------------------------------------------------------------------------
+Mechanics: Hakari's raw physical striking -- powerful melee attacks enhanced
+by cursed energy reinforcement. He drains the opponent through sustained
+aggressive combat.
+Damage type: Physical
+Unique property: He intentionally absorbs hits to maintain close range and
+pressure. His fighting style is designed for attrition -- he bets on outlasting
+opponents through his healing mechanics.
+
+===========================================================================
+8. PANDA -- THREE CORES
+===========================================================================
+
+OVERVIEW:
+Panda is an "Abrupt Mutated Cursed Corpse" -- not a real panda, but a unique
+autonomous cursed corpse created by Principal Masamichi Yaga. What makes Panda
+exceptional is that Yaga built THREE different "souls" (cores) inside him,
+each with a different personality and ability set. Most cursed corpses have
+one core/soul; Panda has three.
+
+CORE MECHANICS:
+Each core is a distinct soul entity housed within Panda's body. In combat,
+Panda can switch which core is active, altering his capabilities. When one
+core takes too much damage, it "retreats" (goes dormant to recover) and Panda
+can switch to another. Each core has its own cursed energy reservoir.
+
+---------------------------------------------------------------------------
+PANDA CORE (Default / "Younger Brother")
+---------------------------------------------------------------------------
+The "Panda" personality and default fighting mode.
+Effect: Standard balanced melee combat. This is Panda's casual/default state.
+Damage type: Physical (punches, physical strikes)
+Debuff: None specifically
+Unique property: Acts as the neutral baseline between the two specialized
+cores. This core represents Panda's everyday personality -- talkative,
+friendly, observational. In combat it is competent but not exceptional.
+
+---------------------------------------------------------------------------
+GORILLA CORE ("Older Brother")
+---------------------------------------------------------------------------
+Activated when Panda switches to his second soul.
+In Gorilla mode, Panda's physical power increases dramatically. His body
+structure and fighting style shifts to optimize for raw overwhelming force.
+
+UNBLOCKABLE DRUMMING BEAT:
+Mechanics: Rapid double-palm strike executed simultaneously from both arms.
+The mechanical key: the attack comes from both sides at exactly the same time.
+Blocking one arm means the other connects. Blocking both means no guard is
+possible. The strike is designed around the physical impossibility of fully
+blocking a simultaneous bilateral attack -- hence "Unblockable."
+Damage type: Physical (blunt force impact)
+Debuff: None -- pure damage
+Unique property: Mechanically defeats conventional guard/block techniques.
+Any opponent who raises their arms to guard is hit by the unblocked side.
+Any opponent who does not guard is hit by both. The only answer is complete
+evasion, not blocking. This is the Gorilla core's signature technique.
+
+GORILLA BOOST:
+General strength amplification while Gorilla core is active. All strikes
+deal more damage and Panda's body is more durable/impact-resistant.
+Damage type: N/A (self-buff)
+Effect: Increases all physical damage output; increases body durability
+
+---------------------------------------------------------------------------
+TRIDENT CORE ("Older Sister")
+---------------------------------------------------------------------------
+Activated when Panda switches to his third soul.
+The Trident core is focused on sustain and recovery rather than offense.
+Effect: Allows Panda to redirect cursed energy from his storage cores into
+self-healing/regeneration. He restores damaged flesh, seals wounds, and
+replenishes stamina.
+Damage type: N/A -- healing/recovery
+Debuff: None
+Unique property: Panda's three-core system means he effectively has three
+separate HP pools. When one core is critically damaged, he switches and
+the damaged core slowly recovers dormant while another fights. This gives
+him a de facto second and third "life" in extended combat, making him
+substantially harder to permanently kill than a standard cursed corpse.
+
+LOSING CORES:
+If a core is fully destroyed (not just damaged), it is permanently gone.
+Panda has lost cores during the series. A Panda with all three cores is at
+full strength; losing one reduces his options, stamina ceiling, and versatility.
+A Panda with only one core remaining fights with all the desperation of someone
+who knows the next defeat is final.
+
+===========================================================================
+9. TOGE INUMAKI -- CURSED SPEECH (Jujutsu: Kotodama)
+===========================================================================
+
+OVERVIEW:
+Toge Inumaki is a descendant of the Inumaki clan, which developed a unique
+lineage technique: applying cursed energy to spoken words, forcing reality
+to comply with their literal meaning. The technique is marked by the "Snake
+Eyes and Fangs" inscription visible on his face (around his mouth, cheeks,
+and throat).
+
+SELF-DAMAGE MECHANIC:
+Using Cursed Speech damages Inumaki's own throat -- the cursed energy backlash
+from forcing commands on resistant targets (especially strong sorcerers or
+special-grade curses) causes internal damage to his vocal cords. The stronger
+the target's resistance, the more damage Inumaki takes to force the command
+through. This is why he communicates in food ingredient words in casual
+conversation -- to avoid accidentally activating the technique on bystanders.
+
+POWER SCALING:
+The effectiveness of each command is proportional to:
+1. Inumaki's cursed energy output at the time of speaking
+2. The target's cursed energy level (resistance)
+3. The severity of the command (higher stakes commands cost more to force through)
+
+---------------------------------------------------------------------------
+COMPLETE COMMAND LIST WITH EFFECTS
+---------------------------------------------------------------------------
+
+DON'T MOVE (Ugokunna)
+Effect: Forces the target's body to halt all voluntary movement. Full-body
+paralysis -- the target cannot take any physical action.
+Damage type: None -- pure control/stun
+Duration: Until cursed energy dissipates or target actively resists
+Resistance: Strong sorcerers can push through at the cost of internal injury
+Use pattern: His most-used command. Reliable control against most targets.
+
+STOP (Tomare)
+Effect: Similar to "Don't Move" but applied to objects and momentum as well
+as living beings. Stops all motion. Can halt mid-air projectiles, falling
+objects, and moving people simultaneously.
+Damage type: None -- control
+Unique property: Environmental utility beyond "Don't Move" -- can stop
+physical projectiles and falling objects, not only living targets.
+
+BLAST AWAY (Tobichire)
+Effect: Commands the target to fly away/be expelled violently. Extreme
+knockback -- targets are launched with tremendous force.
+Damage type: Physical (kinetic -- the force of being launched causes impact
+damage upon landing or collision with terrain/obstacles)
+Debuff: Extreme positional displacement; can be used to scatter groups
+Unique property: Most commonly shown offensive command. Used against large
+swarms of cursed spirits. One of his primary damage-dealing commands.
+
+PLUMMET (Otore)
+Effect: Commands the target to fall/drop with sudden gravitational force.
+Used against aerial targets to forcibly ground them, or against standing
+targets to slam them downward suddenly.
+Damage type: Physical (impact from forced fall)
+Debuff: Grounds aerial opponents; causes staggering on impact; disrupts
+any in-progress aerial attacks or repositioning
+
+SLEEP (Nemure)
+Effect: Commands the target to fall unconscious. Gentler than paralysis --
+the target loses consciousness rather than being frozen in place.
+Damage type: None -- incapacitation
+Unique property: Works well against weaker opponents. Strong sorcerers and
+special-grade curses can resist sleep more easily than movement commands.
+Tactically useful for non-lethal capture or reducing collateral risk.
+
+EXPLODE (Haretsu)
+Effect: Commands the target's body to rupture and explode from within.
+Internal detonation of the target's biology -- catastrophic internal damage
+from the inside out.
+Damage type: Affliction (internal body destruction; bypasses surface-level
+physical defenses and cursed energy reinforcement since the explosion
+originates from within the body)
+Unique property: One of his most powerful single commands. Reserved for
+serious threats. The internal detonation mechanism means it cannot be
+blocked by external defensive techniques.
+
+TWIST (Nejire)
+Effect: Commands the target's body to twist and contort against its natural
+alignment. Severe internal structural damage -- bones, muscles, and organs
+are forced to rotate and twist catastrophically.
+Damage type: Affliction (internal structural destruction)
+Unique property: Against strong opponents this is Inumaki's most devastating
+weapon. It was the command Yuta borrowed and amplified through a megaphone
+in JJK 0. The internal nature of the damage bypasses external defenses
+entirely. Even partial compliance with "Twist" causes severe injury.
+
+RUN AWAY (Nigero)
+Effect: Compulsion to flee -- forces the target to turn and retreat from
+the command source.
+Damage type: None -- behavioral control
+Unique property: Not a damage command. Used tactically to break an enemy
+advance, create separation, or disengage a dangerous opponent without
+attempting to incapacitate them.
+
+DIE (Shinde)
+Effect: Forces the target to cease living -- theoretically instant death.
+Damage type: Affliction (existential/soul-level command to cease living)
+Unique property: The most extreme command. In practice it has only been shown
+effective against opponents with minimal cursed energy resistance. Against a
+full-strength sorcerer or special-grade cursed spirit, the resistance they
+generate would likely cause severe damage to Inumaki himself. The trade-off is
+extreme -- using "Die" against a resistant target risks Inumaki's own survival.
+It is his ultimate emergency command with the highest personal cost.
+
+---------------------------------------------------------------------------
+DOMAIN EXPANSION: NONE
+---------------------------------------------------------------------------
+Toge Inumaki does not develop or use a Domain Expansion in the manga.
+He relies entirely on Cursed Speech for combat.
+
+===========================================================================
+10. NORITOSHI KAMO -- BLOOD MANIPULATION (Ketsu Sujuu)
+===========================================================================
+
+OVERVIEW:
+Noritoshi Kamo is an heir of the Kamo clan, one of the three great jujutsu
+families. Blood Manipulation allows him to control the physical properties of
+blood -- its flow, speed, viscosity, temperature, shape, and structural state.
+He primarily uses his own blood (shed through cuts he makes during combat) but
+the technique theoretically applies to any blood.
+
+---------------------------------------------------------------------------
+BLOOD SWORD (Chiken)
+---------------------------------------------------------------------------
+Mechanics: Solidifies blood into blade-shapes or sharp spike projectiles.
+Noritoshi bleeds deliberately and solidifies the blood into rigid cutting
+edges that he wields like weapons or launches as projectiles.
+Effect: Physical cutting damage at close range or ranged piercing projectiles
+Damage type: Physical (solidified blood cutting edge)
+Debuff: None -- pure physical damage
+Unique property: The blood-blades can be wielded like conventional weapons
+in melee or launched as thrown projectiles. Solidified blood under cursed
+energy reinforcement is substantially stronger than steel.
+
+---------------------------------------------------------------------------
+CRIMSON BINDING (Akubyou)
+---------------------------------------------------------------------------
+Mechanics: Hardens blood into rope-like or web-like structures that surround
+and ensnare a target, restraining them physically. The binding coils around
+the target's limbs and body.
+Effect: Physical restraint and immobilization of the target
+Damage type: None directly (the binding itself causes no damage) -- control
+Debuff: Full movement restriction equivalent to stun -- target cannot move
+freely or execute actions requiring physical mobility while bound
+Unique property: Composed of cursed-energy-infused solidified blood, making
+it substantially stronger than physical rope or chains. Breaking free requires
+significant force or a technique capable of cutting the hardened blood.
+The binding can be combined with other techniques -- for example, binding a
+target then firing Convergence into the immobilized opponent.
+
+---------------------------------------------------------------------------
+CONVERGENCE (Shuuran)
+---------------------------------------------------------------------------
+Mechanics: Rapidly compresses blood at extreme speed into a single dense ball
+or sphere, then launches it as a high-velocity projectile. The compression
+makes the projectile extremely dense, hard, and fast.
+Effect: High-speed piercing projectile impact
+Damage type: Piercing (the density and launch velocity allow it to punch
+through conventional defenses and cursed energy reinforcement; the compressed
+ball does not detonate -- it punches through)
+Debuff: None -- pure piercing damage
+Unique property: Likely the fastest projectile in Noritoshi's toolkit.
+The compression produces a projectile harder and denser than any normal material.
+Can be combined with Flowing Red Scale (Surge) for amplified output.
+
+---------------------------------------------------------------------------
+FLOWING RED SCALE (Ryuuketsu no Kizan)
+---------------------------------------------------------------------------
+Mechanics: Alters the properties of Noritoshi's own blood circulation to
+induce a hyper-stimulated combat state. Raises blood temperature, increases
+adrenaline delivery, maximizes oxygen transport to muscles, and optimizes
+neural response times. Effectively a biological performance-enhancing system.
+
+STACK (Kasane):
+Progressive levels of enhancement applied incrementally. Each Stack level
+increases the biological stimulation further.
+Effect: Speed and power amplification at each Stack level
+Damage type: N/A (self-buff)
+
+SURGE (Houdou):
+Maximum activation of Flowing Red Scale -- full body enhancement at peak.
+Effect: Maximum speed, power, and reaction time amplification
+Damage type: N/A (self-buff)
+
+Debuff: None applied to enemies -- self-enhancement only
+Unique property: The technique has a physical cost -- his own blood is pushed
+past normal biological limits. High Stack or prolonged Surge can damage his
+own circulatory system. A physiological Binding Vow: the more enhancement he
+draws, the more he risks internal damage to himself.
+
+---------------------------------------------------------------------------
+EIGHT-HANDLED SWORD DIVERGENT SILA DIVINE GENERAL KUMOKIRI
+---------------------------------------------------------------------------
+The Kamo clan's equivalent to the Ten Shadows Technique's Mahoraga --
+a blood-aligned divine general shikigami summoned through blood manipulation.
+Effect: Summons a powerful divine shikigami that fights with the summoner
+Damage type: Physical + Energy (shikigami combat attacks)
+Debuff: Blood-based DoT on struck targets (the blood-aligned nature of the
+shikigami leaves cursed blood contamination on wounds)
+Unique property: Unlike Megumi's Mahoraga which cannot be controlled, Kumokiri
+appears to be directable by Noritoshi -- he can command it in combat. This is
+Noritoshi's trump card / ultimate technique, deployed only in the most serious
+combat situations.
+
+---------------------------------------------------------------------------
+DOMAIN EXPANSION: NONE
+---------------------------------------------------------------------------
+No confirmed Domain Expansion for Noritoshi Kamo in the manga. He is a
+Grade 1 sorcerer with strong Blood Manipulation mastery but does not develop
+or deploy a domain during the series.
+
+===========================================================================
+SUMMARY TABLE: DOMAIN EXPANSIONS
+===========================================================================
+
+CHARACTER             DOMAIN NAME              SURE-HIT   INTERIOR EFFECT
+--------------------  -----------------------  ---------  --------------------------------
+Satoru Gojo           Unlimited Void           YES        Infinite information flood; complete mind paralysis
+Yuta Okkotsu          Authentic Mutual Love    YES        Rika guarantees all copied techniques land
+Megumi Fushiguro      Chimera Shadow Garden    NO (inc.)  Shadow amplification; no guaranteed hit
+Hakari Kinji          Idle Death Gamble        YES        Pachinko mechanic; Jackpot = near-immortality
+Yuji Itadori          None                     N/A        N/A
+Nobara Kugisaki       None                     N/A        N/A
+Kento Nanami          None                     N/A        N/A
+Panda                 None                     N/A        N/A
+Toge Inumaki          None                     N/A        N/A
+Noritoshi Kamo        None                     N/A        N/A
+
+===========================================================================
+NOTES ON GAME IMPLEMENTATION (characters.py alignment)
+===========================================================================
+
+GOJO: 5 skills implemented correctly. Domain modeled as AoE stun 2t + weaken
+20 for 3t -- accurate translation of Unlimited Void's information paralysis.
+
+YUJI: Has Divergent Fist, Black Flash, Shrine: Dismantle, Unyielding Resolve.
+Missing: Cleave (adaptive slash), soul-punch mechanics from Shinjuku arc.
+Consider adding a 5th skill for Cleave or replacing Unyielding Resolve.
+
+MEGUMI: 5 skills including Domain. Mahoraga as "summon + invuln" captures the
+self-sacrifice recklessness. Missing: Great Serpent (bind/stun), Max Elephant
+(AoE water), Rabbit Escape (evasion). These could expand the kit if desired.
+
+NOBARA: characters.py has 4 skills ending at Resonance. Supernova exists in
+docs/characters.json but NOT in characters.py -- reconcile this discrepancy.
+
+NANAMI: 4 skills (Ratio 7:3, Collapse, Overtime, Binding Vow). Canon-accurate.
+The 7:3 as damage + DoT (15 affliction/t for 2t) is a good mechanical abstraction.
+
+YUTA: 5 skills. Copy as pierce + strengthen is a clever abstraction. Missing
+Sukuna slash copies (Cleave/Dismantle) as distinct skills. Domain is thematically
+correct. Vector (Dhruv CT) could be added as a counter-trap skill.
+
+HAKARI: 4 skills. Jackpot should perhaps have a near-invuln window to reflect
+the 4-minute immortality -- currently modeled as afflict + heal which captures
+the concept but understates the invulnerability aspect.
+
+PANDA: 4 skills (Drum Beat AoE, Gorilla Unblockable, Gorilla Boost, Trident
+Regen). Canon-accurate and well-designed. Panda Core baseline is implied as
+default state before switching.
+
+INUMAKI: 4 skills (Don't Move stun, Blast Away damage, Explode afflict, Throat
+Medicine self-heal). Missing: Twist (most powerful command; the one Yuta copies),
+Plummet, Sleep, Stop, Run Away, Die. Adding Twist as a distinct skill would
+meaningfully differentiate Inumaki from Yuta's "Copy: Cursed Speech."
+
+NORITOSHI: 4 skills (Convergence pierce, Crimson Binding stun+DoT, Flowing Red
+Scale Surge, Kumokiri). Missing: Blood Sword (basic physical), Stack variant of
+Flowing Red Scale (progressive buff). The current kit is functional but could
+add a base attack and the Stack setup into the skill lineup.
+
+===========================================================================
+END OF RESEARCH DOCUMENT
+===========================================================================
+Source: JJK manga chapters 1-271, JJK 0 prequel, anime adaptation.
+Research date: 2026-05-18
+===========================================================================

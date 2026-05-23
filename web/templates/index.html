@@ -4,236 +4,267 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#07071a">
-  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" href="data:,">
   <title>JJK Arena | Cursed Clash</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=10">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=16">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
 </head>
 <body>
 
   <div id="connection-status" style="display:none;">Connected</div>
 
-  <!-- ── SETUP ── -->
-  <section id="setup" class="screen active">
-    <div class="bg-glow bg-glow-purple"></div>
-    <div class="bg-glow bg-glow-red"></div>
-    <div class="setup-scroll">
-      <div class="setup-inner">
-        <div class="logo-block">
-          <div class="logo-kanji">呪</div>
-          <div class="logo-jjk">JJK</div>
-          <div class="logo-sub">FANTASY DRAFT</div>
-          <p class="logo-tagline">Build your cursed team</p>
+  <div class="app-stage">
+    <!-- ── SETUP ── -->
+    <section id="setup" class="screen active">
+      <div class="bg-glow bg-glow-purple"></div>
+      <div class="bg-glow bg-glow-red"></div>
+      <div class="setup-scroll">
+        <div class="setup-inner">
+          <div class="logo-block">
+            <div class="logo-kanji">呪</div>
+            <div class="logo-jjk">JJK</div>
+            <div class="logo-sub">FANTASY DRAFT</div>
+            <p class="logo-tagline">Build your ultimate Jujutsu team. Draft 5 legendary sorcerers and cursed spirits, pick 3 to wage strategic battles, and command cursed energy wildcards manually to crush your opponent!</p>
+          </div>
+          <div class="setup-form">
+            <div class="form-group">
+              <div class="form-label">Sorcerer Name</div>
+              <input type="text" id="player-name" class="name-field" placeholder="Enter name…" autocomplete="off">
+            </div>
+
+            <!-- Hero Action: VS CPU -->
+            <div class="setup-hero-card">
+              <div class="hero-card-title">Quick Play vs CPU</div>
+              <div class="form-group row-group">
+                <div class="select-wrapper">
+                  <select id="cpu-difficulty-select" class="select-field">
+                    <option value="easy">Easy (Brawler)</option>
+                    <option value="normal" selected>Normal (Tactician)</option>
+                    <option value="hard">Hard (Special Grade)</option>
+                  </select>
+                </div>
+              </div>
+              <button id="btn-join-cpu" class="btn-hero-gold">
+                <span>⚔️ Ignite Solo Battle</span>
+              </button>
+            </div>
+
+            <div class="setup-separator">
+              <span class="separator-text">OR ENTER MULTIPLAYER</span>
+            </div>
+
+            <!-- Secondary Action: Multiplayer -->
+            <div class="multiplayer-card">
+              <div class="form-group">
+                <div class="form-label">Arena ID</div>
+                <input type="text" id="room-id" class="name-field" placeholder="Enter custom room code to play with friends..." autocomplete="off">
+              </div>
+              <button id="btn-join" class="btn-primary">
+                Enter Arena (Multiplayer)
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="energy-legend">
+            <div class="legend-title">Energy types</div>
+            <div class="legend-row">
+              <span class="orb orb-green"></span> Physical &nbsp;
+              <span class="orb orb-red"></span> Bloodline &nbsp;
+              <span class="orb orb-blue"></span> Curse Energy &nbsp;
+              <span class="orb orb-white"></span> Strategic &nbsp;
+              <span class="orb orb-black"></span> General
+            </div>
+          </div>
+          <div class="history-section">
+            <div class="legend-title">Match History</div>
+            <div id="history-block" class="history-block"></div>
+          </div>
         </div>
-        <div class="setup-form">
-          <div class="form-group">
-            <div class="form-label">Sorcerer Name</div>
-            <input type="text" id="player-name" class="name-field" placeholder="Enter name…" autocomplete="off">
-          </div>
-          <div class="form-group">
-            <div class="form-label">Arena ID</div>
-            <input type="text" id="room-id" class="name-field" placeholder="Arena ID (default: lobby)" autocomplete="off">
-          </div>
-          <button id="btn-join" class="btn-primary">
-            Enter Arena
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </div>
+    </section>
+
+    <!-- ── DRAFT ── -->
+    <section id="game-arena" class="screen">
+      <header class="app-header">
+        <div class="header-left">
+          <span class="header-logo">呪</span>
+          <span class="header-title">Fantasy Draft</span>
+        </div>
+        <div class="header-right">
+          <div class="round-badge" id="round-badge">R1 / 5</div>
+          <button class="icon-btn" id="btn-teams-open" aria-label="View teams">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+              <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+            </svg>
+          </button>
+          <button class="icon-btn btn-reset-room" aria-label="Reset room" title="Reset room">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.34"/></svg>
           </button>
         </div>
-        <div class="energy-legend">
-          <div class="legend-title">Energy types</div>
-          <div class="legend-row">
-            <span class="orb orb-green"></span> Physical &nbsp;
-            <span class="orb orb-red"></span> Bloodline &nbsp;
-            <span class="orb orb-blue"></span> Curse Energy &nbsp;
-            <span class="orb orb-white"></span> Strategic &nbsp;
-            <span class="orb orb-black"></span> General
+      </header>
+
+      <div class="turn-bar">
+        <div class="turn-avatar" id="turn-avatar">?</div>
+        <div class="turn-text">
+          <div class="turn-name" id="turn-name">—</div>
+          <div class="turn-hint" id="game-state-text">Waiting…</div>
+        </div>
+        <div class="turn-pips" id="turn-pips"></div>
+      </div>
+
+      <div class="draft-body" id="draft-container">
+        <div id="draw-state" class="draw-state">
+          <div class="face-down" id="face-down">
+            <div class="face-kanji">呪</div>
+            <div class="face-label">TAP TO DRAW</div>
           </div>
         </div>
-        <div class="history-section">
-          <div class="legend-title">Match History</div>
-          <div id="history-block" class="history-block"></div>
+        <div id="decide-state" class="decide-state hidden">
+          <div id="drawn-card-container"></div>
         </div>
       </div>
-    </div>
-  </section>
 
-  <!-- ── DRAFT ── -->
-  <section id="game-arena" class="screen">
-    <header class="app-header">
-      <div class="header-left">
-        <span class="header-logo">呪</span>
-        <span class="header-title">Fantasy Draft</span>
-      </div>
-      <div class="header-right">
-        <div class="round-badge" id="round-badge">R1 / 5</div>
-        <button class="icon-btn" id="btn-teams-open" aria-label="View teams">
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-            <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-          </svg>
+      <div class="action-bar">
+        <button id="btn-start-cpu" class="action-btn btn-keep hidden">
+          ⚔ VS CPU
         </button>
-        <button class="icon-btn btn-reset-room" aria-label="Reset room" title="Reset room">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.34"/></svg>
+        <button id="btn-start" class="action-btn btn-draw hidden">
+          Ignite Battle
+        </button>
+        <button id="btn-draw"  class="action-btn btn-draw hidden">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.34"/></svg>
+          Draw
         </button>
       </div>
-    </header>
 
-    <div class="turn-bar">
-      <div class="turn-avatar" id="turn-avatar">?</div>
-      <div class="turn-text">
-        <div class="turn-name" id="turn-name">—</div>
-        <div class="turn-hint" id="game-state-text">Waiting…</div>
+      <aside id="log-panel" style="display:none;">
+          <div id="messages"></div>
+      </aside>
+    </section>
+
+    <!-- ── TEAM SELECTION ── -->
+    <section id="team-selection" class="screen">
+      <header class="app-header">
+        <div class="header-left">
+          <span class="header-title">Select Team (3)</span>
+        </div>
+        <div class="header-right">
+          <button class="icon-btn btn-reset-room" aria-label="Reset room" title="Reset room">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.34"/></svg>
+          </button>
+        </div>
+      </header>
+      <div class="draft-body" style="justify-content:flex-start; padding-top:20px; overflow-y:auto;">
+        <p id="selection-hint" style="text-align:center; margin-bottom: 20px; font-weight: bold; color: var(--gold);">Choose 3 fighters to enter combat</p>
+        <div id="selection-grid" class="char-grid" style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin-bottom:20px;"></div>
+        <div id="synergy-summary" class="hidden" style="max-width:420px;margin:0 auto 16px;padding:12px;background:var(--surf);border:1px solid var(--border);border-radius:var(--r-sm);"></div>
       </div>
-      <div class="turn-pips" id="turn-pips"></div>
-    </div>
+      <div class="action-bar">
+        <button id="btn-lock-team" class="btn-primary" disabled style="opacity: 0.5;">Lock In Team</button>
+      </div>
+    </section>
 
-    <div class="draft-body" id="draft-container">
-      <div id="draw-state" class="draw-state">
-        <div class="face-down" id="face-down">
-          <div class="face-kanji">呪</div>
-          <div class="face-label">TAP TO DRAW</div>
+    <!-- ── BATTLE ARENA ── -->
+    <section id="battle-arena" class="screen">
+      <header class="app-header">
+        <div class="header-left">
+          <span class="header-logo">呪</span>
+          <span class="header-title">Cursed Clash</span>
+        </div>
+        <div class="header-right">
+          <div class="round-badge" id="battle-turn-badge">Turn 1</div>
+          <button class="icon-btn btn-reset-room" aria-label="Reset room" title="Reset room">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.34"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Turn indicator bar -->
+      <div class="turn-bar" id="battle-turn-bar">
+        <div class="turn-avatar" id="battle-turn-avatar">?</div>
+        <div class="turn-text">
+          <div class="turn-name" id="battle-turn-name">—</div>
+          <div class="turn-hint" id="battle-turn-hint">Awaiting action…</div>
         </div>
       </div>
-      <div id="decide-state" class="decide-state hidden">
-        <div id="drawn-card-container"></div>
-      </div>
-    </div>
 
-
-
-    <div class="action-bar">
-      <button id="btn-start" class="action-btn btn-draw hidden">
-        Ignite Battle
-      </button>
-      <button id="btn-draw"  class="action-btn btn-draw hidden">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.34"/></svg>
-        Draw
-      </button>
-      <button id="btn-keep"  class="action-btn btn-keep hidden">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-        Keep
-      </button>
-      <button id="btn-pass"  class="action-btn btn-pass hidden">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        Pass
-      </button>
-    </div>
-
-    <aside id="log-panel" style="display:none;">
-        <div id="messages"></div>
-    </aside>
-  </section>
-
-  <!-- ── TEAM SELECTION ── -->
-  <section id="team-selection" class="screen">
-    <header class="app-header">
-      <div class="header-left">
-        <span class="header-title">Select Team (3)</span>
-      </div>
-      <div class="header-right">
-        <button class="icon-btn btn-reset-room" aria-label="Reset room" title="Reset room">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.34"/></svg>
-        </button>
-      </div>
-    </header>
-    <div class="draft-body" style="justify-content:flex-start; padding-top:20px; overflow-y:auto;">
-      <p id="selection-hint" style="text-align:center; margin-bottom: 20px; font-weight: bold; color: var(--gold);">Choose 3 fighters to enter combat</p>
-      <div id="selection-grid" class="char-grid" style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin-bottom:20px;"></div>
-      <div id="synergy-summary" class="hidden" style="max-width:420px;margin:0 auto 16px;padding:12px;background:var(--surf);border:1px solid var(--border);border-radius:var(--r-sm);"></div>
-    </div>
-    <div class="action-bar">
-      <button id="btn-lock-team" class="btn-primary" disabled style="opacity: 0.5;">Lock In Team</button>
-    </div>
-  </section>
-
-  <!-- ── BATTLE ARENA ── -->
-  <section id="battle-arena" class="screen">
-    <header class="app-header">
-      <div class="header-left">
-        <span class="header-logo">呪</span>
-        <span class="header-title">Cursed Clash</span>
-      </div>
-      <div class="header-right">
-        <div class="round-badge" id="battle-turn-badge">Turn 1</div>
-        <button class="icon-btn btn-reset-room" aria-label="Reset room" title="Reset room">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.34"/></svg>
-        </button>
-      </div>
-    </header>
-
-    <!-- Turn indicator bar -->
-    <div class="turn-bar" id="battle-turn-bar">
-      <div class="turn-avatar" id="battle-turn-avatar">?</div>
-      <div class="turn-text">
-        <div class="turn-name" id="battle-turn-name">—</div>
-        <div class="turn-hint" id="battle-turn-hint">Awaiting action…</div>
-      </div>
-    </div>
-
-    <!-- Energy panel -->
-    <div class="energy-panel" id="energy-panel">
-      <div class="energy-panel-label">YOUR ENERGY</div>
-      <div class="energy-panel-pools" id="my-energy-pool"></div>
-    </div>
-
-    <!-- Main battle grid -->
-    <div class="battle-body" id="battle-body">
-
-      <!-- Opponent team (top) -->
-      <div class="battle-team battle-team--opponent" id="team-opponent">
-        <div class="team-label">OPPONENT</div>
-        <div class="battle-chars" id="chars-opponent"></div>
-      </div>
-
-      <!-- Skill selection panel (slides up from bottom) -->
-      <div class="skill-panel hidden" id="skill-panel">
-        <div class="skill-panel-header">
-          <span id="skill-panel-char-name">—</span>
-          <button class="icon-btn" id="btn-skill-cancel">✕</button>
+      <!-- Energy panel -->
+      <div class="energy-panel" id="energy-panel">
+        <div class="energy-panel-label">YOUR ENERGY <span class="energy-legend-toggle" id="energy-legend-toggle" title="What is energy?">?</span></div>
+        <div class="energy-panel-pools" id="my-energy-pool"></div>
+        <div class="battle-synergies" id="my-battle-synergies"></div>
+        <div class="energy-legend hidden" id="energy-legend">
+          <div class="energy-legend-row"><span class="orb orb-green" style="width:12px;height:12px;display:inline-block;flex-shrink:0"></span><span><b>Physical</b> — Taijutsu / hand-to-hand skills</span></div>
+          <div class="energy-legend-row"><span class="orb orb-red" style="width:12px;height:12px;display:inline-block;flex-shrink:0"></span><span><b>Bloodline</b> — Cursed blood / technique skills</span></div>
+          <div class="energy-legend-row"><span class="orb orb-blue" style="width:12px;height:12px;display:inline-block;flex-shrink:0"></span><span><b>Cursed Energy</b> — CE output / domain skills</span></div>
+          <div class="energy-legend-row"><span class="orb orb-white" style="width:12px;height:12px;display:inline-block;flex-shrink:0"></span><span><b>Strategic</b> — Support / healing skills</span></div>
+          <div class="energy-legend-row"><span class="orb orb-black" style="width:12px;height:12px;display:inline-block;flex-shrink:0"></span><span><b>Generic</b> — Any skill. Guaranteed each turn.</span></div>
+          <div class="energy-legend-note">You gain 1 Generic + 1 random per living char each turn.</div>
         </div>
-        <div class="skill-list-battle" id="skill-list-battle"></div>
       </div>
 
-      <!-- My team (bottom) -->
-      <div class="battle-team battle-team--mine" id="team-mine">
-        <div class="team-label">MY TEAM</div>
-        <div class="battle-chars" id="chars-mine"></div>
+      <!-- Main battle grid -->
+      <div class="battle-body" id="battle-body">
+
+        <!-- Opponent team (top) -->
+        <div class="battle-team battle-team--opponent" id="team-opponent">
+          <div class="team-label">OPPONENT</div>
+          <div class="battle-chars" id="chars-opponent"></div>
+        </div>
+
+        <!-- Skill selection panel (slides up from bottom) -->
+        <div class="skill-panel hidden" id="skill-panel">
+          <div class="skill-panel-header">
+            <span id="skill-panel-char-name">—</span>
+            <button class="icon-btn" id="btn-skill-cancel">✕</button>
+          </div>
+          <div class="skill-list-battle" id="skill-list-battle"></div>
+        </div>
+
+        <!-- My team (bottom) -->
+        <div class="battle-team battle-team--mine" id="team-mine">
+          <div class="team-label">MY TEAM</div>
+          <div class="battle-chars" id="chars-mine"></div>
+        </div>
+
       </div>
 
-    </div>
+      <!-- Action log -->
+      <div class="battle-log" id="battle-log"></div>
 
-    <!-- Action log -->
-    <div class="battle-log" id="battle-log"></div>
+      <!-- Target selection prompt -->
+      <div class="target-prompt hidden" id="target-prompt">Select a target</div>
 
-    <!-- Target selection prompt -->
-    <div class="target-prompt hidden" id="target-prompt">Select a target</div>
+    </section>
 
-  </section>
+    <!-- ── RESULTS ── -->
+    <section id="results" class="screen">
+      <div class="bg-glow bg-glow-gold"></div>
+      <div class="results-scroll">
+        <div class="results-inner">
+          <div class="trophy-block">
+            <div class="trophy">🏆</div>
+            <h2 class="winner-name" id="winner-name">—</h2>
+            <p class="winner-sub">Wins the Draft!</p>
+          </div>
+          <div class="standings" id="standings"></div>
+          <div id="battle-recap-container" class="battle-recap-container hidden"></div>
+          <button id="btn-play-again" class="btn-primary">Play Again</button>
+        </div>
+      </div>
+    </section>
+  </div>
 
   <!-- ── BATTLE BREAKDOWN ── -->
   <div class="breakdown-overlay hidden" id="breakdown-overlay">
     <div class="breakdown-sheet" id="breakdown-sheet"></div>
   </div>
-
-  <!-- ── RESULTS ── -->
-  <section id="results" class="screen">
-    <div class="bg-glow bg-glow-gold"></div>
-    <div class="results-scroll">
-      <div class="results-inner">
-        <div class="trophy-block">
-          <div class="trophy">🏆</div>
-          <h2 class="winner-name" id="winner-name">—</h2>
-          <p class="winner-sub">Wins the Draft!</p>
-        </div>
-        <div class="standings" id="standings"></div>
-        <button id="btn-play-again" class="btn-primary">Play Again</button>
-      </div>
-    </div>
-  </section>
 
   <!-- ── TEAMS PANEL ── -->
   <div class="slide-panel" id="teams-panel">
@@ -257,10 +288,14 @@
   <!-- TOAST -->
   <div class="toast" id="toast"></div>
 
+  <!-- SFX TOGGLE BUTTON -->
+  <button class="btn-sfx-toggle muted" id="btn-sfx-toggle" title="Toggle Sound SFX">🔇</button>
+
   <script>
     const PLAYER_SESSION_ID = "{{ player_id }}";
   </script>
-  <script src="{{ url_for('static', filename='characters_data.js') }}?v=10"></script>
-  <script src="{{ url_for('static', filename='app.js') }}?v=10"></script>
+  <script src="{{ url_for('static', filename='characters_data.js') }}?v=16"></script>
+  <script src="{{ url_for('static', filename='effects.js') }}?v=16"></script>
+  <script src="{{ url_for('static', filename='app.js') }}?v=16"></script>
 </body>
 </html>

@@ -56,50 +56,31 @@ class TestGame(unittest.TestCase):
         self.assertEqual(game.state, GameState.IN_PROGRESS)
         self.assertEqual(game.get_current_player_id(), 1)
 
-        # Alice draws
-        success, msg, char = game.draw(1)
+        # Alice draws three options
+        success, msg, choices = game.draw_three(1)
         self.assertTrue(success)
         self.assertEqual(game.state, GameState.DECIDING)
+        self.assertEqual(len(choices), 3)
 
-        # Alice keeps
-        success, msg = game.keep(1)
+        # Alice chooses index 0
+        success, msg = game.choose_card(1, 0)
         self.assertTrue(success)
         self.assertEqual(len(game.teams[1]), 1)
         self.assertEqual(game.get_current_player_id(), 2)
         self.assertEqual(game.state, GameState.IN_PROGRESS)
 
-        # Bob draws
-        success, msg, char = game.draw(2)
+        # Bob draws three options
+        success, msg, choices = game.draw_three(2)
         self.assertTrue(success)
+        self.assertEqual(game.state, GameState.DECIDING)
+        self.assertEqual(len(choices), 3)
 
-        # Bob passes
-        success, msg, new_char = game.pass_card(2)
+        # Bob chooses index 1
+        success, msg = game.choose_card(2, 1)
         self.assertTrue(success)
-        self.assertTrue(game.passes_used[2])
         self.assertEqual(len(game.teams[2]), 1)
         self.assertEqual(game.get_current_player_id(), 1)
-
-        # Bob tries to pass again (later)
-        # Fast forward Alice to her next turn
-        game.draw(1)
-        game.keep(1)
-
-        # Alice draws and keeps
-        game.draw(1)
-        game.keep(1)
-
-        # Bob draws. He already used his pass, so he should MUST keep it.
-        # But wait, the test is testing that he CANNOT call pass_card if he already used it.
-        # If he already used it, draw(2) should automatically add to team and move turn.
-        success, msg, _ = game.draw(2)
-        self.assertTrue(success)
-        self.assertIn("already used your pass", msg)
-        self.assertEqual(game.get_current_player_id(), 1) # Turn should have moved
-
-        # Now if Bob tries to call pass_card(2) while it's Alice's turn:
-        success, msg, _ = game.pass_card(2)
-        self.assertFalse(success)
-        self.assertEqual(msg, "It's not your turn!")
+        self.assertEqual(game.state, GameState.IN_PROGRESS)
 
     def test_game_end(self):
         game = Game(456)
@@ -108,11 +89,13 @@ class TestGame(unittest.TestCase):
         game.start_game()
         game.max_team_size = 1 # Set to 1 for quick test
 
-        game.draw(1)
-        game.keep(1)
+        # Alice draws and chooses
+        game.draw_three(1)
+        game.choose_card(1, 0)
 
-        game.draw(2)
-        game.keep(2)
+        # Bob draws and chooses
+        game.draw_three(2)
+        game.choose_card(2, 0)
 
         # After drafting, game transitions to TEAM_SELECTION (not FINISHED)
         self.assertEqual(game.state, GameState.TEAM_SELECTION)

@@ -41,6 +41,8 @@ class TestWebHelpers(unittest.TestCase):
             'damage_reduction': 0,
             'ignores_dr': False,
             'ignores_invuln': False,
+            'is_piercing': False,
+            'is_affliction': False,
         }
         self.assertEqual(skill_to_dict(skill), expected)
 
@@ -71,6 +73,8 @@ class TestWebHelpers(unittest.TestCase):
             'damage_reduction': 0,
             'ignores_dr': False,
             'ignores_invuln': False,
+            'is_piercing': False,
+            'is_affliction': False,
         }
         self.assertEqual(skill_to_dict(skill), expected)
 
@@ -93,6 +97,8 @@ class TestWebHelpers(unittest.TestCase):
             'name': "Test Char",
             'description': "Test Char Description",
             'image_url': "http://example.com/image.png",
+            'char_type': "Specialist",
+            'rarity': "Rare",
             'skills': [{
                 'name': "Test Skill",
                 'description': "Test Description",
@@ -111,6 +117,8 @@ class TestWebHelpers(unittest.TestCase):
                 'damage_reduction': 0,
                 'ignores_dr': False,
                 'ignores_invuln': False,
+                'is_piercing': False,
+                'is_affliction': False,
             }]
         }
         self.assertEqual(char_to_dict(char), expected)
@@ -129,6 +137,8 @@ class TestWebHelpers(unittest.TestCase):
             'name': "No Skill Char",
             'description': "No Skill Description",
             'image_url': "http://example.com/none.png",
+            'char_type': "Specialist",
+            'rarity': "Rare",
             'skills': []
         }
         self.assertEqual(char_to_dict(char), expected)

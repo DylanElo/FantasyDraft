@@ -14,7 +14,7 @@ import zlib
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from jjk_bot.game import GameManager, GameState
+from jjk_bot.game import GameManager, GameState, CPU_PLAYER_ID
 from jjk_bot.characters import Character, Skill
 
 app = Flask(__name__)
@@ -52,6 +52,8 @@ def skill_to_dict(skill: Skill) -> dict:
         'damage_reduction': skill.damage_reduction,
         'ignores_dr': skill.ignores_dr,
         'ignores_invuln': skill.ignores_invuln,
+        'is_piercing': skill.is_piercing,
+        'is_affliction': skill.is_affliction,
     }
 
 def char_to_dict(char: Character) -> dict:
@@ -61,6 +63,8 @@ def char_to_dict(char: Character) -> dict:
         'name': char.name,
         'description': char.description,
         'image_url': char.image_url,
+        'char_type': getattr(char, 'char_type', 'Specialist'),
+        'rarity': getattr(char, 'rarity', 'Rare'),
         'skills': [skill_to_dict(s) for s in char.skills],
     }
 
@@ -94,6 +98,9 @@ def get_battle_state_dict(game, session_map: dict) -> dict:
         char_states = [char_battle_state_to_dict(cs) for cs in b.char_states[pid]]
         energy = dict(b.player_states[pid].energy)
 
+        # Which char slots have already acted this turn (for 3-skills-per-turn UI)
+        acted = list(b.acted_slots.get(pid, set()))
+
         # Include character skill data for UI rendering (active + bench = all 5)
         char_data = []
         all_chars = b.all_team_chars.get(pid, [])
@@ -116,16 +123,23 @@ def get_battle_state_dict(game, session_map: dict) -> dict:
             'char_states': char_states,  # all 5 states
             'char_data': char_data,      # all 5 char data
             'energy': energy,
+            'acted_slots': acted,        # slots that have already acted this turn
+            'active_synergies': list(b.player_states[pid].active_synergies),
         })
 
     current_pid = b.current_player_id
+    # Slots that can still act for the current player
+    can_act = b.active_chars_that_can_act(current_pid)
+    can_end_turn = b.can_player_end_turn(current_pid)
     return {
         'turn_number': b.turn_number,
         'current_player_id': int_to_str.get(current_pid, str(current_pid)),
         'current_player_name': game.player_names[current_pid],
         'players': players_battle,
-        'action_log': list(b.action_log[-10:]),
+        'action_log': list(b.action_log),
         'winner_id': int_to_str.get(b.winner_id, None) if b.winner_id else None,
+        'can_act_slots': can_act,
+        'can_end_turn': can_end_turn,
     }
 
 def get_game_state_dict(game, session_map: dict) -> dict:
@@ -149,7 +163,8 @@ def get_game_state_dict(game, session_map: dict) -> dict:
         'players': players_data,
         'current_player_id': int_to_str.get(current_pid, str(current_pid)),
         'current_player_name': game.get_current_player_name(),
-        'last_drawn_character': char_to_dict(game.last_drawn_character),
+        'last_drawn_choices': [char_to_dict(c) for c in game.last_drawn_choices.get(current_pid, [])],
+        'cpu_difficulty': game.cpu_difficulty,
     }
 
     # Include battle state when in BATTLE or FINISHED (with battle data)
@@ -242,6 +257,7 @@ def on_join(data):
 
     emit('game_update', get_game_state_dict(game, smap), room=room_id)
     emit('message', {'text': f"{player_name} joined the arena."}, room=room_id)
+    return {'status': 'ok'}
 
 @socketio.on('start_game')
 def on_start_game():
@@ -250,6 +266,32 @@ def on_start_game():
     game = game_manager.get_game(int_room)
     smap = get_session_map(room_id)
     success, msg = game.start_game()
+    emit('message', {'text': msg}, room=room_id)
+    emit('game_update', get_game_state_dict(game, smap), room=room_id)
+
+@socketio.on('start_vs_cpu')
+def on_start_vs_cpu(data=None):
+    """Start a solo game against the CPU from the waiting room."""
+    data = data or {}
+    difficulty = data.get('difficulty', 'normal')
+    room_id = session.get('room_id')
+    player_session = session.get('player_id')
+    if not room_id or not player_session:
+        emit('message', {'text': 'Session error. Please refresh.'})
+        return
+
+    smap = get_session_map(room_id)
+    int_id = smap.get(player_session, str_to_int_id(player_session))
+    smap[player_session] = int_id
+    # Register CPU player in the session map too (maps to CPU_PLAYER_ID)
+    smap['__cpu__'] = CPU_PLAYER_ID
+
+    int_room = str_to_int_id(room_id)
+    game = game_manager.get_game(int_room)
+
+    player_name = game.player_names.get(int_id, f"Player_{player_session[:4]}")
+    success, msg = game.start_game_vs_cpu(int_id, player_name, difficulty=difficulty)
+
     emit('message', {'text': msg}, room=room_id)
     emit('game_update', get_game_state_dict(game, smap), room=room_id)
 
@@ -262,33 +304,21 @@ def on_draw_card():
     int_room = str_to_int_id(room_id)
 
     game = game_manager.get_game(int_room)
-    success, msg, char = game.draw(int_id)
+    success, msg, choices = game.draw_three(int_id)
     emit('message', {'text': msg}, room=room_id)
     emit('game_update', get_game_state_dict(game, smap), room=room_id)
 
-@socketio.on('keep_card')
-def on_keep_card():
+@socketio.on('choose_card')
+def on_choose_card(data):
     room_id = session.get('room_id')
     player_session = session.get('player_id')
     smap = get_session_map(room_id)
     int_id = smap.get(player_session, str_to_int_id(player_session))
     int_room = str_to_int_id(room_id)
+    choice_index = data.get('choice_index', 0)
 
     game = game_manager.get_game(int_room)
-    success, msg = game.keep(int_id)
-    emit('message', {'text': msg}, room=room_id)
-    emit('game_update', get_game_state_dict(game, smap), room=room_id)
-
-@socketio.on('pass_card')
-def on_pass_card():
-    room_id = session.get('room_id')
-    player_session = session.get('player_id')
-    smap = get_session_map(room_id)
-    int_id = smap.get(player_session, str_to_int_id(player_session))
-    int_room = str_to_int_id(room_id)
-
-    game = game_manager.get_game(int_room)
-    success, msg, char = game.pass_card(int_id)
+    success, msg = game.choose_card(int_id, choice_index)
     emit('message', {'text': msg}, room=room_id)
     emit('game_update', get_game_state_dict(game, smap), room=room_id)
 
@@ -317,12 +347,41 @@ def on_battle_action(data):
     char_slot = int(data.get('char_slot', 0))
     skill_name = str(data.get('skill_name', ''))
     target_session = str(data.get('target_player_id', ''))
-    target_int_id = smap.get(target_session, str_to_int_id(target_session)) if target_session else int_id
     target_slot = int(data.get('target_slot', 0))
 
     game = game_manager.get_game(int_room)
-    success, msgs = game.battle_action(int_id, char_slot, skill_name, target_int_id, target_slot)
+    # Ensure CPU is always resolvable in smap
+    if game.cpu_player_id is not None and '__cpu__' not in smap:
+        smap['__cpu__'] = CPU_PLAYER_ID
+    target_int_id = smap.get(target_session, str_to_int_id(target_session)) if target_session else int_id
+    wildcard_pays = data.get('wildcard_pays', None)
 
+    success, msgs = game.battle_action(int_id, char_slot, skill_name, target_int_id, target_slot, wildcard_pays)
+
+    if not success and msgs:
+        emit('message', {'text': msgs[0]})
+        return
+
+    for msg in msgs:
+        emit('message', {'text': msg}, room=room_id)
+
+    emit('game_update', get_game_state_dict(game, smap), room=room_id)
+
+@socketio.on('battle_end_turn')
+def on_battle_end_turn():
+    """Player voluntarily ends their turn early (skips remaining characters)."""
+    room_id = session.get('room_id')
+    player_session = session.get('player_id')
+    smap = get_session_map(room_id)
+    int_id = smap.get(player_session, str_to_int_id(player_session))
+    int_room = str_to_int_id(room_id)
+
+    game = game_manager.get_game(int_room)
+    if game.state != GameState.BATTLE or game.battle is None:
+        emit('message', {'text': 'Not currently in battle.'})
+        return
+
+    success, msgs = game.battle_end_turn(int_id)
     if not success and msgs:
         emit('message', {'text': msgs[0]})
         return
@@ -348,15 +407,11 @@ def on_swap_in(data):
         emit('message', {'text': 'Not currently in battle.'})
         return
 
-    success, msgs = game.battle.swap_in(int_id, active_slot, bench_slot)
+    success, msgs = game.battle_swap_in(int_id, active_slot, bench_slot)
 
     if not success and msgs:
         emit('message', {'text': msgs[0]})
         return
-
-    # Check for battle over after swap
-    if game.battle.is_battle_over():
-        game.state = GameState.FINISHED
 
     for msg in msgs:
         emit('message', {'text': msg}, room=room_id)

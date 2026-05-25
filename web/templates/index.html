@@ -10,15 +10,22 @@
   <title>JJK Arena | Cursed Clash</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=16">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@600;700;900&family=Yuji+Mai&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='jjk-tokens.css') }}?v=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=22">
+  <link rel="stylesheet" href="{{ url_for('static', filename='jjk-theme.css') }}?v=1">
+  <script src="{{ url_for('static', filename='socket.io.min.js') }}?v=4.7.2"></script>
 </head>
 <body>
 
   <div id="connection-status" style="display:none;">Connected</div>
 
   <div class="app-stage">
+    <div class="jjk-smoke-field" aria-hidden="true">
+      <div class="jjk-smoke-blob b1"></div>
+      <div class="jjk-smoke-blob b2"></div>
+      <div class="jjk-smoke-blob b3"></div>
+    </div>
     <!-- ── SETUP ── -->
     <section id="setup" class="screen active">
       <div class="bg-glow bg-glow-purple"></div>
@@ -29,7 +36,7 @@
             <div class="logo-kanji">呪</div>
             <div class="logo-jjk">JJK</div>
             <div class="logo-sub">FANTASY DRAFT</div>
-            <p class="logo-tagline">Build your ultimate Jujutsu team. Draft 5 legendary sorcerers and cursed spirits, pick 3 to wage strategic battles, and command cursed energy wildcards manually to crush your opponent!</p>
+            <p class="logo-tagline">Draft 5 legendary sorcerers and cursed spirits, choose 3 for combat, then spend colored cursed energy and wildcard costs to outplay your opponent.</p>
           </div>
           <div class="setup-form">
             <div class="form-group">
@@ -51,6 +58,9 @@
               </div>
               <button id="btn-join-cpu" class="btn-hero-gold">
                 <span>⚔️ Ignite Solo Battle</span>
+              </button>
+              <button id="btn-roster-lab" class="btn-ghost roster-lab-entry" type="button">
+                Open Roster Lab
               </button>
             </div>
 
@@ -77,7 +87,7 @@
               <span class="orb orb-red"></span> Bloodline &nbsp;
               <span class="orb orb-blue"></span> Curse Energy &nbsp;
               <span class="orb orb-white"></span> Strategic &nbsp;
-              <span class="orb orb-black"></span> General
+              <span class="orb orb-black"></span> Wildcard cost
             </div>
           </div>
           <div class="history-section">
@@ -89,6 +99,46 @@
     </section>
 
     <!-- ── DRAFT ── -->
+    <!-- ROSTER LAB -->
+    <section id="roster-lab" class="screen">
+      <header class="app-header">
+        <div class="header-left">
+          <span class="header-logo">å‘ª</span>
+          <span class="header-title">Roster Lab</span>
+        </div>
+        <div class="header-right">
+          <button class="icon-btn" id="btn-roster-back" aria-label="Back to setup" title="Back">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+          </button>
+        </div>
+      </header>
+      <div class="roster-lab-shell">
+        <div class="roster-lab-toolbar">
+          <div class="roster-lab-title">
+            <strong>Roster Audit</strong>
+            <span id="roster-lab-summary">Loading roster...</span>
+          </div>
+          <input id="roster-search" class="roster-search" type="search" placeholder="Search character or skill" autocomplete="off">
+          <div class="roster-filter-row">
+            <select id="roster-role-filter" class="roster-filter">
+              <option value="all">All roles</option>
+            </select>
+            <select id="roster-identity-filter" class="roster-filter">
+              <option value="all">All identities</option>
+            </select>
+            <select id="roster-flag-filter" class="roster-filter">
+              <option value="all">All audit states</option>
+              <option value="flagged">Flagged only</option>
+              <option value="clean">Clean only</option>
+              <option value="local">Local portraits</option>
+            </select>
+          </div>
+        </div>
+        <div class="roster-lab-stats" id="roster-lab-stats"></div>
+        <div class="roster-lab-list" id="roster-lab-list"></div>
+      </div>
+    </section>
+
     <section id="game-arena" class="screen">
       <header class="app-header">
         <div class="header-left">
@@ -204,8 +254,8 @@
           <div class="energy-legend-row"><span class="orb orb-red" style="width:12px;height:12px;display:inline-block;flex-shrink:0"></span><span><b>Bloodline</b> — Cursed blood / technique skills</span></div>
           <div class="energy-legend-row"><span class="orb orb-blue" style="width:12px;height:12px;display:inline-block;flex-shrink:0"></span><span><b>Cursed Energy</b> — CE output / domain skills</span></div>
           <div class="energy-legend-row"><span class="orb orb-white" style="width:12px;height:12px;display:inline-block;flex-shrink:0"></span><span><b>Strategic</b> — Support / healing skills</span></div>
-          <div class="energy-legend-row"><span class="orb orb-black" style="width:12px;height:12px;display:inline-block;flex-shrink:0"></span><span><b>Generic</b> — Any skill. Guaranteed each turn.</span></div>
-          <div class="energy-legend-note">You gain 1 Generic + 1 random per living char each turn.</div>
+          <div class="energy-legend-row"><span class="orb orb-black" style="width:12px;height:12px;display:inline-block;flex-shrink:0"></span><span><b>Wildcard</b> — Spend any remaining colored energy for this cost.</span></div>
+          <div class="energy-legend-note">You gain random colored energy from living characters each turn.</div>
         </div>
       </div>
 
@@ -240,6 +290,9 @@
 
       <!-- Target selection prompt -->
       <div class="target-prompt hidden" id="target-prompt">Select a target</div>
+
+      <!-- Mobile command tray -->
+      <div class="battle-command-tray hidden" id="battle-command-tray"></div>
 
     </section>
 
@@ -288,14 +341,23 @@
   <!-- TOAST -->
   <div class="toast" id="toast"></div>
 
+  <!-- JJK DESIGN SYSTEM OVERLAYS -->
+  <div class="jjk-domain-bezel" id="jjk-domain-bezel" aria-hidden="true">
+    <span class="sigil tl">&#x546a;</span>
+    <span class="sigil tr">&#x8853;</span>
+    <span class="sigil bl">&#x9818;</span>
+    <span class="sigil br">&#x57df;</span>
+  </div>
+  <div id="jjk-turn-banner-root"></div>
+
   <!-- SFX TOGGLE BUTTON -->
   <button class="btn-sfx-toggle muted" id="btn-sfx-toggle" title="Toggle Sound SFX">🔇</button>
 
   <script>
     const PLAYER_SESSION_ID = "{{ player_id }}";
   </script>
-  <script src="{{ url_for('static', filename='characters_data.js') }}?v=16"></script>
+  <script src="{{ url_for('static', filename='characters_data.js') }}?v=17"></script>
   <script src="{{ url_for('static', filename='effects.js') }}?v=16"></script>
-  <script src="{{ url_for('static', filename='app.js') }}?v=16"></script>
+  <script src="{{ url_for('static', filename='app.js') }}?v=22"></script>
 </body>
 </html>

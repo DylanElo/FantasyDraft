@@ -27,6 +27,8 @@ class TestApp(unittest.TestCase):
         self.assertEqual(result['name'], "Yuji Itadori")
         self.assertEqual(result['description'], "Vessel of Sukuna")
         self.assertEqual(result['image_url'], "http://example.com/yuji.png")
+        self.assertEqual(result['portrait_url'], "http://example.com/yuji.png")
+        self.assertEqual(result['portrait_source'], "remote")
         self.assertEqual(len(result['skills']), 1)
 
         s_dict = result['skills'][0]

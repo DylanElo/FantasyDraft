@@ -10,7 +10,15 @@ sys.modules['flask_socketio'] = MagicMock()
 # Add root directory to sys.path to import jjk_bot and web
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from web.app import skill_to_dict, char_to_dict
+from web.app import (
+    char_to_dict,
+    clean_player_name,
+    clean_room_id,
+    clean_selected_names,
+    clamp_int,
+    static_portrait_url,
+    skill_to_dict,
+)
 from jjk_bot.characters import Skill, Character
 
 class TestWebHelpers(unittest.TestCase):
@@ -95,9 +103,13 @@ class TestWebHelpers(unittest.TestCase):
         )
         expected = {
             'name': "Test Char",
+            'identity': "Test Char",
             'description': "Test Char Description",
             'image_url': "http://example.com/image.png",
+            'portrait_url': "http://example.com/image.png",
+            'portrait_source': "remote",
             'char_type': "Specialist",
+            'role': "Specialist",
             'rarity': "Rare",
             'skills': [{
                 'name': "Test Skill",
@@ -135,13 +147,45 @@ class TestWebHelpers(unittest.TestCase):
         )
         expected = {
             'name': "No Skill Char",
+            'identity': "No Skill Char",
             'description': "No Skill Description",
             'image_url': "http://example.com/none.png",
+            'portrait_url': "http://example.com/none.png",
+            'portrait_source': "remote",
             'char_type': "Specialist",
+            'role': "Specialist",
             'rarity': "Rare",
             'skills': []
         }
         self.assertEqual(char_to_dict(char), expected)
+
+    def test_clean_room_id(self):
+        self.assertEqual(clean_room_id(" arena-01_ABC "), "arena-01_ABC")
+        self.assertEqual(clean_room_id("../bad room<script>"), "badroomscript")
+        self.assertEqual(clean_room_id(""), "lobby")
+
+    def test_clean_player_name(self):
+        self.assertEqual(clean_player_name(" Dylan\nElo ", "Player"), "DylanElo")
+        self.assertEqual(clean_player_name("", "Player"), "Player")
+        self.assertEqual(len(clean_player_name("x" * 40, "Player")), 24)
+
+    def test_clean_selected_names(self):
+        names = clean_selected_names(["Yuji", "Gojo", "Nobara", "Megumi"])
+        self.assertEqual(names, ["Yuji", "Gojo", "Nobara"])
+        self.assertEqual(clean_selected_names("Yuji"), [])
+
+    def test_clamp_int(self):
+        self.assertEqual(clamp_int("2", 0, 4), 2)
+        self.assertEqual(clamp_int("-1", 0, 4), 0)
+        self.assertEqual(clamp_int("99", 0, 4), 4)
+        self.assertEqual(clamp_int("bad", 0, 4, default=3), 3)
+
+    def test_static_portrait_url(self):
+        self.assertEqual(
+            static_portrait_url("assets/portraits/gojo-young.svg", "remote.png"),
+            "/static/assets/portraits/gojo-young.svg",
+        )
+        self.assertEqual(static_portrait_url(None, "remote.png"), "remote.png")
 
 if __name__ == "__main__":
     unittest.main()

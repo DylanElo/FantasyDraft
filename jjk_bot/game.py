@@ -2,7 +2,7 @@ import random
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import List, Dict, Optional, Tuple, Any
-from jjk_bot.characters import Character, get_random_character
+from jjk_bot.characters import Character, character_identity, get_random_character
 from jjk_bot.effects import Effect, EffectKind, Target
 
 class GameState(Enum):
@@ -84,19 +84,45 @@ class CharacterBattleState:
     channels: List[Channel] = field(default_factory=list)
     bombs: List[Bomb] = field(default_factory=list)
 
+    # Unique mechanic runtime state
+    nail_mark_turns: int = 0          # Nobara: target takes +15 from all sources while marked
+    shadow_pool_active: bool = False   # Megumi: 2nd+ skills this turn cost 1 less black
+    panda_core_bonus: int = 0          # Panda: next pierce attack gains +15 (after Core skill)
+    beast_stacks: int = 0              # Ino: DR stacks from beast skills (max 4)
+    todo_free_blow: bool = False       # Todo: next Crushing Blow this turn costs 0
+    toge_affliction_stacks: int = 0    # Toge: permanent +5 affliction per voice toll (max 5)
+    miwa_first_skill_used: bool = False # Miwa: first skill this turn already used (no discount)
+    mai_bullet_active: bool = False    # Mai: Construction bullet persists until damage skill used
+    mei_mei_kill_bonus: int = 0        # Mei Mei: permanent +10 dmg per kill
+    naobito_frame_lock: bool = False   # Naobito: stun immunity while enemy stunned
+    yuki_mass_bonus: int = 0           # Yuki: accumulated virtual mass bonus (max 5, +5 dmg each)
+    yuki_turns_since_bonus: int = 0    # Yuki: turns for mass tracking
+    tengen_immortal_used: bool = False # Tengen: once-per-battle survive at 5 HP
+    rika_wrath_active: bool = False    # Yuta JJK0: Rika's Wrath triggered by damage
+    peak_copy_active: bool = False     # Yuta Sendai: copy bonus active
+    gojo_young_awakening: int = 0      # Gojo (Young): +5 dmg per hit taken (max 5 stacks)
+    first_dismantle_used: bool = False # Sukuna (Incarnation): first Dismantle is free
+    consecutive_bonus: int = 0         # Yuji (Black Flash): +5 per successive dmg skill (max +20)
+    trauma_triggered: bool = False     # Yuji (Awakened): +10 dmg after 20+ affliction hit
+    nitta_protected: bool = False      # ally: survives one lethal non-affliction hit with 1 HP
+    dot_is_eternal: bool = False       # Uraume: this char's DoT cannot be cleansed
+    uiui_escape_used: bool = False     # Ui Ui: perfect escape teleport used this battle
+    damaged_this_turn: bool = False    # Kusakabe: took damage this turn (counter trigger)
+
     def take_damage(self, amount: int, is_piercing: bool = False,
                     is_affliction: bool = False, ignores_invuln: bool = False) -> int:
         """Apply damage using the exact Naruto Arena 3-Tier Defense System."""
         if self.invuln_turns > 0 and not is_affliction and not ignores_invuln:
             return 0
 
+        if self.nail_mark_turns > 0:
+            amount += 15
+
         effective_hp_damage = 0
 
         if is_affliction:
-            # AFFLICTION: Ignores ALL defenses (Damage Reduction + Shields), goes straight to HP
             effective_hp_damage = amount
         elif is_piercing:
-            # PIERCING: Ignores Damage Reduction, but hits Shields first
             if self.destructible_defense > 0:
                 absorbed = min(amount, self.destructible_defense)
                 self.destructible_defense -= absorbed
@@ -104,7 +130,6 @@ class CharacterBattleState:
             else:
                 effective_hp_damage = amount
         else:
-            # NORMAL: Subject to Damage Reduction, then Shields, then HP
             reduced_damage = max(0, amount - self.damage_reduction)
             if reduced_damage > 0 and self.destructible_defense > 0:
                 absorbed = min(reduced_damage, self.destructible_defense)
@@ -114,8 +139,29 @@ class CharacterBattleState:
                 effective_hp_damage = reduced_damage
 
         self.current_hp = max(0, self.current_hp - effective_hp_damage)
+
+        # Survival mechanics (checked before marking dead)
+        if self.current_hp <= 0:
+            if "Tengen" in self.char_name and not self.tengen_immortal_used:
+                self.current_hp = 5
+                self.tengen_immortal_used = True
+            elif self.nitta_protected and not is_affliction:
+                self.current_hp = 1
+                self.nitta_protected = False
+
         if self.current_hp <= 0:
             self.alive = False
+
+        # Gojo (Young): Near-Death Awakening — +1 stack (max 5) per hit
+        if effective_hp_damage > 0 and "Gojo (Young)" in self.char_name:
+            self.gojo_young_awakening = min(5, self.gojo_young_awakening + 1)
+
+        # Yuji (Awakened): Blood Trauma — first 20+ affliction hit permanently grants +10 dmg
+        if is_affliction and effective_hp_damage >= 20 and "Yuji (Awakened)" in self.char_name and not self.trauma_triggered:
+            self.trauma_triggered = True
+            self.increase_damage += 10
+            self.inc_dmg_turns = max(self.inc_dmg_turns, 999)
+
         return effective_hp_damage
 
     def heal_hp(self, amount: int) -> int:
@@ -128,17 +174,19 @@ class CharacterBattleState:
         """Called at the start of a turn for this character. Returns log messages."""
         msgs = []
         if self.dot_turns > 0:
-            # DoT is inherently an affliction
-            dmg = self.take_damage(self.dot_damage, is_affliction=True)
-            if dmg > 0:
-                msgs.append(f"{self.char_name} takes {dmg} damage from a cursed effect.")
-                if not self.alive:
-                    msgs.append(f"{self.char_name} has been defeated!")
-                    # NOTE: We can't clear_soulbound here directly because CharacterBattleState doesn't have reference to BattleEngine
-                    # But the caller of tick_turn_start (battle_action) checks for death immediately after and clears it.
+            if "Maki Zenin" in self.char_name:
+                # Heavenly Body: completely immune to DoT (no cursed energy to linger)
+                msgs.append(f"{self.char_name}'s Heavenly Restriction nullifies the curse.")
+            else:
+                dmg = self.take_damage(self.dot_damage, is_affliction=True)
+                if dmg > 0:
+                    msgs.append(f"{self.char_name} takes {dmg} damage from a cursed effect.")
+                    if not self.alive:
+                        msgs.append(f"{self.char_name} has been defeated!")
             self.dot_turns -= 1
             if self.dot_turns == 0:
                 self.dot_damage = 0
+                self.dot_is_eternal = False
         # Invuln expires at start of the protected character's OWN next turn,
         # so it persists through the opponent's full turn.
         if self.invuln_turns > 0:
@@ -166,6 +214,14 @@ class CharacterBattleState:
             self.dec_dmg_turns -= 1
             if self.dec_dmg_turns == 0:
                 self.decrease_damage = 0
+
+        if self.nail_mark_turns > 0:
+            self.nail_mark_turns -= 1
+
+        # Shoko Living RCT: heals 5 HP at end of each turn
+        if "Shoko Ieiri" in self.char_name and self.alive:
+            self.heal_hp(5)
+            msgs.append(f"{self.char_name}'s Reverse Cursed Technique passively heals 5 HP.")
 
         for skill_name in list(self.cooldowns.keys()):
             if self.cooldowns[skill_name] > 0:
@@ -1296,12 +1352,29 @@ class Game:
 
         for combo in itertools.combinations(drafted, 3):
             combo = list(combo)
+            identities = [character_identity(c.name) for c in combo]
+            if len(set(identities)) != len(identities):
+                continue
             raw_power = sum(char_power(c) for c in combo)
             synergies = check_synergies([c.name for c in combo])
             score = raw_power + len(synergies) * 100
             if score > best_score:
                 best_score = score
                 best_active = combo
+
+        if best_score < 0:
+            best_active = []
+            used_identities = set()
+            for char in drafted:
+                identity = character_identity(char.name)
+                if identity in used_identities:
+                    continue
+                best_active.append(char)
+                used_identities.add(identity)
+                if len(best_active) == 3:
+                    break
+            if len(best_active) < 3:
+                best_active = drafted[:3]
 
         self.active_teams[cpu_id] = best_active
         self.bench_teams[cpu_id] = []
@@ -1396,6 +1469,10 @@ class Game:
         # Verify they actually drafted these characters
         if not all(name in drafted_names for name in selected_names):
             return False, "You selected characters you did not draft!"
+
+        selected_identities = [character_identity(name) for name in selected_names]
+        if len(set(selected_identities)) != len(selected_identities):
+            return False, "Choose only one version of each character for a 3v3 team."
 
         # Build the active and bench teams
         active = []

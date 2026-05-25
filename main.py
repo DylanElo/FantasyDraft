@@ -1,6 +1,12 @@
-from web.app import app, socketio
+from web.app import DEBUG_MODE, HOST, PORT, app, socketio
 
 if __name__ == "__main__":
-    print("Starting Jujutsu Kaisen Web Server...")
-    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
+    print(f"Starting Jujutsu Kaisen Web Server on http://{HOST}:{PORT}...")
+    socketio.run(
+        app,
+        debug=DEBUG_MODE,
+        host=HOST,
+        port=PORT,
+        allow_unsafe_werkzeug=DEBUG_MODE,
+    )
 

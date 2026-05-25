@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const nameField = document.getElementById('player-name');
         if (nameField) nameField.value = storedName;
     }
+    mountJjkSmokeParticles();
 });
 
 // ── FACTION MAPPING ───────────────────────────────────────────────────────────
@@ -22,6 +23,10 @@ const FACTION = {
     'Megumi Fushiguro': 'tokyo', 'Nobara Kugisaki': 'tokyo',
     'Kento Nanami': 'tokyo', 'Yuta Okkotsu': 'tokyo',
     'Hakari Kinji': 'tokyo', 'Panda': 'tokyo', 'Shoko Ieiri': 'tokyo',
+    'Yuta Okkotsu (JJK 0)': 'tokyo', 'Yuta Okkotsu (Sendai)': 'tokyo',
+    "Yuta (Gojo's Body)": 'tokyo', 'Gojo (Young)': 'tokyo',
+    'Gojo (Unsealed)': 'tokyo', 'Yuji (Black Flash)': 'tokyo',
+    'Yuji (Awakened)': 'tokyo',
     'Aoi Todo': 'kyoto', 'Maki Zenin': 'kyoto', 'Toge Inumaki': 'kyoto',
     'Noritoshi Kamo': 'kyoto', 'Kasumi Miwa': 'kyoto', 'Mai Zenin': 'kyoto',
     'Mei Mei': 'other', 'Naobito Zenin': 'other', 'Toji Fushiguro': 'other',
@@ -30,6 +35,8 @@ const FACTION = {
     'Naoya Zenin': 'villain',
     'Ryomen Sukuna': 'curse', 'Mahito': 'curse', 'Jogo': 'curse',
     'Hanami': 'curse', 'Choso': 'curse', 'Dagon': 'curse',
+    'Sukuna (Incarnation)': 'curse', 'Sukuna (Full Power)': 'curse',
+    'Sukuna (Heian Era)': 'curse',
     'Hiromi Higuruma': 'culling', 'Fumihiko Takaba': 'culling',
     'Hajime Kashimo': 'culling', 'Hana Kurusu': 'culling',
     'Takako Uro': 'culling', 'Kirara Hoshi': 'culling',
@@ -60,9 +67,6 @@ const FACTION = {
     'Rokujushi Miyo': 'culling',
     'Haba': 'culling',
     'Hanyu': 'culling',
-    'Sukuna (Vessel)': 'curse',
-    'Sukuna (Heian Form)': 'curse',
-    'Yuta (JJK 0)': 'tokyo',
     'Maki (Awakened)': 'kyoto',
 };
 
@@ -77,6 +81,7 @@ const MAX_TEAM = 5;
 let myPlayerId = PLAYER_SESSION_ID; // Injected by Jinja template
 let currentGameState = null;
 let lastGameStateStatus = null;
+let lastBattleTurnKey = null;
 
 // ── UTILS ─────────────────────────────────────────────────────────────────────
 function esc(s) {
@@ -85,9 +90,89 @@ function esc(s) {
         .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+const BROKEN_PORTRAIT_NAMES = new Set([
+    'Yuta Okkotsu (JJK 0)',
+    'Yuta Okkotsu (Sendai)',
+    "Yuta (Gojo's Body)",
+    'Gojo (Young)',
+    'Gojo (Unsealed)',
+    'Sukuna (Full Power)',
+    'Sukuna (Heian Era)',
+    'Yuji (Black Flash)',
+    'Yuji (Awakened)',
+    'Kenjaku',
+    'Hiromi Higuruma',
+    'Uraume',
+]);
+
+function charInitials(name) {
+    return String(name || '?')
+        .replace(/\([^)]*\)/g, '')
+        .trim()
+        .split(/\s+/)
+        .slice(0, 2)
+        .map(w => w[0])
+        .join('')
+        .toUpperCase() || '?';
+}
+
+function hasReliablePortrait(char) {
+    return !!(char && char.portrait_url && !char.portrait_url.includes('placeholder'));
+}
+
+function characterArtHTML(char, className = 'char-art') {
+    if (hasReliablePortrait(char)) {
+        return `<div class="${className}" style="background-image:url('${esc(char.portrait_url)}')"></div>`;
+    }
+    return `<div class="${className} art-missing" data-initials="${esc(charInitials(char && char.name))}">
+        <div class="char-art-fallback">${esc(charInitials(char && char.name))}</div>
+    </div>`;
+}
+
+function characterArtStyle(char) {
+    return hasReliablePortrait(char) ? `background-image:url('${esc(char.portrait_url)}')` : '';
+}
+
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
+    document.body.classList.toggle('jjk-battle-active', id === 'battle-arena');
+    if (id !== 'battle-arena') document.body.classList.remove('jjk-opponent-turn');
+}
+
+function mountJjkSmokeParticles() {
+    const field = document.querySelector('.jjk-smoke-field');
+    if (!field || field.dataset.ready) return;
+    field.dataset.ready = '1';
+    const particleTypes = ['', 'crimson', 'blue'];
+    for (let i = 0; i < 18; i++) {
+        const p = document.createElement('span');
+        const type = particleTypes[i % 3 === 0 ? 1 : i % 5 === 0 ? 2 : 0];
+        p.className = `jjk-smoke-particle ${type}`;
+        p.style.left = `${Math.random() * 100}%`;
+        p.style.animationDuration = `${10 + Math.random() * 8}s`;
+        p.style.animationDelay = `${-Math.random() * 14}s`;
+        p.style.transform = `scale(${0.6 + Math.random() * 1.4})`;
+        field.appendChild(p);
+    }
+}
+
+function showJjkTurnBanner({ main, sub, eyebrow = 'CURSED CLASH', variant = '', kanji = '\u546a' }) {
+    const root = document.getElementById('jjk-turn-banner-root');
+    if (!root) return;
+    const banner = document.createElement('div');
+    banner.className = `jjk-turn-banner ${variant}`.trim();
+    banner.innerHTML = `
+      <div class="kbg">${esc(kanji)}</div>
+      <div class="stack">
+        <div class="eyebrow">${esc(eyebrow)}</div>
+        <div class="main">${esc(main)}</div>
+        <div class="sub">${esc(sub)}</div>
+      </div>`;
+    root.replaceChildren(banner);
+    window.setTimeout(() => {
+        if (banner.parentNode === root) banner.remove();
+    }, 1450);
 }
 
 function toast(msg) {
@@ -110,8 +195,16 @@ function skillTypeClass(classes) {
 function orbsHTML(energyArr) {
     return (energyArr || []).map(e => {
         const key = (e || 'none').toLowerCase();
-        return `<div class="orb orb-${key}" title="${esc(e)}"></div>`;
+        const title = key === 'black' ? 'Wildcard cost' : e;
+        return `<div class="orb orb-${key}" title="${esc(title)}"></div>`;
     }).join('');
+}
+
+function targetLabel(s) {
+    if (s.is_aoe) return s.target_type === 'ally' ? 'All allies' : 'All enemies';
+    if (s.target_type === 'self') return 'Self';
+    if (s.target_type === 'ally') return 'Ally';
+    return 'Enemy';
 }
 
 function skillEffectsHTML(s) {
@@ -143,21 +236,213 @@ function skillEffectsHTML(s) {
     return html ? `<div class="skill-effects">${html}</div>` : '';
 }
 
+// Arena-style compact facts override the legacy verbose chip labels above.
+function skillEffectsHTML(s) {
+    let html = '';
+    if (s.damage > 0) {
+        if (s.is_piercing) html += `<span class="effect-chip pierce">${s.damage} pierce</span>`;
+        else if (s.is_affliction) html += `<span class="effect-chip afflict">${s.damage} afflict</span>`;
+        else html += `<span class="effect-chip dmg">${s.damage} dmg</span>`;
+    }
+    if (s.heal > 0) html += `<span class="effect-chip heal">${s.heal} heal</span>`;
+    if (s.stun_turns > 0) html += `<span class="effect-chip stun">stun ${s.stun_turns}t</span>`;
+    if (s.invuln_turns > 0) html += `<span class="effect-chip invuln">invuln ${s.invuln_turns}t</span>`;
+    if (s.damage_reduction > 0) html += `<span class="effect-chip dr">-${s.damage_reduction} dmg</span>`;
+    if (s.dot_damage > 0) html += `<span class="effect-chip afflict">${s.dot_damage}/t dot ${s.dot_turns}t</span>`;
+    return html ? `<div class="skill-effects">${html}</div>` : '';
+}
+
+function skillMetaHTML(s, cd) {
+    const primaryClass = esc((s.classes || '').split(',')[0].trim() || 'Skill');
+    return `
+      <div class="skill-meta arena-skill-meta">
+        <span class="skill-tgt-badge">${esc(targetLabel(s))}</span>
+        <span class="skill-cd-badge">CD ${esc(cd)}</span>
+        <span class="skill-class">${primaryClass}</span>
+      </div>`;
+}
+
+// Roster Lab: lightweight in-browser audit for design and balance review.
+let rosterLabReady = false;
+
+function skillAuditSnapshot(skill) {
+    const directDamage = Number(skill.damage || 0);
+    const dotTotal = Number(skill.dot_damage || 0) * Number(skill.dot_turns || 0);
+    const heal = Number(skill.heal || 0);
+    const stun = Number(skill.stun_turns || 0);
+    const invuln = Number(skill.invuln_turns || 0);
+    const dr = Number(skill.damage_reduction || 0);
+    const costSize = Math.max(1, (skill.energy || []).length);
+    const cooldown = Number(skill.cooldown_int ?? skill.cooldown ?? 0);
+    let value = directDamage + dotTotal + heal * 0.95 + stun * 28 + invuln * 25 + dr * 1.2;
+    if (skill.is_aoe) value *= 2.2;
+    const efficiency = Math.round((value / (costSize + cooldown * 0.35)) * 10) / 10;
+    const pressure = directDamage + dotTotal;
+    const flags = [];
+    if (cooldown === 0 && (skill.is_aoe || (costSize === 1 && pressure > 30) || pressure > 40 || stun)) {
+        flags.push('spammable pressure');
+    }
+    if (efficiency >= 36) flags.push('high efficiency');
+    if (costSize >= 2 && efficiency <= 5) flags.push('low visible value');
+    if ((skill.description || '').length > 135) flags.push('long text');
+    return { value, efficiency, pressure, flags };
+}
+
+function characterAuditSnapshot(char) {
+    const skillRows = (char.skills || []).map(skill => ({ skill, audit: skillAuditSnapshot(skill) }));
+    const flags = skillRows.flatMap(row => row.audit.flags);
+    const maxBurst = skillRows.reduce((m, row) => Math.max(m, row.audit.pressure), 0);
+    const aoe = skillRows.filter(row => row.skill.is_aoe).length;
+    const control = skillRows.reduce((sum, row) => sum + Number(row.skill.stun_turns || 0), 0);
+    const support = skillRows.filter(row => row.skill.heal || row.skill.target_type === 'ally').length;
+    const energyCounts = {};
+    skillRows.forEach(row => (row.skill.energy || []).forEach(color => {
+        energyCounts[color] = (energyCounts[color] || 0) + 1;
+    }));
+    return { skillRows, flags, maxBurst, aoe, control, support, energyCounts };
+}
+
+function rosterLabData() {
+    const chars = Array.isArray(window.CHARACTERS_DATA) ? window.CHARACTERS_DATA : (typeof CHARACTERS_DATA !== 'undefined' ? CHARACTERS_DATA : []);
+    return chars.map(char => ({ char, audit: characterAuditSnapshot(char) }));
+}
+
+function populateRosterLabFilters(rows) {
+    const roleFilter = document.getElementById('roster-role-filter');
+    const identityFilter = document.getElementById('roster-identity-filter');
+    if (!roleFilter || !identityFilter || rosterLabReady) return;
+
+    const roles = [...new Set(rows.map(row => row.char.role || 'Specialist'))].sort();
+    const identities = [...new Set(rows.map(row => row.char.identity || row.char.name))].sort();
+    roleFilter.innerHTML = '<option value="all">All roles</option>' + roles.map(role => `<option value="${esc(role)}">${esc(role)}</option>`).join('');
+    identityFilter.innerHTML = '<option value="all">All identities</option>' + identities.map(identity => `<option value="${esc(identity)}">${esc(identity)}</option>`).join('');
+    rosterLabReady = true;
+}
+
+function rosterEnergyHTML(energyCounts) {
+    const order = ['green', 'red', 'blue', 'white', 'black'];
+    return order.filter(color => energyCounts[color]).map(color =>
+        `<span class="roster-energy"><span class="orb orb-${color}"></span>${energyCounts[color]}</span>`
+    ).join('');
+}
+
+function renderRosterLab() {
+    const list = document.getElementById('roster-lab-list');
+    const stats = document.getElementById('roster-lab-stats');
+    const summary = document.getElementById('roster-lab-summary');
+    if (!list || !stats || !summary) return;
+
+    const rows = rosterLabData();
+    populateRosterLabFilters(rows);
+
+    const q = (document.getElementById('roster-search')?.value || '').trim().toLowerCase();
+    const role = document.getElementById('roster-role-filter')?.value || 'all';
+    const identity = document.getElementById('roster-identity-filter')?.value || 'all';
+    const flagMode = document.getElementById('roster-flag-filter')?.value || 'all';
+
+    const filtered = rows.filter(({ char, audit }) => {
+        const haystack = [
+            char.name, char.identity, char.role, char.rarity, char.description,
+            ...(char.skills || []).flatMap(s => [s.name, s.description, s.classes])
+        ].join(' ').toLowerCase();
+        if (q && !haystack.includes(q)) return false;
+        if (role !== 'all' && char.role !== role) return false;
+        if (identity !== 'all' && (char.identity || char.name) !== identity) return false;
+        if (flagMode === 'flagged' && audit.flags.length === 0) return false;
+        if (flagMode === 'clean' && audit.flags.length > 0) return false;
+        if (flagMode === 'local' && char.portrait_source !== 'local') return false;
+        return true;
+    });
+
+    const allFlags = rows.reduce((sum, row) => sum + row.audit.flags.length, 0);
+    const localPortraits = rows.filter(row => row.char.portrait_source === 'local').length;
+    const identities = new Set(rows.map(row => row.char.identity || row.char.name)).size;
+    summary.textContent = `${rows.length} characters, ${identities} identities, ${allFlags} flags`;
+    stats.innerHTML = [
+        ['Characters', rows.length],
+        ['Visible', filtered.length],
+        ['Identities', identities],
+        ['Local art', localPortraits],
+        ['Flags', allFlags],
+    ].map(([label, value]) => `<div class="roster-stat"><strong>${value}</strong><span>${label}</span></div>`).join('');
+
+    if (!filtered.length) {
+        list.innerHTML = '<div class="roster-empty">No characters match these filters.</div>';
+        return;
+    }
+
+    list.innerHTML = filtered.map(({ char, audit }) => {
+        const flagHTML = audit.flags.length
+            ? audit.flags.map(flag => `<span class="roster-flag">${esc(flag)}</span>`).join('')
+            : '<span class="roster-clean">clean</span>';
+        const skillHTML = audit.skillRows.map(({ skill, audit: skillAudit }) => {
+            const skillFlags = skillAudit.flags.length
+                ? skillAudit.flags.map(flag => `<span class="roster-flag small">${esc(flag)}</span>`).join('')
+                : '';
+            return `
+              <div class="roster-skill-row">
+                <div class="roster-skill-main">
+                  <strong>${esc(skill.name)}</strong>
+                  <span>${orbsHTML(skill.energy)} <b>CD ${esc(skill.cooldown_int ?? skill.cooldown ?? 0)}</b> ${esc(targetLabel(skill))}</span>
+                </div>
+                ${skillEffectsHTML(skill)}
+                <div class="roster-skill-score">eff ${skillAudit.efficiency}</div>
+                ${skillFlags}
+              </div>`;
+        }).join('');
+        return `
+          <article class="roster-audit-card">
+            <div class="roster-card-head">
+              <div class="roster-card-art ${hasReliablePortrait(char) ? '' : 'art-missing'}" style="${characterArtStyle(char)}">
+                ${hasReliablePortrait(char) ? '' : `<span>${esc(charInitials(char.name))}</span>`}
+              </div>
+              <div class="roster-card-title">
+                <strong>${esc(char.name)}</strong>
+                <span>${esc(char.role || 'Specialist')} / ${esc(char.rarity || 'Rare')} / ${esc(char.identity || char.name)}</span>
+                <div class="roster-card-tags">
+                  <span>${esc(char.portrait_source || 'remote')} portrait</span>
+                  <span>burst ${audit.maxBurst}</span>
+                  <span>aoe ${audit.aoe}</span>
+                  <span>ctrl ${audit.control}</span>
+                  <span>support ${audit.support}</span>
+                </div>
+              </div>
+              <div class="roster-card-energy">${rosterEnergyHTML(audit.energyCounts)}</div>
+            </div>
+            <div class="roster-card-flags">${flagHTML}</div>
+            <div class="roster-card-desc">${esc(char.description || '')}</div>
+            <div class="roster-skill-list">${skillHTML}</div>
+          </article>`;
+    }).join('');
+}
+
+function roleAbbrev(role) {
+    const table = {
+        Burst: 'BR',
+        Control: 'CT',
+        Tank: 'TK',
+        Support: 'SP',
+        Setup: 'SU',
+        Punisher: 'PN',
+        AoE: 'AO',
+        Bruiser: 'BR',
+        Specialist: 'EX',
+    };
+    return table[role] || String(role || 'EX').slice(0, 2).toUpperCase();
+}
+
 // ── CARD HTML (from canonical design system) ──────────────────────────────────
 function charCardHTML(char) {
     if (!char) return '';
     const faction = FACTION[char.name] || 'other';
     const fLabel  = FACTION_LABEL[faction] || 'Sorcerer';
-    const hasImg  = char.image_url && !char.image_url.includes('placeholder');
     const rarity  = char.rarity || 'Rare';
     const rarityClass = `rarity-${rarity.toLowerCase()}`;
     const particleOverlay = rarity === 'Legendary'
         ? `<div class="embers-wrapper"><div class="ember"></div><div class="ember"></div><div class="ember"></div><div class="ember"></div><div class="ember"></div><div class="ember"></div><div class="ember"></div><div class="ember"></div></div>`
         : '';
 
-    const art = hasImg
-        ? `<div class="char-art" style="background-image:url('${char.image_url}')"></div>`
-        : `<div class="char-art"><div class="char-art-fallback">${esc(char.name.split(' ').map(w => w[0]).join('').toUpperCase())}</div></div>`;
+    const art = characterArtHTML(char);
 
     const skills = (char.skills || []).map(s => {
         const cd        = (!s.cooldown || s.cooldown === 'None' || s.cooldown === '0') ? 'None' : s.cooldown;
@@ -177,8 +462,20 @@ function charCardHTML(char) {
         </div>`;
     }).join('');
 
-    const charType = char.char_type || 'Specialist';
+    const charType = char.role || char.char_type || 'Specialist';
     const typeIcons = {
+        'Burst': 'BR',
+        'Control': 'CT',
+        'Tank': 'TK',
+        'Setup': 'SU',
+        'Punisher': 'PN',
+        'AoE': 'AO',
+        'Burst': 'BR',
+        'Control': 'CT',
+        'Tank': 'TK',
+        'Setup': 'SU',
+        'Punisher': 'PN',
+        'AoE': 'AO',
         'Attacker': '⚔️',
         'Assassin': '🗡️',
         'Defender': '🛡️',
@@ -212,12 +509,10 @@ function charCardHTML(char) {
 
 function miniCardHTML(char) {
     const faction = FACTION[char.name] || 'other';
-    const hasImg  = char.image_url && !char.image_url.includes('placeholder');
-    const artStyle = hasImg ? `background-image:url('${char.image_url}')` : '';
     const rarity  = char.rarity || 'Rare';
     return `
     <div class="mini-card faction-${faction} rarity-${rarity.toLowerCase()}" data-name="${esc(char.name)}">
-        <div class="mini-art" style="${artStyle}"></div>
+        ${characterArtHTML(char, 'mini-art')}
         <div class="mini-name">${esc(char.name)}</div>
     </div>`;
 }
@@ -319,6 +614,22 @@ socket.on('game_update', (data) => {
 // ── SETUP SCREEN ──────────────────────────────────────────────────────────────
 // Render history on load
 renderHistory();
+renderRosterLab();
+
+document.getElementById('btn-roster-lab').addEventListener('click', () => {
+    renderRosterLab();
+    showScreen('roster-lab');
+});
+
+document.getElementById('btn-roster-back').addEventListener('click', () => {
+    showScreen('setup');
+});
+
+['roster-search', 'roster-role-filter', 'roster-identity-filter', 'roster-flag-filter'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', renderRosterLab);
+    if (el) el.addEventListener('change', renderRosterLab);
+});
 
 document.getElementById('btn-join').addEventListener('click', () => {
     const nameInput = document.getElementById('player-name').value.trim();
@@ -489,7 +800,7 @@ function renderGame(state) {
         
         if (newChoicesSerialized && newChoicesSerialized !== oldChoicesSerialized) {
             container.dataset.choices = newChoicesSerialized;
-            container.innerHTML = `<div class="mobile-swipe-hint">👈 Swipe left/right to see options 👉</div><div class="choices-row">` + 
+            container.innerHTML = `<div class="mobile-swipe-hint">Swipe to compare draft offers</div><div class="choices-row">` + 
                 (last_drawn_choices || []).map((char, index) => {
                     return `
                     <div class="choice-card-wrapper">
@@ -525,7 +836,7 @@ function renderGame(state) {
         btnDraw.classList.add('hidden');
         if (btnStartCpu) btnStartCpu.classList.add('hidden');
         if (isMyTurn) {
-            document.getElementById('game-state-text').textContent = 'Pick 1 of the 3 sorcerers offered to recruit!';
+            document.getElementById('game-state-text').textContent = 'Pick 1 of 3 offers. Draft 5, then choose your final 3.';
         } else {
             document.getElementById('game-state-text').textContent = `${current_player_name} is choosing…`;
         }
@@ -566,19 +877,22 @@ function renderTeamSelection(players) {
     
     grid.innerHTML = me.team.map(c => {
         const isSelected = selectedTeamChars.includes(c.name);
+        const variantLocked = !isSelected && selectedIdentityConflict(c.name, me.team);
         const faction = FACTION[c.name] || 'other';
-        const hasImg  = c.image_url && !c.image_url.includes('placeholder');
-        const artStyle = hasImg ? `background-image:url('${c.image_url}')` : '';
+        const artStyle = characterArtStyle(c);
+        const fallbackArt = hasReliablePortrait(c) ? '' : `<div class="char-art-fallback">${esc(charInitials(c.name))}</div>`;
 
         return `
-        <div class="sel-card ${isSelected ? 'sel-card--chosen' : ''}" data-name="${esc(c.name)}">
-            <div class="sel-card-art" style="${artStyle}">
+        <div class="sel-card ${isSelected ? 'sel-card--chosen' : ''} ${variantLocked ? 'sel-card--locked' : ''}" data-name="${esc(c.name)}">
+            <div class="sel-card-art ${hasReliablePortrait(c) ? '' : 'art-missing'}" style="${artStyle}">
+                ${fallbackArt}
                 ${isSelected ? '<div class="sel-checkmark">✓</div>' : ''}
             </div>
             <div class="sel-card-info">
                 <div class="sel-card-name">${esc(c.name)}</div>
-                <div class="sel-card-faction">${esc(FACTION_LABEL[faction] || '')}</div>
+                <div class="sel-card-faction">${esc(c.role || 'Specialist')} / ${esc(FACTION_LABEL[faction] || '')}</div>
                 <div class="sel-card-energy">${energyProfileHTML(c)}</div>
+                ${variantLocked ? '<div class="sel-card-lock">Variant already selected</div>' : ''}
             </div>
         </div>`;
     }).join('');
@@ -586,21 +900,20 @@ function renderTeamSelection(players) {
 
     // Synergy summary when 3 selected
     const synergyEl = document.getElementById('synergy-summary');
-    let hasLoveWarn = false;
+    let variantWarning = selectedIdentityWarning(me.team);
     if (synergyEl) {
         if (selectedTeamChars.length === 3) {
             const selected = me.team.filter(c => selectedTeamChars.includes(c.name));
-            synergyEl.innerHTML = buildSynergySummary(selected);
+            synergyEl.innerHTML = variantWarning
+                ? `<div class="synergy-card synergy-card--warn"><strong>Variant lock</strong><span>${variantWarning}</span></div>`
+                : buildSynergySummary(selected);
             synergyEl.classList.remove('hidden');
-            if (selectedTeamChars.includes("Yuta Okkotsu") && selectedTeamChars.includes("Yuta (JJK 0)")) {
-                hasLoveWarn = true;
-            }
         } else {
             synergyEl.classList.add('hidden');
         }
     }
 
-    if (selectedTeamChars.length === 3 && !hasLoveWarn) {
+    if (selectedTeamChars.length === 3 && !variantWarning) {
         btnLock.disabled = false;
         btnLock.style.opacity = '1';
     } else {
@@ -621,12 +934,41 @@ function energyProfileHTML(char) {
     const colorOrder = ['green', 'red', 'blue', 'white', 'black'];
     return colorOrder
         .filter(c => costs[c])
-        .map(c => `<span class="orb orb-${c}" style="width:10px;height:10px;display:inline-block;margin:0 1px" title="${c}: ${costs[c]}"></span>`)
+        .map(c => `<span class="orb orb-${c}" style="width:10px;height:10px;display:inline-block;margin:0 1px" title="${c === 'black' ? 'wildcard cost' : c}: ${costs[c]}"></span>`)
         .join('');
 }
 
 function matchesName(charName, req) {
     return (charName || "").toLowerCase().includes(req.toLowerCase());
+}
+
+function identityOfChar(char) {
+    return (char && (char.identity || char.name)) || '';
+}
+
+function selectedIdentityConflict(name, team) {
+    const nextChar = (team || []).find(c => c.name === name);
+    const nextIdentity = identityOfChar(nextChar);
+    if (!nextIdentity) return false;
+    return selectedTeamChars.some(selectedName => {
+        if (selectedName === name) return false;
+        const selectedChar = (team || []).find(c => c.name === selectedName);
+        return identityOfChar(selectedChar) === nextIdentity;
+    });
+}
+
+function selectedIdentityWarning(team) {
+    const seen = new Map();
+    for (const name of selectedTeamChars) {
+        const char = (team || []).find(c => c.name === name);
+        const identity = identityOfChar(char);
+        if (!identity) continue;
+        if (seen.has(identity)) {
+            return `Only one ${esc(identity)} variant can enter the 3v3.`;
+        }
+        seen.set(identity, name);
+    }
+    return '';
 }
 
 function isVillain(charName) {
@@ -643,8 +985,9 @@ function checkJJKSynergies(teamNames) {
     const hasMegumi = teamNames.some(n => matchesName(n, "Megumi"));
     const hasNobara = teamNames.some(n => matchesName(n, "Nobara"));
     const hasYutaNormal = teamNames.some(n => n === "Yuta Okkotsu");
-    const hasYutaJJK0 = teamNames.some(n => n === "Yuta (JJK 0)");
-    const hasYutaAny = hasYutaNormal || hasYutaJJK0;
+    const hasYutaJJK0 = teamNames.some(n => n === "Yuta Okkotsu (JJK 0)");
+    const hasYutaVariant = teamNames.some(n => matchesName(n, "Yuta"));
+    const hasYutaAny = hasYutaNormal || hasYutaJJK0 || hasYutaVariant;
     const hasToji = teamNames.some(n => matchesName(n, "Toji"));
     const hasMaki = teamNames.some(n => matchesName(n, "Maki"));
     const hasGojo = teamNames.some(n => matchesName(n, "Gojo"));
@@ -675,7 +1018,7 @@ function checkJJKSynergies(teamNames) {
 
     // 1. Tokyo First Years
     if (hasYuji && hasMegumi && hasNobara) {
-        active.push({ name: "Tokyo First Years", description: "Start with 3 black energy; all damage +5 while all 3 alive." });
+        active.push({ name: "Tokyo First Years", description: "Start with 3 wildcard-cost credits; all damage +5 while all 3 alive." });
     }
     // 2. Gojo's Favourites
     const favCount = [hasYuji, hasMegumi, hasNobara, hasYutaAny].filter(Boolean).length;
@@ -717,7 +1060,7 @@ function checkJJKSynergies(teamNames) {
     // 10. Black Flash Masters
     const bfCount = [hasYuji, hasNanami, hasHakari, hasTodo].filter(Boolean).length;
     if (bfCount >= 2) {
-        active.push({ name: "Black Flash Masters", description: "Start with 2 extra black energy; energy costs -1 black for all." });
+        active.push({ name: "Black Flash Masters", description: "Start with 2 wildcard-cost credits; skills cost 1 less wildcard." });
     }
     // 11. Tokyo Faculty
     const tfCount = [hasNanami, hasGojo, hasShoko, hasYaga, hasMeiMei].filter(Boolean).length;
@@ -773,7 +1116,7 @@ function buildSynergySummary(chars) {
         });
     });
 
-    const colorLabel = { green: 'Phys', red: 'Blood', blue: 'Curse', white: 'Strat', black: 'Gen' };
+    const colorLabel = { green: 'Phys', red: 'Blood', blue: 'Curse', white: 'Strat', black: 'Wild' };
     const entries = Object.entries(totalCosts).filter(([, v]) => v > 0);
     const costPills = entries.map(([k, v]) =>
         `<span class="synergy-pill"><span class="orb orb-${k}" style="width:10px;height:10px"></span> ${colorLabel[k]}: ${v}</span>`
@@ -959,9 +1302,14 @@ document.getElementById('selection-grid').addEventListener('click', e => {
     const thumb = e.target.closest('.sel-card');
     if (!thumb) return;
     const name = thumb.dataset.name;
+    let me = null;
+    if (currentGameState && currentGameState.players) {
+        me = currentGameState.players.find(p => p.id === myPlayerId) || currentGameState.players[0];
+    }
+    const team = me && me.team ? me.team : [];
     if (selectedTeamChars.includes(name)) {
         selectedTeamChars = selectedTeamChars.filter(n => n !== name);
-    } else if (selectedTeamChars.length < 3) {
+    } else if (selectedTeamChars.length < 3 && !selectedIdentityConflict(name, team)) {
         selectedTeamChars.push(name);
     }
     // Re-render only the selection grid (avoid full re-render loop)
@@ -1071,6 +1419,48 @@ function renderEnergyPool(energy) {
     }).join('');
 }
 
+function renderJjkEnergyCore(energy) {
+    if (!energy) return '';
+    const colors = [
+        { key: 'green', label: 'Phys' },
+        { key: 'red', label: 'Blood' },
+        { key: 'blue', label: 'Curse' },
+        { key: 'white', label: 'Strat' },
+    ];
+    const orbs = [];
+    colors.forEach(({ key }) => {
+        const count = Math.max(0, energy[key] || 0);
+        for (let i = 0; i < count; i++) orbs.push(key);
+    });
+    const cap = Math.max(8, orbs.length);
+    const slots = [];
+    for (let i = 0; i < cap; i++) slots.push(orbs[i] || '');
+    const core = `
+      <div class="energy-core" aria-label="Cursed energy core">
+        <div class="energy-core-label">Energy</div>
+        <div class="energy-core-cluster">
+          ${slots.map(key => `
+            <div class="energy-core-slot">
+              <div class="orb ${key ? `orb-${key}` : 'empty'}"></div>
+            </div>`).join('')}
+        </div>
+        <div class="energy-core-count">
+          <div class="n">${String(orbs.length).padStart(2, '0')}</div>
+          <div class="l">/ ${String(cap).padStart(2, '0')}</div>
+        </div>
+      </div>`;
+    const breakdown = colors.map(({ key, label }) => {
+        const count = energy[key] || 0;
+        return `
+        <div class="energy-chip energy-chip--${key}${count === 0 ? ' energy-chip--empty' : ''}">
+          <div class="energy-chip-orb orb orb-${key}"></div>
+          <div class="energy-chip-count">${count}</div>
+          <div class="energy-chip-label">${label}</div>
+        </div>`;
+    }).join('');
+    return `${core}<div class="energy-core-breakdown">${breakdown}</div>`;
+}
+
 function statusBadgesHTML(cs) {
     let badges = '';
     if (cs.stun_turns > 0)
@@ -1106,8 +1496,6 @@ function battleCharCardHTML(charData, charState, slot, isMyTeam, isMyTurn, isSol
     const faction = FACTION[charData.name] || 'other';
     const dead = !charState.alive;
     const firstName = charData.name.split(' ')[0];
-    const isBench = slot >= 3;
-
     // 3-skills-per-turn: has this char already acted this turn?
     const hasActed = isMyTeam && Array.isArray(actedSlots) && actedSlots.includes(slot);
 
@@ -1135,21 +1523,25 @@ function battleCharCardHTML(charData, charState, slot, isMyTeam, isMyTurn, isSol
     if (isSelected) cardClass += ' battle-char--selected';
     if (isTargetable) cardClass += ' targetable';
     if (hasIntent) cardClass += ' intent-danger';
-    if (isBench) cardClass += ' bench-char';
     if (hasActed) cardClass += ' battle-char--acted';
 
-    // A char is clickable if: alive, my team, my turn, not awaiting target, not bench, and hasn't acted yet
-    const clickable = !dead && isMyTeam && isMyTurn && !battleSt.awaitingTarget && !isBench && !hasActed;
-    const asTarget  = isTargetable && !isBench;
+    // A char is clickable if: alive, my team, my turn, not awaiting target, and hasn't acted yet.
+    const clickable = !dead && isMyTeam && isMyTurn && !battleSt.awaitingTarget && !hasActed;
+    const asTarget  = isTargetable;
 
     let dataAttrs = `data-slot="${slot}" data-team="${isMyTeam ? 'mine' : 'opponent'}"`;
     if (clickable)  dataAttrs += ` data-action="select-char"`;
     if (asTarget)   dataAttrs += ` data-action="select-target"`;
-    if (isBench && isMyTeam && !dead && isMyTurn) dataAttrs += ` data-action="swap-bench"`;
 
     const actedBadge = hasActed ? '<div class="acted-badge">ACTED</div>' : '';
-    const charType = charData.char_type || 'Specialist';
+    const charType = charData.role || charData.char_type || 'Specialist';
     const typeIcons = {
+        'Burst': 'BR',
+        'Control': 'CT',
+        'Tank': 'TK',
+        'Setup': 'SU',
+        'Punisher': 'PN',
+        'AoE': 'AO',
         'Attacker': '⚔️',
         'Assassin': '🗡️',
         'Defender': '🛡️',
@@ -1162,7 +1554,8 @@ function battleCharCardHTML(charData, charState, slot, isMyTeam, isMyTurn, isSol
 
     return `
     <div class="${cardClass}" ${dataAttrs}>
-      <div class="bchar-art" style="background-image:url('${charData.image_url}')">
+      <div class="bchar-art ${hasReliablePortrait(charData) ? '' : 'art-missing'}" style="${characterArtStyle(charData)}">
+        ${!hasReliablePortrait(charData) ? `<div class="char-art-fallback">${esc(charInitials(charData.name))}</div>` : ''}
         ${dead ? '<div class="death-overlay">✕</div>' : actedBadge}
         <div class="bchar-name">${esc(firstName)} <span class="battle-type-icon" title="${esc(charType)}">${icon}</span></div>
         ${!dead ? cooldownBadgesHTML(charState) : ''}
@@ -1194,11 +1587,6 @@ function renderSkillPanel(charData, charState, myEnergy) {
             else if (onCd)  disabledReason = `CD: ${cdRemaining}`;
             else if (!canAfford) disabledReason = 'NO ENERGY';
 
-            // Target type label
-            const tgtLabel = skill.is_aoe ? 'ALL ENEMIES' :
-                skill.target_type === 'self' ? 'SELF' :
-                skill.target_type === 'ally' ? 'ALLY' : 'ENEMY';
-
             const baseCd = (!skill.cooldown || skill.cooldown === 'None' || skill.cooldown === '0') ? 'None' : skill.cooldown;
 
             return `
@@ -1212,7 +1600,7 @@ function renderSkillPanel(charData, charState, myEnergy) {
               ${skillEffectsHTML(skill)}
               <div class="skill-desc">${esc(skill.description)}</div>
               <div class="skill-meta">
-                <span class="skill-tgt-badge">${tgtLabel}</span>
+                <span class="skill-tgt-badge">${esc(targetLabel(skill))}</span>
                 <span class="skill-cd-badge">🕒 CD: ${esc(baseCd)}</span>
                 ${disabled
                     ? `<span class="cost-warn">${disabledReason}</span>`
@@ -1267,7 +1655,7 @@ function renderSkillPanel(charData, charState, myEnergy) {
             list.innerHTML = `
             <div class="wildcard-selection-panel">
                 <h4 class="wildcard-prompt">Manual Energy Control</h4>
-                <p class="wildcard-sub">Select energy color to pay for wildcard (black) cost (${neededCount} remaining):</p>
+                <p class="wildcard-sub">Choose which colored energy pays the wildcard cost (${neededCount} left):</p>
                 <div class="wildcard-options">
                     ${availableColors.map(c => `
                         <button class="btn-wildcard-choice choice-${c}" data-color="${c}">
@@ -1327,6 +1715,7 @@ function renderSkillPanel(charData, charState, myEnergy) {
     drawDefaultSkills();
     document.getElementById('skill-panel').classList.remove('hidden');
     document.getElementById('btn-skill-cancel').onclick = resetBattleUI;
+    renderBattle(currentGameState);
 }
 
 function resetBattleUI() {
@@ -1335,6 +1724,7 @@ function resetBattleUI() {
     document.getElementById('skill-panel').classList.add('hidden');
     document.getElementById('target-prompt').classList.add('hidden');
     document.querySelectorAll('.battle-char.targetable').forEach(el => el.classList.remove('targetable'));
+    if (currentGameState && currentGameState.battle) renderBattle(currentGameState);
 }
 
 function submitBattleAction(charSlot, skillName, targetPlayerId, targetSlot, wildcardPays = null) {
@@ -1349,20 +1739,28 @@ function submitBattleAction(charSlot, skillName, targetPlayerId, targetSlot, wil
 }
 
 function attachBattleClickHandlers(isMyTurn, myData, oppData, isSolo) {
+    const selectBattleChar = (slot) => {
+        if (!isMyTurn || !myData || !myData.char_states[slot]) return;
+        if (myData.char_states[slot].stun_turns > 0) {
+            toast(`${myData.char_states[slot].char_name} is stunned!`);
+            return;
+        }
+        battleSt.selectedCharSlot = slot;
+        battleSt.awaitingTarget = false;
+        battleSt.selectedSkillName = null;
+        document.getElementById('target-prompt').classList.add('hidden');
+        renderSkillPanel(myData.char_data[slot], myData.char_states[slot], myData.energy);
+    };
     // My chars (bottom row) — click to select and show skill panel
     document.querySelectorAll('[data-action="select-char"]').forEach(el => {
         el.addEventListener('click', () => {
-            if (!isMyTurn) return;
-            const slot = parseInt(el.dataset.slot);
-            if (myData.char_states[slot].stun_turns > 0) {
-                toast(`${myData.char_states[slot].char_name} is stunned!`);
-                return;
-            }
-            battleSt.selectedCharSlot = slot;
-            battleSt.awaitingTarget = false;
-            battleSt.selectedSkillName = null;
-            document.getElementById('target-prompt').classList.add('hidden');
-            renderSkillPanel(myData.char_data[slot], myData.char_states[slot], myData.energy);
+            selectBattleChar(parseInt(el.dataset.slot, 10));
+        });
+    });
+
+    document.querySelectorAll('[data-action="select-char-command"]').forEach(el => {
+        el.addEventListener('click', () => {
+            selectBattleChar(parseInt(el.dataset.slot, 10));
         });
     });
 
@@ -1384,29 +1782,82 @@ function attachBattleClickHandlers(isMyTurn, myData, oppData, isSolo) {
                 battleSt.selectedCharSlot,
                 battleSt.selectedSkillName,
                 targetPlayerId,
-                slot
+                slot,
+                battleSt.wildcardPays
             );
         });
     });
 
-    // Bench swap clicks — tag in a bench character
-    document.querySelectorAll('[data-action="swap-bench"]').forEach(el => {
-        el.addEventListener('click', () => {
-            if (!isMyTurn) return;
-            const benchSlot = parseInt(el.dataset.slot);
-            // Find first dead active slot, or let player choose
-            let activeSlot = null;
-            for (let i = 0; i < 3; i++) {
-                if (!myData.char_states[i].alive) {
-                    activeSlot = i;
-                    break;
-                }
-            }
-            // If no dead slot, swap with slot 0 (costs turn anyway)
-            if (activeSlot === null) activeSlot = 0;
-            
-            socket.emit('swap_in', { active_slot: activeSlot, bench_slot: benchSlot });
-        });
+}
+
+function battleCommandTrayHTML(isMyTurn, myData, b) {
+    if (!myData || b.winner_id) return '';
+
+    const actedSlots = myData.acted_slots || [];
+    const canActSlots = new Set((b.can_act_slots || []).map(Number));
+    const selectedSlot = battleSt.selectedCharSlot;
+    const selectedChar = selectedSlot !== null ? myData.char_data[selectedSlot] : null;
+
+    if (!isMyTurn) {
+        return `
+        <div class="command-copy">
+          <span class="command-kicker">Enemy Turn</span>
+          <strong>Hold formation</strong>
+          <small>${esc(b.current_player_name)} is choosing an action.</small>
+        </div>`;
+    }
+
+    if (battleSt.awaitingTarget && battleSt.selectedSkillData) {
+        const targetText = battleSt.targetTeam === 'ally' ? 'Choose an ally' : 'Choose an enemy';
+        return `
+        <div class="command-copy">
+          <span class="command-kicker">Targeting</span>
+          <strong>${esc(battleSt.selectedSkillName)}</strong>
+          <small>${targetText} on the board.</small>
+        </div>
+        <button class="command-cancel" data-action="command-cancel">Cancel</button>`;
+    }
+
+    const fighterButtons = myData.char_data.slice(0, 3).map((cd, slot) => {
+        const cs = myData.char_states[slot];
+        const dead = !cs || !cs.alive;
+        const stunned = cs && cs.stun_turns > 0;
+        const acted = actedSlots.includes(slot);
+        const canAct = canActSlots.has(slot) && !dead && !stunned && !acted;
+        const active = selectedSlot === slot;
+        const label = dead ? 'Down' : acted ? 'Acted' : stunned ? 'Stun' : canAct ? 'Ready' : 'Wait';
+        return `
+        <button class="command-fighter ${active ? 'is-active' : ''}" ${canAct ? `data-action="select-char-command" data-slot="${slot}"` : 'disabled'}>
+          <span class="command-avatar ${hasReliablePortrait(cd) ? '' : 'art-missing'}" style="${characterArtStyle(cd)}">
+            ${!hasReliablePortrait(cd) ? `<span>${esc(charInitials(cd.name))}</span>` : ''}
+          </span>
+          <span class="command-name">${esc(cd.name.split(' ')[0])}</span>
+          <span class="command-state">${label}</span>
+        </button>`;
+    }).join('');
+
+    const heading = selectedChar
+        ? `<strong>${esc(selectedChar.name)}</strong><small>Pick a skill from the command sheet.</small>`
+        : `<strong>Choose a fighter</strong><small>${actedSlots.length}/3 actions used this turn.</small>`;
+
+    return `
+    <div class="command-copy">
+      <span class="command-kicker">Your Turn</span>
+      ${heading}
+    </div>
+    <div class="command-fighters">${fighterButtons}</div>`;
+}
+
+function renderBattleCommandTray(isMyTurn, myData, b) {
+    const tray = document.getElementById('battle-command-tray');
+    if (!tray) return;
+    const html = battleCommandTrayHTML(isMyTurn, myData, b);
+    tray.innerHTML = html;
+    tray.classList.toggle('hidden', !html);
+    tray.classList.toggle('is-targeting', !!battleSt.awaitingTarget);
+    tray.classList.toggle('has-sheet-open', !battleSt.awaitingTarget && battleSt.selectedCharSlot !== null);
+    tray.querySelectorAll('[data-action="command-cancel"]').forEach(btn => {
+        btn.addEventListener('click', resetBattleUI);
     });
 }
 
@@ -1433,6 +1884,8 @@ function renderBattle(state) {
         }
     });
     const isMyTurn = (b.current_player_id === myPlayerId);
+    document.body.classList.add('jjk-battle-active');
+    document.body.classList.toggle('jjk-opponent-turn', !isMyTurn);
 
     const myData  = b.players.find(p => p.id === myPlayerId);
     const oppData = b.players.find(p => p.id !== myPlayerId) || myData;
@@ -1446,6 +1899,13 @@ function renderBattle(state) {
     const actedProgress = isMyTurn
         ? `${myActed}/${myLivingActive} acted`
         : '';
+    const turnKey = `${b.turn_number}:${b.current_player_id}`;
+    if (lastBattleTurnKey && lastBattleTurnKey !== turnKey) {
+        showJjkTurnBanner(isMyTurn
+            ? { main: 'YOUR ACTION', sub: 'command your sorcerers', eyebrow: `TURN ${String(b.turn_number).padStart(2, '0')}` }
+            : { main: 'DOMAIN INTRUSION', sub: 'opponent strikes', eyebrow: `TURN ${String(b.turn_number).padStart(2, '0')}`, variant: 'crimson' });
+    }
+    lastBattleTurnKey = turnKey;
 
     // Turn bar
     document.getElementById('battle-turn-badge').textContent = `Turn ${b.turn_number}`;
@@ -1462,7 +1922,7 @@ function renderBattle(state) {
 
     // My energy pool
     document.getElementById('my-energy-pool').innerHTML =
-        myData ? renderEnergyPool(myData.energy) : '';
+        myData ? renderJjkEnergyCore(myData.energy) : '';
 
     // My active synergies
     const mySynergiesEl = document.getElementById('my-battle-synergies');
@@ -1724,6 +2184,7 @@ function renderBattle(state) {
         return `<div class="${cls}" style="animation-delay: ${delay}ms;">${esc(msg)}</div>`;
     }).join('');
 
+    renderBattleCommandTray(isMyTurn, myData, b);
     // Attach interaction handlers
     attachBattleClickHandlers(isMyTurn, myData, oppData, isSolo);
 

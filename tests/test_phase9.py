@@ -273,6 +273,30 @@ class TestPhase9(unittest.TestCase):
         self.assertEqual(len(game.active_teams[1]), 3)
         self.assertEqual(len(game.bench_teams[1]), 0)
 
+    def test_team_selection_blocks_duplicate_character_variants(self):
+        """Assert that powered variants cannot be stacked as separate 3v3 fighters."""
+        from jjk_bot.game import Game, GameState
+        from jjk_bot.characters import CHARACTERS
+
+        def char(name):
+            return next(c for c in CHARACTERS if c.name == name)
+
+        game = Game(1002)
+        game.add_player(1, "Alice")
+        game.teams[1] = [
+            char("Satoru Gojo"),
+            char("Gojo (Unsealed)"),
+            char("Yuji Itadori"),
+            char("Megumi Fushiguro"),
+            char("Nobara Kugisaki"),
+        ]
+        game.state = GameState.TEAM_SELECTION
+
+        ok, err = game.submit_team(1, ["Satoru Gojo", "Gojo (Unsealed)", "Yuji Itadori"])
+
+        self.assertFalse(ok)
+        self.assertIn("only one version", err.lower())
+
     def test_end_turn_with_no_action_allowed(self):
         """Assert that players can voluntarily end their turn at any time without having to act first."""
         p1 = 1

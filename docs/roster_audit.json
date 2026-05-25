@@ -1,0 +1,5423 @@
+{
+  "summary": {
+    "characters": 43,
+    "skills": 172,
+    "roles": {
+      "AoE": 6,
+      "Bruiser": 5,
+      "Burst": 11,
+      "Control": 2,
+      "Punisher": 3,
+      "Setup": 1,
+      "Specialist": 3,
+      "Support": 6,
+      "Tank": 6
+    },
+    "cost_sizes": {
+      "1": 41,
+      "2": 96,
+      "3": 35
+    },
+    "colors": {
+      "black": 83,
+      "blue": 86,
+      "green": 50,
+      "red": 63,
+      "white": 56
+    },
+    "cooldowns": {
+      "0": 28,
+      "1": 35,
+      "2": 52,
+      "3": 20,
+      "4": 37
+    },
+    "local_generated_portraits": [
+      "Gojo (Unsealed)",
+      "Gojo (Young)",
+      "Hiromi Higuruma",
+      "Kenjaku",
+      "Sukuna (Full Power)",
+      "Sukuna (Heian Era)",
+      "Uraume",
+      "Yuji (Awakened)",
+      "Yuji (Black Flash)",
+      "Yuta (Gojo's Body)",
+      "Yuta Okkotsu (JJK 0)",
+      "Yuta Okkotsu (Sendai)"
+    ],
+    "flag_counts": {}
+  },
+  "skill_outliers": [],
+  "characters": [
+    {
+      "name": "Satoru Gojo",
+      "role": "Burst",
+      "rarity": "Legendary",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 55,
+      "aoe_skills": 0,
+      "control_turns": 1,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Cursed Technique Lapse: Blue",
+          "cost": [
+            "blue"
+          ],
+          "cost_size": 1,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 15,
+          "heal": 0,
+          "stun": 1,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 43.0,
+          "efficiency": 31.9,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Cursed Technique Reversal: Red",
+          "cost": [
+            "red",
+            "blue"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 35,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 10,
+          "trap": 0,
+          "value_score": 40.5,
+          "efficiency": 15.0,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Hollow Technique: Purple",
+          "cost": [
+            "red",
+            "blue",
+            "white"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 55,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 55.0,
+          "efficiency": 12.5,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Infinity",
+          "cost": [
+            "black"
+          ],
+          "cost_size": 1,
+          "cooldown": 4,
+          "target": "self",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 1,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 25.0,
+          "efficiency": 10.4,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Instant"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Yuji Itadori",
+      "role": "Punisher",
+      "rarity": "Rare",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 45,
+      "aoe_skills": 0,
+      "control_turns": 0,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Divergent Fist",
+          "cost": [
+            "green"
+          ],
+          "cost_size": 1,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 20,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 10,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 30.0,
+          "efficiency": 30.0,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Black Flash",
+          "cost": [
+            "green",
+            "blue"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 45,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 15,
+          "trap": 0,
+          "value_score": 53.2,
+          "efficiency": 19.7,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Shrine: Dismantle",
+          "cost": [
+            "red",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 25,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 25.0,
+          "efficiency": 10.6,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Unyielding Resolve",
+          "cost": [
+            "black"
+          ],
+          "cost_size": 1,
+          "cooldown": 3,
+          "target": "self",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 25,
+          "reduce_total": 50,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 25.0,
+          "efficiency": 12.2,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Action"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Megumi Fushiguro",
+      "role": "Tank",
+      "rarity": "Rare",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 40,
+      "aoe_skills": 1,
+      "control_turns": 1,
+      "support_skills": 1,
+      "skills": [
+        {
+          "name": "Divine Dogs: Totality",
+          "cost": [
+            "green",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 25,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 20,
+          "trap": 0,
+          "value_score": 36.0,
+          "efficiency": 18.0,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Nue: Thunderstrike",
+          "cost": [
+            "blue"
+          ],
+          "cost_size": 1,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 1,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 28.0,
+          "efficiency": 16.5,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Toad: Reverse Summon",
+          "cost": [
+            "black"
+          ],
+          "cost_size": 1,
+          "cooldown": 2,
+          "target": "ally",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 1,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 25.0,
+          "efficiency": 14.7,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Eight-Handled Sword: Mahoraga",
+          "cost": [
+            "blue",
+            "green",
+            "white"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "enemy",
+          "aoe": true,
+          "damage": 40,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 1,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 143.0,
+          "efficiency": 32.5,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Action"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Nobara Kugisaki",
+      "role": "Burst",
+      "rarity": "Rare",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 50,
+      "aoe_skills": 0,
+      "control_turns": 0,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Straw Doll: Nail Toss",
+          "cost": [
+            "black"
+          ],
+          "cost_size": 1,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 15,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 10,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 25.0,
+          "efficiency": 25.0,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Hairpin",
+          "cost": [
+            "blue",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 30,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 30.0,
+          "efficiency": 12.8,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Resonance",
+          "cost": [
+            "red",
+            "blue"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 25,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 15,
+          "trap": 0,
+          "value_score": 33.2,
+          "efficiency": 12.3,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Straw Doll: Resonance Finale",
+          "cost": [
+            "red",
+            "red",
+            "black"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 50,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 50.0,
+          "efficiency": 11.4,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Kento Nanami",
+      "role": "Tank",
+      "rarity": "Rare",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 50,
+      "aoe_skills": 1,
+      "control_turns": 0,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Ratio Technique: 7:3",
+          "cost": [
+            "red",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 20,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 30,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 50.0,
+          "efficiency": 18.5,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Collapse",
+          "cost": [
+            "green",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": true,
+          "damage": 20,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 44.0,
+          "efficiency": 16.3,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Overtime",
+          "cost": [
+            "white",
+            "white"
+          ],
+          "cost_size": 2,
+          "cooldown": 4,
+          "target": "self",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 1,
+          "strengthen_total": 20,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 38.0,
+          "efficiency": 11.2,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Action"
+          ]
+        },
+        {
+          "name": "Binding Vow: Work Ethic",
+          "cost": [
+            "white",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 3,
+          "target": "self",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 20,
+          "reduce_total": 40,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 20.0,
+          "efficiency": 6.6,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Action"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Yuta Okkotsu",
+      "role": "Bruiser",
+      "rarity": "Epic",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 50,
+      "aoe_skills": 0,
+      "control_turns": 0,
+      "support_skills": 1,
+      "skills": [
+        {
+          "name": "Cursed Sword: Rika's Edge",
+          "cost": [
+            "green",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 25,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 25.0,
+          "efficiency": 12.5,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Copy: Cursed Technique",
+          "cost": [
+            "blue",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 20,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 30,
+          "trap": 0,
+          "value_score": 36.5,
+          "efficiency": 15.5,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Reverse Cursed Technique: Heal",
+          "cost": [
+            "white",
+            "blue"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "ally",
+          "aoe": false,
+          "damage": 0,
+          "heal": 35,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 33.2,
+          "efficiency": 12.3,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Instant"
+          ]
+        },
+        {
+          "name": "True Form: Rika",
+          "cost": [
+            "red",
+            "blue",
+            "white"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 50,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 1,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 75.0,
+          "efficiency": 17.0,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Action"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Hakari Kinji",
+      "role": "Support",
+      "rarity": "Epic",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 30,
+      "aoe_skills": 0,
+      "control_turns": 1,
+      "support_skills": 3,
+      "skills": [
+        {
+          "name": "Restless Love",
+          "cost": [
+            "green",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 30,
+          "heal": 15,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 44.2,
+          "efficiency": 18.8,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Pachinko Slam",
+          "cost": [
+            "green"
+          ],
+          "cost_size": 1,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 15,
+          "heal": 0,
+          "stun": 1,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 43.0,
+          "efficiency": 25.3,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Idle Death Gamble",
+          "cost": [
+            "red",
+            "blue",
+            "black"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "self",
+          "aoe": false,
+          "damage": 0,
+          "heal": 10,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 40,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 35.5,
+          "efficiency": 8.1,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Action"
+          ]
+        },
+        {
+          "name": "Jackpot: Infinite Cursed Energy",
+          "cost": [
+            "red",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 25,
+          "heal": 20,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 44.0,
+          "efficiency": 16.3,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Panda",
+      "role": "Tank",
+      "rarity": "Rare",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 30,
+      "aoe_skills": 1,
+      "control_turns": 0,
+      "support_skills": 1,
+      "skills": [
+        {
+          "name": "Drum Beat",
+          "cost": [
+            "green",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": true,
+          "damage": 20,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 44.0,
+          "efficiency": 18.7,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Gorilla Core: Unblockable",
+          "cost": [
+            "red",
+            "green"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 30,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 30.0,
+          "efficiency": 11.1,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Gorilla Core: Boost",
+          "cost": [
+            "red"
+          ],
+          "cost_size": 1,
+          "cooldown": 3,
+          "target": "self",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 10,
+          "reduce_total": 20,
+          "invuln": 0,
+          "strengthen_total": 40,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 36.0,
+          "efficiency": 17.6,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Action"
+          ]
+        },
+        {
+          "name": "Trident Core: Regeneration",
+          "cost": [
+            "white",
+            "red"
+          ],
+          "cost_size": 2,
+          "cooldown": 4,
+          "target": "self",
+          "aoe": false,
+          "damage": 0,
+          "heal": 35,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 1,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 58.2,
+          "efficiency": 17.1,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Instant"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Shoko Ieiri",
+      "role": "Support",
+      "rarity": "Rare",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 15,
+      "aoe_skills": 0,
+      "control_turns": 0,
+      "support_skills": 3,
+      "skills": [
+        {
+          "name": "Scalpel Strike",
+          "cost": [
+            "black"
+          ],
+          "cost_size": 1,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 15,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 15.0,
+          "efficiency": 15.0,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Emergency Treatment",
+          "cost": [
+            "white",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 1,
+          "target": "ally",
+          "aoe": false,
+          "damage": 0,
+          "heal": 30,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 28.5,
+          "efficiency": 12.1,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Reverse Cursed Technique",
+          "cost": [
+            "white",
+            "white"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "ally",
+          "aoe": false,
+          "damage": 0,
+          "heal": 40,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 38.0,
+          "efficiency": 14.1,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Stabilize",
+          "cost": [
+            "white",
+            "white"
+          ],
+          "cost_size": 2,
+          "cooldown": 4,
+          "target": "ally",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 15,
+          "reduce_total": 30,
+          "invuln": 1,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 40.0,
+          "efficiency": 11.8,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Action"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Masamichi Yaga",
+      "role": "Tank",
+      "rarity": "Rare",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 35,
+      "aoe_skills": 1,
+      "control_turns": 0,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Cursed Corpse: Strike",
+          "cost": [
+            "blue"
+          ],
+          "cost_size": 1,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 20,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 10,
+          "reduce_total": 20,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 30.0,
+          "efficiency": 22.2,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Action"
+          ]
+        },
+        {
+          "name": "Puppet Swarm",
+          "cost": [
+            "blue",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 30,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 30.0,
+          "efficiency": 11.1,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Gummy: Counter Trap",
+          "cost": [
+            "white",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "self",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 10,
+          "reduce_total": 20,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 20,
+          "value_score": 24.0,
+          "efficiency": 8.9,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Action"
+          ]
+        },
+        {
+          "name": "Autonomous Army",
+          "cost": [
+            "blue",
+            "blue",
+            "white"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "enemy",
+          "aoe": true,
+          "damage": 35,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 77.0,
+          "efficiency": 17.5,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Action"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Takuma Ino",
+      "role": "Tank",
+      "rarity": "Rare",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 45,
+      "aoe_skills": 0,
+      "control_turns": 0,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Kaichi: Homing Horn",
+          "cost": [
+            "blue",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 25,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 25.0,
+          "efficiency": 10.6,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Reiki: Water Cushion",
+          "cost": [
+            "white",
+            "blue"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "self",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 10,
+          "reduce_total": 20,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 15,
+          "value_score": 20.5,
+          "efficiency": 7.6,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Action"
+          ]
+        },
+        {
+          "name": "Kirin: Pain Nullifier",
+          "cost": [
+            "white",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 3,
+          "target": "self",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 40,
+          "reduce_total": 40,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 20.0,
+          "efficiency": 6.6,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Action"
+          ]
+        },
+        {
+          "name": "Ryu: Dragon Crush",
+          "cost": [
+            "blue",
+            "green",
+            "blue"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 45,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 40,
+          "trap": 0,
+          "value_score": 67.0,
+          "efficiency": 15.2,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Arata Nitta",
+      "role": "Support",
+      "rarity": "Rare",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 20,
+      "aoe_skills": 0,
+      "control_turns": 0,
+      "support_skills": 3,
+      "skills": [
+        {
+          "name": "Pain Killer",
+          "cost": [
+            "white"
+          ],
+          "cost_size": 1,
+          "cooldown": 2,
+          "target": "ally",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 20,
+          "reduce_total": 40,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 20.0,
+          "efficiency": 11.8,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Action"
+          ]
+        },
+        {
+          "name": "Emergency Stabilization",
+          "cost": [
+            "white",
+            "white"
+          ],
+          "cost_size": 2,
+          "cooldown": 3,
+          "target": "ally",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 1,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 25.0,
+          "efficiency": 8.2,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Wound Suppression",
+          "cost": [
+            "white",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "ally",
+          "aoe": false,
+          "damage": 0,
+          "heal": 20,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 19.0,
+          "efficiency": 7.0,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Precision Strike",
+          "cost": [
+            "black"
+          ],
+          "cost_size": 1,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 20,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 20.0,
+          "efficiency": 20.0,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Aoi Todo",
+      "role": "Setup",
+      "rarity": "Rare",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 25,
+      "aoe_skills": 0,
+      "control_turns": 1,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Boogie Woogie",
+          "cost": [
+            "black"
+          ],
+          "cost_size": 1,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 1,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 28.0,
+          "efficiency": 20.7,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Crushing Blow",
+          "cost": [
+            "green"
+          ],
+          "cost_size": 1,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 25,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 25.0,
+          "efficiency": 25.0,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Disorienting Swap",
+          "cost": [
+            "red",
+            "blue"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 20,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 40,
+          "trap": 0,
+          "value_score": 42.0,
+          "efficiency": 15.6,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Best Friend Combo",
+          "cost": [
+            "white",
+            "green"
+          ],
+          "cost_size": 2,
+          "cooldown": 3,
+          "target": "self",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 75,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 48.8,
+          "efficiency": 16.0,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Action"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Maki Zenin",
+      "role": "Tank",
+      "rarity": "Epic",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 30,
+      "aoe_skills": 0,
+      "control_turns": 0,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Playful Cloud",
+          "cost": [
+            "green"
+          ],
+          "cost_size": 1,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 25,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 25.0,
+          "efficiency": 25.0,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Dragon-Bone",
+          "cost": [
+            "white"
+          ],
+          "cost_size": 1,
+          "cooldown": 1,
+          "target": "self",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 10,
+          "reduce_total": 10,
+          "invuln": 0,
+          "strengthen_total": 20,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 18.0,
+          "efficiency": 13.3,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Split Soul Katana",
+          "cost": [
+            "green",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 30,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 30.0,
+          "efficiency": 11.1,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Heavenly Restriction: Peak Form",
+          "cost": [
+            "red",
+            "green"
+          ],
+          "cost_size": 2,
+          "cooldown": 4,
+          "target": "self",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 15,
+          "reduce_total": 45,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 30,
+          "value_score": 43.5,
+          "efficiency": 12.8,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Action"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Toge Inumaki",
+      "role": "Specialist",
+      "rarity": "Rare",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 30,
+      "aoe_skills": 0,
+      "control_turns": 1,
+      "support_skills": 1,
+      "skills": [
+        {
+          "name": "Don't Move",
+          "cost": [
+            "blue"
+          ],
+          "cost_size": 1,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 1,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 28.0,
+          "efficiency": 20.7,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Blast Away",
+          "cost": [
+            "blue",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 20,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 20.0,
+          "efficiency": 8.5,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Explode",
+          "cost": [
+            "red",
+            "blue"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 30,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 30.0,
+          "efficiency": 11.1,
+          "flags": [],
+          "classes": [
+            "Affliction",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Throat Medicine",
+          "cost": [
+            "white",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "self",
+          "aoe": false,
+          "damage": 0,
+          "heal": 30,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 28.5,
+          "efficiency": 10.6,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Instant"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Noritoshi Kamo",
+      "role": "Burst",
+      "rarity": "Rare",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 75,
+      "aoe_skills": 0,
+      "control_turns": 1,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Convergence",
+          "cost": [
+            "red",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 30,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 30.0,
+          "efficiency": 12.8,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Crimson Binding",
+          "cost": [
+            "red",
+            "blue"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 1,
+          "dot_total": 20,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 48.0,
+          "efficiency": 17.8,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Action"
+          ]
+        },
+        {
+          "name": "Flowing Red Scale: Surge",
+          "cost": [
+            "red",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 20,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 40,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 46.0,
+          "efficiency": 19.6,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Blood Manipulation: Crimson Rain",
+          "cost": [
+            "red",
+            "red",
+            "blue"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 45,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 30,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 75.0,
+          "efficiency": 17.0,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Action"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Kasumi Miwa",
+      "role": "Bruiser",
+      "rarity": "Rare",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 40,
+      "aoe_skills": 0,
+      "control_turns": 1,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Batto Sword Draw",
+          "cost": [
+            "green"
+          ],
+          "cost_size": 1,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 20,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 20.0,
+          "efficiency": 20.0,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Three-Flash Consecutive Sword Draw",
+          "cost": [
+            "green",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 35,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 35.0,
+          "efficiency": 14.9,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Simple Domain",
+          "cost": [
+            "white"
+          ],
+          "cost_size": 1,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 1,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 28.0,
+          "efficiency": 16.5,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Instant"
+          ]
+        },
+        {
+          "name": "New Shadow Style: Zero Draw",
+          "cost": [
+            "green",
+            "green",
+            "black"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 40,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 1,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 65.0,
+          "efficiency": 14.8,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Mai Zenin",
+      "role": "Bruiser",
+      "rarity": "Rare",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 40,
+      "aoe_skills": 1,
+      "control_turns": 0,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Revolver Shot",
+          "cost": [
+            "black"
+          ],
+          "cost_size": 1,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 15,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 15.0,
+          "efficiency": 15.0,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Construction: Special Bullet",
+          "cost": [
+            "red"
+          ],
+          "cost_size": 1,
+          "cooldown": 2,
+          "target": "self",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 40,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 26.0,
+          "efficiency": 15.3,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Rapid Fire",
+          "cost": [
+            "green",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": true,
+          "damage": 20,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 44.0,
+          "efficiency": 16.3,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Construction: Armor-Piercing Round",
+          "cost": [
+            "red",
+            "green",
+            "black"
+          ],
+          "cost_size": 3,
+          "cooldown": 3,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 40,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 40.0,
+          "efficiency": 9.9,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Utahime Iori",
+      "role": "Support",
+      "rarity": "Rare",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 15,
+      "aoe_skills": 2,
+      "control_turns": 0,
+      "support_skills": 3,
+      "skills": [
+        {
+          "name": "Cursed Strike",
+          "cost": [
+            "black"
+          ],
+          "cost_size": 1,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 15,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 15.0,
+          "efficiency": 15.0,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Cursed Energy Boost",
+          "cost": [
+            "white",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 1,
+          "target": "ally",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 40,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 26.0,
+          "efficiency": 11.1,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Action"
+          ]
+        },
+        {
+          "name": "Ritual Incantation",
+          "cost": [
+            "white",
+            "blue"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "ally",
+          "aoe": true,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 20,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 28.6,
+          "efficiency": 10.6,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Action"
+          ]
+        },
+        {
+          "name": "Solo Forbidden Area",
+          "cost": [
+            "white",
+            "white",
+            "white"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "ally",
+          "aoe": true,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 20,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 28.6,
+          "efficiency": 6.5,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Action"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Yoshinobu Gakuganji",
+      "role": "AoE",
+      "rarity": "Rare",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 45,
+      "aoe_skills": 2,
+      "control_turns": 1,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Guitar Shockwave",
+          "cost": [
+            "blue",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 30,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 30.0,
+          "efficiency": 15.0,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Cursed Resonance",
+          "cost": [
+            "blue",
+            "blue"
+          ],
+          "cost_size": 2,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": true,
+          "damage": 20,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 44.0,
+          "efficiency": 18.7,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Feedback Loop",
+          "cost": [
+            "blue",
+            "white"
+          ],
+          "cost_size": 2,
+          "cooldown": 3,
+          "target": "enemy",
+          "aoe": true,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 30,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 66.0,
+          "efficiency": 21.6,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Action"
+          ]
+        },
+        {
+          "name": "Maximum Feedback",
+          "cost": [
+            "blue",
+            "blue",
+            "black"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 45,
+          "heal": 0,
+          "stun": 1,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 73.0,
+          "efficiency": 16.6,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Momo Nishimiya",
+      "role": "AoE",
+      "rarity": "Rare",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 30,
+      "aoe_skills": 2,
+      "control_turns": 0,
+      "support_skills": 1,
+      "skills": [
+        {
+          "name": "Broomstick Recon",
+          "cost": [
+            "white"
+          ],
+          "cost_size": 1,
+          "cooldown": 1,
+          "target": "ally",
+          "aoe": true,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 15,
+          "reduce_total": 30,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 33.0,
+          "efficiency": 24.4,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Action"
+          ]
+        },
+        {
+          "name": "Wind Sickle",
+          "cost": [
+            "blue",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 30,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 30.0,
+          "efficiency": 12.8,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Kamaitachi Barrage",
+          "cost": [
+            "blue",
+            "blue"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": true,
+          "damage": 20,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 44.0,
+          "efficiency": 16.3,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Aerial Evasion",
+          "cost": [
+            "black"
+          ],
+          "cost_size": 1,
+          "cooldown": 4,
+          "target": "self",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 1,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 25.0,
+          "efficiency": 10.4,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Instant"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Mei Mei",
+      "role": "Punisher",
+      "rarity": "Rare",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 45,
+      "aoe_skills": 0,
+      "control_turns": 0,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Crow Flock",
+          "cost": [
+            "green",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 20,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 20,
+          "trap": 0,
+          "value_score": 31.0,
+          "efficiency": 15.5,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Avid Mercenary",
+          "cost": [
+            "white",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "self",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 40,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 26.0,
+          "efficiency": 9.6,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Action"
+          ]
+        },
+        {
+          "name": "Dive Bomb",
+          "cost": [
+            "blue",
+            "blue"
+          ],
+          "cost_size": 2,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 30,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 30.0,
+          "efficiency": 12.8,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Bird Strike: Suicide Bomb",
+          "cost": [
+            "blue",
+            "blue",
+            "black"
+          ],
+          "cost_size": 3,
+          "cooldown": 3,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 45,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 45.0,
+          "efficiency": 11.1,
+          "flags": [],
+          "classes": [
+            "Affliction",
+            "Instant"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Naobito Zenin",
+      "role": "Bruiser",
+      "rarity": "Rare",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 35,
+      "aoe_skills": 0,
+      "control_turns": 1,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Flash Strike",
+          "cost": [
+            "green"
+          ],
+          "cost_size": 1,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 25,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 25.0,
+          "efficiency": 25.0,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Projection Sorcery",
+          "cost": [
+            "red",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 20,
+          "heal": 0,
+          "stun": 1,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 48.0,
+          "efficiency": 20.4,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        },
+        {
+          "name": "1/24 Frames: Maximum Speed",
+          "cost": [
+            "red",
+            "green"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 35,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 35.0,
+          "efficiency": 13.0,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Speed of Flash: Full Burst",
+          "cost": [
+            "red",
+            "red",
+            "green"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "self",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 1,
+          "strengthen_total": 30,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 44.5,
+          "efficiency": 10.1,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Action"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Toji Fushiguro",
+      "role": "Burst",
+      "rarity": "Epic",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 65,
+      "aoe_skills": 0,
+      "control_turns": 0,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Inverted Spear of Heaven",
+          "cost": [
+            "black",
+            "green"
+          ],
+          "cost_size": 2,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 25,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 25.0,
+          "efficiency": 10.6,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Jinx: Worm Release",
+          "cost": [
+            "red",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 15,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 30,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 45.0,
+          "efficiency": 16.7,
+          "flags": [],
+          "classes": [
+            "Affliction",
+            "Action"
+          ]
+        },
+        {
+          "name": "Heavenly Restriction: Peak Body",
+          "cost": [
+            "red",
+            "green"
+          ],
+          "cost_size": 2,
+          "cooldown": 3,
+          "target": "self",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 15,
+          "reduce_total": 30,
+          "invuln": 0,
+          "strengthen_total": 40,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 41.0,
+          "efficiency": 13.4,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Action"
+          ]
+        },
+        {
+          "name": "Playful Cloud: Finisher",
+          "cost": [
+            "green",
+            "green",
+            "black"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 65,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 65.0,
+          "efficiency": 14.8,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Yuki Tsukumo",
+      "role": "AoE",
+      "rarity": "Legendary",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 35,
+      "aoe_skills": 2,
+      "control_turns": 1,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Star Rage: Impact",
+          "cost": [
+            "green",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 25,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 25.0,
+          "efficiency": 12.5,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Star Rage: Slam",
+          "cost": [
+            "red",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 35,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 35.0,
+          "efficiency": 14.9,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Garuda: Continuous Crush",
+          "cost": [
+            "white",
+            "blue"
+          ],
+          "cost_size": 2,
+          "cooldown": 3,
+          "target": "enemy",
+          "aoe": true,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 30,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 66.0,
+          "efficiency": 21.6,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Action"
+          ]
+        },
+        {
+          "name": "Star Rage: Black Hole",
+          "cost": [
+            "red",
+            "red",
+            "blue"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "enemy",
+          "aoe": true,
+          "damage": 35,
+          "heal": 0,
+          "stun": 1,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 138.6,
+          "efficiency": 31.5,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Kusakabe",
+      "role": "Bruiser",
+      "rarity": "Rare",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 30,
+      "aoe_skills": 0,
+      "control_turns": 1,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Sword Draw",
+          "cost": [
+            "green"
+          ],
+          "cost_size": 1,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 20,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 20.0,
+          "efficiency": 20.0,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "New Shadow Style: Batto",
+          "cost": [
+            "green",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 30,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 30.0,
+          "efficiency": 12.8,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Simple Domain",
+          "cost": [
+            "white"
+          ],
+          "cost_size": 1,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 1,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 28.0,
+          "efficiency": 16.5,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Veteran's Resolve",
+          "cost": [
+            "white",
+            "green"
+          ],
+          "cost_size": 2,
+          "cooldown": 3,
+          "target": "self",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 20,
+          "reduce_total": 40,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 15,
+          "value_score": 30.5,
+          "efficiency": 10.0,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Action"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Kokichi Muta",
+      "role": "Burst",
+      "rarity": "Rare",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 55,
+      "aoe_skills": 0,
+      "control_turns": 1,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Ultra Cannon",
+          "cost": [
+            "blue",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 25,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 25.0,
+          "efficiency": 12.5,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Ultra Spin",
+          "cost": [
+            "green",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 30,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 30.0,
+          "efficiency": 12.8,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Mode: Albatross",
+          "cost": [
+            "blue",
+            "blue"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 35,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 15,
+          "trap": 0,
+          "value_score": 43.2,
+          "efficiency": 16.0,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Mode: Absolute",
+          "cost": [
+            "blue",
+            "blue",
+            "blue"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 55,
+          "heal": 0,
+          "stun": 1,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 83.0,
+          "efficiency": 18.9,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Ui Ui",
+      "role": "Support",
+      "rarity": "Rare",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 30,
+      "aoe_skills": 0,
+      "control_turns": 0,
+      "support_skills": 2,
+      "skills": [
+        {
+          "name": "Teleport: Evade",
+          "cost": [
+            "blue",
+            "white"
+          ],
+          "cost_size": 2,
+          "cooldown": 1,
+          "target": "ally",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 1,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 25.0,
+          "efficiency": 10.6,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Teleport: Intercept",
+          "cost": [
+            "white",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "ally",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 30,
+          "reduce_total": 30,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 15.0,
+          "efficiency": 5.6,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Disorienting Warp",
+          "cost": [
+            "red",
+            "blue",
+            "white"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 30,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 50,
+          "trap": 0,
+          "value_score": 57.5,
+          "efficiency": 13.1,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Desperate Punch",
+          "cost": [
+            "black"
+          ],
+          "cost_size": 1,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 10,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 10.0,
+          "efficiency": 10.0,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Miguel Oduol",
+      "role": "Punisher",
+      "rarity": "Rare",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 45,
+      "aoe_skills": 0,
+      "control_turns": 1,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Black Rope Lash",
+          "cost": [
+            "green",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 20,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 30,
+          "trap": 0,
+          "value_score": 36.5,
+          "efficiency": 18.2,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Prayer Song: Hakuna Rana",
+          "cost": [
+            "green",
+            "blue"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 40,
+          "weaken_total": 30,
+          "trap": 0,
+          "value_score": 42.5,
+          "efficiency": 15.7,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Action"
+          ]
+        },
+        {
+          "name": "Black Rope: Binding",
+          "cost": [
+            "blue",
+            "white"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 25,
+          "heal": 0,
+          "stun": 1,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 53.0,
+          "efficiency": 19.6,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "War Rhythm: Full Power",
+          "cost": [
+            "green",
+            "green",
+            "blue"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 45,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 45.0,
+          "efficiency": 10.2,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Master Tengen",
+      "role": "Support",
+      "rarity": "Rare",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 20,
+      "aoe_skills": 1,
+      "control_turns": 0,
+      "support_skills": 3,
+      "skills": [
+        {
+          "name": "Barrier Pulse",
+          "cost": [
+            "blue",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 20,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 20.0,
+          "efficiency": 10.0,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Barrier Reinforcement",
+          "cost": [
+            "white",
+            "white"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "ally",
+          "aoe": true,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 20,
+          "reduce_total": 40,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 44.0,
+          "efficiency": 16.3,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Action"
+          ]
+        },
+        {
+          "name": "Pure Barrier",
+          "cost": [
+            "white",
+            "white",
+            "blue"
+          ],
+          "cost_size": 3,
+          "cooldown": 3,
+          "target": "ally",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 1,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 25.0,
+          "efficiency": 6.2,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Immortal Body",
+          "cost": [
+            "white",
+            "red",
+            "white"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "self",
+          "aoe": false,
+          "damage": 0,
+          "heal": 30,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 1,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 53.5,
+          "efficiency": 12.2,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Instant"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Yuta Okkotsu (JJK 0)",
+      "role": "Burst",
+      "rarity": "Rare",
+      "portrait_status": "local-generated",
+      "skill_count": 4,
+      "max_burst": 60,
+      "aoe_skills": 0,
+      "control_turns": 0,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Basic Slash",
+          "cost": [
+            "green"
+          ],
+          "cost_size": 1,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 20,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 20.0,
+          "efficiency": 20.0,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Rika: Lunge",
+          "cost": [
+            "red",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 35,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 35.0,
+          "efficiency": 14.9,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Rika: Scream",
+          "cost": [
+            "red",
+            "blue"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 35,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 35.0,
+          "efficiency": 13.0,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Rika: True Manifestation",
+          "cost": [
+            "red",
+            "red",
+            "blue"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 60,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 60.0,
+          "efficiency": 13.6,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Action"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Yuta Okkotsu (Sendai)",
+      "role": "AoE",
+      "rarity": "Epic",
+      "portrait_status": "local-generated",
+      "skill_count": 4,
+      "max_burst": 40,
+      "aoe_skills": 2,
+      "control_turns": 0,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Cursed Sword: Full Draw",
+          "cost": [
+            "green"
+          ],
+          "cost_size": 1,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 25,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 25.0,
+          "efficiency": 25.0,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Copy: Broadcast",
+          "cost": [
+            "blue",
+            "blue"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": true,
+          "damage": 20,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 20,
+          "trap": 0,
+          "value_score": 68.2,
+          "efficiency": 25.3,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Black Flash: Sendai",
+          "cost": [
+            "green",
+            "blue"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 40,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 20,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 53.0,
+          "efficiency": 19.6,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Rika: Maximum Output",
+          "cost": [
+            "red",
+            "blue",
+            "white"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "enemy",
+          "aoe": true,
+          "damage": 40,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 1,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 143.0,
+          "efficiency": 32.5,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Action"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Yuta (Gojo's Body)",
+      "role": "Specialist",
+      "rarity": "Legendary",
+      "portrait_status": "local-generated",
+      "skill_count": 4,
+      "max_burst": 35,
+      "aoe_skills": 1,
+      "control_turns": 1,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Copied Technique: Slash",
+          "cost": [
+            "blue",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 20,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 20.0,
+          "efficiency": 10.0,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Cursed Speech: Don't Move",
+          "cost": [
+            "blue",
+            "white"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 15,
+          "heal": 0,
+          "stun": 1,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 43.0,
+          "efficiency": 15.9,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Rika: AoE Burst",
+          "cost": [
+            "red",
+            "blue"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": true,
+          "damage": 35,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 77.0,
+          "efficiency": 28.5,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Infinity: Borrowed",
+          "cost": [
+            "black"
+          ],
+          "cost_size": 1,
+          "cooldown": 3,
+          "target": "self",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 15,
+          "reduce_total": 30,
+          "invuln": 1,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 40.0,
+          "efficiency": 19.5,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Instant"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Gojo (Young)",
+      "role": "Specialist",
+      "rarity": "Epic",
+      "portrait_status": "local-generated",
+      "skill_count": 4,
+      "max_burst": 25,
+      "aoe_skills": 1,
+      "control_turns": 1,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Cursed Technique Lapse: Blue",
+          "cost": [
+            "blue"
+          ],
+          "cost_size": 1,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 15,
+          "heal": 0,
+          "stun": 1,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 43.0,
+          "efficiency": 31.9,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Blue: Cascade",
+          "cost": [
+            "blue",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": true,
+          "damage": 25,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 55.0,
+          "efficiency": 20.4,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Infinity: Awakened Reflex",
+          "cost": [
+            "black"
+          ],
+          "cost_size": 1,
+          "cooldown": 3,
+          "target": "self",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 1,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 25.0,
+          "efficiency": 12.2,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Limitless Awakening",
+          "cost": [
+            "blue",
+            "white",
+            "black"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "self",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 75,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 48.8,
+          "efficiency": 11.1,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Action"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Gojo (Unsealed)",
+      "role": "Burst",
+      "rarity": "Legendary",
+      "portrait_status": "local-generated",
+      "skill_count": 4,
+      "max_burst": 55,
+      "aoe_skills": 1,
+      "control_turns": 1,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Blue: Maximum",
+          "cost": [
+            "blue",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 3,
+          "target": "enemy",
+          "aoe": true,
+          "damage": 20,
+          "heal": 0,
+          "stun": 1,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 105.6,
+          "efficiency": 34.6,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Cursed Technique Reversal: Red",
+          "cost": [
+            "red",
+            "blue"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 35,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 10,
+          "trap": 0,
+          "value_score": 40.5,
+          "efficiency": 15.0,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Hollow Technique: Purple",
+          "cost": [
+            "red",
+            "blue",
+            "white"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 55,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 55.0,
+          "efficiency": 12.5,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Infinity: Maximum Efficiency",
+          "cost": [
+            "black"
+          ],
+          "cost_size": 1,
+          "cooldown": 3,
+          "target": "self",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 1,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 25.0,
+          "efficiency": 12.2,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Instant"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sukuna (Incarnation)",
+      "role": "Burst",
+      "rarity": "Legendary",
+      "portrait_status": "ok-remote",
+      "skill_count": 4,
+      "max_burst": 40,
+      "aoe_skills": 1,
+      "control_turns": 0,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Innate Technique: Dismantle",
+          "cost": [
+            "red"
+          ],
+          "cost_size": 1,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 25,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 25.0,
+          "efficiency": 25.0,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Innate Technique: Cleave",
+          "cost": [
+            "red",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 35,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 35.0,
+          "efficiency": 14.9,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Vessel's Strength",
+          "cost": [
+            "green",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 30,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 30,
+          "trap": 0,
+          "value_score": 46.5,
+          "efficiency": 17.2,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Shrine: Limited Domain",
+          "cost": [
+            "red",
+            "red",
+            "black"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "enemy",
+          "aoe": true,
+          "damage": 40,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 88.0,
+          "efficiency": 20.0,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Action"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sukuna (Full Power)",
+      "role": "AoE",
+      "rarity": "Legendary",
+      "portrait_status": "local-generated",
+      "skill_count": 4,
+      "max_burst": 55,
+      "aoe_skills": 2,
+      "control_turns": 0,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Dismantle: Cascade",
+          "cost": [
+            "red",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": true,
+          "damage": 25,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 55.0,
+          "efficiency": 23.4,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Cleave: Maximum",
+          "cost": [
+            "red",
+            "red"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 45,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 45.0,
+          "efficiency": 16.7,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Adaptation: Wheel Guard",
+          "cost": [
+            "red",
+            "blue"
+          ],
+          "cost_size": 2,
+          "cooldown": 3,
+          "target": "self",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 15,
+          "reduce_total": 45,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 20,
+          "value_score": 36.5,
+          "efficiency": 12.0,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Action"
+          ]
+        },
+        {
+          "name": "Malevolent Shrine",
+          "cost": [
+            "red",
+            "red",
+            "blue"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "enemy",
+          "aoe": true,
+          "damage": 55,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 121.0,
+          "efficiency": 27.5,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Action"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sukuna (Heian Era)",
+      "role": "AoE",
+      "rarity": "Legendary",
+      "portrait_status": "local-generated",
+      "skill_count": 4,
+      "max_burst": 45,
+      "aoe_skills": 3,
+      "control_turns": 1,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Four-Arm Strike",
+          "cost": [
+            "green",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": true,
+          "damage": 25,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 55.0,
+          "efficiency": 23.4,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Dismantle: Ancient Form",
+          "cost": [
+            "red",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 40,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 40.0,
+          "efficiency": 17.0,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        },
+        {
+          "name": "King's Aura",
+          "cost": [
+            "red",
+            "white"
+          ],
+          "cost_size": 2,
+          "cooldown": 3,
+          "target": "enemy",
+          "aoe": true,
+          "damage": 0,
+          "heal": 0,
+          "stun": 1,
+          "dot_total": 0,
+          "defense": 20,
+          "reduce_total": 40,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 105.6,
+          "efficiency": 34.6,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Action"
+          ]
+        },
+        {
+          "name": "World Slash",
+          "cost": [
+            "red",
+            "red",
+            "red"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "enemy",
+          "aoe": true,
+          "damage": 45,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 99.0,
+          "efficiency": 22.5,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Yuji (Black Flash)",
+      "role": "Burst",
+      "rarity": "Epic",
+      "portrait_status": "local-generated",
+      "skill_count": 4,
+      "max_burst": 55,
+      "aoe_skills": 1,
+      "control_turns": 1,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Divergent Fist",
+          "cost": [
+            "green"
+          ],
+          "cost_size": 1,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 20,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 10,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 30.0,
+          "efficiency": 30.0,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Black Flash: Consecutive",
+          "cost": [
+            "green",
+            "blue"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 40,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 30,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 59.5,
+          "efficiency": 22.0,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Shrine Affinity",
+          "cost": [
+            "red",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": true,
+          "damage": 20,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 44.0,
+          "efficiency": 16.3,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Peak Output: Black Flash",
+          "cost": [
+            "green",
+            "green",
+            "blue"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 55,
+          "heal": 0,
+          "stun": 1,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 83.0,
+          "efficiency": 18.9,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Yuji (Awakened)",
+      "role": "Burst",
+      "rarity": "Epic",
+      "portrait_status": "local-generated",
+      "skill_count": 4,
+      "max_burst": 50,
+      "aoe_skills": 0,
+      "control_turns": 0,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Divergent Fist",
+          "cost": [
+            "green"
+          ],
+          "cost_size": 1,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 20,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 10,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 30.0,
+          "efficiency": 30.0,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Piercing Blood",
+          "cost": [
+            "red",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 35,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 35.0,
+          "efficiency": 14.9,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Blood Edge",
+          "cost": [
+            "red",
+            "green"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 25,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 20,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 45.0,
+          "efficiency": 16.7,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Blood Manipulation: Convergence Burst",
+          "cost": [
+            "red",
+            "red",
+            "black"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 50,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 50.0,
+          "efficiency": 11.4,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Instant"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Kenjaku",
+      "role": "Control",
+      "rarity": "Legendary",
+      "portrait_status": "local-generated",
+      "skill_count": 4,
+      "max_burst": 50,
+      "aoe_skills": 2,
+      "control_turns": 2,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Cursed Spirit: Deploy",
+          "cost": [
+            "black"
+          ],
+          "cost_size": 1,
+          "cooldown": 1,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 20,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 20,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 40.0,
+          "efficiency": 29.6,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Cursed Spirit: Swarm",
+          "cost": [
+            "blue",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": true,
+          "damage": 30,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 66.0,
+          "efficiency": 24.4,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Prison Realm",
+          "cost": [
+            "blue",
+            "white",
+            "black"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 2,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 56.0,
+          "efficiency": 12.7,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Action"
+          ]
+        },
+        {
+          "name": "Maximum: Uzumaki",
+          "cost": [
+            "red",
+            "blue",
+            "blue"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "enemy",
+          "aoe": true,
+          "damage": 50,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 110.0,
+          "efficiency": 25.0,
+          "flags": [],
+          "classes": [
+            "Bloodline",
+            "Action"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Hiromi Higuruma",
+      "role": "Burst",
+      "rarity": "Epic",
+      "portrait_status": "local-generated",
+      "skill_count": 4,
+      "max_burst": 60,
+      "aoe_skills": 0,
+      "control_turns": 1,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Judicial Gavel",
+          "cost": [
+            "black"
+          ],
+          "cost_size": 1,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 20,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 20.0,
+          "efficiency": 20.0,
+          "flags": [],
+          "classes": [
+            "Physical",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Confiscation",
+          "cost": [
+            "white",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 50,
+          "trap": 0,
+          "value_score": 27.5,
+          "efficiency": 10.2,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Executioner's Sword",
+          "cost": [
+            "blue",
+            "blue",
+            "black"
+          ],
+          "cost_size": 3,
+          "cooldown": 3,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 60,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 60.0,
+          "efficiency": 14.8,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Deadly Sentencing",
+          "cost": [
+            "blue",
+            "white",
+            "black"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 1,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 40,
+          "trap": 0,
+          "value_score": 50.0,
+          "efficiency": 11.4,
+          "flags": [],
+          "classes": [
+            "Strategic",
+            "Action"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Uraume",
+      "role": "Control",
+      "rarity": "Epic",
+      "portrait_status": "local-generated",
+      "skill_count": 4,
+      "max_burst": 45,
+      "aoe_skills": 1,
+      "control_turns": 2,
+      "support_skills": 0,
+      "skills": [
+        {
+          "name": "Ice Shard",
+          "cost": [
+            "blue"
+          ],
+          "cost_size": 1,
+          "cooldown": 0,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 20,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 20.0,
+          "efficiency": 20.0,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Frost Calm",
+          "cost": [
+            "blue",
+            "white"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 1,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 28.0,
+          "efficiency": 10.4,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Instant"
+          ]
+        },
+        {
+          "name": "Icefall",
+          "cost": [
+            "blue",
+            "black"
+          ],
+          "cost_size": 2,
+          "cooldown": 2,
+          "target": "enemy",
+          "aoe": false,
+          "damage": 0,
+          "heal": 0,
+          "stun": 0,
+          "dot_total": 45,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 45.0,
+          "efficiency": 16.7,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Action"
+          ]
+        },
+        {
+          "name": "Ice Formation: Absolute Zero",
+          "cost": [
+            "blue",
+            "blue",
+            "white"
+          ],
+          "cost_size": 3,
+          "cooldown": 4,
+          "target": "enemy",
+          "aoe": true,
+          "damage": 35,
+          "heal": 0,
+          "stun": 1,
+          "dot_total": 0,
+          "defense": 0,
+          "reduce_total": 0,
+          "invuln": 0,
+          "strengthen_total": 0,
+          "weaken_total": 0,
+          "trap": 0,
+          "value_score": 138.6,
+          "efficiency": 31.5,
+          "flags": [],
+          "classes": [
+            "Energy",
+            "Action"
+          ]
+        }
+      ]
+    }
+  ]
+}

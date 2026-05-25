@@ -1,0 +1,438 @@
+/* ──────────────────────────────────────────────────────────────────────
+   JJK ARENA — Design Tokens (AAA Console-Game Edition)
+   Single source of truth for color, type, surfaces, glow, motion.
+
+   This file supersedes the older "mobile-first" token sheet.
+   The product is no longer a webpage — it is a standalone game client.
+   Tokens here are tuned for a 100vw / 100vh stage, never a card on a
+   website. Mobile/touch is a delivery surface, not the primary canvas.
+   ────────────────────────────────────────────────────────────────────── */
+
+/*  Fonts loaded by host page.
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@600;700;900&family=Yuji+Mai&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+    See fonts/README.md for substitution notes.
+*/
+
+:root {
+  /* ════════════════════════════════════════════════════════════════════
+     1. SURFACES — black obsidian, steel, cracked concrete
+     The base stage is a near-black void. Every panel sits on it.
+     No pure black: even the deepest layer carries a blue undertone so
+     the cursed-energy purple never feels hot-grafted on.
+     ══════════════════════════════════════════════════════════════════ */
+
+  --jjk-bg-void:        #04040d;  /* the pitch behind the vignette */
+  --jjk-bg:             #07071a;  /* page / stage */
+  --jjk-bg-2:           #0a0a1f;  /* battle stage floor */
+  --jjk-surf:           #0e0e26;  /* primary panels */
+  --jjk-surf-2:         #161630;  /* nested surfaces, skill rows */
+  --jjk-surf-3:         #1d1d3d;  /* hover surface */
+  --jjk-obsidian:       #060614;  /* energy rack interior, deep wells */
+  --jjk-steel:          #2a2a3e;  /* metallic plate accent */
+  --jjk-steel-hi:       #4a4a6b;  /* metallic plate highlight */
+
+  --jjk-border:         rgba(255,255,255,0.07);
+  --jjk-border-hi:      rgba(255,255,255,0.14);
+  --jjk-border-curse:   rgba(168,85,247,0.45);  /* curse-energy outlined panels */
+  --jjk-border-blood:   rgba(220,38,38,0.45);   /* blood-crimson outlined panels */
+  --jjk-border-gold:    rgba(252,211,77,0.55);  /* legendary frames */
+
+  /* Steel-plate panel gradient — apply as background on heavy chrome */
+  --jjk-grad-steel:     linear-gradient(180deg, #1a1a30 0%, #0e0e26 55%, #07071a 100%);
+  --jjk-grad-obsidian:  linear-gradient(165deg, #14142d 0%, #08081a 100%);
+  --jjk-grad-cracked:   linear-gradient(135deg, #0e0e26 0%, #161630 40%, #0c0c1f 100%);
+
+  /* ════════════════════════════════════════════════════════════════════
+     2. CURSED ENERGY — neon purple is the brand voltage
+     Used for: the brand mark, primary CTA, active selection, all
+     panel curse-outlines, the domain-expansion border pulse.
+     ══════════════════════════════════════════════════════════════════ */
+
+  --jjk-curse:          #7c3aed;  /* primary purple */
+  --jjk-curse-hi:       #a855f7;  /* highlight tone */
+  --jjk-curse-lo:       #4c1d95;  /* deep shadow */
+  --jjk-curse-neon:     #c084fc;  /* electric edge */
+  --jjk-curse-glow:     rgba(124,58,237,0.55);
+  --jjk-curse-glow-sm:  rgba(124,58,237,0.30);
+  --jjk-curse-tint:     rgba(124,58,237,0.12);
+
+  /* ════════════════════════════════════════════════════════════════════
+     3. SEMANTIC + ATTACK COLORS
+     ══════════════════════════════════════════════════════════════════ */
+
+  --jjk-gold:           #f59e0b;   /* victory, legendary class */
+  --jjk-gold-hi:        #fcd34d;
+  --jjk-gold-deep:      #b45309;
+  --jjk-gold-glow:      rgba(245,158,11,0.45);
+
+  --jjk-crimson:        #dc2626;   /* assassin frame, blood cuts */
+  --jjk-crimson-hi:     #ef4444;
+  --jjk-crimson-glow:   rgba(220,38,38,0.50);
+
+  --jjk-toxic:          #84cc16;   /* affliction / poison drip */
+  --jjk-toxic-hi:       #bef264;
+  --jjk-toxic-glow:     rgba(132,204,22,0.45);
+
+  --jjk-success:        #22c55e;
+  --jjk-warning:        #f59e0b;
+  --jjk-danger:         #dc2626;
+
+  /* Damage-lag bar (orange chip under the segmented HP) */
+  --jjk-dmg-lag:        #fb923c;
+  --jjk-dmg-lag-glow:   rgba(251,146,60,0.55);
+
+  /* ════════════════════════════════════════════════════════════════════
+     4. TEXT
+     ══════════════════════════════════════════════════════════════════ */
+
+  --jjk-text:           #f0f0ff;   /* primary — soft white w/ blue tint */
+  --jjk-text-dim:       #c7c8e6;   /* secondary body */
+  --jjk-muted:          #6b7094;   /* tertiary / labels */
+  --jjk-dim:            #3a3a5c;   /* placeholders / disabled */
+  --jjk-ink:            #0a0a1a;   /* dark text on light, very rare */
+
+  /* ════════════════════════════════════════════════════════════════════
+     5. ENERGY ORBS (5 types) — each is a 3D physical bead in the rack
+     Use the matching --orb-grad as the base; layer --orb-core for the
+     specular highlight; layer --orb-glow as a drop-shadow.
+     ══════════════════════════════════════════════════════════════════ */
+
+  --jjk-e-green:        #22c55e;   /* Physical / Taijutsu */
+  --jjk-e-red:          #ef4444;   /* Bloodline */
+  --jjk-e-blue:         #3b82f6;   /* Curse Energy */
+  --jjk-e-white:        #e2e8f0;   /* Strategic */
+  --jjk-e-black:        #1f2030;   /* Generic */
+
+  --jjk-orb-grad-green: radial-gradient(circle at 30% 28%, #6ee7a3 0%, #22c55e 38%, #14532d 100%);
+  --jjk-orb-grad-red:   radial-gradient(circle at 30% 28%, #fca5a5 0%, #ef4444 38%, #7f1d1d 100%);
+  --jjk-orb-grad-blue:  radial-gradient(circle at 30% 28%, #93c5fd 0%, #3b82f6 38%, #1e3a8a 100%);
+  --jjk-orb-grad-white: radial-gradient(circle at 30% 28%, #ffffff 0%, #e2e8f0 38%, #64748b 100%);
+  --jjk-orb-grad-black: radial-gradient(circle at 30% 28%, #4a4a6b 0%, #1f2030 38%, #050510 100%);
+
+  --jjk-orb-glow-green: 0 0 12px rgba(34,197,94,0.75), 0 0 4px rgba(110,231,163,0.9);
+  --jjk-orb-glow-red:   0 0 12px rgba(239,68,68,0.75), 0 0 4px rgba(252,165,165,0.9);
+  --jjk-orb-glow-blue:  0 0 12px rgba(59,130,246,0.75),0 0 4px rgba(147,197,253,0.9);
+  --jjk-orb-glow-white: 0 0 12px rgba(226,232,240,0.7),0 0 4px rgba(255,255,255,0.9);
+  --jjk-orb-glow-black: 0 0 6px rgba(124,58,237,0.35);
+
+  /* ════════════════════════════════════════════════════════════════════
+     6. CHARACTER CLASS FRAMES
+     Every character card carries a class. The class drives the frame
+     ornament (jagged steel / blood cuts / metallic grid) AND the
+     accent color for HP bar end caps + skill list dividers.
+     ══════════════════════════════════════════════════════════════════ */
+
+  --jjk-cls-attacker:   #ef4444;   /* jagged metal, hot edge */
+  --jjk-cls-assassin:   #b91c1c;   /* blood-crimson cut */
+  --jjk-cls-defender:   #38bdf8;   /* metallic grid layers */
+  --jjk-cls-support:    #facc15;   /* sun-bronze */
+  --jjk-cls-domain:     #a855f7;   /* curse purple, ultimate */
+
+  /* Rarity (overlay layer, NOT a faction) */
+  --jjk-rar-common:     #6b7094;
+  --jjk-rar-rare:       #38bdf8;
+  --jjk-rar-epic:       #a855f7;
+  --jjk-rar-legend:     #fcd34d;
+
+  /* ════════════════════════════════════════════════════════════════════
+     7. FACTION PALETTE — the in-fiction allegiance, separate from class
+     ══════════════════════════════════════════════════════════════════ */
+
+  --jjk-f-tokyo:        #3b82f6;
+  --jjk-f-kyoto:        #06b6d4;
+  --jjk-f-sorcerer:     #8b5cf6;
+  --jjk-f-villain:      #ef4444;
+  --jjk-f-curse:        #dc2626;
+  --jjk-f-culling:      #f59e0b;
+
+  /* ════════════════════════════════════════════════════════════════════
+     8. TYPE
+     ══════════════════════════════════════════════════════════════════ */
+
+  /* Display — ink-brush ceremonial serif. Used for titles, HP numbers,
+     screen banners, character name plates, victory text. */
+  --jjk-font-display:   'Cinzel Decorative', 'Cinzel', 'Trajan Pro', serif;
+
+  /* Banner — the slab high-impact serif, used at huge sizes. */
+  --jjk-font-banner:    'Cinzel', 'Trajan Pro', serif;
+
+  /* Kanji brush — calligraphy for Japanese characters only. */
+  --jjk-font-kanji:     'Yuji Mai', 'Klee One', 'Hiragino Mincho Pro', serif;
+
+  /* UI — geometric grotesque, dense numeric. */
+  --jjk-font-ui:        'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Mono — for stat readouts (DAM 25 / DEF 4 / CD 2 etc.) */
+  --jjk-font-mono:      'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* ── Scale (px). Game-client biased: nothing under 12px in chrome. */
+  --jjk-fs-xxs:         11px;   /* tracked micro-labels */
+  --jjk-fs-xs:          12px;
+  --jjk-fs-sm:          13px;
+  --jjk-fs-md:          14px;
+  --jjk-fs-base:        15px;
+  --jjk-fs-lg:          17px;
+  --jjk-fs-xl:          20px;
+  --jjk-fs-2xl:         26px;
+  --jjk-fs-3xl:         34px;
+  --jjk-fs-4xl:         46px;
+  --jjk-fs-5xl:         64px;
+  --jjk-fs-6xl:         88px;   /* full-bleed banner reveal */
+  --jjk-fs-mega:        140px;  /* domain-expansion calligraphy */
+
+  /* ── Weights */
+  --jjk-fw-regular:     400;
+  --jjk-fw-medium:      500;
+  --jjk-fw-semi:        600;
+  --jjk-fw-bold:        700;
+  --jjk-fw-heavy:       800;
+  --jjk-fw-black:       900;
+
+  /* ── Letter-spacing — engraved feel uses positive tracking */
+  --jjk-ls-tight:       -1.5px;
+  --jjk-ls-normal:      0;
+  --jjk-ls-wide:        0.5px;
+  --jjk-ls-tracked:     2px;
+  --jjk-ls-engraved:    6px;
+
+  /* ── Line-heights */
+  --jjk-lh-tight:       1.0;
+  --jjk-lh-snug:        1.2;
+  --jjk-lh-normal:      1.4;
+  --jjk-lh-relaxed:     1.55;
+
+  /* ════════════════════════════════════════════════════════════════════
+     9. RADIUS — short, intentional scale. The system avoids pillowy
+     edges; nothing past 22px on a panel. Cards are tighter, frames are
+     near-sharp, badges are pills.
+     ══════════════════════════════════════════════════════════════════ */
+  --jjk-r-xs:           3px;
+  --jjk-r-sm:           6px;
+  --jjk-r-md:           10px;
+  --jjk-r-lg:           14px;
+  --jjk-r-xl:           18px;
+  --jjk-r-2xl:          22px;
+  --jjk-r-pill:         999px;
+
+  /* Hex-cut variants — used on legendary frames & domain panels.
+     Apply with clip-path. */
+  --jjk-clip-hex:       polygon(8% 0, 92% 0, 100% 50%, 92% 100%, 8% 100%, 0 50%);
+  --jjk-clip-blade:     polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
+  --jjk-clip-talisman:  polygon(50% 0, 100% 14px, 100% calc(100% - 14px), 50% 100%, 0 calc(100% - 14px), 0 14px);
+
+  /* ════════════════════════════════════════════════════════════════════
+    10. SPACING — base unit 4. Game UIs are dense; use small steps.
+     ══════════════════════════════════════════════════════════════════ */
+  --jjk-sp-1:           2px;
+  --jjk-sp-2:           4px;
+  --jjk-sp-3:           6px;
+  --jjk-sp-4:           8px;
+  --jjk-sp-5:           12px;
+  --jjk-sp-6:           16px;
+  --jjk-sp-7:           20px;
+  --jjk-sp-8:           24px;
+  --jjk-sp-9:           32px;
+  --jjk-sp-10:          40px;
+  --jjk-sp-11:          56px;
+  --jjk-sp-12:          72px;
+
+  /* ════════════════════════════════════════════════════════════════════
+    11. GLOWS, SHADOWS, AURAS
+     Game UI: shadows are emission, not depth. Every "lifted" element
+     emits light. Inner shadows carve metal plates.
+     ══════════════════════════════════════════════════════════════════ */
+
+  /* Outer auras — colored, no neutral drop shadows */
+  --jjk-aura-curse:     0 0 24px rgba(124,58,237,0.45), 0 0 60px rgba(124,58,237,0.18);
+  --jjk-aura-curse-sm:  0 0 12px rgba(124,58,237,0.40);
+  --jjk-aura-curse-lg:  0 0 60px rgba(124,58,237,0.45), 0 0 120px rgba(124,58,237,0.18);
+  --jjk-aura-gold:      0 0 32px rgba(245,158,11,0.55), 0 0 80px rgba(245,158,11,0.20);
+  --jjk-aura-crimson:   0 0 24px rgba(220,38,38,0.50), 0 0 60px rgba(220,38,38,0.20);
+  --jjk-aura-toxic:     0 0 24px rgba(132,204,22,0.45);
+
+  /* Engraved-plate inner bevel — apply to metal frames */
+  --jjk-bevel-plate:    inset 0 1px 0 rgba(255,255,255,0.10),
+                        inset 0 -1px 0 rgba(0,0,0,0.50),
+                        inset 0 0 0 1px rgba(0,0,0,0.40);
+
+  /* Inset cracked-concrete bevel — for deep wells */
+  --jjk-bevel-well:     inset 0 2px 6px rgba(0,0,0,0.7),
+                        inset 0 -1px 0 rgba(255,255,255,0.04);
+
+  /* Heavy under-card lift for legendary frames */
+  --jjk-shadow-legend:  0 24px 72px rgba(245,158,11,0.18),
+                        0 0 0 1px rgba(252,211,77,0.4) inset;
+
+  /* Full-stage vignette — apply to the stage root */
+  --jjk-vignette:       radial-gradient(ellipse at center,
+                          transparent 30%,
+                          rgba(0,0,0,0.55) 75%,
+                          #000 100%);
+
+  /* ════════════════════════════════════════════════════════════════════
+    12. MOTION — game-feel curves
+     ══════════════════════════════════════════════════════════════════ */
+
+  --jjk-ease-press:     cubic-bezier(0.4, 0, 0.2, 1);
+  --jjk-ease-snap:      cubic-bezier(0.32, 0.72, 0, 1);     /* sheet / wheel snap */
+  --jjk-ease-overshoot: cubic-bezier(0.34, 1.56, 0.64, 1);  /* card / trophy entrance */
+  --jjk-ease-impact:    cubic-bezier(0.65, 0, 0.35, 1);     /* domain curtain */
+  --jjk-ease-shake:     cubic-bezier(.36,.07,.19,.97);
+
+  --jjk-dur-flick:      80ms;    /* press confirmation */
+  --jjk-dur-fast:       150ms;
+  --jjk-dur-base:       250ms;
+  --jjk-dur-slow:       380ms;
+  --jjk-dur-cinematic:  800ms;   /* turn-banner reveal, domain in */
+  --jjk-dur-domain:     1400ms;  /* full domain expansion sequence */
+
+  /* ════════════════════════════════════════════════════════════════════
+    13. LAYOUT — fixed-stage game shell
+     The app locks to 100vw × 100vh. There is no scrollbar at the root.
+     Internal scroll, when it must exist, is custom-styled (see _card.css).
+     ══════════════════════════════════════════════════════════════════ */
+
+  --jjk-stage-w:        100vw;
+  --jjk-stage-h:        100vh;
+  --jjk-stage-h-svh:    100svh;    /* mobile-safe viewport */
+  --jjk-safe-b:         env(safe-area-inset-bottom, 0px);
+
+  --jjk-domain-bezel:   28px;      /* thickness of the domain border pulse */
+  --jjk-hud-h:          64px;      /* fixed HUD strip height */
+  --jjk-actionbar-h:    96px;      /* tactical action bar */
+
+  --jjk-content-max:    1440px;    /* widest internal layout target */
+
+  /* ── Z scale ───────────────────────────────────────────────────────── */
+  --jjk-z-vignette:     0;
+  --jjk-z-smoke:        1;
+  --jjk-z-stage:        2;
+  --jjk-z-hud:          20;
+  --jjk-z-wheel:        30;
+  --jjk-z-domain:       60;       /* domain border + curtain */
+  --jjk-z-banner:       70;       /* YOUR ACTION / DOMAIN INTRUSION */
+  --jjk-z-toast:        80;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Semantic typography classes — use these directly in markup.
+   Do not re-declare font / size on chrome. Build new pieces against
+   these primitives so the visual rhythm stays coherent.
+   ────────────────────────────────────────────────────────────────────── */
+
+.jjk-banner {                       /* full-screen "YOUR ACTION" reveal */
+  font-family: var(--jjk-font-display);
+  font-weight: var(--jjk-fw-black);
+  font-size: clamp(64px, 11vw, var(--jjk-fs-6xl));
+  line-height: var(--jjk-lh-tight);
+  letter-spacing: var(--jjk-ls-tracked);
+  text-transform: uppercase;
+  color: var(--jjk-text);
+  text-shadow: 0 0 24px var(--jjk-curse-glow), 0 0 60px var(--jjk-curse-glow-sm);
+}
+.jjk-kanji-mega {                   /* 領域展開 — vertical-writing curtain */
+  font-family: var(--jjk-font-kanji);
+  font-weight: var(--jjk-fw-regular);
+  font-size: var(--jjk-fs-mega);
+  color: var(--jjk-text);
+  text-shadow: 0 0 32px var(--jjk-crimson-glow), 0 0 80px rgba(220,38,38,0.3);
+  writing-mode: vertical-rl;
+  letter-spacing: -10px;
+}
+.jjk-h1 {                           /* screen title */
+  font-family: var(--jjk-font-display);
+  font-weight: var(--jjk-fw-black);
+  font-size: var(--jjk-fs-4xl);
+  line-height: var(--jjk-lh-tight);
+  letter-spacing: var(--jjk-ls-wide);
+  color: var(--jjk-text);
+}
+.jjk-h2 {                           /* section header */
+  font-family: var(--jjk-font-banner);
+  font-weight: var(--jjk-fw-bold);
+  font-size: var(--jjk-fs-2xl);
+  line-height: var(--jjk-lh-snug);
+  letter-spacing: var(--jjk-ls-wide);
+  color: var(--jjk-text);
+}
+.jjk-h3 {                           /* card name plate */
+  font-family: var(--jjk-font-banner);
+  font-weight: var(--jjk-fw-bold);
+  font-size: var(--jjk-fs-lg);
+  line-height: var(--jjk-lh-snug);
+  color: var(--jjk-text);
+  letter-spacing: var(--jjk-ls-wide);
+}
+.jjk-eyebrow {                      /* the ALL-CAPS tracked label above any section */
+  font-family: var(--jjk-font-banner);
+  font-weight: var(--jjk-fw-bold);
+  font-size: var(--jjk-fs-xxs);
+  letter-spacing: var(--jjk-ls-engraved);
+  text-transform: uppercase;
+  color: var(--jjk-muted);
+}
+.jjk-label {                        /* small ui label */
+  font-family: var(--jjk-font-ui);
+  font-weight: var(--jjk-fw-bold);
+  font-size: var(--jjk-fs-xxs);
+  letter-spacing: var(--jjk-ls-tracked);
+  text-transform: uppercase;
+  color: var(--jjk-muted);
+}
+.jjk-body {
+  font-family: var(--jjk-font-ui);
+  font-weight: var(--jjk-fw-regular);
+  font-size: var(--jjk-fs-md);
+  line-height: var(--jjk-lh-relaxed);
+  color: var(--jjk-text);
+}
+.jjk-body-sm {
+  font-family: var(--jjk-font-ui);
+  font-weight: var(--jjk-fw-regular);
+  font-size: var(--jjk-fs-sm);
+  line-height: var(--jjk-lh-relaxed);
+  color: var(--jjk-text-dim);
+}
+.jjk-button {
+  font-family: var(--jjk-font-ui);
+  font-weight: var(--jjk-fw-heavy);
+  font-size: var(--jjk-fs-md);
+  letter-spacing: var(--jjk-ls-tracked);
+  text-transform: uppercase;
+  color: var(--jjk-text);
+}
+.jjk-stat {                         /* HP 1820 / 2000, DEF 04, CD 2 */
+  font-family: var(--jjk-font-mono);
+  font-weight: var(--jjk-fw-bold);
+  font-size: var(--jjk-fs-md);
+  letter-spacing: 0;
+  color: var(--jjk-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Gradient text — JJK wordmark, victory name plates */
+.jjk-text-gradient-curse {
+  background: linear-gradient(135deg, #fff 18%, var(--jjk-curse-hi) 60%, var(--jjk-curse-neon) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+.jjk-text-gradient-gold {
+  background: linear-gradient(135deg, #fff 24%, var(--jjk-gold-hi) 70%, var(--jjk-gold) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+.jjk-text-gradient-crimson {
+  background: linear-gradient(135deg, #fff 12%, var(--jjk-crimson-hi) 55%, var(--jjk-crimson) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}

@@ -45,7 +45,7 @@ def check_synergies(team_names: List[str]) -> List[Synergy]:
     has_nobara = any(matches_name(n, "Nobara") for n in team_names)
     has_yuta_normal = any(matches_name(n, "Yuta Okkotsu") and "jjk 0" not in n.lower() and "sendai" not in n.lower() and "gojo" not in n.lower() for n in team_names)
     has_yuta_jjk0 = any("jjk 0" in n.lower() for n in team_names)
-    has_yuta_any = has_yuta_normal or has_yuta_jjk0
+    has_yuta_any = any(matches_name(n, "Yuta") for n in team_names)
     has_toji = any(matches_name(n, "Toji") for n in team_names)
     has_maki = any(matches_name(n, "Maki") for n in team_names)
     has_gojo = any(matches_name(n, "Gojo") for n in team_names)

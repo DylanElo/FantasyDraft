@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 560" role="img" aria-label="Uraume">
+  <defs>
+    <radialGradient id="a" cx="50%" cy="20%" r="72%">
+      <stop offset="0" stop-color="#e0f2fe" stop-opacity="0.7"/>
+      <stop offset="0.38" stop-color="#0ea5e9" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="#082f49"/>
+    </radialGradient>
+    <linearGradient id="b" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#0ea5e9" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#111827" stop-opacity="0.8"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="420" height="560" rx="34" fill="url(#a)"/>
+  <path d="M30 80 C100 28 320 28 390 80 L366 128 C286 88 134 88 54 128 Z" fill="#0ea5e9" opacity="0.28"/>
+  <circle cx="210" cy="178" r="82" fill="#0f172a" opacity="0.86"/>
+  <path d="M118 456 C132 330 158 272 210 272 C262 272 288 330 302 456 Z" fill="url(#b)"/>
+  <path d="M112 246 C140 204 164 178 210 178 C256 178 280 204 308 246 C286 278 252 294 210 294 C168 294 134 278 112 246 Z" fill="#e0f2fe" opacity="0.24"/>
+  <path d="M84 430 C130 394 290 394 336 430" fill="none" stroke="#e0f2fe" stroke-width="8" opacity="0.34"/>
+  <path d="M72 496 L348 496" stroke="#0ea5e9" stroke-width="3" opacity="0.75"/>
+  <text x="210" y="198" text-anchor="middle" dominant-baseline="middle" font-family="Georgia, serif" font-size="74" font-weight="900" fill="#e0f2fe" filter="url(#glow)">U</text>
+  <text x="210" y="518" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800" letter-spacing="2" fill="#e0f2fe" opacity="0.9">URAUME</text>
+</svg>

@@ -4,6 +4,15 @@ from jjk_bot.game import Game, GameState, CPU_PLAYER_ID
 from jjk_bot.characters import get_random_character, CHARACTERS
 
 class TestPhase11(unittest.TestCase):
+    def test_yuta_variants_count_for_special_grade_synergy(self):
+        """Assert that newer Yuta variants count as Yuta for special-grade team checks."""
+        from jjk_bot.synergies import check_synergies
+
+        synergies = check_synergies(["Gojo (Unsealed)", "Yuta Okkotsu (Sendai)", "Panda"])
+        names = [s.name for s in synergies]
+
+        self.assertIn("Special Grade Sorcerers", names)
+
     def test_unique_draft_pool_vs_cpu(self):
         """Assert that characters drafted by CPU are never present in the Human's draw_three pool, and team uniqueness is strictly enforced."""
         game = Game(123)

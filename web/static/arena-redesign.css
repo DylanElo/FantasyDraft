@@ -1,0 +1,229 @@
+/* Arena visual refresh: CSS-only override layer. */
+:root {
+  --arena-bg: #050511;
+  --arena-panel: rgba(12, 13, 32, 0.94);
+  --arena-panel-2: rgba(18, 19, 45, 0.96);
+  --arena-line: rgba(255, 255, 255, 0.13);
+  --arena-purple: #9f5cff;
+  --arena-purple-soft: rgba(159, 92, 255, 0.24);
+  --arena-gold: #f7c948;
+  --arena-blue: #38bdf8;
+  --arena-text-soft: rgba(241, 245, 249, 0.72);
+}
+
+.app-stage {
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(123, 44, 191, 0.34), transparent 45%),
+    radial-gradient(ellipse at 15% 105%, rgba(56, 189, 248, 0.12), transparent 42%),
+    linear-gradient(180deg, #080819 0%, #050511 48%, #090714 100%) !important;
+}
+
+.app-header {
+  min-height: 64px;
+  padding-inline: clamp(14px, 3vw, 32px) !important;
+  background: linear-gradient(180deg, rgba(12,13,31,0.98), rgba(6,7,20,0.82)) !important;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.34), inset 0 -1px 0 rgba(216,180,254,0.24) !important;
+}
+
+.header-title {
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase;
+}
+
+.round-badge {
+  border: 1px solid rgba(216,180,254,0.34) !important;
+  background: rgba(159,92,255,0.13) !important;
+  box-shadow: 0 0 18px rgba(159,92,255,0.18), inset 0 0 18px rgba(159,92,255,0.08) !important;
+}
+
+.setup-form,
+.setup-hero-card,
+.multiplayer-card,
+.history-block,
+.roster-lab-toolbar,
+.roster-audit-card,
+.energy-legend {
+  background: linear-gradient(180deg, var(--arena-panel-2), var(--arena-panel)) !important;
+  border: 1px solid rgba(216,180,254,0.16) !important;
+  box-shadow: 0 28px 80px rgba(0,0,0,0.50), inset 0 1px 0 rgba(255,255,255,0.06) !important;
+}
+
+.name-field,
+.select-field,
+.roster-search,
+.roster-filter {
+  background: rgba(3, 4, 13, 0.82) !important;
+  border: 1px solid rgba(216,180,254,0.18) !important;
+}
+
+.btn-primary,
+.btn-hero-gold,
+.action-btn,
+.btn-choice-confirm,
+.btn-end-turn {
+  transition: transform 160ms ease, filter 160ms ease, box-shadow 160ms ease !important;
+}
+
+.btn-primary:hover,
+.btn-hero-gold:hover,
+.action-btn:hover,
+.btn-choice-confirm:hover,
+.btn-end-turn:hover {
+  filter: brightness(1.08) saturate(1.08);
+  transform: translateY(-1px);
+}
+
+.face-down,
+.char-card,
+.sel-card,
+.mini-card {
+  border-color: rgba(216,180,254,0.22) !important;
+  box-shadow: 0 18px 60px rgba(0,0,0,0.45), 0 0 28px rgba(159,92,255,0.12) !important;
+}
+
+.char-card {
+  position: relative;
+  background: linear-gradient(180deg, rgba(20,22,52,0.98), rgba(8,9,26,0.98)) !important;
+}
+
+.skill-item,
+.roster-skill-row {
+  background: rgba(255,255,255,0.045) !important;
+  border: 1px solid rgba(255,255,255,0.055);
+  border-left-width: 3px;
+}
+
+#battle-arena {
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(159,92,255,0.14), transparent 44%),
+    radial-gradient(ellipse at 50% 100%, rgba(56,189,248,0.10), transparent 36%),
+    linear-gradient(180deg, #050511 0%, #080817 46%, #050511 100%) !important;
+}
+
+#battle-arena::before {
+  content: "";
+  position: absolute;
+  inset: 64px 0 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at center, transparent 0 32%, rgba(216,180,254,0.07) 33%, transparent 34%),
+    linear-gradient(90deg, transparent 49.8%, rgba(216,180,254,0.10) 50%, transparent 50.2%),
+    linear-gradient(0deg, transparent 49.8%, rgba(216,180,254,0.08) 50%, transparent 50.2%);
+  opacity: 0.62;
+}
+
+.energy-panel {
+  background: rgba(5, 6, 18, 0.78) !important;
+  border-bottom: 1px solid rgba(216,180,254,0.16) !important;
+  backdrop-filter: blur(14px);
+}
+
+.battle-body {
+  padding: clamp(8px, 2vw, 18px) clamp(10px, 3vw, 34px) !important;
+  gap: clamp(8px, 2vh, 18px) !important;
+}
+
+.battle-team {
+  position: relative;
+}
+
+.battle-team::before {
+  content: "";
+  position: absolute;
+  inset: 18px -6px 6px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.012));
+  border: 1px solid rgba(255,255,255,0.055);
+  pointer-events: none;
+}
+
+.team-label {
+  position: relative;
+  z-index: 2;
+  width: fit-content;
+  padding: 4px 9px !important;
+  border-radius: 999px;
+  background: rgba(5, 6, 18, 0.78);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.battle-chars {
+  position: relative;
+  z-index: 2;
+  padding: 8px 6px 10px;
+}
+
+.battle-char {
+  max-width: min(150px, 30vw) !important;
+  background: linear-gradient(180deg, rgba(20,22,52,0.96), rgba(7,8,22,0.98)) !important;
+  border: 1px solid rgba(216,180,254,0.18) !important;
+  border-top-width: 3px !important;
+  border-radius: 16px !important;
+  box-shadow: 0 14px 40px rgba(0,0,0,0.42), 0 0 20px rgba(159,92,255,0.10) !important;
+}
+
+.battle-char--selected {
+  box-shadow: 0 0 0 2px rgba(247,201,72,0.44), 0 0 36px rgba(247,201,72,0.30) !important;
+}
+
+.bchar-art {
+  min-height: 92px;
+  background-position: top center !important;
+}
+
+.hp-bar-wrap {
+  height: 8px !important;
+  margin: 7px 8px 0 !important;
+  background: rgba(0,0,0,0.54) !important;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+}
+
+.battle-log {
+  background: rgba(5, 6, 18, 0.76) !important;
+  border-top: 1px solid rgba(216,180,254,0.16) !important;
+  box-shadow: 0 -12px 28px rgba(0,0,0,0.28);
+  backdrop-filter: blur(12px);
+}
+
+.skill-panel,
+.battle-command-tray,
+.breakdown-sheet,
+.char-modal-sheet,
+.slide-panel {
+  background: linear-gradient(180deg, rgba(18,19,45,0.98), rgba(7,8,22,0.98)) !important;
+  border: 1px solid rgba(216,180,254,0.18) !important;
+  box-shadow: 0 28px 80px rgba(0,0,0,0.58), 0 0 34px rgba(159,92,255,0.18) !important;
+}
+
+.target-prompt {
+  background: rgba(247, 201, 72, 0.15) !important;
+  border: 1px solid rgba(247, 201, 72, 0.42) !important;
+  color: var(--arena-gold) !important;
+  box-shadow: 0 0 34px rgba(247, 201, 72, 0.18) !important;
+}
+
+@media (min-width: 900px) {
+  .battle-body {
+    max-width: 1180px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .battle-char {
+    max-width: 172px !important;
+  }
+
+  .bchar-art {
+    min-height: 130px;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-header { min-height: 58px; }
+  .battle-body { padding-inline: 8px !important; }
+  .battle-chars { gap: 6px !important; padding-inline: 2px; }
+  .battle-char { border-radius: 12px !important; }
+  .bchar-art { min-height: 76px; }
+  .status-badge { font-size: 6px !important; padding: 2px 3px !important; }
+  .battle-command-tray { left: 6px !important; right: 6px !important; }
+}

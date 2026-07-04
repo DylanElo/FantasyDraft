@@ -73,6 +73,43 @@ def clean_selected_names(value) -> list[str]:
     return [CONTROL_RE.sub("", str(name).strip())[:80] for name in value[:3] if str(name).strip()]
 
 
+def v2_character_id_for_name(name: str) -> str | None:
+    catalog = skill_catalog()
+    cleaned = CONTROL_RE.sub("", str(name or "").strip())
+    if not cleaned:
+        return None
+    exact = {
+        str(spec["name"]).lower(): character_id
+        for character_id, spec in catalog.items()
+    }
+    if cleaned.lower() in exact:
+        return exact[cleaned.lower()]
+    aliases = {
+        "sukuna": "ryomen_sukuna",
+        "sukuna (incarnation)": "ryomen_sukuna",
+        "sukuna (full power)": "ryomen_sukuna",
+        "sukuna (heian era)": "ryomen_sukuna",
+    }
+    if cleaned.lower() in aliases:
+        return aliases[cleaned.lower()]
+
+    identity = character_identity(cleaned)
+    matches = [
+        character_id
+        for character_id, spec in catalog.items()
+        if character_identity(str(spec["name"])) == identity
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
+def v2_team_ids_from_characters(chars: list[Character]) -> list[str] | None:
+    ids = [v2_character_id_for_name(char.name) for char in chars[:3]]
+    if len(ids) != 3 or any(character_id is None for character_id in ids):
+        return None
+    unique_ids = [str(character_id) for character_id in ids]
+    return unique_ids if len(set(unique_ids)) == 3 else None
+
+
 def clean_v2_team(value, fallback: list[str]) -> list[str]:
     if not isinstance(value, list):
         return list(fallback)
@@ -605,6 +642,26 @@ def on_submit_team(data):
     game = game_manager.get_game(int_room)
     success, msg = game.submit_team(int_id, selected_names)
     emit('message', {'text': msg}, room=room_id)
+    if success and use_battle_v2() and game.state == GameState.BATTLE and game.cpu_player_id is not None:
+        player_team = v2_team_ids_from_characters(game.active_teams.get(int_id, []))
+        enemy_team = v2_team_ids_from_characters(game.active_teams.get(CPU_PLAYER_ID, []))
+        if player_team and enemy_team:
+            player_name = game.player_names.get(int_id, f"Player_{session.get('player_id', '')[:4]}")
+            try:
+                battle_v2_manager.start_classic_match(
+                    room_id,
+                    [
+                        {"id": session.get("player_id"), "name": player_name, "team": player_team},
+                        {"id": CPU_V2_PLAYER_ID, "name": "CPU V2", "team": enemy_team},
+                    ],
+                )
+                emit('message', {'text': 'Battle v2 launched from your drafted 3v3 team.'})
+                emit_battle_v2_update(room_id, session.get("player_id"))
+                return
+            except BattleV2SessionError as exc:
+                emit_battle_v2_error(exc)
+                return
+        emit('message', {'text': 'Draft team includes characters not converted to Battle v2 yet; using v1 battle.'}, room=room_id)
     emit('game_update', get_game_state_dict(game, smap), room=room_id)
 
 @socketio.on('battle_action')

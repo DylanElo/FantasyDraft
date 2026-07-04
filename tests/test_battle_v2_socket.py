@@ -1,6 +1,8 @@
 import pytest
 
 from jjk_bot.battle_v2.models import EnergyType
+from jjk_bot.characters import CHARACTERS
+from jjk_bot.game import CPU_PLAYER_ID, GameState
 from web import app as web_app
 
 
@@ -27,6 +29,10 @@ def received_payload(client, event_name):
         if message["name"] == event_name:
             return message["args"][0]
     return None
+
+
+def character(name):
+    return next(char for char in CHARACTERS if char.name == name)
 
 
 def test_battle_v2_socket_events_are_feature_flagged(monkeypatch):
@@ -130,3 +136,59 @@ def test_battle_v2_socket_end_turn_runs_cpu_response(monkeypatch):
     assert resolved_state["turn_player_id"] == player_id
     assert any(event["message"] == "Tester ended their turn" for event in resolved_state["event_log"])
     assert any(event["type"] == "skill_resolved" for event in resolved_state["event_log"])
+
+
+def test_submit_team_launches_battle_v2_from_solo_draft_when_convertible(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    flask_client = web_app.app.test_client()
+    with flask_client.session_transaction() as flask_session:
+        flask_session["player_id"] = "player-v2-draft"
+    client = web_app.socketio.test_client(web_app.app, flask_test_client=flask_client)
+    client.emit("join_room", {"room_id": "draft-v2", "player_name": "Tester"})
+    client.get_received()
+
+    player_session = "player-v2-draft"
+    int_id = web_app.str_to_int_id(player_session)
+    game = web_app.game_manager.get_game(web_app.str_to_int_id("draft-v2"))
+    game.players = [int_id, CPU_PLAYER_ID]
+    game.player_names = {int_id: "Tester", CPU_PLAYER_ID: "CPU"}
+    game.cpu_player_id = CPU_PLAYER_ID
+    game.state = GameState.TEAM_SELECTION
+    game.teams[int_id] = [
+        character("Yuji Itadori"),
+        character("Nobara Kugisaki"),
+        character("Megumi Fushiguro"),
+        character("Aoi Todo"),
+        character("Maki Zenin"),
+    ]
+    game.teams[CPU_PLAYER_ID] = [
+        character("Satoru Gojo"),
+        character("Sukuna (Incarnation)"),
+        character("Yuta Okkotsu"),
+        character("Hiromi Higuruma"),
+        character("Aoi Todo"),
+    ]
+    game.active_teams[CPU_PLAYER_ID] = [
+        character("Satoru Gojo"),
+        character("Sukuna (Incarnation)"),
+        character("Yuta Okkotsu"),
+    ]
+    game.bench_teams[CPU_PLAYER_ID] = []
+
+    client.emit(
+        "submit_team",
+        {"selected_names": ["Yuji Itadori", "Nobara Kugisaki", "Megumi Fushiguro"]},
+    )
+
+    update = received_payload(client, "battle_v2_update")
+    assert update is not None
+    assert [char["character_id"] for char in update["players"][player_session]["team"]] == [
+        "yuji_itadori",
+        "nobara_kugisaki",
+        "megumi_fushiguro",
+    ]
+    assert [char["character_id"] for char in update["players"]["__cpu_v2__"]["team"]] == [
+        "satoru_gojo",
+        "ryomen_sukuna",
+        "yuta_okkotsu",
+    ]

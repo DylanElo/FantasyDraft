@@ -1,6 +1,6 @@
 import unittest
 from web import app as web_app
-from web.app import char_to_dict
+from web.app import char_to_dict, v2_character_id_for_name
 from jjk_bot.characters import Character, Skill
 
 class TestApp(unittest.TestCase):
@@ -63,8 +63,17 @@ def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
     assert '"hiromi_higuruma"' in html
     assert 'id="btn-v2-new-match"' in html
     assert 'id="v2-player-summary"' in html
-    assert 'app.js?v=27' in html
+    assert 'app.js?v=28' in html
     assert 'style.css?v=25' in html
+
+
+def test_v2_character_id_for_v1_names():
+    assert v2_character_id_for_name("Yuji Itadori") == "yuji_itadori"
+    assert v2_character_id_for_name("Ryomen Sukuna") == "ryomen_sukuna"
+    assert v2_character_id_for_name("Sukuna (Incarnation)") == "ryomen_sukuna"
+    assert v2_character_id_for_name("Yuta Okkotsu (JJK 0)") == "yuta_okkotsu"
+    assert v2_character_id_for_name("Gojo (Unsealed)") == "satoru_gojo"
+    assert v2_character_id_for_name("Kento Nanami") is None
 
 if __name__ == '__main__':
     unittest.main()

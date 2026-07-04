@@ -923,6 +923,7 @@ socket.on('battle_v2_update', (data) => {
         v2State.wildcardPays = {};
     }
     document.getElementById('v2-error')?.classList.add('hidden');
+    showScreen('classic-v2');
     renderClassicV2();
 });
 

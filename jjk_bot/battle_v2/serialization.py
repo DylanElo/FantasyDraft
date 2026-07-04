@@ -25,8 +25,7 @@ def _class_values(classes: list[SkillClass]) -> list[str]:
 def serialize_status(status: StatusEffect, viewer_id: str) -> dict | None:
     """Serialize a status, hiding invisible unrevealed statuses from opponents."""
 
-    owner_ids = {status.source_player_id, status.target_player_id}
-    if status.invisible and not status.revealed and viewer_id not in owner_ids:
+    if status.invisible and not status.revealed and viewer_id != status.source_player_id:
         return None
     return {
         "id": status.id,

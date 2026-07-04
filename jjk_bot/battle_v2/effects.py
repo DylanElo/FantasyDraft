@@ -119,8 +119,12 @@ def apply_damage(
     if amount <= 0 or not target.alive:
         return 0
 
+    if damage_type == DamageType.SURE_HIT and _has_anti_domain(target):
+        damage_type = DamageType.NORMAL
+        bypass_invulnerability = False
+
     if _has_invulnerability(target) and not bypass_invulnerability:
-        if damage_type != DamageType.SURE_HIT or _has_anti_domain(target):
+        if damage_type != DamageType.SURE_HIT:
             return 0
 
     defense = _status_amount(target, "destructible_defense")
@@ -129,14 +133,13 @@ def apply_damage(
 
     if damage_type == DamageType.NORMAL:
         incoming = max(0, incoming - reduction)
-    elif damage_type in {DamageType.SOUL, DamageType.HEALTH_STEAL}:
+    elif damage_type == DamageType.SOUL:
         defense = 0
     elif damage_type == DamageType.SURE_HIT:
-        if not _has_anti_domain(target):
-            defense = 0
-            reduction = 0
+        defense = 0
+        reduction = 0
 
-    if defense > 0 and damage_type in {DamageType.NORMAL, DamageType.PIERCING}:
+    if defense > 0 and damage_type in {DamageType.NORMAL, DamageType.PIERCING, DamageType.HEALTH_STEAL}:
         absorbed = min(incoming, defense)
         incoming -= absorbed
         _consume_destructible_defense(target, absorbed)
@@ -303,10 +306,12 @@ def apply_effect(
                 payload={"action_id": action.id, "status": effect.status},
             )
         status = apply_status(state, action, target_player_id, target_slot, effect)
+        private_to = action.player_id if status.invisible and not status.revealed else None
         return BattleEvent(
             type="status_applied",
             message=f"{status.name} applied",
             turn_number=state.turn_number,
+            private_to=private_to,
             payload={
                 "action_id": action.id,
                 "status": status.id,

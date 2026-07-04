@@ -146,6 +146,37 @@ def test_health_steal_only_heals_actual_hp_damage():
     assert target.alive is False
 
 
+def test_health_steal_hits_destructible_defense_before_hp():
+    state = make_state()
+    caster = state.players["p1"].team[0]
+    caster.hp = 50
+    target = state.players["p2"].team[0]
+    target.statuses.append(
+        StatusEffect(
+            "shield",
+            "Shield",
+            "p2",
+            0,
+            "p2",
+            0,
+            duration=2,
+            payload={"destructible_defense": 20},
+        )
+    )
+    steal = skill(
+        "steal",
+        effects=[EffectSpec(type="health_steal", amount=30, damage_type=DamageType.HEALTH_STEAL)],
+    )
+    state.pending_actions["p1"] = [PendingAction("a1", "p1", 0, "steal", "p2", 0)]
+    state.queue_order["p1"] = ["a1"]
+
+    resolve_queue(state, "p1", {"steal": steal})
+
+    assert caster.hp == 60
+    assert target.hp == 90
+    assert target.statuses[0].payload["destructible_defense"] == 0
+
+
 def test_heal_effect_restores_target_and_respects_healing_delta():
     state = make_state()
     ally = state.players["p1"].team[1]
@@ -312,6 +343,46 @@ def test_reflect_redirects_harmful_effect_to_caster_and_is_consumed():
     assert target.statuses == []
 
 
+def test_reflect_redirects_full_harmful_skill_payload():
+    state = make_state()
+    caster = state.players["p1"].team[0]
+    target = state.players["p2"].team[0]
+    target.statuses.append(
+        StatusEffect(
+            "mirror",
+            "Mirror",
+            "p2",
+            0,
+            "p2",
+            0,
+            duration=2,
+            payload={"reflect": "user"},
+        )
+    )
+    stun_hit = skill(
+        "stun_hit",
+        effects=[
+            EffectSpec(type="damage", amount=20),
+            EffectSpec(
+                type="apply_status",
+                status="stunned",
+                duration=2,
+                payload={"name": "Stunned", "stun_classes": ["all"]},
+            ),
+        ],
+    )
+    state.pending_actions["p1"] = [PendingAction("a1", "p1", 0, "stun_hit", "p2", 0)]
+    state.queue_order["p1"] = ["a1"]
+
+    events = resolve_queue(state, "p1", {"stun_hit": stun_hit})
+
+    assert any(event.type == "skill_reflected" for event in events)
+    assert caster.hp == 80
+    assert any(status.id == "stunned" for status in caster.statuses)
+    assert target.hp == 100
+    assert not any(status.id == "stunned" for status in target.statuses)
+
+
 def test_unreflectable_skill_bypasses_reflect():
     state = make_state()
     caster = state.players["p1"].team[0]
@@ -471,6 +542,53 @@ def test_sure_hit_turn_end_status_damage_bypasses_invulnerability():
     resolve_queue(state, "p1", {"domain_burn": domain_burn})
 
     assert target.hp == 85
+
+
+def test_anti_domain_converts_sure_hit_to_normal_damage():
+    target = CharacterState(character_id="target", name="Target")
+    target.statuses.extend(
+        [
+            StatusEffect(
+                "simple_domain",
+                "Simple Domain",
+                "p2",
+                0,
+                "p2",
+                0,
+                duration=2,
+                payload={"anti_domain": True},
+            ),
+            StatusEffect(
+                "guard",
+                "Guard",
+                "p2",
+                0,
+                "p2",
+                0,
+                duration=2,
+                payload={"damage_reduction": 10, "destructible_defense": 15},
+            ),
+        ]
+    )
+
+    assert apply_damage(target, 30, DamageType.SURE_HIT, bypass_invulnerability=True) == 5
+    assert target.hp == 95
+
+    target.statuses.append(
+        StatusEffect(
+            "infinity",
+            "Infinity",
+            "p2",
+            0,
+            "p2",
+            0,
+            duration=2,
+            payload={"invulnerable": True},
+        )
+    )
+
+    assert apply_damage(target, 30, DamageType.SURE_HIT, bypass_invulnerability=True) == 0
+    assert target.hp == 95
 
 
 def test_damage_output_delta_modifies_outgoing_non_self_damage():

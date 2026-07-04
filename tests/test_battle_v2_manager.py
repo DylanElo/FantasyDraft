@@ -75,6 +75,59 @@ def test_invisible_status_hidden_from_opponent_but_visible_to_owner():
     assert opponent_view["players"]["p1"]["team"][2]["statuses"] == []
 
 
+def test_hostile_invisible_status_hidden_from_target_player():
+    manager, _ = start_manager()
+    state = manager.get_state("room")
+    enemy = state.players["p2"].team[0]
+    enemy.statuses.append(
+        StatusEffect(
+            "hidden_trap",
+            "Hidden Trap",
+            "p1",
+            2,
+            "p2",
+            0,
+            duration=2,
+            classes=[SkillClass.INVISIBLE],
+            invisible=True,
+            payload={"counter": "first_harmful"},
+        )
+    )
+
+    owner_view = manager.serialize_for_player("room", "p1")
+    target_view = manager.serialize_for_player("room", "p2")
+
+    assert owner_view["players"]["p2"]["team"][0]["statuses"][0]["id"] == "hidden_trap"
+    assert target_view["players"]["p2"]["team"][0]["statuses"] == []
+
+
+def test_invisible_skill_and_status_events_are_private_to_source():
+    manager, _ = start_manager()
+    state = manager.get_state("room")
+    state.players["p1"].energy[EnergyType.WHITE] = 1
+
+    manager.submit_plan(
+        "room",
+        "p1",
+        [
+            {
+                "id": "rabbit",
+                "caster_slot": 2,
+                "skill_id": "rabbit_escape",
+                "target_player_id": "p1",
+                "target_slot": 2,
+            }
+        ],
+    )
+    manager.confirm_queue("room", "p1")
+
+    owner_view = manager.serialize_for_player("room", "p1")
+    opponent_view = manager.serialize_for_player("room", "p2")
+
+    assert any("Rabbit Escape" in event["message"] for event in owner_view["event_log"])
+    assert not any("Rabbit Escape" in event["message"] for event in opponent_view["event_log"])
+
+
 def test_submit_update_confirm_queue_resolves_and_advances_turn():
     manager, _ = start_manager()
     give_all_energy(manager)

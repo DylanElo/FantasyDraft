@@ -208,8 +208,8 @@ def _counter_status(character: CharacterState, skill: SkillSpec) -> StatusEffect
     return None
 
 
-def _reflect_status(character: CharacterState, skill: SkillSpec, effect: EffectSpec) -> StatusEffect | None:
-    if not _is_harmful_effect(effect) or _has_class(skill, SkillClass.UNREFLECTABLE):
+def _reflect_status(character: CharacterState, skill: SkillSpec) -> StatusEffect | None:
+    if not _is_harmful_skill(skill) or _has_class(skill, SkillClass.UNREFLECTABLE):
         return None
     for status in character.statuses:
         reflect = status.payload.get("reflect")
@@ -225,6 +225,15 @@ def _reflect_status(character: CharacterState, skill: SkillSpec, effect: EffectS
 def _append_event(events: list[BattleEvent], state: BattleState, event: BattleEvent) -> None:
     events.append(event)
     state.event_log.append(event)
+
+
+def _is_invisible_skill(skill: SkillSpec) -> bool:
+    if _has_class(skill, SkillClass.INVISIBLE):
+        return True
+    return any(
+        SkillClass.INVISIBLE in effect.classes or bool(effect.payload.get("invisible", False))
+        for effect in skill.effects
+    )
 
 
 def _apply_post_skill_punish(
@@ -302,6 +311,7 @@ def resolve_queue(
             type="skill_resolved",
             message=f"{caster.name} used {skill.name}",
             turn_number=state.turn_number,
+            private_to=action.player_id if _is_invisible_skill(skill) else None,
             payload={
                 "action_id": action.id,
                 "player_id": action.player_id,
@@ -341,6 +351,30 @@ def resolve_queue(
         if countered:
             continue
 
+        reflected_slots: dict[int, StatusEffect] = {}
+        for slot in target_slots:
+            target = state.players[target_player_id].team[slot]
+            reflect = _reflect_status(target, skill)
+            if reflect is None:
+                continue
+            _consume_status(target, reflect)
+            reflected_slots[slot] = reflect
+            reflected = BattleEvent(
+                type="skill_reflected",
+                message=f"{target.name} reflected {skill.name}",
+                turn_number=state.turn_number,
+                payload={
+                    "action_id": action.id,
+                    "skill_id": skill.id,
+                    "status": reflect.id,
+                    "target_player_id": target_player_id,
+                    "target_slot": slot,
+                    "reflected_to_player_id": action.player_id,
+                    "reflected_to_slot": action.caster_slot,
+                },
+            )
+            _append_event(events, state, reflected)
+
         for effect in skill.effects:
             if effect.target == "self":
                 event = apply_effect(state, action, effect, action.player_id, action.caster_slot)
@@ -353,25 +387,7 @@ def resolve_queue(
             for slot in target_slots:
                 effect_target_player_id = target_player_id
                 effect_target_slot = slot
-                target = state.players[target_player_id].team[slot]
-                reflect = _reflect_status(target, skill, effect)
-                if reflect is not None:
-                    _consume_status(target, reflect)
-                    reflected = BattleEvent(
-                        type="skill_reflected",
-                        message=f"{target.name} reflected {skill.name}",
-                        turn_number=state.turn_number,
-                        payload={
-                            "action_id": action.id,
-                            "skill_id": skill.id,
-                            "status": reflect.id,
-                            "target_player_id": target_player_id,
-                            "target_slot": slot,
-                            "reflected_to_player_id": action.player_id,
-                            "reflected_to_slot": action.caster_slot,
-                        },
-                    )
-                    _append_event(events, state, reflected)
+                if slot in reflected_slots and _is_harmful_effect(effect):
                     effect_target_player_id = action.player_id
                     effect_target_slot = action.caster_slot
                 event = apply_effect(state, action, effect, effect_target_player_id, effect_target_slot)

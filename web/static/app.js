@@ -648,9 +648,10 @@ function v2CharacterCardHTML(character, slot, isMine, isTurn) {
     const selected = isMine && v2State.selectedCasterSlot === slot;
     const queued = v2State.actions.some(action => action.caster_slot === slot);
     const dead = !character.alive;
+    const targetable = !isMine && isTurn && v2State.selectedSkillId;
     const hpPct = Math.max(0, Math.min(100, Math.round((character.hp / character.max_hp) * 100)));
     return `
-      <button class="v2-char ${selected ? 'selected' : ''} ${queued ? 'queued' : ''} ${dead ? 'dead' : ''}"
+      <button class="v2-char ${selected ? 'selected' : ''} ${queued ? 'queued' : ''} ${targetable ? 'targetable' : ''} ${dead ? 'dead' : ''}"
         data-v2-role="${isMine ? 'caster' : 'target'}" data-slot="${slot}" ${dead ? 'disabled' : ''}>
         <div class="v2-char-top">
           <strong>${esc(character.name)}</strong>
@@ -669,9 +670,10 @@ function v2QueuedSkillIds() {
 function v2SkillButtonHTML(skill, character, disabled) {
     const cooldown = character.cooldowns?.[skill.id] || 0;
     const isDisabled = disabled || cooldown > 0;
+    const selected = v2State.selectedSkillId === skill.id;
     const classes = (skill.classes || []).slice(0, 3).join(' / ');
     return `
-      <button class="v2-skill ${isDisabled ? 'disabled' : ''}" data-skill-id="${esc(skill.id)}" ${isDisabled ? 'disabled' : ''}>
+      <button class="v2-skill ${selected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}" data-skill-id="${esc(skill.id)}" ${isDisabled ? 'disabled' : ''}>
         <div class="v2-skill-head">
           <strong>${esc(skill.name)}</strong>
           <span>${orbsHTML(skill.cost)} CD ${cooldown || skill.cooldown || 0}</span>
@@ -792,6 +794,13 @@ function renderClassicV2() {
     ).join('');
     document.getElementById('btn-v2-confirm').disabled = !isMyTurn || v2State.actions.length === 0;
     document.getElementById('btn-v2-cancel').disabled = !isMyTurn || v2State.actions.length === 0;
+    window.__v2DebugState = {
+        selectedCasterSlot: v2State.selectedCasterSlot,
+        selectedSkillId: v2State.selectedSkillId,
+        actionCount: v2State.actions.length,
+        phase: state.phase,
+        turnPlayerId: state.turn_player_id,
+    };
 }
 
 function v2StartMatch() {
@@ -868,6 +877,12 @@ document.getElementById('btn-v2-confirm').addEventListener('click', () => {
 });
 
 document.getElementById('classic-v2').addEventListener('click', (event) => {
+    const target = event.target.closest('[data-v2-role="target"]');
+    if (target && v2State.selectedCasterSlot !== null && v2State.selectedSkillId) {
+        const { enemy } = v2PlayerIds();
+        v2AddAction(v2State.selectedCasterSlot, v2State.selectedSkillId, enemy, Number(target.dataset.slot));
+        return;
+    }
     const caster = event.target.closest('[data-v2-role="caster"]');
     if (caster) {
         v2State.selectedCasterSlot = Number(caster.dataset.slot);
@@ -893,12 +908,6 @@ document.getElementById('classic-v2').addEventListener('click', (event) => {
         }
         toast('Choose an enemy target.');
         renderClassicV2();
-        return;
-    }
-    const target = event.target.closest('[data-v2-role="target"]');
-    if (target && v2State.selectedCasterSlot !== null && v2State.selectedSkillId) {
-        const { enemy } = v2PlayerIds();
-        v2AddAction(v2State.selectedCasterSlot, v2State.selectedSkillId, enemy, Number(target.dataset.slot));
         return;
     }
     const remove = event.target.closest('.v2-remove');

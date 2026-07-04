@@ -3399,35 +3399,57 @@ html, body {
 /* ── Battle v2 arena ──────────────────────────────────────────────────── */
 .v2-shell {
   min-height: calc(100vh - 58px);
-  padding: 12px clamp(10px, 2vw, 22px) calc(18px + var(--safe-b));
+  padding: 10px clamp(10px, 1.8vw, 22px) calc(16px + var(--safe-b));
   display: grid;
-  grid-template-rows: auto auto auto 1fr;
-  gap: 10px;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  gap: 8px;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(185, 28, 28, 0.18), transparent 32%),
+    radial-gradient(circle at 82% 18%, rgba(37, 99, 235, 0.16), transparent 34%),
+    linear-gradient(180deg, rgba(3, 7, 18, 0.28), rgba(3, 7, 18, 0.84));
 }
 
 .v2-toolbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-  padding: 10px;
-  border: 1px solid rgba(255,255,255,0.10);
-  background: rgba(10, 12, 22, 0.82);
+  padding: 8px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(8, 13, 26, 0.88);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.22);
+}
+
+.v2-toolbar > button {
+  width: auto;
+  min-width: 118px;
+  max-width: 190px;
+  min-height: 36px;
+  padding: 0 12px;
+  flex: 0 0 auto;
+}
+
+.v2-toolbar > .btn-primary {
+  min-width: 154px;
 }
 
 .v2-title-block {
+  flex: 1 1 260px;
+  min-width: 0;
   display: grid;
   gap: 2px;
 }
 
 .v2-title-block strong {
-  font-size: 14px;
+  color: #f8fafc;
+  font-size: 15px;
   letter-spacing: 0;
 }
 
 .v2-title-block span {
   color: var(--muted);
   font-size: 12px;
+  overflow-wrap: anywhere;
 }
 
 .v2-error {
@@ -3439,19 +3461,30 @@ html, body {
 }
 
 .v2-energy-row {
-  min-height: 48px;
-  display: grid;
-  gap: 7px;
+  min-height: 46px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.v2-energy-row .energy-panel-pools,
+.v2-energy-row .energy-core-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .v2-convert {
-  display: grid;
-  grid-template-columns: minmax(120px, 1fr) minmax(0, 1.2fr) minmax(92px, auto) minmax(92px, auto) auto;
-  gap: 7px;
+  flex: 1 1 430px;
+  min-width: min(100%, 430px);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   align-items: center;
-  padding: 8px;
-  border: 1px solid rgba(255,255,255,0.10);
-  background: rgba(7, 9, 17, 0.64);
+  padding: 7px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(7, 12, 24, 0.74);
 }
 
 .v2-convert.locked {
@@ -3463,6 +3496,7 @@ html, body {
 }
 
 .v2-convert span {
+  flex: 1 1 170px;
   color: var(--muted);
   font-size: 11px;
   overflow-wrap: anywhere;
@@ -3478,7 +3512,7 @@ html, body {
 }
 
 .v2-turn-status {
-  min-height: 44px;
+  min-height: 42px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
@@ -3486,11 +3520,11 @@ html, body {
 
 .v2-turn-card {
   min-width: 0;
-  padding: 9px 10px;
+  padding: 8px 10px;
   display: grid;
   gap: 2px;
-  border: 1px solid rgba(255,255,255,0.10);
-  background: rgba(7, 9, 17, 0.74);
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(7, 12, 24, 0.78);
 }
 
 .v2-turn-card.active {
@@ -3545,7 +3579,7 @@ html, body {
   gap: 7px;
   padding: 10px;
   border: 1px solid rgba(255,255,255,0.10);
-  background: rgba(7, 9, 17, 0.70);
+  background: rgba(7, 12, 24, 0.76);
 }
 
 .v2-picker-grid {
@@ -3608,7 +3642,11 @@ html, body {
 .v2-layout {
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(190px, 0.8fr) minmax(280px, 1.05fr) minmax(190px, 0.8fr);
+  grid-template-columns: minmax(0, 1fr) minmax(330px, 0.43fr);
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas:
+    "enemy console"
+    "ally console";
   gap: 10px;
   align-items: stretch;
 }
@@ -3621,32 +3659,67 @@ html, body {
   align-content: start;
   gap: 8px;
   padding: 10px;
-  border: 1px solid rgba(255,255,255,0.10);
-  background: rgba(7, 9, 17, 0.78);
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(7, 12, 24, 0.82);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.20);
+}
+
+.v2-team-panel--enemy {
+  grid-area: enemy;
+  border-color: rgba(248, 113, 113, 0.22);
+}
+
+.v2-team-panel--ally {
+  grid-area: ally;
+  border-color: rgba(96, 165, 250, 0.22);
+}
+
+.v2-center-panel {
+  grid-area: console;
+  grid-template-rows: minmax(0, 1fr) auto minmax(120px, 0.58fr);
+  overflow: hidden;
 }
 
 .v2-team {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+  min-height: 0;
 }
 
 .v2-char {
   width: 100%;
-  min-height: 92px;
-  padding: 9px;
+  min-height: 130px;
+  padding: 10px;
   display: grid;
-  gap: 7px;
+  grid-template-rows: auto auto minmax(20px, 1fr) auto;
+  gap: 8px;
   text-align: left;
   color: var(--text);
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.045);
+  border: 1px solid rgba(255,255,255,0.13);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.025)),
+    rgba(10, 15, 30, 0.78);
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+}
+
+.v2-char::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(255,255,255,0.08), transparent 46%);
+  opacity: 0.28;
 }
 
 .v2-char:hover:not(:disabled),
 .v2-char.selected {
   border-color: rgba(250, 204, 21, 0.70);
   background: rgba(250, 204, 21, 0.08);
+  transform: translateY(-1px);
 }
 
 .v2-char.targetable {
@@ -3660,6 +3733,7 @@ html, body {
 
 .v2-char.queued {
   border-color: rgba(34, 197, 94, 0.48);
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.18) inset;
 }
 
 .v2-char.dead {
@@ -3671,7 +3745,9 @@ html, body {
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  font-size: 12px;
+  position: relative;
+  z-index: 1;
+  font-size: 13px;
 }
 
 .v2-char-top strong {
@@ -3688,21 +3764,34 @@ html, body {
 }
 
 .v2-hp {
-  height: 7px;
+  height: 9px;
   overflow: hidden;
-  background: rgba(255,255,255,0.08);
+  position: relative;
+  z-index: 1;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(0,0,0,0.24);
 }
 
 .v2-hp span {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, #22c55e, #eab308, #ef4444);
+  background: linear-gradient(90deg, #22c55e, #a3e635);
+}
+
+.v2-char.hp-wounded .v2-hp span {
+  background: linear-gradient(90deg, #f59e0b, #fde047);
+}
+
+.v2-char.hp-critical .v2-hp span {
+  background: linear-gradient(90deg, #dc2626, #fb7185);
 }
 
 .v2-status-row {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+  position: relative;
+  z-index: 1;
 }
 
 .v2-status {
@@ -3714,33 +3803,66 @@ html, body {
 
 .v2-char-foot {
   min-height: 13px;
-  color: var(--muted);
-  font-size: 10px;
+  position: relative;
+  z-index: 1;
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .v2-selected,
 .v2-queue {
   display: grid;
   gap: 8px;
+  min-height: 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 
-.v2-panel-title {
-  color: var(--gold);
+.v2-selected {
+  overflow-y: auto;
+  padding-right: 3px;
+}
+
+.v2-queue {
+  overflow: hidden;
+}
+
+.v2-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.v2-section-head span {
+  color: var(--muted);
+  font-size: 10px;
   font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.v2-section-head strong {
+  min-width: 0;
+  color: var(--gold);
   font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 .v2-skill {
   width: 100%;
-  min-height: 84px;
-  padding: 9px;
+  min-height: 0;
+  padding: 8px;
   display: grid;
-  gap: 5px;
+  gap: 4px;
   text-align: left;
   color: var(--text);
   border: 1px solid rgba(255,255,255,0.13);
-  background: rgba(17, 24, 39, 0.72);
+  background: rgba(15, 23, 42, 0.78);
   cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease;
 }
 
 .v2-skill:hover:not(:disabled) {
@@ -3762,7 +3884,7 @@ html, body {
   justify-content: space-between;
   gap: 8px;
   align-items: center;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .v2-skill-head span {
@@ -3799,13 +3921,17 @@ html, body {
 .v2-skill p {
   margin: 0;
   color: var(--muted);
-  font-size: 11px;
-  line-height: 1.35;
+  font-size: 10px;
+  line-height: 1.28;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .v2-skill small {
   color: #c4b5fd;
-  font-size: 10px;
+  font-size: 9px;
 }
 
 .v2-queue-item {
@@ -3814,8 +3940,8 @@ html, body {
   gap: 8px;
   align-items: center;
   padding: 8px;
-  border: 1px solid rgba(255,255,255,0.10);
-  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(15, 23, 42, 0.64);
 }
 
 .v2-queue-item.locked {
@@ -3916,7 +4042,7 @@ html, body {
 }
 
 .v2-empty {
-  min-height: 48px;
+  min-height: 62px;
   display: grid;
   place-items: center;
   color: var(--muted);
@@ -3927,8 +4053,13 @@ html, body {
 }
 
 .v2-log {
-  max-height: 180px;
+  min-height: 0;
+  max-height: none;
   overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding-right: 2px;
 }
 
 .v2-resolution-strip {
@@ -3953,6 +4084,8 @@ html, body {
   grid-template-columns: auto auto minmax(0, 1fr);
   gap: 7px;
   align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 
 .v2-log-entry span,
@@ -3981,10 +4114,15 @@ html, body {
 @media (max-width: 900px) {
   .v2-layout {
     grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    grid-template-areas:
+      "enemy"
+      "console"
+      "ally";
   }
 
   .v2-toolbar {
-    grid-template-columns: 1fr;
+    align-items: stretch;
   }
 
   .v2-turn-status {
@@ -3992,12 +4130,7 @@ html, body {
   }
 
   .v2-convert {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .v2-convert strong,
-  .v2-convert span {
-    grid-column: 1 / -1;
+    min-width: 100%;
   }
 
   .v2-picker {
@@ -4020,6 +4153,10 @@ html, body {
 @media (max-width: 560px) {
   .v2-team {
     grid-template-columns: 1fr;
+  }
+
+  .v2-char {
+    min-height: 112px;
   }
 
   .v2-queue-item {

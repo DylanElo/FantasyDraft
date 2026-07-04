@@ -868,8 +868,9 @@ function v2CharacterCardHTML(character, slot, isMine, isTurn) {
                             : isMine
                                 ? 'Standing by'
                                 : '';
+    const hpTone = hpPct <= 30 ? 'critical' : hpPct <= 60 ? 'wounded' : 'healthy';
     return `
-      <button class="v2-char ${selected ? 'selected' : ''} ${queued ? 'queued' : ''} ${targetable ? 'targetable' : ''} ${dead ? 'dead' : ''}"
+      <button class="v2-char ${selected ? 'selected' : ''} ${queued ? 'queued' : ''} ${targetable ? 'targetable' : ''} ${dead ? 'dead' : ''} hp-${hpTone}"
         data-v2-role="${isMine ? 'caster' : 'target'}" data-v2-side="${isMine ? 'mine' : 'enemy'}" data-slot="${slot}" ${dead ? 'disabled' : ''}>
         <div class="v2-char-top">
           <strong>${esc(character.name)}</strong>
@@ -1146,7 +1147,12 @@ function v2QueueHTML() {
     const me = v2State.state?.players?.[mine];
     const locked = v2ControlsLocked();
     if (!v2State.actions.length) {
-        return '<div class="v2-empty">Queue up to one skill from each active fighter. Actions resolve top to bottom.</div>';
+        return `
+          <div class="v2-section-head">
+            <span>Action Queue</span>
+            <strong>Empty</strong>
+          </div>
+          <div class="v2-empty">Queue up to one skill from each active fighter. Actions resolve top to bottom.</div>`;
     }
     const hpPreview = {};
     const items = v2State.actions.map((action, index) => {
@@ -1176,7 +1182,13 @@ function v2QueueHTML() {
             </div>
           </div>`;
     }).join('');
-    return v2QueuePaymentHTML(me) + items;
+    return `
+      <div class="v2-section-head">
+        <span>Action Queue</span>
+        <strong>${v2State.actions.length}/${v2QueueLimit(me)} queued</strong>
+      </div>
+      ${v2QueuePaymentHTML(me)}
+      ${items}`;
 }
 
 function v2LogEntryHTML(event) {
@@ -1247,6 +1259,11 @@ function renderClassicV2() {
     const state = v2State.state;
     const title = document.getElementById('v2-phase-title');
     const hint = document.getElementById('v2-phase-hint');
+    const startButton = document.getElementById('btn-v2-start');
+    const newMatchButton = document.getElementById('btn-v2-new-match');
+    const cancelButton = document.getElementById('btn-v2-cancel');
+    const endTurnButton = document.getElementById('btn-v2-end-turn');
+    const confirmButton = document.getElementById('btn-v2-confirm');
     if (!state) {
         if (title) title.textContent = 'Battle v2 Arena';
         if (hint) hint.textContent = 'Pick two starter teams, queue skills, then resolve the turn.';
@@ -1256,15 +1273,24 @@ function renderClassicV2() {
         });
         const turnStatus = document.getElementById('v2-turn-status');
         if (turnStatus) turnStatus.innerHTML = '';
-        document.getElementById('btn-v2-confirm').disabled = true;
-        document.getElementById('btn-v2-confirm').textContent = 'Confirm Queue';
-        document.getElementById('btn-v2-cancel').disabled = true;
-        document.getElementById('btn-v2-end-turn').disabled = true;
-        document.getElementById('btn-v2-new-match').disabled = false;
+        startButton?.classList.remove('hidden');
+        newMatchButton?.classList.add('hidden');
+        cancelButton?.classList.add('hidden');
+        endTurnButton?.classList.add('hidden');
+        confirmButton?.classList.add('hidden');
+        if (confirmButton) {
+            confirmButton.disabled = true;
+            confirmButton.textContent = 'Confirm Queue';
+        }
         document.getElementById('v2-picker')?.classList.remove('hidden');
         renderV2Picker();
         return;
     }
+    startButton?.classList.add('hidden');
+    newMatchButton?.classList.remove('hidden');
+    cancelButton?.classList.remove('hidden');
+    endTurnButton?.classList.remove('hidden');
+    confirmButton?.classList.remove('hidden');
     document.getElementById('v2-picker')?.classList.add('hidden');
     const { mine, enemy } = v2PlayerIds();
     const me = state.players[mine];
@@ -1284,18 +1310,30 @@ function renderClassicV2() {
     ).join('');
     const selected = me?.team?.[v2State.selectedCasterSlot];
     document.getElementById('v2-selected-panel').innerHTML = selected
-        ? `<div class="v2-panel-title">${esc(selected.name)}</div>${v2SkillsFor(selected.character_id).map(skill =>
+        ? `<div class="v2-section-head">
+             <span>Skill Panel</span>
+             <strong>${esc(selected.name)}</strong>
+           </div>${v2SkillsFor(selected.character_id).map(skill =>
             v2SkillButtonHTML(skill, selected, !isMyTurn || v2QueuedSkillIds().has(skill.id) || v2State.actions.some(a => a.caster_slot === v2State.selectedCasterSlot))
         ).join('')}`
-        : '<div class="v2-empty">Select one of your fighters.</div>';
+        : `<div class="v2-section-head">
+             <span>Skill Panel</span>
+             <strong>No fighter selected</strong>
+           </div><div class="v2-empty">Select one of your fighters.</div>`;
     document.getElementById('v2-queue-panel').innerHTML = v2QueueHTML();
-    document.getElementById('v2-log').innerHTML = v2RecentResolutionHTML(state) + (state.event_log || []).slice().reverse().slice(0, 10).map(v2LogEntryHTML).join('');
+    document.getElementById('v2-log').innerHTML = `
+      <div class="v2-section-head">
+        <span>Battle Log</span>
+        <strong>${(state.event_log || []).length} events</strong>
+      </div>
+      ${v2RecentResolutionHTML(state)}
+      ${(state.event_log || []).slice().reverse().slice(0, 10).map(v2LogEntryHTML).join('')}`;
     const paymentStatus = v2QueuePaymentStatus(me);
-    document.getElementById('btn-v2-confirm').disabled = !isMyTurn || v2State.actions.length === 0 || !paymentStatus.canPay || !!me?.queue_confirmed || v2State.queueSubmitting;
-    document.getElementById('btn-v2-confirm').textContent = v2State.queueSubmitting ? 'Resolving...' : paymentStatus.canPay ? 'Confirm Queue' : paymentStatus.reason;
-    document.getElementById('btn-v2-cancel').disabled = !isMyTurn || v2State.actions.length === 0 || !!me?.queue_confirmed || v2State.queueSubmitting;
-    document.getElementById('btn-v2-end-turn').disabled = !isMyTurn || v2State.queueSubmitting;
-    document.getElementById('btn-v2-new-match').disabled = false;
+    confirmButton.disabled = !isMyTurn || v2State.actions.length === 0 || !paymentStatus.canPay || !!me?.queue_confirmed || v2State.queueSubmitting;
+    confirmButton.textContent = v2State.queueSubmitting ? 'Resolving...' : paymentStatus.canPay ? 'Confirm Queue' : paymentStatus.reason;
+    cancelButton.disabled = !isMyTurn || v2State.actions.length === 0 || !!me?.queue_confirmed || v2State.queueSubmitting;
+    endTurnButton.disabled = !isMyTurn || v2State.queueSubmitting;
+    newMatchButton.disabled = false;
     window.__v2DebugState = {
         selectedCasterSlot: v2State.selectedCasterSlot,
         selectedSkillId: v2State.selectedSkillId,

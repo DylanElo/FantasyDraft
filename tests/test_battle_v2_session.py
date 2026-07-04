@@ -1,6 +1,6 @@
 import pytest
 
-from jjk_bot.battle_v2.models import SkillClass, StatusEffect
+from jjk_bot.battle_v2.models import EnergyType, SkillClass, StatusEffect
 from jjk_bot.battle_v2.session import BattleV2RoomManager, BattleV2SessionError
 
 
@@ -157,3 +157,45 @@ def test_cancel_queue_returns_to_planning():
     assert serialized["phase"] == "planning"
     assert serialized["pending_actions"]["p1"] == []
     assert serialized["queue_order"]["p1"] == []
+
+
+def test_session_can_finish_match_from_full_three_action_queue():
+    manager, _ = start_manager()
+    state = manager.get_state("room")
+    state.players["p1"].energy = {energy: 0 for energy in EnergyType}
+    state.players["p1"].energy[EnergyType.GREEN] = 3
+    for target in state.players["p2"].team[:3]:
+        target.hp = 20
+
+    manager.submit_plan(
+        "room",
+        "p1",
+        [
+            {
+                "id": "a1",
+                "caster_slot": 0,
+                "skill_id": "divergent_fist",
+                "target_player_id": "p2",
+                "target_slot": 0,
+            },
+            {
+                "id": "a2",
+                "caster_slot": 1,
+                "skill_id": "hammer_strike",
+                "target_player_id": "p2",
+                "target_slot": 1,
+            },
+            {
+                "id": "a3",
+                "caster_slot": 2,
+                "skill_id": "divine_dog",
+                "target_player_id": "p2",
+                "target_slot": 2,
+            },
+        ],
+    )
+    serialized = manager.confirm_queue("room", "p1")
+
+    assert serialized["winner_id"] == "p1"
+    assert serialized["phase"] == "finished"
+    assert all(not character["alive"] for character in serialized["players"]["p2"]["team"][:3])

@@ -667,19 +667,37 @@ function v2QueuedSkillIds() {
     return new Set(v2State.actions.map(action => action.skill_id));
 }
 
+function v2CanPaySkillCost(energy, cost) {
+    const remaining = { green: energy.green || 0, red: energy.red || 0, blue: energy.blue || 0, white: energy.white || 0 };
+    let wildcardCount = 0;
+    for (const color of cost || []) {
+        if (color === 'black') {
+            wildcardCount += 1;
+            continue;
+        }
+        remaining[color] = (remaining[color] || 0) - 1;
+        if (remaining[color] < 0) return false;
+    }
+    return Object.values(remaining).reduce((sum, count) => sum + Math.max(0, count), 0) >= wildcardCount;
+}
+
 function v2SkillButtonHTML(skill, character, disabled) {
     const cooldown = character.cooldowns?.[skill.id] || 0;
-    const isDisabled = disabled || cooldown > 0;
+    const { mine } = v2PlayerIds();
+    const myEnergy = v2State.state?.players?.[mine]?.energy || {};
+    const affordable = v2CanPaySkillCost(myEnergy, skill.cost);
+    const isDisabled = disabled || cooldown > 0 || !affordable;
     const selected = v2State.selectedSkillId === skill.id;
     const classes = (skill.classes || []).slice(0, 3).join(' / ');
+    const reason = cooldown > 0 ? `Cooldown ${cooldown}` : !affordable ? 'Not enough energy' : '';
     return `
-      <button class="v2-skill ${selected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}" data-skill-id="${esc(skill.id)}" ${isDisabled ? 'disabled' : ''}>
+      <button class="v2-skill ${selected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}" data-skill-id="${esc(skill.id)}" ${reason ? `title="${esc(reason)}"` : ''} ${isDisabled ? 'disabled' : ''}>
         <div class="v2-skill-head">
           <strong>${esc(skill.name)}</strong>
           <span>${orbsHTML(skill.cost)} CD ${cooldown || skill.cooldown || 0}</span>
         </div>
         <p>${esc(skill.text)}</p>
-        <small>${esc(classes)}</small>
+        <small>${reason ? esc(reason) : esc(classes)}</small>
       </button>`;
 }
 

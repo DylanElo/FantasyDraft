@@ -78,8 +78,9 @@ def test_battle_v2_socket_start_submit_confirm(monkeypatch):
     client.emit("battle_v2_confirm_queue", {})
     resolved_state = received_payload(client, "battle_v2_update")
 
-    assert resolved_state["turn_player_id"] == "__cpu_v2__"
+    assert resolved_state["turn_player_id"] == player_id
     assert resolved_state["players"]["__cpu_v2__"]["team"][0]["hp"] == 80
+    assert any(event["type"] == "skill_resolved" and "used" in event["message"] for event in resolved_state["event_log"])
 
 
 def test_battle_v2_socket_surrender_finishes_match(monkeypatch):

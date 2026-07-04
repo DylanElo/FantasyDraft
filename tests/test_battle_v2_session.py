@@ -202,3 +202,19 @@ def test_session_can_finish_match_from_full_three_action_queue():
     assert serialized["winner_id"] == "p1"
     assert serialized["phase"] == "finished"
     assert all(not character["alive"] for character in serialized["players"]["p2"]["team"][:3])
+
+
+def test_cpu_turn_submits_first_legal_queue_and_advances_back():
+    manager, _ = start_manager()
+    state = manager.get_state("room")
+    state.turn_player_id = "p2"
+    state.players["p2"].energy = {energy: 0 for energy in EnergyType}
+    state.players["p2"].energy[EnergyType.BLUE] = 1
+
+    serialized = manager.take_cpu_turn("room", "p2")
+
+    assert serialized["turn_player_id"] == "p1"
+    assert serialized["phase"] == "planning"
+    assert serialized["players"]["p1"]["team"][0]["hp"] == 75
+    assert serialized["pending_actions"]["p2"] == []
+    assert any(event["message"] == "Satoru Gojo used Blue" for event in serialized["event_log"])

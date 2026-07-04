@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import random
+from collections import Counter
+from itertools import product
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
 
-from .energy import gain_turn_energy, normalize_energy
+from .energy import CORE_ENERGY, gain_turn_energy, normalize_energy, split_cost
 from .models import BattlePhase, BattleState, CharacterState, PendingAction, PlayerState
 from .resolver import ResolverError, resolve_queue, validate_queue
 from .serialization import serialize_battle_state
@@ -100,6 +102,47 @@ def _skill_catalog() -> dict[str, dict[str, Any]]:
         }
         for character_id, spec in STARTER_ROSTER.items()
     }
+
+
+def _wildcard_payment_options(player: PlayerState, skill_id: str) -> list[list[EnergyType]]:
+    skill = SKILLS_BY_ID[skill_id]
+    specific, wildcard_count = split_cost(skill.cost)
+    if wildcard_count == 0:
+        return [[]]
+    available = {
+        energy: player.energy.get(energy, 0) - specific.get(energy, 0)
+        for energy in CORE_ENERGY
+    }
+    options: list[list[EnergyType]] = []
+    for pays in product(CORE_ENERGY, repeat=wildcard_count):
+        required = Counter(pays)
+        if all(available.get(energy, 0) >= amount for energy, amount in required.items()):
+            options.append(list(pays))
+    return options
+
+
+def _cpu_target_payloads(state: BattleState, player_id: str, skill_id: str, caster_slot: int) -> list[dict[str, Any]]:
+    skill = SKILLS_BY_ID[skill_id]
+    opponent_ids = [pid for pid in state.players if pid != player_id]
+    if not opponent_ids:
+        return []
+    opponent_id = opponent_ids[0]
+    opponent = state.players[opponent_id]
+    living_enemy_slots = [
+        slot for slot in opponent.active_slots
+        if 0 <= slot < len(opponent.team) and opponent.team[slot].alive
+    ]
+    living_enemy_slots.sort(key=lambda slot: opponent.team[slot].hp)
+    if skill.target_rule.kind == "self":
+        return [{"target_player_id": player_id, "target_slot": caster_slot}]
+    if skill.target_rule.kind == "enemy_team":
+        return [{"target_player_id": opponent_id, "target_slot": None, "target_slots": living_enemy_slots}]
+    if skill.target_rule.kind == "enemy":
+        return [
+            {"target_player_id": opponent_id, "target_slot": slot}
+            for slot in living_enemy_slots
+        ]
+    return []
 
 
 class BattleV2RoomManager:
@@ -223,6 +266,71 @@ class BattleV2RoomManager:
         state.phase = BattlePhase.PLANNING
         return self.serialize_for_player(room_id, player_id)
 
+    def take_cpu_turn(self, room_id: str, player_id: str) -> dict:
+        """Submit and resolve a simple first-legal CPU queue for the active turn."""
+
+        state = self.get_state(room_id)
+        self._ensure_turn_player(state, player_id)
+        player = state.players[player_id]
+        actions: list[PendingAction] = []
+        for slot in player.active_slots:
+            if slot < 0 or slot >= len(player.team):
+                continue
+            caster = player.team[slot]
+            if not caster.alive:
+                continue
+            character_spec = STARTER_ROSTER.get(caster.character_id)
+            if character_spec is None:
+                continue
+            chosen: PendingAction | None = None
+            for skill in character_spec.skills:
+                if chosen is not None:
+                    break
+                for target_payload in _cpu_target_payloads(state, player_id, skill.id, slot):
+                    if chosen is not None:
+                        break
+                    for wildcard_pays in _wildcard_payment_options(player, skill.id):
+                        candidate = PendingAction(
+                            id=f"{player_id}:cpu:{slot}:{skill.id}",
+                            player_id=player_id,
+                            caster_slot=slot,
+                            skill_id=skill.id,
+                            target_player_id=target_payload["target_player_id"],
+                            target_slot=target_payload.get("target_slot"),
+                            target_slots=list(target_payload.get("target_slots", [])),
+                            wildcard_pays=wildcard_pays,
+                            queue_index=len(actions),
+                        )
+                        trial_state = deepcopy(state)
+                        trial_state.pending_actions[player_id] = actions + [candidate]
+                        trial_state.queue_order[player_id] = [
+                            action.id for action in trial_state.pending_actions[player_id]
+                        ]
+                        try:
+                            validate_queue(trial_state, player_id, SKILLS_BY_ID)
+                        except ResolverError:
+                            continue
+                        chosen = candidate
+                        break
+            if chosen is not None:
+                actions.append(chosen)
+        if not actions:
+            state.event_log.append(
+                BattleEvent(
+                    type="turn_skipped",
+                    message=f"{player.name} has no legal actions",
+                    turn_number=state.turn_number,
+                )
+            )
+            self._advance_without_action(room_id, player_id)
+            return self.serialize_for_player(room_id, player_id)
+        state.pending_actions[player_id] = actions
+        state.queue_order[player_id] = [action.id for action in actions]
+        state.phase = BattlePhase.QUEUE_REVIEW
+        resolve_queue(state, player_id, SKILLS_BY_ID)
+        self._grant_next_turn_energy(room_id, player_id)
+        return self.serialize_for_player(room_id, player_id)
+
     def serialize_for_player(self, room_id: str, viewer_id: str) -> dict:
         state = self.get_state(room_id)
         if viewer_id not in state.players:
@@ -238,6 +346,17 @@ class BattleV2RoomManager:
             raise BattleV2SessionError("not this player's turn")
         if state.phase == BattlePhase.FINISHED:
             raise BattleV2SessionError("battle is finished")
+
+    def _advance_without_action(self, room_id: str, previous_player_id: str) -> None:
+        state = self.get_state(room_id)
+        player_ids = list(state.players)
+        current_index = player_ids.index(previous_player_id)
+        next_index = (current_index + 1) % len(player_ids)
+        if next_index == 0:
+            state.turn_number += 1
+        state.turn_player_id = player_ids[next_index]
+        state.phase = BattlePhase.PLANNING
+        self._grant_next_turn_energy(room_id, previous_player_id)
 
     def _grant_next_turn_energy(self, room_id: str, previous_player_id: str) -> None:
         state = self.get_state(room_id)

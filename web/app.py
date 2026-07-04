@@ -47,6 +47,7 @@ socketio = SocketIO(app, cors_allowed_origins=CORS_ORIGINS)
 game_manager = GameManager()
 battle_v2_manager = BattleV2RoomManager()
 rate_limits = defaultdict(deque)
+CPU_V2_PLAYER_ID = "__cpu_v2__"
 
 ROOM_RE = re.compile(r"[^a-zA-Z0-9_-]+")
 CONTROL_RE = re.compile(r"[\x00-\x1f\x7f]+")
@@ -173,6 +174,14 @@ def emit_battle_v2_update(room_id: str, viewer_id: str):
 
 def emit_battle_v2_error(exc: Exception):
     emit("battle_v2_error", {"message": str(exc)})
+
+
+def run_battle_v2_cpu_turns(room_id: str):
+    for _ in range(6):
+        state = battle_v2_manager.get_state(room_id)
+        if state.winner_id or state.turn_player_id != CPU_V2_PLAYER_ID:
+            return
+        battle_v2_manager.take_cpu_turn(room_id, CPU_V2_PLAYER_ID)
 
 
 def allow_event(event_name: str, limit: int = 30, window_seconds: int = 5) -> bool:
@@ -704,7 +713,7 @@ def on_battle_v2_start_classic(data=None):
             room_id,
             [
                 {"id": player_session, "name": player_name, "team": player_team},
-                {"id": "__cpu_v2__", "name": "CPU V2", "team": enemy_team},
+                {"id": CPU_V2_PLAYER_ID, "name": "CPU V2", "team": enemy_team},
             ],
         )
         emit_battle_v2_update(room_id, player_session)
@@ -759,6 +768,7 @@ def on_battle_v2_confirm_queue(data=None):
     room_id, player_session = context
     try:
         battle_v2_manager.confirm_queue(room_id, player_session)
+        run_battle_v2_cpu_turns(room_id)
         emit_battle_v2_update(room_id, player_session)
     except BattleV2SessionError as exc:
         emit_battle_v2_error(exc)

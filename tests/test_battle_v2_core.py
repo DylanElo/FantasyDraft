@@ -36,7 +36,7 @@ def make_state():
     return BattleState(players={"p1": p1, "p2": p2}, turn_player_id="p1")
 
 
-def skill(skill_id="strike", cost=None, effects=None, conditions=None, target_rule=None, cooldown=0):
+def skill(skill_id="strike", cost=None, effects=None, conditions=None, target_rule=None, cooldown=0, classes=None):
     return SkillSpec(
         id=skill_id,
         name=skill_id.title(),
@@ -44,7 +44,7 @@ def skill(skill_id="strike", cost=None, effects=None, conditions=None, target_ru
         cost=cost or [],
         cooldown=cooldown,
         target_rule=target_rule or TargetRule(kind="enemy"),
-        classes=[SkillClass.PHYSICAL, SkillClass.INSTANT],
+        classes=classes or [SkillClass.PHYSICAL, SkillClass.INSTANT],
         effects=effects or [EffectSpec(type="damage", amount=20, damage_type=DamageType.NORMAL)],
         conditions=conditions or [],
     )
@@ -202,3 +202,108 @@ def test_queue_validation_checks_aggregate_energy_without_mutating():
 
     assert state.players["p1"].energy[EnergyType.GREEN] == 1
     assert state.players["p2"].team[0].hp == 100
+
+
+def test_counter_negates_counterable_harmful_skill_and_is_consumed():
+    state = make_state()
+    target = state.players["p2"].team[0]
+    target.statuses.append(
+        StatusEffect(
+            "rabbit_escape",
+            "Rabbit Escape",
+            "p2",
+            0,
+            "p2",
+            0,
+            duration=2,
+            invisible=True,
+            payload={"counter": "first_harmful_non_domain"},
+        )
+    )
+    state.pending_actions["p1"] = [PendingAction("a1", "p1", 0, "strike", "p2", 0)]
+    state.queue_order["p1"] = ["a1"]
+
+    events = resolve_queue(state, "p1", {"strike": skill()})
+
+    assert any(event.type == "skill_countered" for event in events)
+    assert target.hp == 100
+    assert target.statuses == []
+
+
+def test_uncounterable_skill_bypasses_counter():
+    state = make_state()
+    target = state.players["p2"].team[0]
+    target.statuses.append(
+        StatusEffect(
+            "counter",
+            "Counter",
+            "p2",
+            0,
+            "p2",
+            0,
+            duration=2,
+            payload={"counter": "first_harmful"},
+        )
+    )
+    uncounterable = skill(classes=[SkillClass.PHYSICAL, SkillClass.INSTANT, SkillClass.UNCOUNTERABLE])
+    state.pending_actions["p1"] = [PendingAction("a1", "p1", 0, "strike", "p2", 0)]
+    state.queue_order["p1"] = ["a1"]
+
+    resolve_queue(state, "p1", {"strike": uncounterable})
+
+    assert target.hp == 80
+    assert any(status.id == "counter" for status in target.statuses)
+
+
+def test_reflect_redirects_harmful_effect_to_caster_and_is_consumed():
+    state = make_state()
+    caster = state.players["p1"].team[0]
+    target = state.players["p2"].team[0]
+    target.statuses.append(
+        StatusEffect(
+            "mirror",
+            "Mirror",
+            "p2",
+            0,
+            "p2",
+            0,
+            duration=2,
+            payload={"reflect": "user"},
+        )
+    )
+    state.pending_actions["p1"] = [PendingAction("a1", "p1", 0, "strike", "p2", 0)]
+    state.queue_order["p1"] = ["a1"]
+
+    events = resolve_queue(state, "p1", {"strike": skill()})
+
+    assert any(event.type == "skill_reflected" for event in events)
+    assert caster.hp == 80
+    assert target.hp == 100
+    assert target.statuses == []
+
+
+def test_unreflectable_skill_bypasses_reflect():
+    state = make_state()
+    caster = state.players["p1"].team[0]
+    target = state.players["p2"].team[0]
+    target.statuses.append(
+        StatusEffect(
+            "mirror",
+            "Mirror",
+            "p2",
+            0,
+            "p2",
+            0,
+            duration=2,
+            payload={"reflect": "user"},
+        )
+    )
+    unreflectable = skill(classes=[SkillClass.PHYSICAL, SkillClass.INSTANT, SkillClass.UNREFLECTABLE])
+    state.pending_actions["p1"] = [PendingAction("a1", "p1", 0, "strike", "p2", 0)]
+    state.queue_order["p1"] = ["a1"]
+
+    resolve_queue(state, "p1", {"strike": unreflectable})
+
+    assert caster.hp == 100
+    assert target.hp == 80
+    assert any(status.id == "mirror" for status in target.statuses)

@@ -8,7 +8,7 @@ from collections.abc import Mapping
 from .conditions import evaluate_conditions, is_stunned_for_class
 from .effects import apply_effect, tick_cooldowns, tick_statuses
 from .energy import EnergyValidationError, can_afford_specific, normalize_energy, spend_skill_energy, split_cost, validate_wildcard_payments
-from .models import BattleEvent, BattlePhase, BattleState, PendingAction, SkillSpec
+from .models import BattleEvent, BattlePhase, BattleState, CharacterState, EffectSpec, PendingAction, SkillClass, SkillSpec, StatusEffect
 from .targeting import TargetingError, get_character, get_player, validate_target_rule
 
 
@@ -141,6 +141,65 @@ def ordered_actions(state: BattleState, player_id: str) -> list[PendingAction]:
     return [actions_by_id[action_id] for action_id in order]
 
 
+def _has_class(skill: SkillSpec, skill_class: SkillClass) -> bool:
+    return skill_class in skill.classes
+
+
+def _is_harmful_effect(effect: EffectSpec) -> bool:
+    return effect.target != "self" and effect.type in {
+        "damage",
+        "health_steal",
+        "apply_status",
+        "remove_status",
+    }
+
+
+def _is_harmful_skill(skill: SkillSpec) -> bool:
+    return any(_is_harmful_effect(effect) for effect in skill.effects)
+
+
+def _consume_status(character: CharacterState, status: StatusEffect) -> None:
+    status.revealed = True
+    character.statuses = [
+        active
+        for active in character.statuses
+        if active is not status
+    ]
+
+
+def _counter_status(character: CharacterState, skill: SkillSpec) -> StatusEffect | None:
+    if not _is_harmful_skill(skill) or _has_class(skill, SkillClass.UNCOUNTERABLE):
+        return None
+    for status in character.statuses:
+        counter = status.payload.get("counter")
+        if status.duration == 0 or not counter:
+            continue
+        if counter == "first_harmful_non_domain" and _has_class(skill, SkillClass.DOMAIN):
+            continue
+        if counter in {"first_harmful", "first_harmful_non_domain", "first_counterable_skill"}:
+            return status
+    return None
+
+
+def _reflect_status(character: CharacterState, skill: SkillSpec, effect: EffectSpec) -> StatusEffect | None:
+    if not _is_harmful_effect(effect) or _has_class(skill, SkillClass.UNREFLECTABLE):
+        return None
+    for status in character.statuses:
+        reflect = status.payload.get("reflect")
+        if status.duration == 0 or not reflect:
+            continue
+        if reflect == "first_harmful_non_domain" and _has_class(skill, SkillClass.DOMAIN):
+            continue
+        if reflect in {"user", "source", "caster", "first_harmful", "first_harmful_non_domain"}:
+            return status
+    return None
+
+
+def _append_event(events: list[BattleEvent], state: BattleState, event: BattleEvent) -> None:
+    events.append(event)
+    state.event_log.append(event)
+
+
 def resolve_queue(
     state: BattleState,
     player_id: str,
@@ -186,27 +245,72 @@ def resolve_queue(
                 "classes": [skill_class.value for skill_class in skill.classes],
             },
         )
-        events.append(resolved)
-        state.event_log.append(resolved)
+        _append_event(events, state, resolved)
 
         target_slots = action.target_slots or ([action.target_slot] if action.target_slot is not None else [])
         if not target_slots and targets:
             target_slots = list(state.players[target_player_id].active_slots)
+
+        countered = False
+        for slot in target_slots:
+            target = state.players[target_player_id].team[slot]
+            counter = _counter_status(target, skill)
+            if counter is None:
+                continue
+            _consume_status(target, counter)
+            event = BattleEvent(
+                type="skill_countered",
+                message=f"{target.name} countered {skill.name}",
+                turn_number=state.turn_number,
+                payload={
+                    "action_id": action.id,
+                    "skill_id": skill.id,
+                    "status": counter.id,
+                    "target_player_id": target_player_id,
+                    "target_slot": slot,
+                },
+            )
+            _append_event(events, state, event)
+            countered = True
+            break
+        if countered:
+            continue
+
         for effect in skill.effects:
             if effect.target == "self":
                 event = apply_effect(state, action, effect, action.player_id, action.caster_slot)
-                events.append(event)
-                state.event_log.append(event)
+                _append_event(events, state, event)
                 continue
             if not targets:
                 event = apply_effect(state, action, effect, target_player_id, None)
-                events.append(event)
-                state.event_log.append(event)
+                _append_event(events, state, event)
                 continue
             for slot in target_slots:
-                event = apply_effect(state, action, effect, target_player_id, slot)
-                events.append(event)
-                state.event_log.append(event)
+                effect_target_player_id = target_player_id
+                effect_target_slot = slot
+                target = state.players[target_player_id].team[slot]
+                reflect = _reflect_status(target, skill, effect)
+                if reflect is not None:
+                    _consume_status(target, reflect)
+                    reflected = BattleEvent(
+                        type="skill_reflected",
+                        message=f"{target.name} reflected {skill.name}",
+                        turn_number=state.turn_number,
+                        payload={
+                            "action_id": action.id,
+                            "skill_id": skill.id,
+                            "status": reflect.id,
+                            "target_player_id": target_player_id,
+                            "target_slot": slot,
+                            "reflected_to_player_id": action.player_id,
+                            "reflected_to_slot": action.caster_slot,
+                        },
+                    )
+                    _append_event(events, state, reflected)
+                    effect_target_player_id = action.player_id
+                    effect_target_slot = action.caster_slot
+                event = apply_effect(state, action, effect, effect_target_player_id, effect_target_slot)
+                _append_event(events, state, event)
 
     finish_turn(state, player_id)
     events.extend(check_winner(state))

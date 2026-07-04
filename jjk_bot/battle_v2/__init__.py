@@ -5,8 +5,8 @@ wired behind the ``JJK_BATTLE_SYSTEM`` feature flag.
 """
 
 from .starter_roster import CharacterSpec, SKILLS_BY_ID, STARTER_ROSTER, get_character_spec, get_skill_spec
-from .serialization import serialize_battle_state, serialize_status
-from .session import BattleV2RoomManager, BattleV2SessionError, ClassicPlayerConfig
+from .serialization import serialize_status
+from .manager import BattleV2Manager, BattleV2Error, BattlePlayerConfig, battle_state_to_dict, battle_v2_enabled, payload_to_action
 from .models import (
     BattleEvent,
     BattlePhase,
@@ -23,7 +23,6 @@ from .models import (
     StatusEffect,
     TargetRule,
     TransformationSpec,
-    use_battle_v2,
 )
 
 __all__ = [
@@ -32,11 +31,13 @@ __all__ = [
     "STARTER_ROSTER",
     "get_character_spec",
     "get_skill_spec",
-    "serialize_battle_state",
     "serialize_status",
-    "BattleV2RoomManager",
-    "BattleV2SessionError",
-    "ClassicPlayerConfig",
+    "BattleV2Manager",
+    "BattleV2Error",
+    "BattlePlayerConfig",
+    "battle_state_to_dict",
+    "battle_v2_enabled",
+    "payload_to_action",
     "BattleEvent",
     "BattlePhase",
     "BattleState",
@@ -52,5 +53,4 @@ __all__ = [
     "StatusEffect",
     "TargetRule",
     "TransformationSpec",
-    "use_battle_v2",
 ]

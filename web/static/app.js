@@ -611,6 +611,589 @@ socket.on('game_update', (data) => {
     renderGame(data);
 });
 
+// ── CLASSIC ARENA V2 DEV SCREEN ─────────────────────────────────────────────
+const v2State = {
+    state: null,
+    selectedCasterSlot: null,
+    selectedSkillId: null,
+    actions: [],
+    wildcardPays: {},
+    playerTeam: ['yuji_itadori', 'nobara_kugisaki', 'megumi_fushiguro'],
+    enemyTeam: ['satoru_gojo', 'ryomen_sukuna', 'mahito'],
+};
+
+function v2PlayerIds() {
+    const ids = v2State.state ? Object.keys(v2State.state.players || {}) : [];
+    const mine = ids.includes(myPlayerId) ? myPlayerId : ids[0];
+    const enemy = ids.find(id => id !== mine);
+    return { mine, enemy };
+}
+
+function v2SkillFor(characterId, skillId) {
+    const character = v2State.state?.skill_catalog?.[characterId];
+    return (character?.skills || []).find(skill => skill.id === skillId);
+}
+
+function v2SkillsFor(characterId) {
+    return v2State.state?.skill_catalog?.[characterId]?.skills || [];
+}
+
+function v2AliveCount(player) {
+    return (player?.team || []).filter(character => character.alive).length;
+}
+
+function v2TargetLabel(skill) {
+    const rule = skill?.target_rule || {};
+    const count = rule.max_targets && rule.max_targets > 1 ? `${rule.min_targets}-${rule.max_targets}` : '1';
+    switch (rule.kind) {
+        case 'enemy': return `Enemy x${count}`;
+        case 'enemy_team': return 'Enemy team';
+        case 'ally': return rule.allow_self ? `Ally/self x${count}` : `Ally x${count}`;
+        case 'ally_team': return 'Ally team';
+        case 'self': return 'Self';
+        default: return rule.kind ? String(rule.kind) : 'Target';
+    }
+}
+
+function v2EffectLabel(effect) {
+    const amount = Number(effect.amount || 0);
+    const duration = effect.duration ? ` ${effect.duration}t` : '';
+    if (effect.type === 'damage') {
+        const damageType = effect.damage_type ? ` ${effect.damage_type}` : '';
+        const bonus = effect.payload?.bonus_amount ? ` (+${effect.payload.bonus_amount})` : '';
+        return `${amount}${damageType}${bonus}`;
+    }
+    if (effect.type === 'heal' || effect.type === 'health_steal') return `Heal ${amount}`;
+    if (effect.type === 'status') return `${effect.status || 'Status'}${duration}`;
+    if (effect.type === 'cleanse') return 'Cleanse';
+    if (effect.type === 'dispel') return 'Dispel';
+    return effect.type ? `${effect.type}${amount ? ` ${amount}` : ''}${duration}` : '';
+}
+
+function v2EffectChipsHTML(skill) {
+    const effects = (skill.effects || []).map(v2EffectLabel).filter(Boolean);
+    if (!effects.length) return '';
+    return `<div class="v2-effect-row">${effects.map(label =>
+        `<span class="v2-effect-chip">${esc(label)}</span>`
+    ).join('')}</div>`;
+}
+
+function v2ActionTargetLabel(action) {
+    const targetPlayer = v2State.state?.players?.[action.target_player_id];
+    const names = (action.target_slots && action.target_slots.length ? action.target_slots : [action.target_slot])
+        .filter(slot => slot !== null && slot !== undefined)
+        .map(slot => targetPlayer?.team?.[slot]?.name)
+        .filter(Boolean);
+    if (names.length) return names.join(', ');
+    return targetPlayer?.name || action.target_player_id || 'target';
+}
+
+function v2SelectedSkill() {
+    const { mine } = v2PlayerIds();
+    const me = v2State.state?.players?.[mine];
+    const caster = me?.team?.[v2State.selectedCasterSlot];
+    return caster ? v2SkillFor(caster.character_id, v2State.selectedSkillId) : null;
+}
+
+function v2LivingSlots(player) {
+    return (player?.team || [])
+        .map((character, slot) => character.alive ? slot : null)
+        .filter(slot => slot !== null);
+}
+
+function v2HasRequiredStatus(character, skill) {
+    const required = skill?.target_rule?.required_status;
+    if (!required) return true;
+    return (character?.statuses || []).some(status => status.id === required || status.name === required);
+}
+
+function v2CanTargetCharacter(character, slot, isMine, isTurn) {
+    if (!isTurn || !v2State.selectedSkillId || !character?.alive) return false;
+    const skill = v2SelectedSkill();
+    const kind = skill?.target_rule?.kind || 'enemy';
+    if (!v2HasRequiredStatus(character, skill)) return false;
+    if (kind === 'enemy') return !isMine;
+    if (kind === 'ally') {
+        if (!isMine) return false;
+        return skill.target_rule?.allow_self || slot !== v2State.selectedCasterSlot;
+    }
+    return false;
+}
+
+function v2TeamTargetSlots(player, skill) {
+    const slots = v2LivingSlots(player);
+    const maxTargets = skill?.target_rule?.max_targets || slots.length;
+    return slots.slice(0, maxTargets);
+}
+
+function v2RosterEntries() {
+    return Object.values(BATTLE_V2_STARTER_ROSTER || {});
+}
+
+function v2PickerButtonHTML(character, teamKey) {
+    const selected = v2State[teamKey].includes(character.id);
+    const locked = !selected && v2State[teamKey].length >= 3;
+    return `
+      <button class="v2-picker-card ${selected ? 'selected' : ''}" data-v2-pick-team="${teamKey}" data-character-id="${esc(character.id)}" ${locked ? 'disabled' : ''}>
+        <strong>${esc(character.name)}</strong>
+        <span>${esc(character.role)}</span>
+      </button>`;
+}
+
+function renderV2Picker() {
+    const playerPicker = document.getElementById('v2-player-picker');
+    const enemyPicker = document.getElementById('v2-enemy-picker');
+    if (!playerPicker || !enemyPicker) return;
+    const entries = v2RosterEntries();
+    const byId = Object.fromEntries(entries.map(character => [character.id, character]));
+    playerPicker.innerHTML = entries.map(character => v2PickerButtonHTML(character, 'playerTeam')).join('');
+    enemyPicker.innerHTML = entries.map(character => v2PickerButtonHTML(character, 'enemyTeam')).join('');
+    document.getElementById('v2-player-summary').innerHTML = v2State.playerTeam.map(id =>
+        `<span>${esc(byId[id]?.name || id)}</span>`
+    ).join('');
+    document.getElementById('v2-enemy-summary').innerHTML = v2State.enemyTeam.map(id =>
+        `<span>${esc(byId[id]?.name || id)}</span>`
+    ).join('');
+}
+
+function v2StatusHTML(character) {
+    const statuses = character.statuses || [];
+    if (!statuses.length) return '';
+    return `<div class="v2-status-row">${statuses.map(status =>
+        `<span class="v2-status">${esc(status.name)} ${status.duration}</span>`
+    ).join('')}</div>`;
+}
+
+function v2CharacterCardHTML(character, slot, isMine, isTurn) {
+    const selected = isMine && v2State.selectedCasterSlot === slot;
+    const queued = v2State.actions.some(action => action.caster_slot === slot);
+    const dead = !character.alive;
+    const targetable = v2CanTargetCharacter(character, slot, isMine, isTurn);
+    const hpPct = Math.max(0, Math.min(100, Math.round((character.hp / character.max_hp) * 100)));
+    const stateLabel = dead ? 'Defeated' : queued ? 'Queued' : isMine && isTurn ? 'Ready' : isMine ? 'Standing by' : '';
+    return `
+      <button class="v2-char ${selected ? 'selected' : ''} ${queued ? 'queued' : ''} ${targetable ? 'targetable' : ''} ${dead ? 'dead' : ''}"
+        data-v2-role="${isMine ? 'caster' : 'target'}" data-v2-side="${isMine ? 'mine' : 'enemy'}" data-slot="${slot}" ${dead ? 'disabled' : ''}>
+        <div class="v2-char-top">
+          <strong>${esc(character.name)}</strong>
+          <span class="v2-hp-number">${character.hp}/${character.max_hp} HP</span>
+        </div>
+        <div class="v2-hp"><span style="width:${hpPct}%"></span></div>
+        ${v2StatusHTML(character)}
+        <div class="v2-char-foot">${esc(stateLabel)}</div>
+      </button>`;
+}
+
+function v2QueuedSkillIds() {
+    return new Set(v2State.actions.map(action => action.skill_id));
+}
+
+function v2CanPaySkillCost(energy, cost) {
+    const remaining = { green: energy.green || 0, red: energy.red || 0, blue: energy.blue || 0, white: energy.white || 0 };
+    let wildcardCount = 0;
+    for (const color of cost || []) {
+        if (color === 'black') {
+            wildcardCount += 1;
+            continue;
+        }
+        remaining[color] = (remaining[color] || 0) - 1;
+        if (remaining[color] < 0) return false;
+    }
+    return Object.values(remaining).reduce((sum, count) => sum + Math.max(0, count), 0) >= wildcardCount;
+}
+
+function v2QueuePaymentStatus(player) {
+    const energy = player?.energy || {};
+    const remaining = {
+        green: energy.green || 0,
+        red: energy.red || 0,
+        blue: energy.blue || 0,
+        white: energy.white || 0,
+    };
+    let wildcardRequired = 0;
+    let wildcardChosen = 0;
+    const costs = { green: 0, red: 0, blue: 0, white: 0, black: 0 };
+
+    for (const action of v2State.actions) {
+        const caster = player?.team?.[action.caster_slot];
+        const skill = caster ? v2SkillFor(caster.character_id, action.skill_id) : null;
+        for (const color of skill?.cost || []) {
+            costs[color] = (costs[color] || 0) + 1;
+            if (color === 'black') {
+                wildcardRequired += 1;
+            } else {
+                remaining[color] = (remaining[color] || 0) - 1;
+            }
+        }
+        for (const pay of v2State.wildcardPays[action.id] || []) {
+            if (pay && pay in remaining) {
+                wildcardChosen += 1;
+                remaining[pay] -= 1;
+            }
+        }
+    }
+
+    const missingSpecific = Object.entries(remaining)
+        .filter(([, value]) => value < 0)
+        .map(([color]) => color);
+    const needsWildcardChoice = wildcardChosen < wildcardRequired;
+    const canPay = missingSpecific.length === 0 && !needsWildcardChoice;
+    const spent = Object.fromEntries(Object.entries(costs).filter(([, value]) => value > 0));
+    const reason = missingSpecific.length
+        ? `Short on ${missingSpecific.join(', ')}`
+        : needsWildcardChoice
+            ? 'Choose wildcard payments'
+            : 'Queue payable';
+    return { canPay, reason, spent, wildcardRequired, wildcardChosen };
+}
+
+function v2QueuePaymentHTML(player) {
+    if (!v2State.actions.length) return '';
+    const status = v2QueuePaymentStatus(player);
+    const spentColors = ['green', 'red', 'blue', 'white', 'black']
+        .flatMap(color => Array.from({ length: status.spent[color] || 0 }, () => color));
+    return `
+      <div class="v2-queue-status ${status.canPay ? 'payable' : 'blocked'}">
+        <strong>${esc(status.canPay ? 'Queue ready' : status.reason)}</strong>
+        <span>${spentColors.length ? orbsHTML(spentColors) : 'No energy cost'} ${status.wildcardRequired ? `Wildcard ${status.wildcardChosen}/${status.wildcardRequired}` : ''}</span>
+      </div>`;
+}
+
+function v2ActionTargetSlots(action, skill) {
+    const rule = skill?.target_rule || {};
+    if (rule.kind === 'enemy_team' || rule.kind === 'ally_team') {
+        const targetPlayer = v2State.state?.players?.[action.target_player_id];
+        return (targetPlayer?.team || [])
+            .map((character, slot) => character.alive ? slot : null)
+            .filter(slot => slot !== null);
+    }
+    if (action.target_slots && action.target_slots.length) return action.target_slots;
+    return action.target_slot === null || action.target_slot === undefined ? [] : [action.target_slot];
+}
+
+function v2PreviewTargetName(targetPlayer, slot) {
+    return targetPlayer?.team?.[slot]?.name || `Slot ${Number(slot) + 1}`;
+}
+
+function v2EffectPreviewParts(effect, action, skill, hpPreview, ownerPlayerId) {
+    const targetPlayer = v2State.state?.players?.[action.target_player_id];
+    const targets = v2ActionTargetSlots(action, skill);
+    const targetNames = targets.map(slot => v2PreviewTargetName(targetPlayer, slot));
+    const amount = Number(effect.amount || 0);
+    const parts = [];
+
+    if (effect.type === 'damage' || effect.type === 'health_steal') {
+        targets.forEach(slot => {
+            const key = `${action.target_player_id}:${slot}`;
+            const target = targetPlayer?.team?.[slot];
+            if (!target) return;
+            const before = hpPreview[key] ?? target.hp;
+            const after = Math.max(0, before - amount);
+            hpPreview[key] = after;
+            const type = effect.damage_type ? ` ${effect.damage_type}` : '';
+            const bonus = effect.payload?.bonus_amount ? `, +${effect.payload.bonus_amount} if condition hits` : '';
+            parts.push(`${v2PreviewTargetName(targetPlayer, slot)}: ${amount}${type} damage (${before}->${after} HP${bonus})`);
+        });
+        if (effect.type === 'health_steal' && amount) parts.push(`Caster heals ${amount}`);
+    } else if (effect.type === 'heal') {
+        targets.forEach(slot => {
+            const key = `${action.target_player_id}:${slot}`;
+            const target = targetPlayer?.team?.[slot];
+            if (!target) return;
+            const before = hpPreview[key] ?? target.hp;
+            const after = Math.min(target.max_hp || 100, before + amount);
+            hpPreview[key] = after;
+            parts.push(`${v2PreviewTargetName(targetPlayer, slot)}: heals ${amount} (${before}->${after} HP)`);
+        });
+    } else if (effect.type === 'apply_status') {
+        const statusName = effect.payload?.name || effect.status || 'Status';
+        const duration = effect.duration ? ` for ${effect.duration}t` : '';
+        const names = effect.target === 'self'
+            ? [v2State.state?.players?.[ownerPlayerId]?.team?.[action.caster_slot]?.name || 'Caster']
+            : targetNames;
+        parts.push(`${statusName}${duration} on ${names.join(', ') || 'target'}`);
+    } else if (effect.type === 'cleanse') {
+        parts.push(`Cleanse ${targetNames.join(', ') || 'target'}`);
+    } else if (effect.type === 'dispel') {
+        parts.push(`Dispel ${targetNames.join(', ') || 'target'}`);
+    }
+    return parts;
+}
+
+function v2ActionPreviewHTML(action, skill, hpPreview, ownerPlayerId) {
+    if (!skill) return '';
+    const lines = (skill.effects || []).flatMap(effect => v2EffectPreviewParts(effect, action, skill, hpPreview, ownerPlayerId));
+    if (!lines.length) return '';
+    return `<div class="v2-preview-lines">${lines.map(line =>
+        `<span>${esc(line)}</span>`
+    ).join('')}</div>`;
+}
+
+function v2SkillButtonHTML(skill, character, disabled) {
+    const cooldown = character.cooldowns?.[skill.id] || 0;
+    const { mine } = v2PlayerIds();
+    const myEnergy = v2State.state?.players?.[mine]?.energy || {};
+    const affordable = v2CanPaySkillCost(myEnergy, skill.cost);
+    const isDisabled = disabled || cooldown > 0 || !affordable;
+    const selected = v2State.selectedSkillId === skill.id;
+    const classes = (skill.classes || []).slice(0, 3).join(' / ');
+    const reason = cooldown > 0 ? `Cooldown ${cooldown}` : !affordable ? 'Not enough energy' : '';
+    return `
+      <button class="v2-skill ${selected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}" data-skill-id="${esc(skill.id)}" ${reason ? `title="${esc(reason)}"` : ''} ${isDisabled ? 'disabled' : ''}>
+        <div class="v2-skill-head">
+          <strong>${esc(skill.name)}</strong>
+          <span>${orbsHTML(skill.cost)} CD ${cooldown || skill.cooldown || 0}</span>
+        </div>
+        <div class="v2-skill-tags">
+          <span>${esc(v2TargetLabel(skill))}</span>
+          <span>${esc(classes || 'Skill')}</span>
+        </div>
+        ${v2EffectChipsHTML(skill)}
+        <p>${esc(skill.text)}</p>
+        <small>${reason ? esc(reason) : 'Ready when paid'}</small>
+      </button>`;
+}
+
+function v2PendingActionPayloads() {
+    return v2State.actions.map((action, index) => ({
+        ...action,
+        queue_index: index,
+        wildcard_pays: v2State.wildcardPays[action.id] || [],
+    }));
+}
+
+function resetClassicV2Match() {
+    v2State.state = null;
+    v2State.actions = [];
+    v2State.wildcardPays = {};
+    v2State.selectedCasterSlot = null;
+    v2State.selectedSkillId = null;
+    renderClassicV2();
+}
+
+function v2AddAction(casterSlot, skillId, targetPlayerId, targetSlot, targetSlots = []) {
+    const actionId = `v2_${Date.now()}_${casterSlot}`;
+    v2State.actions = v2State.actions.filter(action => action.caster_slot !== casterSlot);
+    v2State.actions.push({
+        id: actionId,
+        caster_slot: casterSlot,
+        skill_id: skillId,
+        target_player_id: targetPlayerId,
+        target_slot: targetSlot,
+        target_slots: targetSlots,
+    });
+    v2State.selectedSkillId = null;
+    const { mine } = v2PlayerIds();
+    const me = v2State.state?.players?.[mine];
+    const queuedSlots = new Set(v2State.actions.map(action => action.caster_slot));
+    const nextSlot = (me?.team || []).findIndex((character, slot) => character.alive && !queuedSlots.has(slot));
+    v2State.selectedCasterSlot = nextSlot >= 0 ? nextSlot : casterSlot;
+    v2SubmitPlan();
+    renderClassicV2();
+}
+
+function v2SubmitPlan() {
+    if (!v2State.state) return;
+    socket.emit('battle_v2_submit_plan', { actions: v2PendingActionPayloads() });
+}
+
+function v2UpdateQueue() {
+    if (!v2State.state) return;
+    socket.emit('battle_v2_update_queue', {
+        queue_order: v2State.actions.map(action => action.id),
+        wildcard_pays: v2State.wildcardPays,
+    });
+}
+
+function v2QueueHTML() {
+    const { mine } = v2PlayerIds();
+    const me = v2State.state?.players?.[mine];
+    if (!v2State.actions.length) {
+        return '<div class="v2-empty">Queue up to one skill from each active fighter.</div>';
+    }
+    const hpPreview = {};
+    const items = v2State.actions.map((action, index) => {
+        const caster = me?.team?.[action.caster_slot];
+        const skill = caster ? v2SkillFor(caster.character_id, action.skill_id) : null;
+        const blackCount = (skill?.cost || []).filter(color => color === 'black').length;
+        const pays = v2State.wildcardPays[action.id] || [];
+        const wildcardControls = Array.from({ length: blackCount }, (_, payIndex) => `
+          <select class="v2-wildcard-select" data-action-id="${esc(action.id)}" data-pay-index="${payIndex}">
+            ${['', 'green', 'red', 'blue', 'white'].map(color =>
+                `<option value="${color}" ${pays[payIndex] === color ? 'selected' : ''}>${color || 'pay wildcard'}</option>`
+            ).join('')}
+          </select>`).join('');
+        return `
+          <div class="v2-queue-item">
+            <div>
+              <strong>${index + 1}. ${esc(caster?.name || 'Unknown')}</strong>
+              <span>${esc(skill?.name || action.skill_id)}</span>
+              <small>Target: ${esc(v2ActionTargetLabel(action))}</small>
+              ${v2ActionPreviewHTML(action, skill, hpPreview, mine)}
+            </div>
+            <div class="v2-queue-controls">
+              ${wildcardControls}
+              <button class="icon-btn v2-move" data-dir="-1" data-action-id="${esc(action.id)}" title="Move up">↑</button>
+              <button class="icon-btn v2-move" data-dir="1" data-action-id="${esc(action.id)}" title="Move down">↓</button>
+              <button class="icon-btn v2-remove" data-action-id="${esc(action.id)}" title="Remove">✕</button>
+            </div>
+          </div>`;
+    }).join('');
+    return v2QueuePaymentHTML(me) + items;
+}
+
+function v2LogEntryHTML(event) {
+    const type = String(event.type || 'event').replace(/_/g, ' ');
+    const tone = event.type === 'damage' || event.type === 'status_damage'
+        ? 'damage'
+        : event.type === 'heal' || event.type === 'health_steal'
+            ? 'heal'
+            : event.type === 'battle_finished'
+                ? 'finish'
+                : event.type && event.type.includes('status')
+                    ? 'status'
+                    : 'neutral';
+    return `
+      <div class="log-entry v2-log-entry v2-log-entry--${tone}">
+        <span>Turn ${esc(event.turn_number || '')}</span>
+        <strong>${esc(type)}</strong>
+        <em>${esc(event.message)}</em>
+      </div>`;
+}
+
+function v2TurnStatusHTML(state, me, foe, isMyTurn) {
+    const current = state.players[state.turn_player_id];
+    const mineQueued = v2State.actions.length;
+    const mineLimit = v2AliveCount(me);
+    const foeLiving = v2AliveCount(foe);
+    const confirmed = me?.queue_confirmed ? 'Confirmed' : `${mineQueued}/${mineLimit} queued`;
+    const turnTone = isMyTurn ? 'active' : 'waiting';
+    return `
+      <div class="v2-turn-card ${turnTone}">
+        <strong>${isMyTurn ? 'Your action window' : `${esc(current?.name || 'Opponent')} acting`}</strong>
+        <span>${esc(confirmed)} · ${v2AliveCount(me)} allies alive · ${foeLiving} enemies alive</span>
+      </div>
+      <div class="v2-turn-card">
+        <strong>Queue rule</strong>
+        <span>One skill per living fighter, resolved from top to bottom.</span>
+      </div>`;
+}
+
+function renderClassicV2() {
+    const state = v2State.state;
+    const title = document.getElementById('v2-phase-title');
+    const hint = document.getElementById('v2-phase-hint');
+    if (!state) {
+        if (title) title.textContent = 'Classic Queue Test';
+        if (hint) hint.textContent = 'Start a local Battle v2 match behind the feature flag.';
+        ['v2-my-team', 'v2-enemy-team', 'v2-energy-row', 'v2-selected-panel', 'v2-queue-panel', 'v2-log'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.innerHTML = '';
+        });
+        const turnStatus = document.getElementById('v2-turn-status');
+        if (turnStatus) turnStatus.innerHTML = '';
+        document.getElementById('btn-v2-confirm').disabled = true;
+        document.getElementById('btn-v2-confirm').textContent = 'Confirm Queue';
+        document.getElementById('btn-v2-cancel').disabled = true;
+        document.getElementById('btn-v2-end-turn').disabled = true;
+        document.getElementById('btn-v2-new-match').disabled = false;
+        document.getElementById('v2-picker')?.classList.remove('hidden');
+        renderV2Picker();
+        return;
+    }
+    document.getElementById('v2-picker')?.classList.add('hidden');
+    const { mine, enemy } = v2PlayerIds();
+    const me = state.players[mine];
+    const foe = state.players[enemy];
+    const isMyTurn = state.turn_player_id === mine && state.phase !== 'finished';
+    document.getElementById('v2-turn-badge').textContent = `Turn ${state.turn_number}`;
+    title.textContent = state.phase.replace(/_/g, ' ').toUpperCase();
+    hint.textContent = state.winner_id
+        ? `${state.players[state.winner_id]?.name || state.winner_id} wins`
+        : isMyTurn ? 'Select a fighter, skill, target, then confirm the queued actions.' : `Waiting on ${state.players[state.turn_player_id]?.name || 'opponent'}.`;
+    document.getElementById('v2-turn-status').innerHTML = v2TurnStatusHTML(state, me, foe, isMyTurn);
+    document.getElementById('v2-energy-row').innerHTML = renderEnergyPool(me?.energy || {});
+    document.getElementById('v2-my-team').innerHTML = (me?.team || []).map((character, slot) =>
+        v2CharacterCardHTML(character, slot, true, isMyTurn)
+    ).join('');
+    document.getElementById('v2-enemy-team').innerHTML = (foe?.team || []).map((character, slot) =>
+        v2CharacterCardHTML(character, slot, false, isMyTurn)
+    ).join('');
+    const selected = me?.team?.[v2State.selectedCasterSlot];
+    document.getElementById('v2-selected-panel').innerHTML = selected
+        ? `<div class="v2-panel-title">${esc(selected.name)}</div>${v2SkillsFor(selected.character_id).map(skill =>
+            v2SkillButtonHTML(skill, selected, !isMyTurn || v2QueuedSkillIds().has(skill.id) || v2State.actions.some(a => a.caster_slot === v2State.selectedCasterSlot))
+        ).join('')}`
+        : '<div class="v2-empty">Select one of your fighters.</div>';
+    document.getElementById('v2-queue-panel').innerHTML = v2QueueHTML();
+    document.getElementById('v2-log').innerHTML = (state.event_log || []).slice().reverse().slice(0, 10).map(v2LogEntryHTML).join('');
+    const paymentStatus = v2QueuePaymentStatus(me);
+    document.getElementById('btn-v2-confirm').disabled = !isMyTurn || v2State.actions.length === 0 || !paymentStatus.canPay;
+    document.getElementById('btn-v2-confirm').textContent = paymentStatus.canPay ? 'Confirm Queue' : paymentStatus.reason;
+    document.getElementById('btn-v2-cancel').disabled = !isMyTurn || v2State.actions.length === 0;
+    document.getElementById('btn-v2-end-turn').disabled = !isMyTurn;
+    document.getElementById('btn-v2-new-match').disabled = false;
+    window.__v2DebugState = {
+        selectedCasterSlot: v2State.selectedCasterSlot,
+        selectedSkillId: v2State.selectedSkillId,
+        actionCount: v2State.actions.length,
+        phase: state.phase,
+        turnPlayerId: state.turn_player_id,
+    };
+}
+
+function v2StartMatch() {
+    if (!BATTLE_V2_ENABLED) {
+        toast('Battle v2 is disabled for this server.');
+        return;
+    }
+    if (v2State.playerTeam.length !== 3 || v2State.enemyTeam.length !== 3) {
+        toast('Choose exactly 3 starters for each side.');
+        return;
+    }
+    const nameInput = document.getElementById('player-name').value.trim() || 'Player';
+    localStorage.setItem('jjk_player_name', nameInput);
+    v2State.actions = [];
+    v2State.wildcardPays = {};
+    v2State.selectedCasterSlot = null;
+    v2State.selectedSkillId = null;
+    socket.emit('battle_v2_start_classic', {
+        room_id: 'classic_v2_' + Math.random().toString(36).slice(2, 8),
+        player_name: nameInput,
+        player_team: v2State.playerTeam,
+        enemy_team: v2State.enemyTeam,
+    });
+    showScreen('classic-v2');
+}
+
+socket.on('battle_v2_update', (data) => {
+    v2State.state = data;
+    const ownPending = data.pending_actions?.[v2PlayerIds().mine] || [];
+    if (ownPending.length) {
+        v2State.actions = ownPending;
+        v2State.wildcardPays = Object.fromEntries(ownPending.map(action => [action.id, action.wildcard_pays || []]));
+    } else if (data.phase === 'planning') {
+        v2State.actions = [];
+        v2State.wildcardPays = {};
+    }
+    document.getElementById('v2-error')?.classList.add('hidden');
+    showScreen('classic-v2');
+    renderClassicV2();
+});
+
+socket.on('battle_v2_error', (data) => {
+    const el = document.getElementById('v2-error');
+    if (el) {
+        el.textContent = data.message || 'Battle v2 error';
+        el.classList.remove('hidden');
+    }
+    toast(data.message || 'Battle v2 error');
+});
+
+socket.on('battle_v2_finished', (data) => {
+    toast(`Battle v2 finished: ${data.winner_id}`);
+});
+
 // ── SETUP SCREEN ──────────────────────────────────────────────────────────────
 // Render history on load
 renderHistory();
@@ -623,6 +1206,129 @@ document.getElementById('btn-roster-lab').addEventListener('click', () => {
 
 document.getElementById('btn-roster-back').addEventListener('click', () => {
     showScreen('setup');
+});
+
+document.getElementById('btn-classic-v2').addEventListener('click', () => {
+    if (!BATTLE_V2_ENABLED) {
+        toast('Battle v2 is disabled for this server.');
+        return;
+    }
+    showScreen('classic-v2');
+    renderClassicV2();
+});
+
+document.getElementById('btn-v2-back').addEventListener('click', () => {
+    showScreen('setup');
+});
+
+document.getElementById('btn-v2-start').addEventListener('click', v2StartMatch);
+document.getElementById('btn-v2-new-match').addEventListener('click', resetClassicV2Match);
+document.getElementById('btn-v2-cancel').addEventListener('click', () => {
+    socket.emit('battle_v2_cancel_queue');
+});
+document.getElementById('btn-v2-end-turn').addEventListener('click', () => {
+    v2State.actions = [];
+    v2State.wildcardPays = {};
+    v2State.selectedSkillId = null;
+    socket.emit('battle_v2_end_turn');
+});
+document.getElementById('btn-v2-confirm').addEventListener('click', () => {
+    v2UpdateQueue();
+    socket.emit('battle_v2_confirm_queue');
+});
+
+document.getElementById('classic-v2').addEventListener('click', (event) => {
+    const picker = event.target.closest('[data-v2-pick-team]');
+    if (picker) {
+        const teamKey = picker.dataset.v2PickTeam;
+        const characterId = picker.dataset.characterId;
+        const team = v2State[teamKey];
+        if (!Array.isArray(team)) return;
+        if (team.includes(characterId)) {
+            v2State[teamKey] = team.filter(id => id !== characterId);
+        } else if (team.length < 3) {
+            v2State[teamKey] = [...team, characterId];
+        }
+        renderV2Picker();
+        return;
+    }
+    const targetCard = event.target.closest('.v2-char[data-slot]');
+    if (targetCard && v2State.selectedCasterSlot !== null && v2State.selectedSkillId) {
+        const { mine, enemy } = v2PlayerIds();
+        const side = targetCard.dataset.v2Side;
+        const targetPlayerId = side === 'mine' ? mine : enemy;
+        const targetPlayer = v2State.state?.players?.[targetPlayerId];
+        const targetSlot = Number(targetCard.dataset.slot);
+        const targetCharacter = targetPlayer?.team?.[targetSlot];
+        if (v2CanTargetCharacter(targetCharacter, targetSlot, side === 'mine', true)) {
+            v2AddAction(v2State.selectedCasterSlot, v2State.selectedSkillId, targetPlayerId, targetSlot);
+            return;
+        }
+        toast('That target is not legal for this skill.');
+        return;
+    }
+    const caster = event.target.closest('[data-v2-role="caster"]');
+    if (caster) {
+        v2State.selectedCasterSlot = Number(caster.dataset.slot);
+        v2State.selectedSkillId = null;
+        renderClassicV2();
+        return;
+    }
+    const skill = event.target.closest('.v2-skill');
+    if (skill && !skill.disabled) {
+        v2State.selectedSkillId = skill.dataset.skillId;
+        const { mine, enemy } = v2PlayerIds();
+        const me = v2State.state.players[mine];
+        const selectedCharacter = me?.team?.[v2State.selectedCasterSlot];
+        const selectedSkill = selectedCharacter ? v2SkillFor(selectedCharacter.character_id, v2State.selectedSkillId) : null;
+        const targetKind = selectedSkill?.target_rule?.kind || 'enemy';
+        if (targetKind === 'self') {
+            v2AddAction(v2State.selectedCasterSlot, v2State.selectedSkillId, mine, v2State.selectedCasterSlot);
+            return;
+        }
+        if (targetKind === 'enemy_team') {
+            v2AddAction(v2State.selectedCasterSlot, v2State.selectedSkillId, enemy, null, v2TeamTargetSlots(v2State.state.players[enemy], selectedSkill));
+            return;
+        }
+        if (targetKind === 'ally_team') {
+            v2AddAction(v2State.selectedCasterSlot, v2State.selectedSkillId, mine, null, v2TeamTargetSlots(me, selectedSkill));
+            return;
+        }
+        toast(targetKind === 'ally' ? 'Choose an allied target.' : 'Choose an enemy target.');
+        renderClassicV2();
+        return;
+    }
+    const remove = event.target.closest('.v2-remove');
+    if (remove) {
+        v2State.actions = v2State.actions.filter(action => action.id !== remove.dataset.actionId);
+        delete v2State.wildcardPays[remove.dataset.actionId];
+        v2SubmitPlan();
+        renderClassicV2();
+        return;
+    }
+    const move = event.target.closest('.v2-move');
+    if (move) {
+        const index = v2State.actions.findIndex(action => action.id === move.dataset.actionId);
+        const nextIndex = index + Number(move.dataset.dir);
+        if (index >= 0 && nextIndex >= 0 && nextIndex < v2State.actions.length) {
+            const [item] = v2State.actions.splice(index, 1);
+            v2State.actions.splice(nextIndex, 0, item);
+            v2UpdateQueue();
+            renderClassicV2();
+        }
+    }
+});
+
+document.getElementById('classic-v2').addEventListener('change', (event) => {
+    const select = event.target.closest('.v2-wildcard-select');
+    if (!select) return;
+    const actionId = select.dataset.actionId;
+    const payIndex = Number(select.dataset.payIndex);
+    const pays = v2State.wildcardPays[actionId] || [];
+    pays[payIndex] = select.value;
+    v2State.wildcardPays[actionId] = pays.filter(Boolean);
+    v2UpdateQueue();
+    renderClassicV2();
 });
 
 ['roster-search', 'roster-role-filter', 'roster-identity-filter', 'roster-flag-filter'].forEach(id => {

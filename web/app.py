@@ -8,6 +8,7 @@ is NOT modified — this layer converts between the two ID systems.
 from flask import Flask, abort, render_template, session
 from flask_socketio import SocketIO, emit, join_room
 import os
+import random
 import re
 import secrets
 import uuid
@@ -19,8 +20,10 @@ from collections import defaultdict, deque
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from jjk_bot.game import GameManager, GameState, CPU_PLAYER_ID
-from jjk_bot.characters import Character, Skill, character_identity
+from jjk_bot.characters import CHARACTERS, Character, Skill, character_identity
 from jjk_bot.portrait_assets import local_portrait_path
+from jjk_bot.battle_v2.models import BattleEvent, BattlePhase
+from jjk_bot.battle_v2.manager import BattleV2Manager, BattleV2Error, battle_v2_enabled, skill_catalog
 
 def env_flag(name: str, default: bool = False) -> bool:
     value = os.getenv(name)
@@ -43,7 +46,16 @@ app.secret_key = os.getenv("FLASK_SECRET_KEY") or secrets.token_hex(32)
 socketio = SocketIO(app, cors_allowed_origins=CORS_ORIGINS)
 
 game_manager = GameManager()
+battle_v2_manager = BattleV2Manager()
 rate_limits = defaultdict(deque)
+CPU_V2_PLAYER_ID = "__cpu_v2__"
+V2_CPU_DRAFT_NAMES = [
+    "Satoru Gojo",
+    "Sukuna (Incarnation)",
+    "Yuta Okkotsu",
+    "Hiromi Higuruma",
+    "Aoi Todo",
+]
 
 ROOM_RE = re.compile(r"[^a-zA-Z0-9_-]+")
 CONTROL_RE = re.compile(r"[\x00-\x1f\x7f]+")
@@ -69,6 +81,170 @@ def clean_selected_names(value) -> list[str]:
     return [CONTROL_RE.sub("", str(name).strip())[:80] for name in value[:3] if str(name).strip()]
 
 
+def v2_character_id_for_name(name: str) -> str | None:
+    catalog = skill_catalog()
+    cleaned = CONTROL_RE.sub("", str(name or "").strip())
+    if not cleaned:
+        return None
+    exact = {
+        str(spec["name"]).lower(): character_id
+        for character_id, spec in catalog.items()
+    }
+    if cleaned.lower() in exact:
+        return exact[cleaned.lower()]
+    aliases = {
+        "sukuna": "ryomen_sukuna",
+        "sukuna (incarnation)": "ryomen_sukuna",
+        "sukuna (full power)": "ryomen_sukuna",
+        "sukuna (heian era)": "ryomen_sukuna",
+    }
+    if cleaned.lower() in aliases:
+        return aliases[cleaned.lower()]
+
+    identity = character_identity(cleaned)
+    matches = [
+        character_id
+        for character_id, spec in catalog.items()
+        if character_identity(str(spec["name"])) == identity
+    ]
+    return matches[0] if len(matches) == 1 else None
+
+
+def v2_team_ids_from_characters(chars: list[Character]) -> list[str] | None:
+    ids = [v2_character_id_for_name(char.name) for char in chars[:3]]
+    if len(ids) != 3 or any(character_id is None for character_id in ids):
+        return None
+    unique_ids = [str(character_id) for character_id in ids]
+    return unique_ids if len(set(unique_ids)) == 3 else None
+
+
+def v2_character_by_name(name: str) -> Character:
+    return next(char for char in CHARACTERS if char.name == name)
+
+
+def v2_compatible_draft_pool(exclude: list[str] | None = None) -> list[Character]:
+    excluded = set(exclude or [])
+    return [
+        char
+        for char in CHARACTERS
+        if char.name not in excluded and v2_character_id_for_name(char.name) is not None
+    ]
+
+
+def choose_v2_draft_choices(exclude: list[str] | None = None, count: int = 3) -> list[Character]:
+    pool = v2_compatible_draft_pool(exclude)
+    grouped: dict[str, list[Character]] = {}
+    for char in pool:
+        grouped.setdefault(str(v2_character_id_for_name(char.name)), []).append(char)
+
+    choices: list[Character] = []
+    group_ids = list(grouped)
+    random.shuffle(group_ids)
+    for character_id in group_ids:
+        variants = grouped[character_id]
+        choices.append(random.choice(variants))
+        if len(choices) == count:
+            return choices
+
+    remaining = [char for char in pool if char.name not in {choice.name for choice in choices}]
+    random.shuffle(remaining)
+    return choices + remaining[: max(0, count - len(choices))]
+
+
+def configure_v2_cpu_draft(game) -> None:
+    cpu_id = CPU_PLAYER_ID
+    previous_names = {char.name for char in game.teams.get(cpu_id, [])}
+    game.drafted_names = [name for name in game.drafted_names if name not in previous_names]
+
+    cpu_team = [v2_character_by_name(name) for name in V2_CPU_DRAFT_NAMES]
+    game.teams[cpu_id] = cpu_team
+    game.seen_chars[cpu_id] = [char.name for char in cpu_team]
+    for char in cpu_team:
+        if char.name not in game.drafted_names:
+            game.drafted_names.append(char.name)
+    game.active_teams[cpu_id] = cpu_team[:3]
+    game.bench_teams[cpu_id] = []
+
+
+def draw_v2_compatible_three(game, player_id: int) -> tuple[bool, str, list[Character]]:
+    if player_id != game.get_current_player_id():
+        return False, f"It's not your turn! It's {game.get_current_player_name()}'s turn.", []
+
+    if game.state != GameState.IN_PROGRESS:
+        if game.state == GameState.DECIDING:
+            return False, "You already drew! Choose a character to add to your team.", game.last_drawn_choices.get(player_id, [])
+        return False, "The game is not in progress.", []
+
+    base_exclude = list(game.seen_chars.get(player_id, [])) + game.drafted_names
+    choices = choose_v2_draft_choices(base_exclude, count=3)
+    if len(choices) < 3:
+        return False, "Not enough Battle v2-compatible characters remain for this draft.", []
+
+    for char in choices:
+        if char.name not in game.seen_chars[player_id]:
+            game.seen_chars[player_id].append(char.name)
+    game.last_drawn_choices[player_id] = choices
+    game.state = GameState.DECIDING
+    return True, f"{game.player_names[player_id]} drew 3 Battle v2-ready characters. Pick 1 to add to your team!", choices
+
+
+def clean_v2_team(value, fallback: list[str]) -> list[str]:
+    if not isinstance(value, list):
+        return list(fallback)
+    team = [CONTROL_RE.sub("", str(name).strip())[:80] for name in value[:3] if str(name).strip()]
+    return team if len(team) == 3 else list(fallback)
+
+
+def clean_v2_actions(value) -> list[dict]:
+    if not isinstance(value, list):
+        return []
+    actions = []
+    for raw in value[:3]:
+        if not isinstance(raw, dict):
+            continue
+        action = {
+            "id": CONTROL_RE.sub("", str(raw.get("id", "")).strip())[:64],
+            "caster_slot": clamp_int(raw.get("caster_slot", 0), 0, 2),
+            "skill_id": clean_skill_name(raw.get("skill_id", "")),
+            "target_player_id": CONTROL_RE.sub("", str(raw.get("target_player_id", "")).strip())[:64],
+            "target_slot": None if raw.get("target_slot") is None else clamp_int(raw.get("target_slot", 0), 0, 2),
+            "target_slots": [
+                clamp_int(slot, 0, 2)
+                for slot in raw.get("target_slots", [])[:3]
+            ] if isinstance(raw.get("target_slots", []), list) else [],
+            "wildcard_pays": [
+                CONTROL_RE.sub("", str(energy).strip().lower())[:8]
+                for energy in raw.get("wildcard_pays", [])[:3]
+            ] if isinstance(raw.get("wildcard_pays", []), list) else [],
+            "queue_index": clamp_int(raw.get("queue_index", len(actions)), 0, 2, default=len(actions)),
+        }
+        if not action["id"]:
+            action.pop("id")
+        actions.append(action)
+    return actions
+
+
+def clean_v2_queue_order(value) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [CONTROL_RE.sub("", str(action_id).strip())[:64] for action_id in value[:3]]
+
+
+def clean_v2_wildcard_pays(value) -> dict[str, list[str]]:
+    if not isinstance(value, dict):
+        return {}
+    cleaned = {}
+    for action_id, pays in value.items():
+        clean_id = CONTROL_RE.sub("", str(action_id).strip())[:64]
+        if not clean_id or not isinstance(pays, list):
+            continue
+        cleaned[clean_id] = [
+            CONTROL_RE.sub("", str(energy).strip().lower())[:8]
+            for energy in pays[:3]
+        ]
+    return cleaned
+
+
 def clamp_int(value, minimum: int, maximum: int, default: int = 0) -> int:
     try:
         parsed = int(value)
@@ -87,6 +263,40 @@ def active_session_context():
     int_id = smap.get(player_session, str_to_int_id(player_session))
     smap[player_session] = int_id
     return room_id, player_session, smap, int_id, str_to_int_id(room_id)
+
+
+def active_v2_context(data=None):
+    if not battle_v2_enabled():
+        emit("battle_v2_error", {"message": "Battle v2 is disabled. Set JJK_BATTLE_SYSTEM=v2."})
+        return None
+    data = data or {}
+    player_session = session.get("player_id")
+    if not player_session:
+        player_session = str(uuid.uuid4())
+        session["player_id"] = player_session
+    room_id = session.get("room_id") or clean_room_id(data.get("room_id", "classic-v2"))
+    session["room_id"] = room_id
+    join_room(room_id)
+    return room_id, player_session
+
+
+def emit_battle_v2_update(room_id: str, viewer_id: str):
+    state = battle_v2_manager.serialize_for_player(room_id, viewer_id)
+    emit("battle_v2_update", state)
+    if state.get("winner_id"):
+        emit("battle_v2_finished", {"winner_id": state["winner_id"]})
+
+
+def emit_battle_v2_error(exc: Exception):
+    emit("battle_v2_error", {"message": str(exc)})
+
+
+def run_battle_v2_cpu_turns(room_id: str):
+    for _ in range(6):
+        state = battle_v2_manager.get_state(room_id)
+        if state.winner_id or state.turn_player_id != CPU_V2_PLAYER_ID:
+            return
+        battle_v2_manager.take_cpu_turn(room_id, CPU_V2_PLAYER_ID)
 
 
 def allow_event(event_name: str, limit: int = 30, window_seconds: int = 5) -> bool:
@@ -343,7 +553,12 @@ def get_session_map(room_id: str) -> dict:
 def index():
     if 'player_id' not in session:
         session['player_id'] = str(uuid.uuid4())
-    return render_template('index.html', player_id=session['player_id'])
+    return render_template(
+        'index.html',
+        player_id=session['player_id'],
+        battle_v2_enabled=battle_v2_enabled(),
+        battle_v2_catalog=skill_catalog() if battle_v2_enabled() else {},
+    )
 
 @app.route('/reset/<room_id>')
 def reset_room(room_id):
@@ -459,6 +674,9 @@ def on_start_vs_cpu(data=None):
 
     player_name = game.player_names.get(int_id, f"Player_{player_session[:4]}")
     success, msg = game.start_game_vs_cpu(int_id, player_name, difficulty=difficulty)
+    if success and battle_v2_enabled():
+        configure_v2_cpu_draft(game)
+        msg = f"{msg} Battle v2 draft pool enabled."
 
     emit('message', {'text': msg}, room=room_id)
     emit('game_update', get_game_state_dict(game, smap), room=room_id)
@@ -473,7 +691,10 @@ def on_draw_card():
     room_id, _, smap, int_id, int_room = context
 
     game = game_manager.get_game(int_room)
-    success, msg, choices = game.draw_three(int_id)
+    if battle_v2_enabled() and game.cpu_player_id is not None:
+        success, msg, choices = draw_v2_compatible_three(game, int_id)
+    else:
+        success, msg, choices = game.draw_three(int_id)
     emit('message', {'text': msg}, room=room_id)
     emit('game_update', get_game_state_dict(game, smap), room=room_id)
 
@@ -505,6 +726,26 @@ def on_submit_team(data):
     game = game_manager.get_game(int_room)
     success, msg = game.submit_team(int_id, selected_names)
     emit('message', {'text': msg}, room=room_id)
+    if success and battle_v2_enabled() and game.state == GameState.BATTLE and game.cpu_player_id is not None:
+        player_team = v2_team_ids_from_characters(game.active_teams.get(int_id, []))
+        enemy_team = v2_team_ids_from_characters(game.active_teams.get(CPU_PLAYER_ID, []))
+        if player_team and enemy_team:
+            player_name = game.player_names.get(int_id, f"Player_{session.get('player_id', '')[:4]}")
+            try:
+                battle_v2_manager.start_classic_match(
+                    room_id,
+                    [
+                        {"id": session.get("player_id"), "name": player_name, "team": player_team},
+                        {"id": CPU_V2_PLAYER_ID, "name": "CPU V2", "team": enemy_team},
+                    ],
+                )
+                emit('message', {'text': 'Battle v2 launched from your drafted 3v3 team.'})
+                emit_battle_v2_update(room_id, session.get("player_id"))
+                return
+            except BattleV2Error as exc:
+                emit_battle_v2_error(exc)
+                return
+        emit('message', {'text': 'Draft team includes characters not converted to Battle v2 yet; using v1 battle.'}, room=room_id)
     emit('game_update', get_game_state_dict(game, smap), room=room_id)
 
 @socketio.on('battle_action')
@@ -593,6 +834,151 @@ def on_swap_in(data):
         emit('message', {'text': msg}, room=room_id)
 
     emit('game_update', get_game_state_dict(game, smap), room=room_id)
+
+
+@socketio.on('battle_v2_start_classic')
+def on_battle_v2_start_classic(data=None):
+    if not allow_event("battle_v2_start_classic", limit=10, window_seconds=10):
+        return
+    data = data or {}
+    context = active_v2_context(data)
+    if not context:
+        return
+    room_id, player_session = context
+    player_name = clean_player_name(data.get("player_name", ""), f"Player_{player_session[:4]}")
+    player_team = clean_v2_team(
+        data.get("player_team") or data.get("team"),
+        ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"],
+    )
+    enemy_team = clean_v2_team(
+        data.get("enemy_team"),
+        ["satoru_gojo", "ryomen_sukuna", "mahito"],
+    )
+    try:
+        battle_v2_manager.start_classic_match(
+            room_id,
+            [
+                {"id": player_session, "name": player_name, "team": player_team},
+                {"id": CPU_V2_PLAYER_ID, "name": "CPU V2", "team": enemy_team},
+            ],
+        )
+        emit_battle_v2_update(room_id, player_session)
+    except BattleV2Error as exc:
+        emit_battle_v2_error(exc)
+
+
+@socketio.on('battle_v2_submit_plan')
+def on_battle_v2_submit_plan(data=None):
+    if not allow_event("battle_v2_submit_plan", limit=45, window_seconds=5):
+        return
+    data = data or {}
+    context = active_v2_context(data)
+    if not context:
+        return
+    room_id, player_session = context
+    try:
+        battle_v2_manager.submit_plan(room_id, player_session, clean_v2_actions(data.get("actions", [])))
+        emit_battle_v2_update(room_id, player_session)
+    except BattleV2Error as exc:
+        emit_battle_v2_error(exc)
+
+
+@socketio.on('battle_v2_update_queue')
+def on_battle_v2_update_queue(data=None):
+    if not allow_event("battle_v2_update_queue", limit=45, window_seconds=5):
+        return
+    data = data or {}
+    context = active_v2_context(data)
+    if not context:
+        return
+    room_id, player_session = context
+    try:
+        battle_v2_manager.update_queue(
+            room_id,
+            player_session,
+            clean_v2_queue_order(data.get("queue_order", [])),
+            clean_v2_wildcard_pays(data.get("wildcard_pays", {})),
+        )
+        emit_battle_v2_update(room_id, player_session)
+    except BattleV2Error as exc:
+        emit_battle_v2_error(exc)
+
+
+@socketio.on('battle_v2_confirm_queue')
+def on_battle_v2_confirm_queue(data=None):
+    if not allow_event("battle_v2_confirm_queue", limit=45, window_seconds=5):
+        return
+    context = active_v2_context(data or {})
+    if not context:
+        return
+    room_id, player_session = context
+    try:
+        battle_v2_manager.confirm_queue(room_id, player_session)
+        run_battle_v2_cpu_turns(room_id)
+        emit_battle_v2_update(room_id, player_session)
+    except BattleV2Error as exc:
+        emit_battle_v2_error(exc)
+
+
+@socketio.on('battle_v2_cancel_queue')
+def on_battle_v2_cancel_queue(data=None):
+    if not allow_event("battle_v2_cancel_queue", limit=45, window_seconds=5):
+        return
+    context = active_v2_context(data or {})
+    if not context:
+        return
+    room_id, player_session = context
+    try:
+        battle_v2_manager.cancel_queue(room_id, player_session)
+        emit_battle_v2_update(room_id, player_session)
+    except BattleV2Error as exc:
+        emit_battle_v2_error(exc)
+
+
+@socketio.on('battle_v2_end_turn')
+def on_battle_v2_end_turn(data=None):
+    if not allow_event("battle_v2_end_turn", limit=45, window_seconds=5):
+        return
+    context = active_v2_context(data or {})
+    if not context:
+        return
+    room_id, player_session = context
+    try:
+        battle_v2_manager.end_turn(room_id, player_session)
+        run_battle_v2_cpu_turns(room_id)
+        emit_battle_v2_update(room_id, player_session)
+    except BattleV2Error as exc:
+        emit_battle_v2_error(exc)
+
+
+@socketio.on('battle_v2_surrender')
+def on_battle_v2_surrender(data=None):
+    if not allow_event("battle_v2_surrender"):
+        return
+    context = active_v2_context(data or {})
+    if not context:
+        return
+    room_id, player_session = context
+    try:
+        state = battle_v2_manager.get_state(room_id)
+        if player_session not in state.players:
+            raise BattleV2Error(f"unknown player: {player_session}")
+        winners = [pid for pid in state.players if pid != player_session]
+        if not winners:
+            raise BattleV2Error("no opponent to award surrender")
+        state.winner_id = winners[0]
+        state.phase = BattlePhase.FINISHED
+        state.event_log.append(
+            BattleEvent(
+                type="battle_finished",
+                message=f"{state.winner_id} wins by surrender",
+                turn_number=state.turn_number,
+                payload={"winner_id": state.winner_id, "surrendered_id": player_session},
+            )
+        )
+        emit_battle_v2_update(room_id, player_session)
+    except BattleV2Error as exc:
+        emit_battle_v2_error(exc)
 
 @socketio.on('reset_room')
 def on_reset_room():

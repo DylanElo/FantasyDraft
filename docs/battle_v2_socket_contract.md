@@ -76,6 +76,11 @@ skills. Normal turn-end status/cooldown cleanup still runs. In local CPU rooms,
 the server immediately runs CPU turns until control returns to the human or the
 match finishes.
 
+The local CPU builds one legal action per living caster and scores candidates
+before resolving. It prioritizes killing blows, wounded-ally healing, stun and
+defensive utility, payoff skills with conditions, and higher-impact damage
+families such as soul or piercing damage.
+
 ```json
 {}
 ```

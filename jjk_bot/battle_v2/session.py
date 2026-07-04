@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .energy import CORE_ENERGY, gain_turn_energy, normalize_energy, split_cost
-from .models import BattleEvent, BattlePhase, BattleState, CharacterState, PendingAction, PlayerState
+from .models import BattleEvent, BattlePhase, BattleState, CharacterState, DamageType, PendingAction, PlayerState, SkillSpec
 from .resolver import ResolverError, check_winner, finish_turn, resolve_queue, validate_queue
 from .serialization import serialize_battle_state
 from .starter_roster import SKILLS_BY_ID, STARTER_ROSTER, CharacterSpec
@@ -133,8 +133,21 @@ def _cpu_target_payloads(state: BattleState, player_id: str, skill_id: str, cast
         if 0 <= slot < len(opponent.team) and opponent.team[slot].alive
     ]
     living_enemy_slots.sort(key=lambda slot: opponent.team[slot].hp)
+    player = state.players[player_id]
+    living_ally_slots = [
+        slot for slot in player.active_slots
+        if 0 <= slot < len(player.team) and player.team[slot].alive
+    ]
+    living_ally_slots.sort(key=lambda slot: player.team[slot].hp / max(1, player.team[slot].max_hp))
     if skill.target_rule.kind == "self":
         return [{"target_player_id": player_id, "target_slot": caster_slot}]
+    if skill.target_rule.kind == "ally":
+        return [
+            {"target_player_id": player_id, "target_slot": slot}
+            for slot in living_ally_slots
+        ]
+    if skill.target_rule.kind == "ally_team":
+        return [{"target_player_id": player_id, "target_slot": None, "target_slots": living_ally_slots}]
     if skill.target_rule.kind == "enemy_team":
         return [{"target_player_id": opponent_id, "target_slot": None, "target_slots": living_enemy_slots}]
     if skill.target_rule.kind == "enemy":
@@ -143,6 +156,71 @@ def _cpu_target_payloads(state: BattleState, player_id: str, skill_id: str, cast
             for slot in living_enemy_slots
         ]
     return []
+
+
+def _target_slots_from_payload(target_payload: dict[str, Any]) -> list[int]:
+    if target_payload.get("target_slots"):
+        return list(target_payload["target_slots"])
+    if target_payload.get("target_slot") is not None:
+        return [int(target_payload["target_slot"])]
+    return []
+
+
+def _cpu_action_score(state: BattleState, player_id: str, action: PendingAction, skill: SkillSpec) -> int:
+    score = 0
+    target_player = state.players.get(action.target_player_id)
+    target_slots = _target_slots_from_payload(
+        {
+            "target_slot": action.target_slot,
+            "target_slots": action.target_slots,
+        }
+    )
+    for effect in skill.effects:
+        if effect.type in {"damage", "health_steal"}:
+            amount = effect.amount or 0
+            if effect.damage_type == DamageType.SOUL:
+                amount += 10
+            elif effect.damage_type in {DamageType.PIERCING, DamageType.SURE_HIT, DamageType.HEALTH_STEAL}:
+                amount += 6
+            score += amount
+            if target_player and target_player.id != player_id:
+                for slot in target_slots:
+                    if 0 <= slot < len(target_player.team):
+                        target = target_player.team[slot]
+                        if target.alive and (effect.amount or 0) >= target.hp:
+                            score += 500
+                        score += max(0, target.max_hp - target.hp) // 5
+        elif effect.type == "heal":
+            if target_player:
+                for slot in target_slots:
+                    if 0 <= slot < len(target_player.team):
+                        target = target_player.team[slot]
+                        missing = max(0, target.max_hp - target.hp)
+                        score += min(effect.amount or 0, missing) * 3
+                        if target.hp <= 40:
+                            score += 60
+        elif effect.type == "apply_status":
+            payload = effect.payload
+            if payload.get("stun_classes"):
+                score += 90
+            if payload.get("counter") or payload.get("reflect"):
+                score += 70
+            if payload.get("damage_bonus"):
+                score += 45
+            if payload.get("damage_reduction"):
+                score += 25
+            if int(payload.get("damage_output_delta", 0)) < 0:
+                score += 35
+            if payload.get("turn_end_damage"):
+                score += int(payload["turn_end_damage"]) * 2
+            if effect.status:
+                score += 10
+        elif effect.type == "remove_status":
+            score += 20
+    if skill.conditions:
+        score += 35
+    score -= len(skill.cost) * 2
+    return score
 
 
 class BattleV2RoomManager:
@@ -302,13 +380,9 @@ class BattleV2RoomManager:
             character_spec = STARTER_ROSTER.get(caster.character_id)
             if character_spec is None:
                 continue
-            chosen: PendingAction | None = None
+            best: tuple[int, PendingAction] | None = None
             for skill in character_spec.skills:
-                if chosen is not None:
-                    break
                 for target_payload in _cpu_target_payloads(state, player_id, skill.id, slot):
-                    if chosen is not None:
-                        break
                     for wildcard_pays in _wildcard_payment_options(player, skill.id):
                         candidate = PendingAction(
                             id=f"{player_id}:cpu:{slot}:{skill.id}",
@@ -330,10 +404,11 @@ class BattleV2RoomManager:
                             validate_queue(trial_state, player_id, SKILLS_BY_ID)
                         except ResolverError:
                             continue
-                        chosen = candidate
-                        break
-            if chosen is not None:
-                actions.append(chosen)
+                        score = _cpu_action_score(state, player_id, candidate, skill)
+                        if best is None or score > best[0]:
+                            best = (score, candidate)
+            if best is not None:
+                actions.append(best[1])
         if not actions:
             return self.end_turn(room_id, player_id)
         state.pending_actions[player_id] = actions

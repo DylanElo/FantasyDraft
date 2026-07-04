@@ -235,3 +235,49 @@ def test_cpu_turn_submits_first_legal_queue_and_advances_back():
     assert serialized["players"]["p1"]["team"][0]["hp"] == 75
     assert serialized["pending_actions"]["p2"] == []
     assert any(event["message"] == "Satoru Gojo used Blue" for event in serialized["event_log"])
+
+
+def test_cpu_turn_prefers_killing_payoff_over_basic_attack():
+    manager = BattleV2RoomManager(rng_seed=1)
+    manager.start_classic_match(
+        "room",
+        [
+            {"id": "p1", "name": "Player One", "team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]},
+            {"id": "p2", "name": "CPU", "team": ["yuta_okkotsu", "aoi_todo", "maki_zenin"]},
+        ],
+    )
+    state = manager.get_state("room")
+    state.turn_player_id = "p2"
+    state.players["p2"].energy = {energy: 0 for energy in EnergyType}
+    state.players["p2"].energy[EnergyType.GREEN] = 1
+    state.players["p2"].energy[EnergyType.BLUE] = 3
+    state.players["p2"].team[0].statuses.append(
+        StatusEffect("rika_manifested", "Rika Manifested", "p2", 0, "p2", 0, duration=2)
+    )
+    state.players["p1"].team[0].hp = 45
+
+    serialized = manager.take_cpu_turn("room", "p2")
+
+    assert serialized["players"]["p1"]["team"][0]["alive"] is False
+    assert any(event["message"] == "Yuta Okkotsu used Pure Love Beam" for event in serialized["event_log"])
+
+
+def test_cpu_turn_can_choose_ally_heal_for_wounded_teammate():
+    manager = BattleV2RoomManager(rng_seed=1)
+    manager.start_classic_match(
+        "room",
+        [
+            {"id": "p1", "name": "Player One", "team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]},
+            {"id": "p2", "name": "CPU", "team": ["yuta_okkotsu", "aoi_todo", "maki_zenin"]},
+        ],
+    )
+    state = manager.get_state("room")
+    state.turn_player_id = "p2"
+    state.players["p2"].energy = {energy: 0 for energy in EnergyType}
+    state.players["p2"].energy[EnergyType.WHITE] = 2
+    state.players["p2"].team[1].hp = 35
+
+    serialized = manager.take_cpu_turn("room", "p2")
+
+    assert serialized["players"]["p2"]["team"][1]["hp"] == 65
+    assert any(event["message"] == "Yuta Okkotsu used Reverse Cursed Technique" for event in serialized["event_log"])

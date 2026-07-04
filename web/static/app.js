@@ -804,6 +804,10 @@ function renderClassicV2() {
 }
 
 function v2StartMatch() {
+    if (!BATTLE_V2_ENABLED) {
+        toast('Battle v2 is disabled for this server.');
+        return;
+    }
     const nameInput = document.getElementById('player-name').value.trim() || 'Player';
     localStorage.setItem('jjk_player_name', nameInput);
     v2State.actions = [];
@@ -859,6 +863,10 @@ document.getElementById('btn-roster-back').addEventListener('click', () => {
 });
 
 document.getElementById('btn-classic-v2').addEventListener('click', () => {
+    if (!BATTLE_V2_ENABLED) {
+        toast('Battle v2 is disabled for this server.');
+        return;
+    }
     showScreen('classic-v2');
     renderClassicV2();
 });

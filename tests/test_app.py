@@ -1,4 +1,5 @@
 import unittest
+from web import app as web_app
 from web.app import char_to_dict
 from jjk_bot.characters import Character, Skill
 
@@ -38,6 +39,26 @@ class TestApp(unittest.TestCase):
         self.assertEqual(s_dict['cooldown_int'], 0)
         self.assertEqual(s_dict['energy'], ["green"])
         self.assertEqual(s_dict['classes'], "Physical, Instant")
+
+
+def test_index_hides_battle_v2_entry_by_default(monkeypatch):
+    monkeypatch.delenv("JJK_BATTLE_SYSTEM", raising=False)
+    client = web_app.app.test_client()
+
+    html = client.get("/").get_data(as_text=True)
+
+    assert 'const BATTLE_V2_ENABLED = false;' in html
+    assert 'id="btn-classic-v2" class="btn-ghost roster-lab-entry hidden"' in html
+
+
+def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    client = web_app.app.test_client()
+
+    html = client.get("/").get_data(as_text=True)
+
+    assert 'const BATTLE_V2_ENABLED = true;' in html
+    assert 'id="btn-classic-v2" class="btn-ghost roster-lab-entry"' in html
 
 if __name__ == '__main__':
     unittest.main()

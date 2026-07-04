@@ -438,7 +438,11 @@ def get_session_map(room_id: str) -> dict:
 def index():
     if 'player_id' not in session:
         session['player_id'] = str(uuid.uuid4())
-    return render_template('index.html', player_id=session['player_id'])
+    return render_template(
+        'index.html',
+        player_id=session['player_id'],
+        battle_v2_enabled=use_battle_v2(),
+    )
 
 @app.route('/reset/<room_id>')
 def reset_room(room_id):

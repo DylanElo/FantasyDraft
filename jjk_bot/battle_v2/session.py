@@ -61,6 +61,47 @@ def _action_from_payload(player_id: str, index: int, payload: dict[str, Any]) ->
     )
 
 
+def _skill_catalog() -> dict[str, dict[str, Any]]:
+    return {
+        character_id: {
+            "id": spec.id,
+            "name": spec.name,
+            "role": spec.role,
+            "state": spec.state,
+            "skills": [
+                {
+                    "id": skill.id,
+                    "name": skill.name,
+                    "text": skill.text,
+                    "cost": [energy.value for energy in skill.cost],
+                    "cooldown": skill.cooldown,
+                    "target_rule": {
+                        "kind": skill.target_rule.kind,
+                        "min_targets": skill.target_rule.min_targets,
+                        "max_targets": skill.target_rule.max_targets,
+                        "allow_self": skill.target_rule.allow_self,
+                        "allow_dead": skill.target_rule.allow_dead,
+                        "required_status": skill.target_rule.required_status,
+                    },
+                    "classes": [skill_class.value for skill_class in skill.classes],
+                    "conditions": [
+                        {
+                            "type": condition.type,
+                            "status": condition.status,
+                            "amount": condition.amount,
+                            "scope": condition.scope,
+                            "negate": condition.negate,
+                        }
+                        for condition in skill.conditions
+                    ],
+                }
+                for skill in spec.skills
+            ],
+        }
+        for character_id, spec in STARTER_ROSTER.items()
+    }
+
+
 class BattleV2RoomManager:
     """Manage authoritative v2 battle states by room id."""
 
@@ -186,7 +227,9 @@ class BattleV2RoomManager:
         state = self.get_state(room_id)
         if viewer_id not in state.players:
             raise BattleV2SessionError(f"unknown viewer: {viewer_id}")
-        return serialize_battle_state(state, viewer_id)
+        payload = serialize_battle_state(state, viewer_id)
+        payload["skill_catalog"] = _skill_catalog()
+        return payload
 
     def _ensure_turn_player(self, state: BattleState, player_id: str) -> None:
         if player_id not in state.players:

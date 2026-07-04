@@ -63,6 +63,9 @@
               <button id="btn-roster-lab" class="btn-ghost roster-lab-entry" type="button">
                 Open Roster Lab
               </button>
+              <button id="btn-classic-v2" class="btn-ghost roster-lab-entry" type="button">
+                Classic Arena v2
+              </button>
             </div>
 
             <div class="setup-separator">
@@ -297,6 +300,49 @@
 
     </section>
 
+    <section id="classic-v2" class="screen">
+      <header class="app-header">
+        <div class="header-left">
+          <span class="header-logo">å‘ª</span>
+          <span class="header-title">Classic Arena v2</span>
+        </div>
+        <div class="header-right">
+          <div class="round-badge" id="v2-turn-badge">Turn 1</div>
+          <button class="icon-btn" id="btn-v2-back" aria-label="Back to setup" title="Back">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+          </button>
+        </div>
+      </header>
+      <div class="v2-shell">
+        <div class="v2-toolbar">
+          <div class="v2-title-block">
+            <strong id="v2-phase-title">Classic Queue Test</strong>
+            <span id="v2-phase-hint">Start a local Battle v2 match behind the feature flag.</span>
+          </div>
+          <button id="btn-v2-start" class="btn-primary" type="button">Start v2 Match</button>
+          <button id="btn-v2-cancel" class="btn-ghost" type="button">Cancel Queue</button>
+          <button id="btn-v2-confirm" class="btn-primary" type="button">Confirm Queue</button>
+        </div>
+        <div id="v2-error" class="v2-error hidden"></div>
+        <div class="v2-energy-row" id="v2-energy-row"></div>
+        <div class="v2-layout">
+          <section class="v2-team-panel">
+            <div class="team-label">OPPONENT</div>
+            <div class="v2-team" id="v2-enemy-team"></div>
+          </section>
+          <section class="v2-center-panel">
+            <div class="v2-selected" id="v2-selected-panel"></div>
+            <div class="v2-queue" id="v2-queue-panel"></div>
+            <div class="battle-log v2-log" id="v2-log"></div>
+          </section>
+          <section class="v2-team-panel">
+            <div class="team-label">MY TEAM</div>
+            <div class="v2-team" id="v2-my-team"></div>
+          </section>
+        </div>
+      </div>
+    </section>
+
     <!-- ── RESULTS ── -->
     <section id="results" class="screen">
       <div class="bg-glow bg-glow-gold"></div>
@@ -359,6 +405,6 @@
   </script>
   <script src="{{ url_for('static', filename='characters_data.js') }}?v=17"></script>
   <script src="{{ url_for('static', filename='effects.js') }}?v=16"></script>
-  <script src="{{ url_for('static', filename='app.js') }}?v=22"></script>
+  <script src="{{ url_for('static', filename='app.js') }}?v=23"></script>
 </body>
 </html>

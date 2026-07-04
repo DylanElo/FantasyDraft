@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Mapping
+from dataclasses import replace
 
 from .conditions import evaluate_conditions, is_stunned_for_class
-from .effects import apply_effect, tick_cooldowns, tick_statuses
+from .effects import apply_effect, apply_turn_end_statuses, tick_cooldowns, tick_statuses
 from .energy import EnergyValidationError, can_afford_specific, normalize_energy, spend_skill_energy, split_cost, validate_wildcard_payments
-from .models import BattleEvent, BattlePhase, BattleState, CharacterState, EffectSpec, PendingAction, SkillClass, SkillSpec, StatusEffect
+from .models import BattleEvent, BattlePhase, BattleState, CharacterState, EffectSpec, EnergyType, PendingAction, SkillClass, SkillSpec, StatusEffect
 from .targeting import TargetingError, get_character, get_player, validate_target_rule
 
 
@@ -31,6 +32,31 @@ def get_skill_for_action(skills: Mapping[str, SkillSpec], caster, action: Pendin
     return skills[resolved_id]
 
 
+def _adjusted_cost_skill(caster: CharacterState, skill: SkillSpec) -> SkillSpec:
+    """Return a skill copy with cost modifiers from caster statuses applied."""
+
+    black_delta = sum(
+        int(status.payload.get("black_cost_delta", 0))
+        for status in caster.statuses
+        if status.duration != 0
+    )
+    if black_delta == 0:
+        return skill
+    cost = list(skill.cost)
+    if black_delta < 0:
+        remaining_discount = abs(black_delta)
+        adjusted: list[EnergyType] = []
+        for energy in cost:
+            if energy == EnergyType.BLACK and remaining_discount > 0:
+                remaining_discount -= 1
+                continue
+            adjusted.append(energy)
+        cost = adjusted
+    else:
+        cost.extend([EnergyType.BLACK] * black_delta)
+    return replace(skill, cost=cost)
+
+
 def validate_action(
     state: BattleState,
     action: PendingAction,
@@ -49,13 +75,14 @@ def validate_action(
             raise ResolverError("caster has already acted this turn")
 
         skill = get_skill_for_action(skills, caster, action)
+        cost_skill = _adjusted_cost_skill(caster, skill)
         if caster.cooldowns.get(skill.id, 0) > 0:
             raise ResolverError("skill is on cooldown")
         if is_stunned_for_class(caster, skill.classes):
             raise ResolverError("caster is stunned for this skill class")
-        if not can_afford_specific(player, skill):
+        if not can_afford_specific(player, cost_skill):
             raise ResolverError("cannot afford specific skill costs")
-        validate_wildcard_payments(player, skill, action.wildcard_pays)
+        validate_wildcard_payments(player, cost_skill, action.wildcard_pays)
 
         _, targets = validate_target_rule(state, action, skill)
         primary_target = targets[0] if targets else None
@@ -77,7 +104,7 @@ def validate_queue_energy(
     required: Counter = Counter()
     for action in state.pending_actions.get(player_id, []):
         caster = player.team[action.caster_slot]
-        skill = get_skill_for_action(skills, caster, action)
+        skill = _adjusted_cost_skill(caster, get_skill_for_action(skills, caster, action))
         specific, wildcard_count = split_cost(skill.cost)
         wildcard_pays = [normalize_energy(energy) for energy in action.wildcard_pays]
         if len(wildcard_pays) != wildcard_count:
@@ -125,7 +152,7 @@ def confirm_queue(
     player = state.players[player_id]
     for action in state.pending_actions.get(player_id, []):
         caster = player.team[action.caster_slot]
-        skill = get_skill_for_action(skills, caster, action)
+        skill = _adjusted_cost_skill(caster, get_skill_for_action(skills, caster, action))
         spend_skill_energy(player, skill, action.wildcard_pays)
     player.queue_confirmed = True
     state.phase = BattlePhase.RESOLVING
@@ -198,6 +225,44 @@ def _reflect_status(character: CharacterState, skill: SkillSpec, effect: EffectS
 def _append_event(events: list[BattleEvent], state: BattleState, event: BattleEvent) -> None:
     events.append(event)
     state.event_log.append(event)
+
+
+def _apply_post_skill_punish(
+    state: BattleState,
+    events: list[BattleEvent],
+    action: PendingAction,
+    caster: CharacterState,
+    skill: SkillSpec,
+) -> None:
+    if _has_class(skill, SkillClass.DOMAIN):
+        return
+    for status in caster.statuses:
+        if status.duration == 0 or not status.payload.get("punish_non_domain", False):
+            continue
+        punishment = StatusEffect(
+            id="domain_stun",
+            name="Domain Stun",
+            source_player_id=status.source_player_id,
+            source_slot=status.source_slot,
+            target_player_id=action.player_id,
+            target_slot=action.caster_slot,
+            duration=2,
+            payload={"stun_classes": ["all"]},
+        )
+        caster.statuses.append(punishment)
+        event = BattleEvent(
+            type="status_applied",
+            message=f"{caster.name} is stunned by {status.name}",
+            turn_number=state.turn_number,
+            payload={
+                "action_id": action.id,
+                "status": punishment.id,
+                "target_player_id": action.player_id,
+                "target_slot": action.caster_slot,
+            },
+        )
+        _append_event(events, state, event)
+        return
 
 
 def resolve_queue(
@@ -311,17 +376,21 @@ def resolve_queue(
                     effect_target_slot = action.caster_slot
                 event = apply_effect(state, action, effect, effect_target_player_id, effect_target_slot)
                 _append_event(events, state, event)
+        _apply_post_skill_punish(state, events, action, caster, skill)
 
-    finish_turn(state, player_id)
+    events.extend(finish_turn(state, player_id))
     events.extend(check_winner(state))
     return events
 
 
-def finish_turn(state: BattleState, player_id: str) -> None:
+def finish_turn(state: BattleState, player_id: str) -> list[BattleEvent]:
     """Apply turn-end cleanup for the acting player."""
 
+    events: list[BattleEvent] = []
     for player in state.players.values():
-        for character in player.team:
+        for slot, character in enumerate(player.team):
+            for event in apply_turn_end_statuses(character, player.id, slot, state.turn_number):
+                _append_event(events, state, event)
             tick_statuses(character)
             tick_cooldowns(character)
             character.acted_this_turn = False
@@ -334,6 +403,7 @@ def finish_turn(state: BattleState, player_id: str) -> None:
         opponent_ids = [pid for pid in state.players if pid != player_id]
         if opponent_ids:
             state.turn_player_id = opponent_ids[0]
+    return events
 
 
 def check_winner(state: BattleState) -> list[BattleEvent]:

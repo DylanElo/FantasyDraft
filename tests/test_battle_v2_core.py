@@ -19,7 +19,7 @@ from jjk_bot.battle_v2.models import (
     StatusEffect,
     TargetRule,
 )
-from jjk_bot.battle_v2.resolver import ResolverError, confirm_queue, resolve_queue, validate_queue
+from jjk_bot.battle_v2.resolver import ResolverError, confirm_queue, resolve_queue, validate_action, validate_queue
 
 
 def make_player(player_id, names):
@@ -307,3 +307,331 @@ def test_unreflectable_skill_bypasses_reflect():
     assert caster.hp == 100
     assert target.hp == 80
     assert any(status.id == "mirror" for status in target.statuses)
+
+
+def test_status_controlled_skill_replacement_resolves_and_expires():
+    state = make_state()
+    caster = state.players["p1"].team[0]
+    caster.statuses.append(
+        StatusEffect(
+            "charged",
+            "Charged",
+            "p1",
+            0,
+            "p1",
+            0,
+            duration=1,
+            payload={"skill_replacements": {"strike": "finisher"}},
+        )
+    )
+    caster.skill_replacements["strike"] = "finisher"
+    state.pending_actions["p1"] = [PendingAction("a1", "p1", 0, "strike", "p2", 0)]
+    state.queue_order["p1"] = ["a1"]
+
+    resolve_queue(
+        state,
+        "p1",
+        {
+            "strike": skill("strike", effects=[EffectSpec(type="damage", amount=10)]),
+            "finisher": skill("finisher", effects=[EffectSpec(type="damage", amount=45)]),
+        },
+    )
+
+    assert state.players["p2"].team[0].hp == 55
+    assert caster.skill_replacements == {}
+
+
+def test_remove_status_cleans_skill_replacement_side_effect():
+    state = make_state()
+    setup = skill(
+        "setup",
+        target_rule=TargetRule(kind="self", allow_self=True),
+        effects=[
+            EffectSpec(
+                type="apply_status",
+                status="charged",
+                duration=3,
+                target="self",
+                payload={
+                    "name": "Charged",
+                    "skill_replacements": {"strike": "finisher"},
+                },
+            )
+        ],
+    )
+    clear = skill(
+        "clear",
+        target_rule=TargetRule(kind="self", allow_self=True),
+        effects=[EffectSpec(type="remove_status", status="charged", target="self")],
+    )
+    state.pending_actions["p1"] = [PendingAction("a1", "p1", 0, "setup", "self", 0)]
+    state.queue_order["p1"] = ["a1"]
+
+    resolve_queue(state, "p1", {"setup": setup})
+    caster = state.players["p1"].team[0]
+    assert caster.skill_replacements == {"strike": "finisher"}
+
+    state.turn_player_id = "p1"
+    state.pending_actions["p1"] = [PendingAction("a2", "p1", 0, "clear", "self", 0)]
+    state.queue_order["p1"] = ["a2"]
+    resolve_queue(state, "p1", {"clear": clear})
+
+    assert caster.skill_replacements == {}
+    assert not any(status.id == "charged" for status in caster.statuses)
+
+
+def test_turn_end_status_damage_ticks_and_expires():
+    state = make_state()
+    burn = skill(
+        "burn",
+        effects=[
+            EffectSpec(
+                type="apply_status",
+                status="burning",
+                duration=1,
+                payload={"name": "Burning", "turn_end_damage": 15},
+            )
+        ],
+    )
+    target = state.players["p2"].team[0]
+    state.pending_actions["p1"] = [PendingAction("a1", "p1", 0, "burn", "p2", 0)]
+    state.queue_order["p1"] = ["a1"]
+
+    events = resolve_queue(state, "p1", {"burn": burn})
+
+    assert any(event.type == "status_damage" for event in events)
+    assert target.hp == 85
+    assert target.statuses == []
+
+
+def test_sure_hit_turn_end_status_damage_bypasses_invulnerability():
+    state = make_state()
+    target = state.players["p2"].team[0]
+    target.statuses.append(
+        StatusEffect(
+            "infinity",
+            "Infinity",
+            "p2",
+            0,
+            "p2",
+            0,
+            duration=2,
+            payload={"invulnerable": True},
+        )
+    )
+    domain_burn = skill(
+        "domain_burn",
+        classes=[SkillClass.DOMAIN, SkillClass.INSTANT],
+        effects=[
+            EffectSpec(
+                type="apply_status",
+                status="sure_hit_field",
+                duration=1,
+                payload={
+                    "name": "Sure Hit Field",
+                    "turn_end_damage": 15,
+                    "turn_end_damage_type": DamageType.SURE_HIT.value,
+                },
+            )
+        ],
+    )
+    state.pending_actions["p1"] = [PendingAction("a1", "p1", 0, "domain_burn", "p2", 0)]
+    state.queue_order["p1"] = ["a1"]
+
+    resolve_queue(state, "p1", {"domain_burn": domain_burn})
+
+    assert target.hp == 85
+
+
+def test_damage_output_delta_modifies_outgoing_non_self_damage():
+    state = make_state()
+    caster = state.players["p1"].team[0]
+    target = state.players["p2"].team[0]
+    caster.statuses.append(
+        StatusEffect(
+            "weakened",
+            "Weakened",
+            "p2",
+            0,
+            "p1",
+            0,
+            duration=2,
+            payload={"damage_output_delta": -10},
+        )
+    )
+    state.pending_actions["p1"] = [PendingAction("a1", "p1", 0, "strike", "p2", 0)]
+    state.queue_order["p1"] = ["a1"]
+
+    resolve_queue(state, "p1", {"strike": skill()})
+
+    assert target.hp == 90
+
+
+def test_damage_bonus_status_applies_to_next_offensive_skill_and_is_consumed():
+    state = make_state()
+    caster = state.players["p1"].team[0]
+    target = state.players["p2"].team[0]
+    caster.statuses.append(
+        StatusEffect(
+            "binding_vow",
+            "Binding Vow",
+            "p1",
+            0,
+            "p1",
+            0,
+            duration=3,
+            payload={"damage_bonus": 10},
+        )
+    )
+    self_damage = skill(
+        "drawback",
+        target_rule=TargetRule(kind="self", allow_self=True),
+        effects=[EffectSpec(type="damage", amount=10, damage_type=DamageType.SOUL, target="self")],
+    )
+    state.pending_actions["p1"] = [PendingAction("a1", "p1", 0, "drawback", "self", 0)]
+    state.queue_order["p1"] = ["a1"]
+
+    resolve_queue(state, "p1", {"drawback": self_damage})
+
+    assert caster.hp == 90
+    assert any(status.id == "binding_vow" for status in caster.statuses)
+
+    state.turn_player_id = "p1"
+    state.pending_actions["p1"] = [PendingAction("a2", "p1", 0, "strike", "p2", 0)]
+    state.queue_order["p1"] = ["a2"]
+    resolve_queue(state, "p1", {"strike": skill()})
+
+    assert target.hp == 70
+    assert not any(status.id == "binding_vow" for status in caster.statuses)
+
+
+def test_damage_payload_can_increase_target_cooldowns_when_condition_matches():
+    state = make_state()
+    target = state.players["p2"].team[0]
+    target.cooldowns["red"] = 2
+    target.statuses.append(StatusEffect("pulled", "Pulled", "p1", 0, "p2", 0, duration=2))
+    blue = skill(
+        "blue",
+        effects=[EffectSpec(type="damage", amount=25, payload={"bonus_status": "pulled", "cooldown_increase": 1})],
+    )
+    state.pending_actions["p1"] = [PendingAction("a1", "p1", 0, "blue", "p2", 0)]
+    state.queue_order["p1"] = ["a1"]
+
+    resolve_queue(state, "p1", {"blue": blue})
+
+    assert target.cooldowns["red"] == 2
+
+
+def test_black_cost_delta_reduces_wildcard_cost_until_bonus_is_consumed():
+    state = make_state()
+    player = state.players["p1"]
+    caster = player.team[0]
+    target = state.players["p2"].team[0]
+    player.energy[EnergyType.RED] = 1
+    caster.statuses.append(
+        StatusEffect(
+            "binding_vow",
+            "Binding Vow",
+            "p1",
+            0,
+            "p1",
+            0,
+            duration=3,
+            payload={"black_cost_delta": -1, "damage_bonus": 10},
+        )
+    )
+    vow_attack = skill("vow_attack", cost=[EnergyType.RED, EnergyType.BLACK])
+    state.pending_actions["p1"] = [
+        PendingAction("a1", "p1", 0, "vow_attack", "p2", 0, wildcard_pays=[])
+    ]
+    state.queue_order["p1"] = ["a1"]
+
+    resolve_queue(state, "p1", {"vow_attack": vow_attack})
+
+    assert player.energy[EnergyType.RED] == 0
+    assert target.hp == 70
+    assert not any(status.id == "binding_vow" for status in caster.statuses)
+
+
+def test_ignore_stun_status_allows_stunned_caster_to_act():
+    state = make_state()
+    caster = state.players["p1"].team[0]
+    caster.statuses.append(
+        StatusEffect(
+            "stunned",
+            "Stunned",
+            "p2",
+            0,
+            "p1",
+            0,
+            duration=2,
+            payload={"stun_classes": ["all"]},
+        )
+    )
+    action = PendingAction("a1", "p1", 0, "strike", "p2", 0)
+
+    with pytest.raises(ResolverError, match="stunned"):
+        validate_action(state, action, {"strike": skill()})
+
+    caster.statuses.append(
+        StatusEffect(
+            "unbreakable_resolve",
+            "Unbreakable Resolve",
+            "p1",
+            0,
+            "p1",
+            0,
+            duration=2,
+            payload={"ignore_stun": True},
+        )
+    )
+
+    validate_action(state, action, {"strike": skill()})
+
+
+def test_punish_non_domain_status_stuns_after_non_domain_skill():
+    state = make_state()
+    caster = state.players["p1"].team[0]
+    caster.statuses.append(
+        StatusEffect(
+            "unlimited_void",
+            "Unlimited Void",
+            "p2",
+            0,
+            "p1",
+            0,
+            duration=3,
+            payload={"punish_non_domain": True},
+        )
+    )
+    state.pending_actions["p1"] = [PendingAction("a1", "p1", 0, "strike", "p2", 0)]
+    state.queue_order["p1"] = ["a1"]
+
+    events = resolve_queue(state, "p1", {"strike": skill()})
+
+    assert any(event.payload.get("status") == "domain_stun" for event in events)
+    assert any(status.id == "domain_stun" for status in caster.statuses)
+
+
+def test_punish_non_domain_status_does_not_stun_domain_skill():
+    state = make_state()
+    caster = state.players["p1"].team[0]
+    caster.statuses.append(
+        StatusEffect(
+            "unlimited_void",
+            "Unlimited Void",
+            "p2",
+            0,
+            "p1",
+            0,
+            duration=3,
+            payload={"punish_non_domain": True},
+        )
+    )
+    domain_skill = skill("domain", classes=[SkillClass.DOMAIN, SkillClass.INSTANT])
+    state.pending_actions["p1"] = [PendingAction("a1", "p1", 0, "domain", "p2", 0)]
+    state.queue_order["p1"] = ["a1"]
+
+    resolve_queue(state, "p1", {"domain": domain_skill})
+
+    assert not any(status.id == "domain_stun" for status in caster.statuses)

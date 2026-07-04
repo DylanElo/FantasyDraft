@@ -40,6 +40,11 @@ def get_status_payload(character: CharacterState, status_id: str) -> dict | None
 def is_stunned_for_class(character: CharacterState, skill_classes: list[SkillClass]) -> bool:
     """Return whether any active status stuns one of the supplied skill classes."""
 
+    if any(
+        status.duration != 0 and status.payload.get("ignore_stun", False)
+        for status in character.statuses
+    ):
+        return False
     for status in character.statuses:
         if status.duration == 0:
             continue

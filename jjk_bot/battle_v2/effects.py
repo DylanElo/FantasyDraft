@@ -66,6 +66,44 @@ def _damage_bonus(target: CharacterState, effect: EffectSpec) -> int:
     return bonus
 
 
+def _payload_condition_met(target: CharacterState, effect: EffectSpec) -> bool:
+    bonus_status = effect.payload.get("bonus_status")
+    if bonus_status:
+        return has_status(target, str(bonus_status))
+    bonus_statuses = effect.payload.get("bonus_statuses") or []
+    if bonus_statuses:
+        return any(has_status(target, str(status_id)) for status_id in bonus_statuses)
+    return True
+
+
+def _apply_damage_payload_side_effects(target: CharacterState, effect: EffectSpec) -> None:
+    cooldown_increase = int(effect.payload.get("cooldown_increase", 0))
+    if cooldown_increase <= 0 or not _payload_condition_met(target, effect):
+        return
+    target.cooldowns = {
+        skill_id: turns + cooldown_increase
+        for skill_id, turns in target.cooldowns.items()
+    }
+
+
+def _outgoing_damage_delta(caster: CharacterState) -> int:
+    return sum(
+        int(status.payload.get("damage_output_delta", 0)) + int(status.payload.get("damage_bonus", 0))
+        for status in caster.statuses
+        if status.duration != 0
+    )
+
+
+def _consume_damage_bonus_statuses(caster: CharacterState) -> None:
+    kept: list[StatusEffect] = []
+    for status in caster.statuses:
+        if status.duration != 0 and "damage_bonus" in status.payload:
+            _remove_status_side_effects(caster, status)
+            continue
+        kept.append(status)
+    caster.statuses = kept
+
+
 def apply_damage(
     target: CharacterState,
     amount: int,
@@ -124,6 +162,23 @@ def _consume_destructible_defense(target: CharacterState, amount: int) -> None:
         remaining -= consumed
 
 
+def _status_replacements(status: StatusEffect) -> dict[str, str]:
+    raw = status.payload.get("skill_replacements") or {}
+    if not isinstance(raw, dict):
+        return {}
+    return {str(source): str(replacement) for source, replacement in raw.items()}
+
+
+def _apply_status_side_effects(character: CharacterState, status: StatusEffect) -> None:
+    character.skill_replacements.update(_status_replacements(status))
+
+
+def _remove_status_side_effects(character: CharacterState, status: StatusEffect) -> None:
+    for source, replacement in _status_replacements(status).items():
+        if character.skill_replacements.get(source) == replacement:
+            character.skill_replacements.pop(source, None)
+
+
 def apply_status(
     state: BattleState,
     action: PendingAction,
@@ -149,7 +204,9 @@ def apply_status(
         stacks=effect.stacks,
         payload=dict(effect.payload),
     )
-    state.players[target_player_id].team[target_slot].statuses.append(status)
+    target = state.players[target_player_id].team[target_slot]
+    target.statuses.append(status)
+    _apply_status_side_effects(target, status)
     return status
 
 
@@ -166,8 +223,11 @@ def apply_effect(
         if target_slot is None:
             raise EffectError("damage effect requires a target slot")
         target = state.players[target_player_id].team[target_slot]
+        caster = state.players[action.player_id].team[action.caster_slot]
         damage_type = effect.damage_type or DamageType.NORMAL
         amount = (effect.amount or 0) + _damage_bonus(target, effect)
+        if effect.target != "self":
+            amount = max(0, amount + _outgoing_damage_delta(caster))
         bypass_invulnerability = bool(
             effect.payload.get("bypass_invulnerability")
             or damage_type == DamageType.SURE_HIT
@@ -178,7 +238,8 @@ def apply_effect(
             damage_type,
             bypass_invulnerability=bypass_invulnerability,
         )
-        return BattleEvent(
+        _apply_damage_payload_side_effects(target, effect)
+        event = BattleEvent(
             type="damage",
             message=f"{action.skill_id} dealt {actual} damage",
             turn_number=state.turn_number,
@@ -191,6 +252,9 @@ def apply_effect(
                 "damage_type": damage_type.value,
             },
         )
+        if effect.target != "self":
+            _consume_damage_bonus_statuses(caster)
+        return event
     if effect.type == "health_steal":
         if target_slot is None:
             raise EffectError("health steal requires a target slot")
@@ -232,13 +296,15 @@ def apply_effect(
         if target_slot is None:
             raise EffectError("remove status effect requires a target slot")
         target = state.players[target_player_id].team[target_slot]
-        before = len(target.statuses)
-        target.statuses = [
-            status
-            for status in target.statuses
-            if status.duration == 0 or (status.id != effect.status and status.name != effect.status)
-        ]
-        removed = before - len(target.statuses)
+        kept: list[StatusEffect] = []
+        removed = 0
+        for status in target.statuses:
+            if status.duration != 0 and (status.id == effect.status or status.name == effect.status):
+                removed += 1
+                _remove_status_side_effects(target, status)
+            else:
+                kept.append(status)
+        target.statuses = kept
         return BattleEvent(
             type="status_removed",
             message=f"{effect.status} removed",
@@ -254,6 +320,44 @@ def apply_effect(
     raise EffectError(f"unsupported effect type: {effect.type}")
 
 
+def apply_turn_end_statuses(
+    character: CharacterState,
+    player_id: str,
+    slot: int,
+    turn_number: int,
+) -> list[BattleEvent]:
+    """Apply recurring turn-end payloads from active statuses."""
+
+    events: list[BattleEvent] = []
+    for status in list(character.statuses):
+        if status.duration == 0:
+            continue
+        amount = int(status.payload.get("turn_end_damage", 0))
+        if amount > 0:
+            damage_type = DamageType(status.payload.get("turn_end_damage_type", DamageType.NORMAL.value))
+            actual = apply_damage(
+                character,
+                amount,
+                damage_type,
+                bypass_invulnerability=damage_type == DamageType.SURE_HIT,
+            )
+            events.append(
+                BattleEvent(
+                    type="status_damage",
+                    message=f"{status.name} dealt {actual} turn-end damage",
+                    turn_number=turn_number,
+                    payload={
+                        "status": status.id,
+                        "target_player_id": player_id,
+                        "target_slot": slot,
+                        "amount": actual,
+                        "damage_type": damage_type.value,
+                    },
+                )
+            )
+    return events
+
+
 def tick_statuses(character: CharacterState) -> None:
     """Tick finite-duration statuses and remove expired ones."""
 
@@ -263,6 +367,8 @@ def tick_statuses(character: CharacterState) -> None:
             status.duration -= 1
         if status.duration != 0:
             kept.append(status)
+        else:
+            _remove_status_side_effects(character, status)
     character.statuses = kept
 
 

@@ -138,6 +138,52 @@ def test_battle_v2_socket_end_turn_runs_cpu_response(monkeypatch):
     assert any(event["type"] == "skill_resolved" for event in resolved_state["event_log"])
 
 
+def test_battle_v2_socket_resolves_ally_target_skill(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    client = socket_client()
+    client.emit(
+        "battle_v2_start_classic",
+        {
+            "room_id": "socket-v2",
+            "player_name": "Tester",
+            "player_team": ["yuta_okkotsu", "yuji_itadori", "nobara_kugisaki"],
+            "enemy_team": ["satoru_gojo", "ryomen_sukuna", "mahito"],
+        },
+    )
+    start_state = received_payload(client, "battle_v2_update")
+    player_id = start_state["turn_player_id"]
+    state = web_app.battle_v2_manager.get_state("socket-v2")
+    state.players[player_id].energy[EnergyType.WHITE] = 1
+    state.players[player_id].energy[EnergyType.GREEN] = 1
+    state.players[player_id].team[1].hp = 50
+
+    client.emit(
+        "battle_v2_submit_plan",
+        {
+            "actions": [
+                {
+                    "id": "heal-ally",
+                    "caster_slot": 0,
+                    "skill_id": "reverse_cursed_technique",
+                    "target_player_id": player_id,
+                    "target_slot": 1,
+                    "wildcard_pays": ["green"],
+                }
+            ]
+        },
+    )
+    assert "battle_v2_update" in received_names(client)
+
+    client.emit("battle_v2_confirm_queue", {})
+    resolved_state = received_payload(client, "battle_v2_update")
+
+    heal_events = [event for event in resolved_state["event_log"] if event["type"] == "heal"]
+    assert heal_events
+    assert heal_events[0]["payload"]["target_player_id"] == player_id
+    assert heal_events[0]["payload"]["target_slot"] == 1
+    assert heal_events[0]["payload"]["amount"] == 30
+
+
 def test_submit_team_launches_battle_v2_from_solo_draft_when_convertible(monkeypatch):
     monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
     flask_client = web_app.app.test_client()

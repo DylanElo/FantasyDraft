@@ -146,6 +146,36 @@ def test_health_steal_only_heals_actual_hp_damage():
     assert target.alive is False
 
 
+def test_heal_effect_restores_target_and_respects_healing_delta():
+    state = make_state()
+    ally = state.players["p1"].team[1]
+    ally.hp = 40
+    ally.statuses.append(
+        StatusEffect(
+            "warped_soul",
+            "Warped Soul",
+            "p2",
+            0,
+            "p1",
+            1,
+            duration=2,
+            payload={"healing_received_delta": -10},
+        )
+    )
+    rct = skill(
+        "rct",
+        target_rule=TargetRule(kind="ally", allow_self=True),
+        effects=[EffectSpec(type="heal", amount=30)],
+    )
+    state.pending_actions["p1"] = [PendingAction("a1", "p1", 0, "rct", "p1", 1)]
+    state.queue_order["p1"] = ["a1"]
+
+    events = resolve_queue(state, "p1", {"rct": rct})
+
+    assert ally.hp == 60
+    assert any(event.type == "heal" and event.payload["amount"] == 20 for event in events)
+
+
 def test_queue_validation_rejects_two_skills_from_same_caster_without_mutating():
     state = make_state()
     state.pending_actions["p1"] = [

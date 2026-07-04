@@ -36,6 +36,10 @@ def enemy() -> TargetRule:
     return TargetRule(kind="enemy")
 
 
+def ally() -> TargetRule:
+    return TargetRule(kind="ally", allow_self=True)
+
+
 def enemy_team(required_status: str | None = None) -> TargetRule:
     return TargetRule(kind="enemy_team", min_targets=1, max_targets=3, required_status=required_status)
 
@@ -68,6 +72,15 @@ def damage(amount: int, damage_type: DamageType = DamageType.NORMAL, *, target: 
         type="damage",
         amount=amount,
         damage_type=damage_type,
+        target=target,
+        payload=payload,
+    )
+
+
+def heal(amount: int, *, target: str = "target", **payload) -> EffectSpec:
+    return EffectSpec(
+        type="heal",
+        amount=amount,
         target=target,
         payload=payload,
     )
@@ -417,9 +430,278 @@ MAHITO = CharacterSpec(
 )
 
 
+TODO = CharacterSpec(
+    id="aoi_todo",
+    name="Aoi Todo",
+    role="Disruptor / setup partner / position control",
+    state="Best Friend",
+    skills=[
+        SkillSpec(
+            id="todo_crushing_kick",
+            name="Crushing Kick",
+            text="Deal 25 normal damage. Deals +10 if Todo has Best Friend.",
+            cost=[EnergyType.GREEN],
+            cooldown=0,
+            target_rule=enemy(),
+            classes=[SkillClass.PHYSICAL, SkillClass.INSTANT],
+            effects=[damage(25, bonus_status="best_friend", bonus_amount=10)],
+        ),
+        SkillSpec(
+            id="boogie_woogie",
+            name="Boogie Woogie",
+            text="Deal 15 damage and stun Physical/CursedEnergy for 1 turn.",
+            cost=[EnergyType.WHITE],
+            cooldown=1,
+            target_rule=enemy(),
+            classes=[SkillClass.STRATEGIC, SkillClass.INSTANT],
+            effects=[
+                damage(15),
+                status_effect(
+                    "boogie_stun",
+                    "Boogie Woogie",
+                    2,
+                    stun_classes=[SkillClass.PHYSICAL.value, SkillClass.CURSED_ENERGY.value],
+                ),
+            ],
+        ),
+        SkillSpec(
+            id="brotherly_assist",
+            name="Brotherly Assist",
+            text="Give an ally 10 damage reduction and +10 damage on their next offensive skill.",
+            cost=[EnergyType.WHITE, EnergyType.BLACK],
+            cooldown=2,
+            target_rule=ally(),
+            classes=[SkillClass.STRATEGIC, SkillClass.INSTANT],
+            effects=[
+                status_effect(
+                    "best_friend",
+                    "Best Friend",
+                    2,
+                    damage_reduction=10,
+                    damage_bonus=10,
+                )
+            ],
+        ),
+        SkillSpec(
+            id="clap_feint",
+            name="Clap Feint",
+            text="Counter the first harmful non-Domain skill against Todo. Invisible.",
+            cost=[EnergyType.WHITE, EnergyType.BLACK],
+            cooldown=2,
+            target_rule=self_target(),
+            classes=[SkillClass.STRATEGIC, SkillClass.INVISIBLE, SkillClass.INSTANT],
+            effects=[
+                status_effect(
+                    "clap_feint",
+                    "Clap Feint",
+                    2,
+                    target="self",
+                    classes=[SkillClass.INVISIBLE],
+                    counter="first_harmful_non_domain",
+                    invisible=True,
+                )
+            ],
+        ),
+    ],
+)
+
+
+MAKI = CharacterSpec(
+    id="maki_zenin",
+    name="Maki Zenin",
+    role="Physical pressure / anti-technique bruiser",
+    state="Heavenly Restriction",
+    skills=[
+        SkillSpec(
+            id="maki_cursed_tool_combo",
+            name="Cursed Tool Combo",
+            text="Deal 25 normal damage.",
+            cost=[EnergyType.GREEN],
+            cooldown=0,
+            target_rule=enemy(),
+            classes=[SkillClass.PHYSICAL, SkillClass.INSTANT],
+            effects=[damage(25)],
+        ),
+        SkillSpec(
+            id="soul_split_katana",
+            name="Soul Split Katana",
+            text="Deal 30 soul damage.",
+            cost=[EnergyType.GREEN, EnergyType.BLACK],
+            cooldown=1,
+            target_rule=enemy(),
+            classes=[SkillClass.PHYSICAL, SkillClass.SOUL, SkillClass.INSTANT],
+            effects=[damage(30, DamageType.SOUL)],
+        ),
+        SkillSpec(
+            id="heavenly_restriction",
+            name="Heavenly Restriction",
+            text="Gain 15 damage reduction and ignore stun for 1 turn.",
+            cost=[EnergyType.WHITE],
+            cooldown=2,
+            target_rule=self_target(),
+            classes=[SkillClass.PHYSICAL, SkillClass.STRATEGIC, SkillClass.INSTANT],
+            effects=[
+                status_effect(
+                    "heavenly_restriction",
+                    "Heavenly Restriction",
+                    2,
+                    target="self",
+                    damage_reduction=15,
+                    ignore_stun=True,
+                )
+            ],
+        ),
+        SkillSpec(
+            id="perfect_preparation",
+            name="Perfect Preparation",
+            text="Next damaging skill costs 1 less black and deals +10.",
+            cost=[EnergyType.GREEN, EnergyType.WHITE],
+            cooldown=2,
+            target_rule=self_target(),
+            classes=[SkillClass.PHYSICAL, SkillClass.STRATEGIC, SkillClass.INSTANT],
+            effects=[
+                status_effect(
+                    "perfect_preparation",
+                    "Perfect Preparation",
+                    2,
+                    target="self",
+                    black_cost_delta=-1,
+                    damage_bonus=10,
+                )
+            ],
+        ),
+    ],
+)
+
+
+YUTA = CharacterSpec(
+    id="yuta_okkotsu",
+    name="Yuta Okkotsu",
+    role="Support / sustain / copied pressure",
+    state="Rika Manifested",
+    skills=[
+        SkillSpec(
+            id="yuta_katana_slash",
+            name="Katana Slash",
+            text="Deal 20 normal damage. Deals +10 if Yuta has Rika Manifested.",
+            cost=[EnergyType.GREEN],
+            cooldown=0,
+            target_rule=enemy(),
+            classes=[SkillClass.PHYSICAL, SkillClass.INSTANT],
+            effects=[damage(20, bonus_status="rika_manifested", bonus_amount=10)],
+        ),
+        SkillSpec(
+            id="reverse_cursed_technique",
+            name="Reverse Cursed Technique",
+            text="Heal an ally for 30 HP.",
+            cost=[EnergyType.WHITE, EnergyType.BLACK],
+            cooldown=2,
+            target_rule=ally(),
+            classes=[SkillClass.STRATEGIC, SkillClass.INSTANT],
+            effects=[heal(30)],
+        ),
+        SkillSpec(
+            id="rika_manifestation",
+            name="Rika Manifestation",
+            text="Gain Rika Manifested for 2 turns: +10 outgoing damage.",
+            cost=[EnergyType.BLUE],
+            cooldown=2,
+            target_rule=self_target(),
+            classes=[SkillClass.CURSED_ENERGY, SkillClass.INSTANT],
+            effects=[
+                status_effect(
+                    "rika_manifested",
+                    "Rika Manifested",
+                    3,
+                    target="self",
+                    damage_output_delta=10,
+                )
+            ],
+        ),
+        SkillSpec(
+            id="pure_love_beam",
+            name="Pure Love Beam",
+            text="Deal 45 piercing damage. Requires Rika Manifested.",
+            cost=[EnergyType.BLUE, EnergyType.BLUE, EnergyType.BLACK],
+            cooldown=3,
+            target_rule=enemy(),
+            classes=[SkillClass.CURSED_ENERGY, SkillClass.INSTANT],
+            effects=[damage(45, DamageType.PIERCING)],
+            conditions=[ConditionSpec(type="user_has", status="rika_manifested")],
+        ),
+    ],
+)
+
+
+HIGURUMA = CharacterSpec(
+    id="hiromi_higuruma",
+    name="Hiromi Higuruma",
+    role="Judgment / suppression / execution",
+    state="Guilty Verdict",
+    skills=[
+        SkillSpec(
+            id="gavel_strike",
+            name="Gavel Strike",
+            text="Deal 20 normal damage. Deals +10 against Guilty Verdict.",
+            cost=[EnergyType.GREEN],
+            cooldown=0,
+            target_rule=enemy(),
+            classes=[SkillClass.PHYSICAL, SkillClass.INSTANT],
+            effects=[damage(20, bonus_status="guilty_verdict", bonus_amount=10)],
+        ),
+        SkillSpec(
+            id="deadly_sentencing",
+            name="Deadly Sentencing",
+            text="Apply Guilty Verdict and reduce target damage by 10 for 2 turns.",
+            cost=[EnergyType.WHITE],
+            cooldown=1,
+            target_rule=enemy(),
+            classes=[SkillClass.BARRIER, SkillClass.STRATEGIC, SkillClass.INSTANT],
+            effects=[
+                status_effect(
+                    "guilty_verdict",
+                    "Guilty Verdict",
+                    3,
+                    damage_output_delta=-10,
+                )
+            ],
+        ),
+        SkillSpec(
+            id="confiscation",
+            name="Confiscation",
+            text="Stun Innate/CursedEnergy skills for 1 turn on a guilty target.",
+            cost=[EnergyType.WHITE, EnergyType.BLACK],
+            cooldown=2,
+            target_rule=TargetRule(kind="enemy", required_status="guilty_verdict"),
+            classes=[SkillClass.BARRIER, SkillClass.CONTROL, SkillClass.INSTANT],
+            effects=[
+                status_effect(
+                    "confiscated",
+                    "Confiscated",
+                    2,
+                    stun_classes=[SkillClass.INNATE.value, SkillClass.CURSED_ENERGY.value],
+                )
+            ],
+            conditions=[ConditionSpec(type="target_has", status="guilty_verdict")],
+        ),
+        SkillSpec(
+            id="executioners_sword",
+            name="Executioner's Sword",
+            text="Deal 45 soul damage to a guilty enemy.",
+            cost=[EnergyType.GREEN, EnergyType.WHITE, EnergyType.BLACK],
+            cooldown=3,
+            target_rule=TargetRule(kind="enemy", required_status="guilty_verdict"),
+            classes=[SkillClass.SOUL, SkillClass.BARRIER, SkillClass.INSTANT],
+            effects=[damage(45, DamageType.SOUL)],
+            conditions=[ConditionSpec(type="target_has", status="guilty_verdict")],
+        ),
+    ],
+)
+
+
 STARTER_ROSTER: dict[str, CharacterSpec] = {
     character.id: character
-    for character in [YUJI, NOBARA, MEGUMI, GOJO, SUKUNA, MAHITO]
+    for character in [YUJI, NOBARA, MEGUMI, GOJO, SUKUNA, MAHITO, TODO, MAKI, YUTA, HIGURUMA]
 }
 
 SKILLS_BY_ID: dict[str, SkillSpec] = {

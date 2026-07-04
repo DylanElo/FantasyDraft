@@ -51,6 +51,10 @@ def test_starter_roster_contains_first_six_with_four_skills_each():
         "satoru_gojo",
         "ryomen_sukuna",
         "mahito",
+        "aoi_todo",
+        "maki_zenin",
+        "yuta_okkotsu",
+        "hiromi_higuruma",
     ]
     for character in STARTER_ROSTER.values():
         assert len(character.skills) == 4
@@ -254,3 +258,163 @@ def test_mahito_idle_transfiguration_requires_soul_distortion():
     yuji = state.players["p1"].team[0]
     yuji.statuses.append(StatusEffect("soul_distortion", "Soul Distortion", "p2", 2, "p1", 0, duration=2))
     validate_action(state, action, SKILLS_BY_ID)
+
+
+def test_todo_boogie_woogie_stuns_and_brotherly_assist_buffs_ally():
+    state = BattleState(
+        players={
+            "p1": make_player("p1", ["aoi_todo", "yuji_itadori", "nobara_kugisaki"]),
+            "p2": make_player("p2", ["satoru_gojo", "ryomen_sukuna", "mahito"]),
+        },
+        turn_player_id="p1",
+    )
+    give_all_energy(state.players["p1"])
+
+    queue_and_resolve(state, PendingAction("boogie", "p1", 0, "boogie_woogie", "p2", 0))
+    gojo = state.players["p2"].team[0]
+    assert gojo.hp == 85
+    assert any(status.id == "boogie_stun" for status in gojo.statuses)
+
+    state.turn_player_id = "p1"
+    give_all_energy(state.players["p1"])
+    queue_and_resolve(
+        state,
+        PendingAction(
+            "assist",
+            "p1",
+            0,
+            "brotherly_assist",
+            "p1",
+            1,
+            wildcard_pays=[EnergyType.WHITE],
+        ),
+    )
+    yuji = state.players["p1"].team[1]
+    assert any(status.id == "best_friend" and status.payload["damage_bonus"] == 10 for status in yuji.statuses)
+
+
+def test_maki_soul_split_and_heavenly_restriction_ignore_stun():
+    state = BattleState(
+        players={
+            "p1": make_player("p1", ["maki_zenin", "yuji_itadori", "nobara_kugisaki"]),
+            "p2": make_player("p2", ["satoru_gojo", "ryomen_sukuna", "mahito"]),
+        },
+        turn_player_id="p1",
+    )
+    give_all_energy(state.players["p1"])
+    maki = state.players["p1"].team[0]
+
+    queue_and_resolve(state, PendingAction("hr", "p1", 0, "heavenly_restriction", "self", 0))
+    state.turn_player_id = "p1"
+    maki.statuses.append(
+        StatusEffect(
+            "stunned",
+            "Stunned",
+            "p2",
+            0,
+            "p1",
+            0,
+            duration=2,
+            payload={"stun_classes": ["all"]},
+        )
+    )
+    validate_action(state, PendingAction("slash", "p1", 0, "soul_split_katana", "p2", 0, wildcard_pays=[EnergyType.GREEN]), SKILLS_BY_ID)
+    queue_and_resolve(
+        state,
+        PendingAction("slash", "p1", 0, "soul_split_katana", "p2", 0, wildcard_pays=[EnergyType.GREEN]),
+    )
+    assert state.players["p2"].team[0].hp == 70
+
+
+def test_yuta_rct_heals_and_rika_gates_pure_love_beam():
+    state = BattleState(
+        players={
+            "p1": make_player("p1", ["yuta_okkotsu", "yuji_itadori", "nobara_kugisaki"]),
+            "p2": make_player("p2", ["satoru_gojo", "ryomen_sukuna", "mahito"]),
+        },
+        turn_player_id="p1",
+    )
+    give_all_energy(state.players["p1"])
+    ally = state.players["p1"].team[1]
+    ally.hp = 55
+
+    queue_and_resolve(
+        state,
+        PendingAction(
+            "rct",
+            "p1",
+            0,
+            "reverse_cursed_technique",
+            "p1",
+            1,
+            wildcard_pays=[EnergyType.WHITE],
+        ),
+    )
+    assert ally.hp == 85
+
+    state.turn_player_id = "p1"
+    action = PendingAction(
+        "beam",
+        "p1",
+        0,
+        "pure_love_beam",
+        "p2",
+        0,
+        wildcard_pays=[EnergyType.BLUE],
+    )
+    with pytest.raises(ResolverError):
+        validate_action(state, action, SKILLS_BY_ID)
+
+    queue_and_resolve(state, PendingAction("rika", "p1", 0, "rika_manifestation", "self", 0))
+    state.turn_player_id = "p1"
+    give_all_energy(state.players["p1"])
+    queue_and_resolve(state, action)
+    assert state.players["p2"].team[0].hp == 45
+
+
+def test_higuruma_guilty_verdict_enables_confiscation_and_execution():
+    state = BattleState(
+        players={
+            "p1": make_player("p1", ["hiromi_higuruma", "yuji_itadori", "nobara_kugisaki"]),
+            "p2": make_player("p2", ["satoru_gojo", "ryomen_sukuna", "mahito"]),
+        },
+        turn_player_id="p1",
+    )
+    give_all_energy(state.players["p1"])
+    confiscate = PendingAction(
+        "confiscate",
+        "p1",
+        0,
+        "confiscation",
+        "p2",
+        0,
+        wildcard_pays=[EnergyType.WHITE],
+    )
+
+    with pytest.raises(ResolverError):
+        validate_action(state, confiscate, SKILLS_BY_ID)
+
+    queue_and_resolve(state, PendingAction("trial", "p1", 0, "deadly_sentencing", "p2", 0))
+    gojo = state.players["p2"].team[0]
+    assert any(status.id == "guilty_verdict" for status in gojo.statuses)
+
+    state.turn_player_id = "p1"
+    give_all_energy(state.players["p1"])
+    queue_and_resolve(state, confiscate)
+    assert any(status.id == "confiscated" for status in gojo.statuses)
+
+    state.turn_player_id = "p1"
+    give_all_energy(state.players["p1"])
+    queue_and_resolve(
+        state,
+        PendingAction(
+            "execute",
+            "p1",
+            0,
+            "executioners_sword",
+            "p2",
+            0,
+            wildcard_pays=[EnergyType.GREEN],
+        ),
+    )
+    assert gojo.hp == 55

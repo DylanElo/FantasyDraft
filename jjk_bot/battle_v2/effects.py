@@ -268,6 +268,28 @@ def apply_effect(
             turn_number=state.turn_number,
             payload={"action_id": action.id, "amount": actual},
         )
+    if effect.type == "heal":
+        if target_slot is None:
+            raise EffectError("heal effect requires a target slot")
+        target = state.players[target_player_id].team[target_slot]
+        amount = max(0, effect.amount or 0)
+        healing_delta = _status_amount(target, "healing_received_delta")
+        actual = min(target.max_hp - target.hp, max(0, amount + healing_delta))
+        target.hp += actual
+        if target.hp > 0:
+            target.alive = True
+        return BattleEvent(
+            type="heal",
+            message=f"{action.skill_id} healed {actual} HP",
+            turn_number=state.turn_number,
+            payload={
+                "action_id": action.id,
+                "target_player_id": target_player_id,
+                "target_slot": target_slot,
+                "amount": actual,
+                "attempted_amount": amount,
+            },
+        )
     if effect.type == "apply_status":
         if target_slot is None:
             raise EffectError("status effect requires a target slot")

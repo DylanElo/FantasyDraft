@@ -22,8 +22,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from jjk_bot.game import GameManager, GameState, CPU_PLAYER_ID
 from jjk_bot.characters import CHARACTERS, Character, Skill, character_identity
 from jjk_bot.portrait_assets import local_portrait_path
-from jjk_bot.battle_v2.models import BattleEvent, BattlePhase, use_battle_v2
-from jjk_bot.battle_v2.session import BattleV2RoomManager, BattleV2SessionError, skill_catalog
+from jjk_bot.battle_v2.models import BattleEvent, BattlePhase
+from jjk_bot.battle_v2.manager import BattleV2Manager, BattleV2Error, battle_v2_enabled, skill_catalog
 
 def env_flag(name: str, default: bool = False) -> bool:
     value = os.getenv(name)
@@ -46,7 +46,7 @@ app.secret_key = os.getenv("FLASK_SECRET_KEY") or secrets.token_hex(32)
 socketio = SocketIO(app, cors_allowed_origins=CORS_ORIGINS)
 
 game_manager = GameManager()
-battle_v2_manager = BattleV2RoomManager()
+battle_v2_manager = BattleV2Manager()
 rate_limits = defaultdict(deque)
 CPU_V2_PLAYER_ID = "__cpu_v2__"
 V2_CPU_DRAFT_NAMES = [
@@ -266,7 +266,7 @@ def active_session_context():
 
 
 def active_v2_context(data=None):
-    if not use_battle_v2():
+    if not battle_v2_enabled():
         emit("battle_v2_error", {"message": "Battle v2 is disabled. Set JJK_BATTLE_SYSTEM=v2."})
         return None
     data = data or {}
@@ -556,8 +556,8 @@ def index():
     return render_template(
         'index.html',
         player_id=session['player_id'],
-        battle_v2_enabled=use_battle_v2(),
-        battle_v2_catalog=skill_catalog() if use_battle_v2() else {},
+        battle_v2_enabled=battle_v2_enabled(),
+        battle_v2_catalog=skill_catalog() if battle_v2_enabled() else {},
     )
 
 @app.route('/reset/<room_id>')
@@ -674,7 +674,7 @@ def on_start_vs_cpu(data=None):
 
     player_name = game.player_names.get(int_id, f"Player_{player_session[:4]}")
     success, msg = game.start_game_vs_cpu(int_id, player_name, difficulty=difficulty)
-    if success and use_battle_v2():
+    if success and battle_v2_enabled():
         configure_v2_cpu_draft(game)
         msg = f"{msg} Battle v2 draft pool enabled."
 
@@ -691,7 +691,7 @@ def on_draw_card():
     room_id, _, smap, int_id, int_room = context
 
     game = game_manager.get_game(int_room)
-    if use_battle_v2() and game.cpu_player_id is not None:
+    if battle_v2_enabled() and game.cpu_player_id is not None:
         success, msg, choices = draw_v2_compatible_three(game, int_id)
     else:
         success, msg, choices = game.draw_three(int_id)
@@ -726,7 +726,7 @@ def on_submit_team(data):
     game = game_manager.get_game(int_room)
     success, msg = game.submit_team(int_id, selected_names)
     emit('message', {'text': msg}, room=room_id)
-    if success and use_battle_v2() and game.state == GameState.BATTLE and game.cpu_player_id is not None:
+    if success and battle_v2_enabled() and game.state == GameState.BATTLE and game.cpu_player_id is not None:
         player_team = v2_team_ids_from_characters(game.active_teams.get(int_id, []))
         enemy_team = v2_team_ids_from_characters(game.active_teams.get(CPU_PLAYER_ID, []))
         if player_team and enemy_team:
@@ -742,7 +742,7 @@ def on_submit_team(data):
                 emit('message', {'text': 'Battle v2 launched from your drafted 3v3 team.'})
                 emit_battle_v2_update(room_id, session.get("player_id"))
                 return
-            except BattleV2SessionError as exc:
+            except BattleV2Error as exc:
                 emit_battle_v2_error(exc)
                 return
         emit('message', {'text': 'Draft team includes characters not converted to Battle v2 yet; using v1 battle.'}, room=room_id)
@@ -863,7 +863,7 @@ def on_battle_v2_start_classic(data=None):
             ],
         )
         emit_battle_v2_update(room_id, player_session)
-    except BattleV2SessionError as exc:
+    except BattleV2Error as exc:
         emit_battle_v2_error(exc)
 
 
@@ -879,7 +879,7 @@ def on_battle_v2_submit_plan(data=None):
     try:
         battle_v2_manager.submit_plan(room_id, player_session, clean_v2_actions(data.get("actions", [])))
         emit_battle_v2_update(room_id, player_session)
-    except BattleV2SessionError as exc:
+    except BattleV2Error as exc:
         emit_battle_v2_error(exc)
 
 
@@ -900,7 +900,7 @@ def on_battle_v2_update_queue(data=None):
             clean_v2_wildcard_pays(data.get("wildcard_pays", {})),
         )
         emit_battle_v2_update(room_id, player_session)
-    except BattleV2SessionError as exc:
+    except BattleV2Error as exc:
         emit_battle_v2_error(exc)
 
 
@@ -916,7 +916,7 @@ def on_battle_v2_confirm_queue(data=None):
         battle_v2_manager.confirm_queue(room_id, player_session)
         run_battle_v2_cpu_turns(room_id)
         emit_battle_v2_update(room_id, player_session)
-    except BattleV2SessionError as exc:
+    except BattleV2Error as exc:
         emit_battle_v2_error(exc)
 
 
@@ -931,7 +931,7 @@ def on_battle_v2_cancel_queue(data=None):
     try:
         battle_v2_manager.cancel_queue(room_id, player_session)
         emit_battle_v2_update(room_id, player_session)
-    except BattleV2SessionError as exc:
+    except BattleV2Error as exc:
         emit_battle_v2_error(exc)
 
 
@@ -947,7 +947,7 @@ def on_battle_v2_end_turn(data=None):
         battle_v2_manager.end_turn(room_id, player_session)
         run_battle_v2_cpu_turns(room_id)
         emit_battle_v2_update(room_id, player_session)
-    except BattleV2SessionError as exc:
+    except BattleV2Error as exc:
         emit_battle_v2_error(exc)
 
 
@@ -962,10 +962,10 @@ def on_battle_v2_surrender(data=None):
     try:
         state = battle_v2_manager.get_state(room_id)
         if player_session not in state.players:
-            raise BattleV2SessionError(f"unknown player: {player_session}")
+            raise BattleV2Error(f"unknown player: {player_session}")
         winners = [pid for pid in state.players if pid != player_session]
         if not winners:
-            raise BattleV2SessionError("no opponent to award surrender")
+            raise BattleV2Error("no opponent to award surrender")
         state.winner_id = winners[0]
         state.phase = BattlePhase.FINISHED
         state.event_log.append(
@@ -977,7 +977,7 @@ def on_battle_v2_surrender(data=None):
             )
         )
         emit_battle_v2_update(room_id, player_session)
-    except BattleV2SessionError as exc:
+    except BattleV2Error as exc:
         emit_battle_v2_error(exc)
 
 @socketio.on('reset_room')

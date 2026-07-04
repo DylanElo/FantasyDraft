@@ -1,7 +1,7 @@
 import pytest
 
 from jjk_bot.battle_v2.models import EnergyType, SkillClass, StatusEffect
-from jjk_bot.battle_v2.session import BattleV2RoomManager, BattleV2SessionError
+from jjk_bot.battle_v2.manager import BattleV2Manager, BattleV2Error
 
 
 def player_one():
@@ -21,7 +21,7 @@ def player_two():
 
 
 def start_manager():
-    manager = BattleV2RoomManager(rng_seed=1)
+    manager = BattleV2Manager(rng_seed=1)
     state = manager.start_classic_match("room", [player_one(), player_two()])
     return manager, state
 
@@ -133,7 +133,7 @@ def test_invalid_queue_update_does_not_mutate_saved_actions():
     )
     before = manager.serialize_for_player("room", "p1")["pending_actions"]["p1"][0]
 
-    with pytest.raises(BattleV2SessionError):
+    with pytest.raises(BattleV2Error):
         manager.update_queue("room", "p1", ["a1"], {"a1": ["black"]})
 
     after = manager.serialize_for_player("room", "p1")["pending_actions"]["p1"][0]
@@ -240,7 +240,7 @@ def test_cpu_turn_submits_first_legal_queue_and_advances_back():
 
 
 def test_cpu_turn_prefers_killing_payoff_over_basic_attack():
-    manager = BattleV2RoomManager(rng_seed=1)
+    manager = BattleV2Manager(rng_seed=1)
     manager.start_classic_match(
         "room",
         [
@@ -265,7 +265,7 @@ def test_cpu_turn_prefers_killing_payoff_over_basic_attack():
 
 
 def test_cpu_turn_can_choose_ally_heal_for_wounded_teammate():
-    manager = BattleV2RoomManager(rng_seed=1)
+    manager = BattleV2Manager(rng_seed=1)
     manager.start_classic_match(
         "room",
         [

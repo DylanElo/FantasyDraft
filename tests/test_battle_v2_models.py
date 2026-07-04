@@ -1,6 +1,8 @@
 from jjk_bot.battle_v2 import (
+    BattlePlayerConfig,
     BattlePhase,
     BattleState,
+    BattleV2Manager,
     CharacterState,
     DamageType,
     EffectSpec,
@@ -9,20 +11,22 @@ from jjk_bot.battle_v2 import (
     SkillClass,
     SkillSpec,
     TargetRule,
-    use_battle_v2,
+    battle_state_to_dict,
+    battle_v2_enabled,
+    payload_to_action,
 )
 
 
 def test_battle_v2_default_flag_is_off(monkeypatch):
     monkeypatch.delenv("JJK_BATTLE_SYSTEM", raising=False)
 
-    assert use_battle_v2() is False
+    assert battle_v2_enabled() is False
 
 
 def test_battle_v2_flag_turns_on_for_v2(monkeypatch):
     monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
 
-    assert use_battle_v2() is True
+    assert battle_v2_enabled() is True
 
 
 def test_battle_v2_models_import_and_compose():
@@ -43,3 +47,23 @@ def test_battle_v2_models_import_and_compose():
     assert skill.cost == [EnergyType.GREEN]
     assert state.phase == BattlePhase.PLANNING
     assert state.players["p1"].team[0].hp == 100
+
+
+def test_battle_v2_public_manager_api():
+    manager = BattleV2Manager(rng_seed=1)
+    config = BattlePlayerConfig("p1", "Player 1", ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"])
+    action = payload_to_action(
+        "p1",
+        0,
+        {
+            "caster_slot": 0,
+            "skill_id": "divergent_fist",
+            "target_player_id": "p2",
+            "target_slot": 0,
+        },
+    )
+
+    assert manager.rng_seed == 1
+    assert config.team[0] == "yuji_itadori"
+    assert action.skill_id == "divergent_fist"
+    assert callable(battle_state_to_dict)

@@ -21,6 +21,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from jjk_bot.game import GameManager, GameState, CPU_PLAYER_ID
 from jjk_bot.characters import Character, Skill, character_identity
 from jjk_bot.portrait_assets import local_portrait_path
+from jjk_bot.battle_v2.models import BattleEvent, BattlePhase, use_battle_v2
+from jjk_bot.battle_v2.session import BattleV2RoomManager, BattleV2SessionError
 
 def env_flag(name: str, default: bool = False) -> bool:
     value = os.getenv(name)
@@ -43,6 +45,7 @@ app.secret_key = os.getenv("FLASK_SECRET_KEY") or secrets.token_hex(32)
 socketio = SocketIO(app, cors_allowed_origins=CORS_ORIGINS)
 
 game_manager = GameManager()
+battle_v2_manager = BattleV2RoomManager()
 rate_limits = defaultdict(deque)
 
 ROOM_RE = re.compile(r"[^a-zA-Z0-9_-]+")
@@ -69,6 +72,63 @@ def clean_selected_names(value) -> list[str]:
     return [CONTROL_RE.sub("", str(name).strip())[:80] for name in value[:3] if str(name).strip()]
 
 
+def clean_v2_team(value, fallback: list[str]) -> list[str]:
+    if not isinstance(value, list):
+        return list(fallback)
+    team = [CONTROL_RE.sub("", str(name).strip())[:80] for name in value[:3] if str(name).strip()]
+    return team if len(team) == 3 else list(fallback)
+
+
+def clean_v2_actions(value) -> list[dict]:
+    if not isinstance(value, list):
+        return []
+    actions = []
+    for raw in value[:3]:
+        if not isinstance(raw, dict):
+            continue
+        action = {
+            "id": CONTROL_RE.sub("", str(raw.get("id", "")).strip())[:64],
+            "caster_slot": clamp_int(raw.get("caster_slot", 0), 0, 2),
+            "skill_id": clean_skill_name(raw.get("skill_id", "")),
+            "target_player_id": CONTROL_RE.sub("", str(raw.get("target_player_id", "")).strip())[:64],
+            "target_slot": None if raw.get("target_slot") is None else clamp_int(raw.get("target_slot", 0), 0, 2),
+            "target_slots": [
+                clamp_int(slot, 0, 2)
+                for slot in raw.get("target_slots", [])[:3]
+            ] if isinstance(raw.get("target_slots", []), list) else [],
+            "wildcard_pays": [
+                CONTROL_RE.sub("", str(energy).strip().lower())[:8]
+                for energy in raw.get("wildcard_pays", [])[:3]
+            ] if isinstance(raw.get("wildcard_pays", []), list) else [],
+            "queue_index": clamp_int(raw.get("queue_index", len(actions)), 0, 2, default=len(actions)),
+        }
+        if not action["id"]:
+            action.pop("id")
+        actions.append(action)
+    return actions
+
+
+def clean_v2_queue_order(value) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [CONTROL_RE.sub("", str(action_id).strip())[:64] for action_id in value[:3]]
+
+
+def clean_v2_wildcard_pays(value) -> dict[str, list[str]]:
+    if not isinstance(value, dict):
+        return {}
+    cleaned = {}
+    for action_id, pays in value.items():
+        clean_id = CONTROL_RE.sub("", str(action_id).strip())[:64]
+        if not clean_id or not isinstance(pays, list):
+            continue
+        cleaned[clean_id] = [
+            CONTROL_RE.sub("", str(energy).strip().lower())[:8]
+            for energy in pays[:3]
+        ]
+    return cleaned
+
+
 def clamp_int(value, minimum: int, maximum: int, default: int = 0) -> int:
     try:
         parsed = int(value)
@@ -87,6 +147,32 @@ def active_session_context():
     int_id = smap.get(player_session, str_to_int_id(player_session))
     smap[player_session] = int_id
     return room_id, player_session, smap, int_id, str_to_int_id(room_id)
+
+
+def active_v2_context(data=None):
+    if not use_battle_v2():
+        emit("battle_v2_error", {"message": "Battle v2 is disabled. Set JJK_BATTLE_SYSTEM=v2."})
+        return None
+    data = data or {}
+    player_session = session.get("player_id")
+    if not player_session:
+        player_session = str(uuid.uuid4())
+        session["player_id"] = player_session
+    room_id = session.get("room_id") or clean_room_id(data.get("room_id", "classic-v2"))
+    session["room_id"] = room_id
+    join_room(room_id)
+    return room_id, player_session
+
+
+def emit_battle_v2_update(room_id: str, viewer_id: str):
+    state = battle_v2_manager.serialize_for_player(room_id, viewer_id)
+    emit("battle_v2_update", state)
+    if state.get("winner_id"):
+        emit("battle_v2_finished", {"winner_id": state["winner_id"]})
+
+
+def emit_battle_v2_error(exc: Exception):
+    emit("battle_v2_error", {"message": str(exc)})
 
 
 def allow_event(event_name: str, limit: int = 30, window_seconds: int = 5) -> bool:
@@ -593,6 +679,134 @@ def on_swap_in(data):
         emit('message', {'text': msg}, room=room_id)
 
     emit('game_update', get_game_state_dict(game, smap), room=room_id)
+
+
+@socketio.on('battle_v2_start_classic')
+def on_battle_v2_start_classic(data=None):
+    if not allow_event("battle_v2_start_classic", limit=10, window_seconds=10):
+        return
+    data = data or {}
+    context = active_v2_context(data)
+    if not context:
+        return
+    room_id, player_session = context
+    player_name = clean_player_name(data.get("player_name", ""), f"Player_{player_session[:4]}")
+    player_team = clean_v2_team(
+        data.get("player_team") or data.get("team"),
+        ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"],
+    )
+    enemy_team = clean_v2_team(
+        data.get("enemy_team"),
+        ["satoru_gojo", "ryomen_sukuna", "mahito"],
+    )
+    try:
+        battle_v2_manager.start_classic_match(
+            room_id,
+            [
+                {"id": player_session, "name": player_name, "team": player_team},
+                {"id": "__cpu_v2__", "name": "CPU V2", "team": enemy_team},
+            ],
+        )
+        emit_battle_v2_update(room_id, player_session)
+    except BattleV2SessionError as exc:
+        emit_battle_v2_error(exc)
+
+
+@socketio.on('battle_v2_submit_plan')
+def on_battle_v2_submit_plan(data=None):
+    if not allow_event("battle_v2_submit_plan", limit=45, window_seconds=5):
+        return
+    data = data or {}
+    context = active_v2_context(data)
+    if not context:
+        return
+    room_id, player_session = context
+    try:
+        battle_v2_manager.submit_plan(room_id, player_session, clean_v2_actions(data.get("actions", [])))
+        emit_battle_v2_update(room_id, player_session)
+    except BattleV2SessionError as exc:
+        emit_battle_v2_error(exc)
+
+
+@socketio.on('battle_v2_update_queue')
+def on_battle_v2_update_queue(data=None):
+    if not allow_event("battle_v2_update_queue", limit=45, window_seconds=5):
+        return
+    data = data or {}
+    context = active_v2_context(data)
+    if not context:
+        return
+    room_id, player_session = context
+    try:
+        battle_v2_manager.update_queue(
+            room_id,
+            player_session,
+            clean_v2_queue_order(data.get("queue_order", [])),
+            clean_v2_wildcard_pays(data.get("wildcard_pays", {})),
+        )
+        emit_battle_v2_update(room_id, player_session)
+    except BattleV2SessionError as exc:
+        emit_battle_v2_error(exc)
+
+
+@socketio.on('battle_v2_confirm_queue')
+def on_battle_v2_confirm_queue(data=None):
+    if not allow_event("battle_v2_confirm_queue", limit=45, window_seconds=5):
+        return
+    context = active_v2_context(data or {})
+    if not context:
+        return
+    room_id, player_session = context
+    try:
+        battle_v2_manager.confirm_queue(room_id, player_session)
+        emit_battle_v2_update(room_id, player_session)
+    except BattleV2SessionError as exc:
+        emit_battle_v2_error(exc)
+
+
+@socketio.on('battle_v2_cancel_queue')
+def on_battle_v2_cancel_queue(data=None):
+    if not allow_event("battle_v2_cancel_queue", limit=45, window_seconds=5):
+        return
+    context = active_v2_context(data or {})
+    if not context:
+        return
+    room_id, player_session = context
+    try:
+        battle_v2_manager.cancel_queue(room_id, player_session)
+        emit_battle_v2_update(room_id, player_session)
+    except BattleV2SessionError as exc:
+        emit_battle_v2_error(exc)
+
+
+@socketio.on('battle_v2_surrender')
+def on_battle_v2_surrender(data=None):
+    if not allow_event("battle_v2_surrender"):
+        return
+    context = active_v2_context(data or {})
+    if not context:
+        return
+    room_id, player_session = context
+    try:
+        state = battle_v2_manager.get_state(room_id)
+        if player_session not in state.players:
+            raise BattleV2SessionError(f"unknown player: {player_session}")
+        winners = [pid for pid in state.players if pid != player_session]
+        if not winners:
+            raise BattleV2SessionError("no opponent to award surrender")
+        state.winner_id = winners[0]
+        state.phase = BattlePhase.FINISHED
+        state.event_log.append(
+            BattleEvent(
+                type="battle_finished",
+                message=f"{state.winner_id} wins by surrender",
+                turn_number=state.turn_number,
+                payload={"winner_id": state.winner_id, "surrendered_id": player_session},
+            )
+        )
+        emit_battle_v2_update(room_id, player_session)
+    except BattleV2SessionError as exc:
+        emit_battle_v2_error(exc)
 
 @socketio.on('reset_room')
 def on_reset_room():

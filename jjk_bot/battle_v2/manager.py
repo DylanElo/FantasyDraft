@@ -370,6 +370,46 @@ class BattleV2Manager:
         state.phase = BattlePhase.PLANNING
         return self.serialize_for_player(room_id, player_id)
 
+    def convert_energy(self, room_id: str, player_id: str, source: str, target: str) -> dict:
+        """Convert two core energy of one color into one other core color once this turn."""
+
+        state = self.get_state(room_id)
+        self._ensure_turn_player(state, player_id)
+        player = state.players[player_id]
+        if player.queue_confirmed:
+            raise BattleV2Error("queue is already confirmed")
+        if state.pending_actions.get(player_id):
+            raise BattleV2Error("cancel the current queue before converting energy")
+        if player.energy_converted_this_turn:
+            raise BattleV2Error("energy conversion already used this turn")
+        try:
+            source_energy = normalize_energy(source)
+            target_energy = normalize_energy(target)
+        except ValueError as exc:
+            raise BattleV2Error("unknown energy color") from exc
+        if source_energy not in CORE_ENERGY or target_energy not in CORE_ENERGY:
+            raise BattleV2Error("only colored energy can be converted")
+        if source_energy == target_energy:
+            raise BattleV2Error("choose two different energy colors")
+        if player.energy.get(source_energy, 0) < 2:
+            raise BattleV2Error(f"not enough {source_energy.value} energy to convert")
+        player.energy[source_energy] -= 2
+        player.energy[target_energy] += 1
+        player.energy_converted_this_turn = True
+        state.event_log.append(
+            BattleEvent(
+                type="energy_converted",
+                message=f"{player.name} converted 2 {source_energy.value} into 1 {target_energy.value}",
+                turn_number=state.turn_number,
+                payload={
+                    "player_id": player_id,
+                    "source": source_energy.value,
+                    "target": target_energy.value,
+                },
+            )
+        )
+        return self.serialize_for_player(room_id, player_id)
+
     def end_turn(self, room_id: str, player_id: str) -> dict:
         """End the active player's turn without resolving queued actions."""
 

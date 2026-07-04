@@ -411,6 +411,7 @@ def finish_turn(state: BattleState, player_id: str) -> list[BattleEvent]:
             tick_cooldowns(character)
             character.acted_this_turn = False
         player.queue_confirmed = False
+        player.energy_converted_this_turn = False
     state.pending_actions[player_id] = []
     state.queue_order[player_id] = []
     if state.phase != BattlePhase.FINISHED:

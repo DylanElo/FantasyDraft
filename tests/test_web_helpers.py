@@ -111,9 +111,6 @@ class TestWebHelpers(unittest.TestCase):
             'char_type': "Specialist",
             'role': "Specialist",
             'rarity': "Rare",
-            'unique_mechanic': "",
-            'achievement_name': "",
-            'achievement_desc': "",
             'skills': [{
                 'name': "Test Skill",
                 'description': "Test Description",
@@ -137,6 +134,9 @@ class TestWebHelpers(unittest.TestCase):
             }]
         }
         self.assertEqual(char_to_dict(char), expected)
+        self.assertNotIn('unique_mechanic', char_to_dict(char))
+        self.assertNotIn('achievement_name', char_to_dict(char))
+        self.assertNotIn('achievement_desc', char_to_dict(char))
 
     def test_character_to_dict_none(self):
         self.assertIsNone(char_to_dict(None))
@@ -158,9 +158,6 @@ class TestWebHelpers(unittest.TestCase):
             'char_type': "Specialist",
             'role': "Specialist",
             'rarity': "Rare",
-            'unique_mechanic': "",
-            'achievement_name': "",
-            'achievement_desc': "",
             'skills': []
         }
         self.assertEqual(char_to_dict(char), expected)

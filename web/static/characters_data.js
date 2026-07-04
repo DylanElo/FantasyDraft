@@ -4,19 +4,21 @@ const CHARACTERS_DATA = [
     "identity": "Gojo",
     "description": "The strongest jujutsu sorcerer. Limitless technique and Six Eyes grant him unparalleled control over space and cursed energy.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/e/ef/Satoru_Gojo_%28Anime_2%29.png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/e/ef/Satoru_Gojo_%28Anime_2%29.png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Burst",
     "rarity": "Legendary",
-    "unique_mechanic": "Six Eyes: Gojo passively gains 1 blue energy at the start of each of his turns.",
-    "achievement_name": "The Strongest",
-    "achievement_desc": "Win a battle without taking any affliction damage. Grants Gojo +10 all damage for 3 turns.",
     "skills": [
       {
         "name": "Cursed Technique Lapse: Blue",
         "description": "Generates negative space, pulling the enemy in. Deals 15 damage and stuns for 1 turn.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "blue"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 15,
@@ -34,12 +36,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Cursed Technique Reversal: Red",
         "description": "Releases a repulsion blast. Deals 35 piercing damage and weakens the enemy by 10 for 1 turn.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "red",
           "blue"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -57,13 +60,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Hollow Technique: Purple",
         "description": "Merges Blue and Red into an imaginary mass. Deals 55 affliction damage, removing Gojo's own invulnerability.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "red",
           "blue",
           "white"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 4,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -81,11 +85,12 @@ const CHARACTERS_DATA = [
       {
         "name": "Infinity",
         "description": "Slows all matter approaching him to zero. Becomes invulnerable for 1 turn.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "black"
         ],
         "classes": "Strategic, Instant",
-        "cooldown": 4,
         "target_type": "self",
         "is_aoe": false,
         "damage": 0,
@@ -107,19 +112,21 @@ const CHARACTERS_DATA = [
     "identity": "Yuji",
     "description": "Vessel of Ryomen Sukuna. Superhuman strength and the fearless will to protect everyone around him.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/3/35/Yuji_Itadori_%28Anime_4%29.png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/3/35/Yuji_Itadori_%28Anime_4%29.png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Punisher",
     "rarity": "Rare",
-    "unique_mechanic": "Soul Resonance: When Yuji takes 30+ damage in a single hit, gains +15 damage for 1 turn (fighting spirit activates).",
-    "achievement_name": "I Will Save Everyone",
-    "achievement_desc": "Survive at or below 20 HP for 1 full turn. Grants +20 damage for 3 turns.",
     "skills": [
       {
         "name": "Divergent Fist",
         "description": "Strikes for 20 damage. The delayed cursed energy blast deals 10 affliction damage next turn.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "green"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 20,
@@ -137,12 +144,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Black Flash",
         "description": "Spatial distortion at the moment of impact. Deals 45 damage and weakens the enemy by 15 for 1 turn.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "green",
           "blue"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 45,
@@ -160,12 +168,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Shrine: Dismantle",
         "description": "Sukuna's innate technique leaks through — an invisible slash. Deals 25 affliction damage.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "red",
           "black"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -183,11 +192,12 @@ const CHARACTERS_DATA = [
       {
         "name": "Unyielding Resolve",
         "description": "Endures all damage through sheer willpower. Gains 25 damage reduction for 2 turns.",
-        "cost": [
+        "cooldown": 3,
+        "cooldown_int": 3,
+        "energy": [
           "black"
         ],
         "classes": "Strategic, Action",
-        "cooldown": 3,
         "target_type": "self",
         "is_aoe": false,
         "damage": 0,
@@ -209,20 +219,22 @@ const CHARACTERS_DATA = [
     "identity": "Megumi Fushiguro",
     "description": "Ten Shadows Technique. Summons shikigami born from shadows — each with a unique combat role.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/6/6e/Megumi_Fushiguro_%28Anime_4%29.png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/6/6e/Megumi_Fushiguro_%28Anime_4%29.png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Tank",
     "rarity": "Rare",
-    "unique_mechanic": "Shadow Pool: After Megumi uses any skill, his next skill this turn costs 1 less black energy.",
-    "achievement_name": "Ten Shadows Mastery",
-    "achievement_desc": "Use all four shikigami skills in a single battle. All skill costs reduced by 1 for 3 turns.",
     "skills": [
       {
         "name": "Divine Dogs: Totality",
         "description": "Fuses both Divine Dogs into one. Deals 25 damage and weakens the enemy by 10 for 2 turns.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "green",
           "black"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 25,
@@ -240,11 +252,12 @@ const CHARACTERS_DATA = [
       {
         "name": "Nue: Thunderstrike",
         "description": "The owl shikigami dives with a thunderclap. Stuns the enemy for 1 turn.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "blue"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -262,11 +275,12 @@ const CHARACTERS_DATA = [
       {
         "name": "Toad: Reverse Summon",
         "description": "A giant toad swallows an ally, shielding them. Target ally becomes invulnerable for 1 turn.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "black"
         ],
         "classes": "Strategic, Instant",
-        "cooldown": 2,
         "target_type": "ally",
         "is_aoe": false,
         "damage": 0,
@@ -284,13 +298,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Eight-Handled Sword: Mahoraga",
         "description": "Summons the uncontrollable divine shikigami. Deals 40 piercing damage to all enemies and Megumi becomes invulnerable for 1 turn.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "blue",
           "green",
           "white"
         ],
         "classes": "Bloodline, Action",
-        "cooldown": 4,
         "target_type": "enemy",
         "is_aoe": true,
         "damage": 0,
@@ -312,19 +327,21 @@ const CHARACTERS_DATA = [
     "identity": "Nobara Kugisaki",
     "description": "Straw Doll Technique. Nails, a hammer, and cursed energy that attacks the soul directly.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/d/dd/Nobara_Kugisaki_%28Anime_2%29.png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/d/dd/Nobara_Kugisaki_%28Anime_2%29.png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Punisher",
     "rarity": "Rare",
-    "unique_mechanic": "Nail Mark: Targets hit by Nail Toss are marked for 2 turns; Nobara's affliction skills deal +15 to marked targets.",
-    "achievement_name": "Resonance Complete",
-    "achievement_desc": "Hit the same enemy with Nail Toss then Resonance. Grants +20 affliction damage for 3 turns.",
     "skills": [
       {
         "name": "Straw Doll: Nail Toss",
         "description": "Fires cursed nails for 15 damage and marks the target — resonance techniques deal +15 to marked enemies.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "black"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 15,
@@ -342,12 +359,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Hairpin",
         "description": "Detonates embedded nails with a snap. Deals 30 damage.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "blue",
           "black"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 30,
@@ -365,12 +383,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Resonance",
         "description": "Channels cursed energy through the doll into the enemy's soul. Deals 25 affliction damage and weakens by 15 for 1 turn.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "red",
           "blue"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -388,13 +407,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Straw Doll: Resonance Finale",
         "description": "Drives Resonance to its limit through the enemy's soul. Deals 50 affliction damage.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "red",
           "red",
           "black"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 4,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -416,20 +436,22 @@ const CHARACTERS_DATA = [
     "identity": "Kento Nanami",
     "description": "Ratio Technique. Creates a mandatory weak point at the 7:3 spot on any object, guaranteeing devastating strikes.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/b/b0/Kento_Nanami_%28Anime%29.png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/b/b0/Kento_Nanami_%28Anime%29.png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Tank",
     "rarity": "Rare",
-    "unique_mechanic": "Overtime: Starting from turn 4, all of Nanami's damage skills deal +10 bonus damage (no overtime cap).",
-    "achievement_name": "Overtime Activated",
-    "achievement_desc": "Use Overtime while at least 2 allies are alive. All allies gain +15 damage for 3 turns.",
     "skills": [
       {
         "name": "Ratio Technique: 7:3",
         "description": "Marks the mandatory weak point at the 7:3 position. Deals 20 damage and 15 affliction per turn for 2 turns.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "red",
           "black"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 20,
@@ -447,12 +469,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Collapse",
         "description": "Destroys the environment, sending debris everywhere. Deals 20 damage to all enemies.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "green",
           "black"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": true,
         "damage": 20,
@@ -470,12 +493,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Overtime",
         "description": "Lifts his time restriction. Becomes invulnerable this turn and gains 20 bonus damage for the next skill used.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "white",
           "white"
         ],
         "classes": "Strategic, Action",
-        "cooldown": 4,
         "target_type": "self",
         "is_aoe": false,
         "damage": 0,
@@ -493,12 +517,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Binding Vow: Work Ethic",
         "description": "Endures through sheer professionalism. Gains 20 damage reduction for 2 turns.",
-        "cost": [
+        "cooldown": 3,
+        "cooldown_int": 3,
+        "energy": [
           "white",
           "black"
         ],
         "classes": "Strategic, Action",
-        "cooldown": 3,
         "target_type": "self",
         "is_aoe": false,
         "damage": 0,
@@ -520,20 +545,22 @@ const CHARACTERS_DATA = [
     "identity": "Yuta",
     "description": "Special grade sorcerer. Commands Rika and copies any cursed technique he witnesses.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/e/e6/Yuta_Okkotsu_%28Anime_2%29.png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/e/e6/Yuta_Okkotsu_%28Anime_2%29.png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Bruiser",
     "rarity": "Epic",
-    "unique_mechanic": "Rika's Devotion: When Yuta heals an ally, he gains +10 damage for 2 turns (Rika rewards kindness).",
-    "achievement_name": "Promise Fulfilled",
-    "achievement_desc": "Heal an ally from below 25 HP to above 60 HP in one skill. Grants Yuta +20 damage for 3 turns.",
     "skills": [
       {
         "name": "Cursed Sword: Rika's Edge",
         "description": "Channels Rika's energy into a sword strike. Deals 25 damage.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "green",
           "black"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 25,
@@ -551,12 +578,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Copy: Cursed Technique",
         "description": "Yuta copies the enemy's technique via Rika. Deals 20 piercing damage and weakens by 15 for 2 turns.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "blue",
           "black"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -574,12 +602,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Reverse Cursed Technique: Heal",
         "description": "Channels positive energy through Rika to mend an ally's wounds. Heals ally for 35 HP.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "white",
           "blue"
         ],
         "classes": "Strategic, Instant",
-        "cooldown": 2,
         "target_type": "ally",
         "is_aoe": false,
         "damage": 0,
@@ -597,13 +626,14 @@ const CHARACTERS_DATA = [
       {
         "name": "True Form: Rika",
         "description": "Releases Rika's full power. Deals 50 piercing damage and Yuta becomes invulnerable for 1 turn.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "red",
           "blue",
           "white"
         ],
         "classes": "Bloodline, Action",
-        "cooldown": 4,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -625,20 +655,22 @@ const CHARACTERS_DATA = [
     "identity": "Hakari Kinji",
     "description": "Idle Death Gamble Domain Expansion. A Pachinko machine that, on Jackpot, grants near-infinite cursed energy.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/c/cf/Kinji_Hakari_%28Anime%29.png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/c/cf/Kinji_Hakari_%28Anime%29.png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Support",
     "rarity": "Epic",
-    "unique_mechanic": "Domain Machine: While Idle Death Gamble is on cooldown, Hakari cannot be stunned (he's in the zone).",
-    "achievement_name": "JACKPOT!",
-    "achievement_desc": "Trigger the 40% Idle Death Gamble Jackpot — fully healed, invulnerable 2t, +30 damage 2t.",
     "skills": [
       {
         "name": "Restless Love",
         "description": "Reckless brawling strike. Deals 30 damage and heals Hakari for 15.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "green",
           "black"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 30,
@@ -656,11 +688,12 @@ const CHARACTERS_DATA = [
       {
         "name": "Pachinko Slam",
         "description": "Throws an enemy into the domain's steel machinery. Deals 15 damage and stuns for 1 turn.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "green"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 15,
@@ -678,13 +711,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Idle Death Gamble",
         "description": "Domain Expansion. The Pachinko machine runs for 4 turns. Hakari heals 10 HP per turn and gains 10 bonus damage. 40% chance: Jackpot!",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "red",
           "blue",
           "black"
         ],
         "classes": "Bloodline, Action",
-        "cooldown": 4,
         "target_type": "self",
         "is_aoe": false,
         "damage": 0,
@@ -702,12 +736,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Jackpot: Infinite Cursed Energy",
         "description": "Jackpot fires — infinite reverse cursed technique activates. Deals 25 affliction damage and heals Hakari for 20.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "red",
           "black"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -729,20 +764,22 @@ const CHARACTERS_DATA = [
     "identity": "Panda",
     "description": "Autonomous cursed corpse with three combat cores: Panda, Gorilla, and Trident. Each grants different capabilities.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/2/2b/Panda_%28Anime_2%29.png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/2/2b/Panda_%28Anime_2%29.png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Tank",
     "rarity": "Rare",
-    "unique_mechanic": "Core Cycle: After using any Core skill, Panda's next attack this turn deals +15 pierce damage.",
-    "achievement_name": "Three Cores Activated",
-    "achievement_desc": "Use both Gorilla Core skills and Trident Core in the same battle. Gains 15 DR for 3 turns.",
     "skills": [
       {
         "name": "Drum Beat",
         "description": "Strikes from both arms simultaneously. Deals 20 damage to all enemies.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "green",
           "black"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": true,
         "damage": 20,
@@ -760,12 +797,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Gorilla Core: Unblockable",
         "description": "Activates Gorilla core — an unstoppable straight punch. Deals 30 piercing damage.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "red",
           "green"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -783,11 +821,12 @@ const CHARACTERS_DATA = [
       {
         "name": "Gorilla Core: Boost",
         "description": "Gorilla core enhances all strikes. Gains 20 bonus damage and 10 damage reduction for 2 turns.",
-        "cost": [
+        "cooldown": 3,
+        "cooldown_int": 3,
+        "energy": [
           "red"
         ],
         "classes": "Bloodline, Action",
-        "cooldown": 3,
         "target_type": "self",
         "is_aoe": false,
         "damage": 0,
@@ -805,12 +844,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Trident Core: Regeneration",
         "description": "Activates Trident core — stored energy flows as healing. Heals 35 HP and becomes invulnerable for 1 turn.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "white",
           "red"
         ],
         "classes": "Strategic, Instant",
-        "cooldown": 4,
         "target_type": "self",
         "is_aoe": false,
         "damage": 0,
@@ -832,19 +872,21 @@ const CHARACTERS_DATA = [
     "identity": "Shoko Ieiri",
     "description": "The only jujutsu sorcerer capable of healing others with Reverse Cursed Technique.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/a/af/Shoko_Ieiri_%28Anime_2%29.png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/a/af/Shoko_Ieiri_%28Anime_2%29.png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Support",
     "rarity": "Rare",
-    "unique_mechanic": "Living RCT: Shoko heals herself 5 HP at the end of each turn (her own body heals constantly).",
-    "achievement_name": "Nobody Dies Today",
-    "achievement_desc": "Heal an ally from below 20 HP to above 65 HP in one skill. Heals all allies for 15 HP.",
     "skills": [
       {
         "name": "Scalpel Strike",
         "description": "A surgical strike to a vital point. Deals 15 piercing damage.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "black"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -862,12 +904,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Emergency Treatment",
         "description": "Rapidly heals an ally's wounds mid-battle. Heals ally for 30 HP.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "white",
           "black"
         ],
         "classes": "Strategic, Instant",
-        "cooldown": 1,
         "target_type": "ally",
         "is_aoe": false,
         "damage": 0,
@@ -885,12 +928,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Reverse Cursed Technique",
         "description": "Full reversal healing — converts negative energy into positive life force. Heals ally for 40 HP.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "white",
           "white"
         ],
         "classes": "Strategic, Instant",
-        "cooldown": 2,
         "target_type": "ally",
         "is_aoe": false,
         "damage": 0,
@@ -908,12 +952,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Stabilize",
         "description": "Complete medical intervention: removes all debuffs, ally becomes invulnerable for 1 turn, gains 15 DR for 2 turns.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "white",
           "white"
         ],
         "classes": "Strategic, Action",
-        "cooldown": 4,
         "target_type": "ally",
         "is_aoe": false,
         "damage": 0,
@@ -935,19 +980,21 @@ const CHARACTERS_DATA = [
     "identity": "Masamichi Yaga",
     "description": "Creator of autonomous cursed corpses. Deploys combat dolls with independent souls that fight on their own.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/e/ee/Masamichi_Yaga_%28Anime_3%29.png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/e/ee/Masamichi_Yaga_%28Anime_3%29.png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Tank",
     "rarity": "Rare",
-    "unique_mechanic": "Autonomous: Yaga's counter trap fires twice before expiring (the dolls keep fighting independently).",
-    "achievement_name": "My Dolls Never Sleep",
-    "achievement_desc": "Have the Gummy counter trap fire twice in one battle. Yaga gains +10 damage for 3 turns.",
     "skills": [
       {
         "name": "Cursed Corpse: Strike",
         "description": "Deploys a small combat doll to attack. Deals 20 damage and gains 10 damage reduction for 2 turns.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "blue"
         ],
         "classes": "Strategic, Action",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 20,
@@ -965,12 +1012,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Puppet Swarm",
         "description": "Unleashes multiple dolls to overwhelm one target. Deals 30 damage.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "blue",
           "black"
         ],
         "classes": "Strategic, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 30,
@@ -988,12 +1036,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Gummy: Counter Trap",
         "description": "Plants the Gummy doll as a counter trap. Attackers take 20 damage when they strike Yaga.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "white",
           "black"
         ],
         "classes": "Strategic, Action",
-        "cooldown": 2,
         "target_type": "self",
         "is_aoe": false,
         "damage": 0,
@@ -1011,13 +1060,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Autonomous Army",
         "description": "Activates all dolls simultaneously. Deals 35 damage to all enemies.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "blue",
           "blue",
           "white"
         ],
         "classes": "Strategic, Action",
-        "cooldown": 4,
         "target_type": "enemy",
         "is_aoe": true,
         "damage": 35,
@@ -1039,20 +1089,22 @@ const CHARACTERS_DATA = [
     "identity": "Takuma Ino",
     "description": "Mythological Beast Worship — internalizes the powers of legendary beasts: Kaichi, Reiki, Kirin, and Ryu.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/9/9a/Takuma_Ino_%28Anime_2%29.png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/9/9a/Takuma_Ino_%28Anime_2%29.png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Tank",
     "rarity": "Rare",
-    "unique_mechanic": "Beast Manifestation: Each Beast skill used this battle stacks +5 DR permanently on Ino (max 20).",
-    "achievement_name": "Four Beasts Manifested",
-    "achievement_desc": "Use all four beast skills in a single battle. Grants immunity to stun for 2 turns.",
     "skills": [
       {
         "name": "Kaichi: Homing Horn",
         "description": "Manifests Kaichi's homing horn — a piercing shot that tracks its target. Deals 25 piercing damage.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "blue",
           "black"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -1070,12 +1122,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Reiki: Water Cushion",
         "description": "Manifests Reiki's water shield. Gains 10 damage reduction for 2 turns; attackers take 15 counter-damage.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "white",
           "blue"
         ],
         "classes": "Strategic, Action",
-        "cooldown": 2,
         "target_type": "self",
         "is_aoe": false,
         "damage": 0,
@@ -1093,12 +1146,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Kirin: Pain Nullifier",
         "description": "Gains 40 damage reduction for 1 turn. Kirin's intracerebral doping lets Ino ignore the hit.",
-        "cost": [
+        "cooldown": 3,
+        "cooldown_int": 3,
+        "energy": [
           "white",
           "black"
         ],
         "classes": "Strategic, Action",
-        "cooldown": 3,
         "target_type": "self",
         "is_aoe": false,
         "damage": 0,
@@ -1116,13 +1170,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Ryu: Dragon Crush",
         "description": "Manifests Ryu's full power — a crushing dragon strike. Deals 45 damage and weakens enemy by 20 for 2 turns.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "blue",
           "green",
           "blue"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 4,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 45,
@@ -1144,19 +1199,21 @@ const CHARACTERS_DATA = [
     "identity": "Arata Nitta",
     "description": "Pain Killer technique — halts all injury progression on allies. Cannot heal, but prevents wounds from worsening.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/3/33/Arata_Nitta_%28Anime%29.png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/3/33/Arata_Nitta_%28Anime%29.png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Support",
     "rarity": "Rare",
-    "unique_mechanic": "Halt All Injury: Once per battle, an ally with Nitta's DR active survives a lethal non-affliction hit with 1 HP.",
-    "achievement_name": "Death Deferred",
-    "achievement_desc": "Save an ally from a lethal hit with Pain Killer's passive. That ally gains 20 DR for 2 turns.",
     "skills": [
       {
         "name": "Pain Killer",
         "description": "Halts all injury progression on an ally. Ally gains 20 damage reduction for 2 turns.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "white"
         ],
         "classes": "Strategic, Action",
-        "cooldown": 2,
         "target_type": "ally",
         "is_aoe": false,
         "damage": 0,
@@ -1174,12 +1231,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Emergency Stabilization",
         "description": "Complete injury suppression — ally becomes invulnerable for 1 turn.",
-        "cost": [
+        "cooldown": 3,
+        "cooldown_int": 3,
+        "energy": [
           "white",
           "white"
         ],
         "classes": "Strategic, Instant",
-        "cooldown": 3,
         "target_type": "ally",
         "is_aoe": false,
         "damage": 0,
@@ -1197,12 +1255,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Wound Suppression",
         "description": "Suppresses bleeding and internal damage. Heals ally for 20 HP.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "white",
           "black"
         ],
         "classes": "Strategic, Instant",
-        "cooldown": 2,
         "target_type": "ally",
         "is_aoe": false,
         "damage": 0,
@@ -1220,11 +1279,12 @@ const CHARACTERS_DATA = [
       {
         "name": "Precision Strike",
         "description": "Targets a vital point with surgical accuracy. Deals 20 piercing damage.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "black"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -1246,19 +1306,21 @@ const CHARACTERS_DATA = [
     "identity": "Aoi Todo",
     "description": "Grade 1 with overwhelming strength and Boogie Woogie — claps hands to swap positions, completely disrupting enemies.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/7/79/Aoi_Todo_%28Anime%29.png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/7/79/Aoi_Todo_%28Anime%29.png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Setup",
     "rarity": "Rare",
-    "unique_mechanic": "Best Friend Instinct: After using Boogie Woogie, Todo's next Crushing Blow this turn costs 0 energy.",
-    "achievement_name": "My Best Friend!",
-    "achievement_desc": "Use Boogie Woogie then Crushing Blow on the same enemy in one turn. Grants +25 damage for 2 turns.",
     "skills": [
       {
         "name": "Boogie Woogie",
         "description": "Claps hands — swaps the enemy's position mid-action. Stuns the enemy for 1 turn.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "black"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -1276,11 +1338,12 @@ const CHARACTERS_DATA = [
       {
         "name": "Crushing Blow",
         "description": "A strike with the weight of 1m+ of muscle behind it. Deals 25 damage.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "green"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 25,
@@ -1298,12 +1361,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Disorienting Swap",
         "description": "Swaps and immediately counter-strikes. Deals 20 damage and weakens the enemy by 20 for 2 turns.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "red",
           "blue"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 20,
@@ -1321,12 +1385,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Best Friend Combo",
         "description": "Imagines fighting alongside his best friend — doubles the rhythm. Gains 25 bonus damage for 3 turns.",
-        "cost": [
+        "cooldown": 3,
+        "cooldown_int": 3,
+        "energy": [
           "white",
           "green"
         ],
         "classes": "Strategic, Action",
-        "cooldown": 3,
         "target_type": "self",
         "is_aoe": false,
         "damage": 0,
@@ -1348,19 +1413,21 @@ const CHARACTERS_DATA = [
     "identity": "Maki Zenin",
     "description": "Heavenly Restriction strips all cursed energy for a superhuman body. Masters every cursed tool in existence.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/2/2c/Maki_Zen%27in_%28Anime_4%29.png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/2/2c/Maki_Zen%27in_%28Anime_4%29.png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Tank",
     "rarity": "Epic",
-    "unique_mechanic": "Heavenly Body: Maki is completely immune to DoT damage (no cursed energy means curse effects cannot linger).",
-    "achievement_name": "Zero Cursed Energy, Maximum Strength",
-    "achievement_desc": "Kill an enemy with a Physical skill. All physical skills deal +15 pierce damage for 3 turns.",
     "skills": [
       {
         "name": "Playful Cloud",
         "description": "Three-section staff of the highest grade — deals 25 damage.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "green"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 25,
@@ -1378,11 +1445,12 @@ const CHARACTERS_DATA = [
       {
         "name": "Dragon-Bone",
         "description": "Absorbs the enemy's force and adds it to the next strike. Gains 10 DR and 20 bonus damage for 1 turn.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "white"
         ],
         "classes": "Strategic, Instant",
-        "cooldown": 1,
         "target_type": "self",
         "is_aoe": false,
         "damage": 0,
@@ -1400,12 +1468,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Split Soul Katana",
         "description": "A special-grade cursed tool that cuts the soul. Deals 30 piercing damage.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "green",
           "black"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -1423,12 +1492,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Heavenly Restriction: Peak Form",
         "description": "Gains 15 damage reduction for 3 turns. Attackers take 30 counter-damage from Maki's peak body.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "red",
           "green"
         ],
         "classes": "Bloodline, Action",
-        "cooldown": 4,
         "target_type": "self",
         "is_aoe": false,
         "damage": 0,
@@ -1450,19 +1520,21 @@ const CHARACTERS_DATA = [
     "identity": "Toge Inumaki",
     "description": "Cursed Speech — his words carry cursed energy, forcing reality to obey. Every command is a technique.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/c/cb/Toge_Inumaki_%28Anime_2%29.png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/c/cb/Toge_Inumaki_%28Anime_2%29.png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Specialist",
     "rarity": "Rare",
-    "unique_mechanic": "Voice Toll: Each Cursed Speech skill costs Toge 5 HP but permanently stacks +5 affliction damage (max +25).",
-    "achievement_name": "The Price of Power",
-    "achievement_desc": "Lose 15+ HP from self-damage in one battle. Grants +15 affliction damage for 3 turns.",
     "skills": [
       {
         "name": "Don't Move",
         "description": "Commands the enemy to halt. Stuns for 1 turn. Costs Toge 5 HP.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "blue"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -1480,12 +1552,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Blast Away",
         "description": "Commands the enemy to be repelled. Deals 20 damage. Costs Toge 5 HP.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "blue",
           "black"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 20,
@@ -1503,12 +1576,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Explode",
         "description": "Commands the enemy's body to detonate from within. Deals 30 affliction damage. Costs Toge 5 HP.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "red",
           "blue"
         ],
         "classes": "Affliction, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -1526,12 +1600,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Throat Medicine",
         "description": "Soothes the damage Cursed Speech does to his own throat. Heals Toge 30 HP.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "white",
           "black"
         ],
         "classes": "Strategic, Instant",
-        "cooldown": 2,
         "target_type": "self",
         "is_aoe": false,
         "damage": 0,
@@ -1553,20 +1628,22 @@ const CHARACTERS_DATA = [
     "identity": "Noritoshi Kamo",
     "description": "Blood Manipulation technique. Controls blood as projectiles, blades, and ensnaring binds.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/d/d5/Noritoshi_Kamo_(Anime).png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/d/d5/Noritoshi_Kamo_(Anime).png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Burst",
     "rarity": "Rare",
-    "unique_mechanic": "Blood Reclaim: Noritoshi heals 5 HP whenever he deals piercing damage (blood returns to him).",
-    "achievement_name": "Blood Art Mastery",
-    "achievement_desc": "Apply both DoT and pierce damage in the same turn. Grants +10 damage and +10 affliction for 2 turns.",
     "skills": [
       {
         "name": "Convergence",
         "description": "Compresses blood into a dense sphere fired at extreme speed. Deals 30 piercing damage.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "red",
           "black"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -1584,12 +1661,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Crimson Binding",
         "description": "Hardens blood into ropes that ensnare the enemy. Stuns for 1 turn and applies 10 affliction per turn for 2 turns.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "red",
           "blue"
         ],
         "classes": "Bloodline, Action",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -1607,12 +1685,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Flowing Red Scale: Surge",
         "description": "Floods adrenaline through blood manipulation. Deals 20 damage and gains 20 bonus damage for 2 turns.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "red",
           "black"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 20,
@@ -1630,13 +1709,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Blood Manipulation: Crimson Rain",
         "description": "Scatters compressed blood into a lethal shower. Deals 45 damage and 10 affliction per turn for 3 turns.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "red",
           "red",
           "blue"
         ],
         "classes": "Bloodline, Action",
-        "cooldown": 4,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 45,
@@ -1658,19 +1738,21 @@ const CHARACTERS_DATA = [
     "identity": "Kasumi Miwa",
     "description": "New Shadow Style iaijutsu. A single Batto Sword Draw can end a fight instantly. Simple Domain counters any Domain Expansion.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/6/64/Kasumi_Miwa_(Anime).png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/6/64/Kasumi_Miwa_(Anime).png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Bruiser",
     "rarity": "Rare",
-    "unique_mechanic": "Quick Draw Master: The first skill Miwa uses each turn costs 1 less energy (iaijutsu is about the first strike).",
-    "achievement_name": "One Strike, One Kill",
-    "achievement_desc": "Kill an enemy with Batto Sword Draw. Miwa becomes invulnerable for 1 turn.",
     "skills": [
       {
         "name": "Batto Sword Draw",
         "description": "A single iaijutsu draw — before the enemy can react. Deals 20 damage.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "green"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 20,
@@ -1688,12 +1770,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Three-Flash Consecutive Sword Draw",
         "description": "Three rapid-fire draw-and-sheath strikes in succession. Deals 35 damage.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "green",
           "black"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 35,
@@ -1711,11 +1794,12 @@ const CHARACTERS_DATA = [
       {
         "name": "Simple Domain",
         "description": "A miniature domain that neutralizes incoming techniques and disperses active domain expansions.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "white"
         ],
         "classes": "Strategic, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -1733,13 +1817,14 @@ const CHARACTERS_DATA = [
       {
         "name": "New Shadow Style: Zero Draw",
         "description": "A perfect draw that erases all momentum. Deals 40 damage and becomes invulnerable for 1 turn.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "green",
           "green",
           "black"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 4,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 40,
@@ -1761,19 +1846,21 @@ const CHARACTERS_DATA = [
     "identity": "Mai Zenin",
     "description": "Construction technique — creates one object from nothing per day. She uses it to conjure a perfect cursed bullet.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/8/86/Mai_Zen%27in_(Anime_4).png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/8/86/Mai_Zen%27in_(Anime_4).png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Bruiser",
     "rarity": "Rare",
-    "unique_mechanic": "One-a-Day: Construction: Special Bullet's bonus doesn't expire from turns — it persists until Mai uses a damage skill.",
-    "achievement_name": "The Perfect Bullet",
-    "achievement_desc": "Kill an enemy immediately after using Construction: Special Bullet. Gains +25 damage for 2 turns.",
     "skills": [
       {
         "name": "Revolver Shot",
         "description": "Standard cursed energy bullet. Deals 15 damage.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "black"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 15,
@@ -1791,11 +1878,12 @@ const CHARACTERS_DATA = [
       {
         "name": "Construction: Special Bullet",
         "description": "Creates one perfect bullet from nothing. Gains 20 bonus damage (persists until a damage skill is used).",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "red"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 2,
         "target_type": "self",
         "is_aoe": false,
         "damage": 0,
@@ -1813,12 +1901,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Rapid Fire",
         "description": "Empties the revolver. Deals 20 damage to all enemies.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "green",
           "black"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": true,
         "damage": 20,
@@ -1836,13 +1925,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Construction: Armor-Piercing Round",
         "description": "The constructed bullet ignores all defenses — forged to pierce the soul. Deals 40 affliction damage.",
-        "cost": [
+        "cooldown": 3,
+        "cooldown_int": 3,
+        "energy": [
           "red",
           "green",
           "black"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 3,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -1864,19 +1954,21 @@ const CHARACTERS_DATA = [
     "identity": "Utahime Iori",
     "description": "Solo Forbidden Area — a ritual performance that continuously amplifies all allies' cursed energy output.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/b/b0/Utahime_Iori_%28Anime_2%29.png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/b/b0/Utahime_Iori_%28Anime_2%29.png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Support",
     "rarity": "Rare",
-    "unique_mechanic": "Amplification Field: All strengthen effects Utahime applies last 1 extra turn (her ritual sustains the boost).",
-    "achievement_name": "Full Resonance",
-    "achievement_desc": "Have all 3 allies buffed with strengthen simultaneously. All allies gain +20 damage for 2 turns.",
     "skills": [
       {
         "name": "Cursed Strike",
         "description": "A focused cursed energy strike. Deals 15 damage.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "black"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 15,
@@ -1894,12 +1986,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Cursed Energy Boost",
         "description": "Channels amplified energy into one ally. Ally gains 20 bonus damage for 2 turns.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "white",
           "black"
         ],
         "classes": "Strategic, Action",
-        "cooldown": 1,
         "target_type": "ally",
         "is_aoe": false,
         "damage": 0,
@@ -1917,12 +2010,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Ritual Incantation",
         "description": "Begins the ritual chant — all allies gain 10 bonus damage for 2 turns.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "white",
           "blue"
         ],
         "classes": "Strategic, Action",
-        "cooldown": 2,
         "target_type": "ally",
         "is_aoe": true,
         "damage": 0,
@@ -1940,13 +2034,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Solo Forbidden Area",
         "description": "Full ritual performance — all allies gain 20 bonus damage for 1 turn.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "white",
           "white",
           "white"
         ],
         "classes": "Strategic, Action",
-        "cooldown": 4,
         "target_type": "ally",
         "is_aoe": true,
         "damage": 0,
@@ -1968,20 +2063,22 @@ const CHARACTERS_DATA = [
     "identity": "Yoshinobu Gakuganji",
     "description": "Converts electric guitar sound waves into cursed energy shockwaves. The music is the weapon.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/3/3c/Yoshinobu_Gakuganji_%28Anime%29.png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/3/3c/Yoshinobu_Gakuganji_%28Anime%29.png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "AoE",
     "rarity": "Rare",
-    "unique_mechanic": "Living Resonance: Gakuganji deals +5 bonus damage per living enemy (more bodies = more resonance chambers).",
-    "achievement_name": "Concert at Maximum Volume",
-    "achievement_desc": "Use Maximum Feedback while all 3 enemies are alive. All enemies are stunned for 1 additional turn.",
     "skills": [
       {
         "name": "Guitar Shockwave",
         "description": "Sound wave strikes one target. Deals 30 damage.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "blue",
           "black"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 30,
@@ -1999,12 +2096,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Cursed Resonance",
         "description": "Wide sound wave engulfs all enemies. Deals 20 damage to all enemies.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "blue",
           "blue"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": true,
         "damage": 20,
@@ -2022,12 +2120,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Feedback Loop",
         "description": "Sound waves build on each other for 3 turns. Deals 10 affliction per turn to all enemies.",
-        "cost": [
+        "cooldown": 3,
+        "cooldown_int": 3,
+        "energy": [
           "blue",
           "white"
         ],
         "classes": "Energy, Action",
-        "cooldown": 3,
         "target_type": "enemy",
         "is_aoe": true,
         "damage": 0,
@@ -2045,13 +2144,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Maximum Feedback",
         "description": "Cranks the amp to maximum — a devastating sound burst. Deals 45 damage and stuns for 1 turn.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "blue",
           "blue",
           "black"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 4,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 45,
@@ -2073,19 +2173,21 @@ const CHARACTERS_DATA = [
     "identity": "Momo Nishimiya",
     "description": "Broomstick flight and Tool Manipulation. Aerial recon and wind blades make her both scout and attacker.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/9/98/Momo_Nishimiya_%28Anime%29.png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/9/98/Momo_Nishimiya_%28Anime%29.png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "AoE",
     "rarity": "Rare",
-    "unique_mechanic": "Aerial Intel: Broomstick Recon also weakens one random enemy by 10 for 2 turns (she identifies their weakness).",
-    "achievement_name": "Perfect Aerial Survey",
-    "achievement_desc": "Use Broomstick Recon while all 3 allies are alive. All allies gain 20 DR for 2 turns.",
     "skills": [
       {
         "name": "Broomstick Recon",
         "description": "Surveys the battlefield from above. All allies gain 15 damage reduction for 2 turns.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "white"
         ],
         "classes": "Strategic, Action",
-        "cooldown": 1,
         "target_type": "ally",
         "is_aoe": true,
         "damage": 0,
@@ -2103,12 +2205,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Wind Sickle",
         "description": "A precise wind blade aimed at one target. Deals 30 damage.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "blue",
           "black"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 30,
@@ -2126,12 +2229,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Kamaitachi Barrage",
         "description": "Multiple wind blades fan out across all enemies. Deals 20 damage to all enemies.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "blue",
           "blue"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": true,
         "damage": 20,
@@ -2149,11 +2253,12 @@ const CHARACTERS_DATA = [
       {
         "name": "Aerial Evasion",
         "description": "Takes to the air on her broomstick — completely out of reach. Becomes invulnerable for 1 turn.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "black"
         ],
         "classes": "Strategic, Instant",
-        "cooldown": 4,
         "target_type": "self",
         "is_aoe": false,
         "damage": 0,
@@ -2175,20 +2280,22 @@ const CHARACTERS_DATA = [
     "identity": "Mei Mei",
     "description": "Grade 1 mercenary. Black Bird Manipulation commands crows — including using them as suicide bombs.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/a/a8/Mei_Mei_(Anime_2).png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/a/a8/Mei_Mei_(Anime_2).png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Punisher",
     "rarity": "Rare",
-    "unique_mechanic": "Kill Bonus: Mei Mei permanently gains +5 damage each time any enemy dies (max +15 total).",
-    "achievement_name": "Worth Every Coin",
-    "achievement_desc": "Deal the killing blow with Bird Strike: Suicide Bomb. Gains +20 damage for 3 turns.",
     "skills": [
       {
         "name": "Crow Flock",
         "description": "Sends a flock of crows to harry the enemy. Deals 20 damage and weakens by 10 for 2 turns.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "green",
           "black"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 20,
@@ -2206,12 +2313,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Avid Mercenary",
         "description": "Motivated by money — fights at peak efficiency. Gains 20 bonus damage for 2 turns.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "white",
           "black"
         ],
         "classes": "Strategic, Action",
-        "cooldown": 2,
         "target_type": "self",
         "is_aoe": false,
         "damage": 0,
@@ -2229,12 +2337,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Dive Bomb",
         "description": "Commands a crow to dive bomb — high speed, guaranteed to hit. Deals 30 piercing damage.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "blue",
           "blue"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -2252,13 +2361,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Bird Strike: Suicide Bomb",
         "description": "Sacrifices a crow — it detonates at point blank range. Cannot be blocked or evaded. Deals 45 affliction damage.",
-        "cost": [
+        "cooldown": 3,
+        "cooldown_int": 3,
+        "energy": [
           "blue",
           "blue",
           "black"
         ],
         "classes": "Affliction, Instant",
-        "cooldown": 3,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -2280,19 +2390,21 @@ const CHARACTERS_DATA = [
     "identity": "Naobito Zenin",
     "description": "Projection Sorcery maps 24-frame animations onto surfaces. Anything outside the frames is paralyzed. Fastest after Gojo.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/1/17/Naobito_Zenin_%28Anime_2%29.png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/1/17/Naobito_Zenin_%28Anime_2%29.png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Bruiser",
     "rarity": "Rare",
-    "unique_mechanic": "Frame Lock: While any enemy is stunned by Naobito, he cannot be stunned himself (he operates outside their frames).",
-    "achievement_name": "Fastest in the World",
-    "achievement_desc": "Stun an enemy with Projection Sorcery then deal 35+ damage in the same turn. Grants +20 damage for 2 turns.",
     "skills": [
       {
         "name": "Flash Strike",
         "description": "Moves faster than the eye can track. Deals 25 damage.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "green"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 25,
@@ -2310,12 +2422,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Projection Sorcery",
         "description": "Maps the enemy into 24 animation frames — anything outside is paralyzed. Deals 20 damage and stuns for 1 turn.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "red",
           "black"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 20,
@@ -2333,12 +2446,13 @@ const CHARACTERS_DATA = [
       {
         "name": "1/24 Frames: Maximum Speed",
         "description": "Moves within a single animation frame. Deals 35 piercing damage.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "red",
           "green"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -2356,13 +2470,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Speed of Flash: Full Burst",
         "description": "Unleashes full Projection Sorcery speed. Becomes invulnerable for 1 turn and gains 15 bonus damage for 2 turns.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "red",
           "red",
           "green"
         ],
         "classes": "Bloodline, Action",
-        "cooldown": 4,
         "target_type": "self",
         "is_aoe": false,
         "damage": 0,
@@ -2384,20 +2499,22 @@ const CHARACTERS_DATA = [
     "identity": "Toji Fushiguro",
     "description": "Sorcerer Killer. Heavenly Restriction strips all cursed energy for peak human physique. Cursed tools are his arsenal.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/d/db/Toji_Fushiguro_%28Anime%29.png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/d/db/Toji_Fushiguro_%28Anime%29.png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Burst",
     "rarity": "Epic",
-    "unique_mechanic": "Technique Hunter: Toji deals +15 damage to any target with an active strengthen or damage buff effect.",
-    "achievement_name": "Sorcerer Killer",
-    "achievement_desc": "Kill a character who used a non-Physical skill this battle. Grants +15 pierce for 3 turns.",
     "skills": [
       {
         "name": "Inverted Spear of Heaven",
         "description": "A cursed tool that nullifies all cursed techniques on contact. Deals 25 affliction damage.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "black",
           "green"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -2415,12 +2532,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Jinx: Worm Release",
         "description": "Deals 15 damage and 15 affliction per turn for 2 turns. The Jinx worm wears the target down.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "red",
           "black"
         ],
         "classes": "Affliction, Action",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 15,
@@ -2438,12 +2556,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Heavenly Restriction: Peak Body",
         "description": "Gains 20 bonus damage and 15 damage reduction for 2 turns.",
-        "cost": [
+        "cooldown": 3,
+        "cooldown_int": 3,
+        "energy": [
           "red",
           "green"
         ],
         "classes": "Bloodline, Action",
-        "cooldown": 3,
         "target_type": "self",
         "is_aoe": false,
         "damage": 0,
@@ -2461,13 +2580,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Playful Cloud: Finisher",
         "description": "The highest-grade non-cursed tool — three devastating strikes. Deals 65 damage.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "green",
           "green",
           "black"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 4,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 65,
@@ -2489,20 +2609,22 @@ const CHARACTERS_DATA = [
     "identity": "Yuki Tsukumo",
     "description": "Special grade sorcerer. Star Rage adds virtual mass to anything she touches for crushing gravitational attacks.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/2/22/Yuki_Tsukumo_%28Anime_3%29.png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/2/22/Yuki_Tsukumo_%28Anime_3%29.png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "AoE",
     "rarity": "Legendary",
-    "unique_mechanic": "Accumulating Mass: Every 2 turns, Yuki permanently gains +5 flat damage (virtual mass builds up, max +20).",
-    "achievement_name": "Special Grade Gravity",
-    "achievement_desc": "Deal 100+ total damage in a single turn. Gains +25 damage for 2 turns.",
     "skills": [
       {
         "name": "Star Rage: Impact",
         "description": "Adds virtual mass to her fist — crushing blow. Deals 25 damage.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "green",
           "black"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 25,
@@ -2520,12 +2642,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Star Rage: Slam",
         "description": "Concentrates virtual mass into a single point. Deals 35 piercing damage.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "red",
           "black"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -2543,12 +2666,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Garuda: Continuous Crush",
         "description": "Commands shikigami Garuda to apply Star Rage continuously. All enemies take 10 affliction per turn for 3 turns.",
-        "cost": [
+        "cooldown": 3,
+        "cooldown_int": 3,
+        "energy": [
           "white",
           "blue"
         ],
         "classes": "Strategic, Action",
-        "cooldown": 3,
         "target_type": "enemy",
         "is_aoe": true,
         "damage": 0,
@@ -2566,13 +2690,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Star Rage: Black Hole",
         "description": "Collapses overwhelming virtual mass. Deals 35 damage to all enemies and stuns for 1 turn.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "red",
           "red",
           "blue"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 4,
         "target_type": "enemy",
         "is_aoe": true,
         "damage": 35,
@@ -2594,19 +2719,21 @@ const CHARACTERS_DATA = [
     "identity": "Kusakabe",
     "description": "Grade 1 New Shadow Style swordsman. Pragmatic, efficient, hardened. No flashy techniques — just perfect fundamentals.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/9/9f/Atsuya_Kusakabe_(Anime_2).png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/9/9f/Atsuya_Kusakabe_(Anime_2).png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Tank",
     "rarity": "Rare",
-    "unique_mechanic": "Pragmatist: When Kusakabe targets an enemy already damaged this turn, the skill costs 1 less energy.",
-    "achievement_name": "Veteran's Resolve",
-    "achievement_desc": "Have counter trap kill an attacker in one hit. Grants immunity to weaken for 3 turns.",
     "skills": [
       {
         "name": "Sword Draw",
         "description": "A precise draw-and-strike. Deals 20 damage.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "green"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 20,
@@ -2624,12 +2751,13 @@ const CHARACTERS_DATA = [
       {
         "name": "New Shadow Style: Batto",
         "description": "Lightning-fast draw that leaves no opening. Deals 30 damage.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "green",
           "black"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 30,
@@ -2647,12 +2775,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Counter Stance",
         "description": "Hardened guard — attackers take 20 counter-damage and Kusakabe gains 15 DR for 2 turns.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "white",
           "black"
         ],
         "classes": "Strategic, Action",
-        "cooldown": 2,
         "target_type": "self",
         "is_aoe": false,
         "damage": 0,
@@ -2670,13 +2799,14 @@ const CHARACTERS_DATA = [
       {
         "name": "New Shadow Style: Full Form",
         "description": "Veteran's complete form — no openings, no hesitation. Deals 40 damage and gains 15 DR for 2 turns.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "green",
           "green",
           "white"
         ],
         "classes": "Physical, Action",
-        "cooldown": 4,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 40,
@@ -2698,20 +2828,22 @@ const CHARACTERS_DATA = [
     "identity": "Kokichi Muta",
     "description": "Heavenly Restriction stores 17 years of cursed energy in his immobile body. Remotely pilots Mechamaru.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/e/ea/Kokichi_Muta_%28Anime%29.png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/e/ea/Kokichi_Muta_%28Anime%29.png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Burst",
     "rarity": "Rare",
-    "unique_mechanic": "Stored Reserves: Mechamaru starts battle with 2 extra blue energy (17 years of accumulation released at once).",
-    "achievement_name": "17 Years Unleashed",
-    "achievement_desc": "Use Mode: Absolute. All of Mechamaru's skills deal +15 damage for 2 turns.",
     "skills": [
       {
         "name": "Ultra Cannon",
         "description": "Concentrated energy blast from the palm. Deals 25 damage.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "blue",
           "black"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 25,
@@ -2729,12 +2861,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Ultra Spin",
         "description": "Rapid spinning strikes from the puppet's bladed limbs. Deals 30 damage.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "green",
           "black"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 30,
@@ -2752,12 +2885,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Mode: Albatross",
         "description": "Mouth opens into a wide-bore cannon — devastating spread shot. Deals 35 damage and weakens by 15 for 1 turn.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "blue",
           "blue"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 35,
@@ -2775,13 +2909,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Mode: Absolute",
         "description": "Releases 17 years of stored cursed energy. Deals 55 damage and stuns for 1 turn.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "blue",
           "blue",
           "blue"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 4,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 55,
@@ -2803,20 +2938,22 @@ const CHARACTERS_DATA = [
     "identity": "Ui Ui",
     "description": "Instantaneous long-range teleportation. Can move anyone anywhere in an instant — nearly zero offensive power.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/8/88/Ui_Ui_%28Anime%29.png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/8/88/Ui_Ui_%28Anime%29.png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Support",
     "rarity": "Rare",
-    "unique_mechanic": "Perfect Escape: Once per battle, when an ally's HP reaches 0, if Ui Ui is alive and unstunned, that ally survives with 1 HP.",
-    "achievement_name": "I've Got You",
-    "achievement_desc": "Save an ally's life with the Perfect Escape passive. Both Ui Ui and the saved ally gain 15 DR for 2 turns.",
     "skills": [
       {
         "name": "Teleport: Evade",
         "description": "Teleports an ally away from danger in an instant. Ally becomes invulnerable for 1 turn.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "blue",
           "white"
         ],
         "classes": "Strategic, Instant",
-        "cooldown": 1,
         "target_type": "ally",
         "is_aoe": false,
         "damage": 0,
@@ -2834,12 +2971,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Teleport: Intercept",
         "description": "Teleports himself in front of an ally, taking the hit. Ally gains 30 damage reduction for 1 turn.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "white",
           "black"
         ],
         "classes": "Strategic, Instant",
-        "cooldown": 2,
         "target_type": "ally",
         "is_aoe": false,
         "damage": 0,
@@ -2857,13 +2995,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Disorienting Warp",
         "description": "Warps the enemy to a disorienting location. Enemy weakened by 25 for 2 turns and takes 15 affliction per turn for 2 turns.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "red",
           "blue",
           "white"
         ],
         "classes": "Strategic, Instant",
-        "cooldown": 4,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -2881,11 +3020,12 @@ const CHARACTERS_DATA = [
       {
         "name": "Desperate Punch",
         "description": "Ui Ui's last resort — a completely untrained punch. Deals 10 damage.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "black"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 10,
@@ -2907,20 +3047,22 @@ const CHARACTERS_DATA = [
     "identity": "Miguel Oduol",
     "description": "African sorcerer with the Black Rope — a cursed tool so powerful it negates even Gojo's Infinity.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/8/8e/Miguel_%28Anime%29.png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/8/8e/Miguel_%28Anime%29.png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Punisher",
     "rarity": "Rare",
-    "unique_mechanic": "Black Rope: Miguel's piercing attacks strip the target's active strengthen effects (the Rope negates technique enhancements).",
-    "achievement_name": "Even Infinity Falls",
-    "achievement_desc": "Strip a strengthen effect from an enemy with Black Rope Lash. Gains +20 damage for 3 turns.",
     "skills": [
       {
         "name": "Black Rope Lash",
         "description": "Strikes with the cursed Black Rope — negates cursed energy on contact. Deals 20 piercing damage, weakens by 15 for 2 turns, and strips active buffs.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "green",
           "black"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -2938,12 +3080,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Prayer Song: Hakuna Rana",
         "description": "The ritual dance amplifies his strength while diminishing the enemy's. Gains 20 bonus damage and weakens enemy by 15 for 2 turns.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "green",
           "blue"
         ],
         "classes": "Physical, Action",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -2961,12 +3104,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Black Rope: Binding",
         "description": "Wraps the enemy in the cursed rope — all their techniques are suppressed. Deals 25 damage and stuns for 1 turn.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "blue",
           "white"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 25,
@@ -2984,13 +3128,14 @@ const CHARACTERS_DATA = [
       {
         "name": "War Rhythm: Full Power",
         "description": "Full combat tempo reached — every strike lands at peak power. Deals 45 damage.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "green",
           "green",
           "blue"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 4,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 45,
@@ -3012,20 +3157,22 @@ const CHARACTERS_DATA = [
     "identity": "Master Tengen",
     "description": "Immortal sorcerer over 1000 years old. Maintains Japan's barrier network through the Immortality technique.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/1/16/Tengen_%28Anime%29.png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/1/16/Tengen_%28Anime%29.png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Support",
     "rarity": "Rare",
-    "unique_mechanic": "Thousand-Year Body: Once per battle, when Tengen would be defeated, he instead survives with 5 HP.",
-    "achievement_name": "A Thousand Years of Battle",
-    "achievement_desc": "Survive to turn 7 with Tengen alive. All allies gain 15 DR for 3 turns.",
     "skills": [
       {
         "name": "Barrier Pulse",
         "description": "Fires a compressed barrier as a projectile. Deals 20 piercing damage.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "blue",
           "black"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -3043,12 +3190,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Barrier Reinforcement",
         "description": "Strengthens the barrier around all allies. All allies gain 20 damage reduction for 2 turns.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "white",
           "white"
         ],
         "classes": "Strategic, Action",
-        "cooldown": 2,
         "target_type": "ally",
         "is_aoe": true,
         "damage": 0,
@@ -3066,13 +3214,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Pure Barrier",
         "description": "A perfect, absolute barrier. One ally becomes invulnerable for 1 turn.",
-        "cost": [
+        "cooldown": 3,
+        "cooldown_int": 3,
+        "energy": [
           "white",
           "white",
           "blue"
         ],
         "classes": "Strategic, Instant",
-        "cooldown": 3,
         "target_type": "ally",
         "is_aoe": false,
         "damage": 0,
@@ -3090,13 +3239,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Immortal Body",
         "description": "Over 1000 years of evolution — the body refuses to die. Heals 30 HP and becomes invulnerable for 1 turn.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "white",
           "red",
           "white"
         ],
         "classes": "Strategic, Instant",
-        "cooldown": 4,
         "target_type": "self",
         "is_aoe": false,
         "damage": 0,
@@ -3118,19 +3268,21 @@ const CHARACTERS_DATA = [
     "identity": "Yuta",
     "description": "Before he mastered her. Rika clings to him as an unstoppable cursed spirit — raw, unrefined, overwhelming.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/7/7d/Yuta_Okkotsu_%28JJK0_Anime%29.png",
+    "portrait_url": "/static/assets/portraits/yuta-okkotsu-jjk-0.svg",
+    "portrait_source": "local",
+    "char_type": "Specialist",
+    "role": "Burst",
     "rarity": "Rare",
-    "unique_mechanic": "Rika's Wrath: When Yuta (JJK 0) takes damage, his next offensive skill deals +10 damage (Rika reacts to his pain).",
-    "achievement_name": "Rika, I'll Protect Everyone",
-    "achievement_desc": "Use Rika: True Manifestation for the first time. Grants +20 pierce for 2 turns.",
     "skills": [
       {
         "name": "Basic Slash",
         "description": "Yuta strikes with his sword — still learning, but determined. Deals 20 damage.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "green"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 20,
@@ -3148,12 +3300,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Rika: Lunge",
         "description": "Rika lunges at the enemy with ferocious cursed energy. Deals 35 piercing damage.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "red",
           "black"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -3171,12 +3324,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Rika: Scream",
         "description": "Rika's cursed energy erupts — uncontrollable. Deals 25 affliction damage to the enemy and 10 affliction to Yuta.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "red",
           "blue"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -3194,13 +3348,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Rika: True Manifestation",
         "description": "Rika appears in full — a special grade cursed spirit with no restraint. Deals 60 piercing damage.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "red",
           "red",
           "blue"
         ],
         "classes": "Bloodline, Action",
-        "cooldown": 4,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -3222,19 +3377,21 @@ const CHARACTERS_DATA = [
     "identity": "Yuta",
     "description": "Sendai Colony Culling Game. Peak Copy technique and Black Flash mastery — a one-man army.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/4/4e/Yuta_Okkotsu_%28Culling_Game%29.png",
+    "portrait_url": "/static/assets/portraits/yuta-okkotsu-sendai.svg",
+    "portrait_source": "local",
+    "char_type": "Specialist",
+    "role": "AoE",
     "rarity": "Epic",
-    "unique_mechanic": "Peak Copy: After using Copy: Broadcast, Yuta's next offensive skill deals +15 damage (technique mastery compounds).",
-    "achievement_name": "Special Grade Solo",
-    "achievement_desc": "Kill 2 enemies using Copy skills in one battle. Rika: Maximum Output cooldown reduced by 2 turns.",
     "skills": [
       {
         "name": "Cursed Sword: Full Draw",
         "description": "Full-power draw strike. Deals 25 damage.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "green"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 25,
@@ -3252,12 +3409,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Copy: Broadcast",
         "description": "Deals 20 piercing damage to all enemies and weakens them by 10 for 2 turns.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "blue",
           "blue"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": true,
         "damage": 0,
@@ -3275,12 +3433,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Black Flash: Sendai",
         "description": "Black Flash mastery — spatial distortion at impact. Deals 40 damage and gains 20 bonus damage for 1 turn.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "green",
           "blue"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 40,
@@ -3298,13 +3457,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Rika: Maximum Output",
         "description": "Deals 40 piercing damage to all enemies. Yuta becomes invulnerable for 1 turn.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "red",
           "blue",
           "white"
         ],
         "classes": "Bloodline, Action",
-        "cooldown": 4,
         "target_type": "enemy",
         "is_aoe": true,
         "damage": 0,
@@ -3326,20 +3486,22 @@ const CHARACTERS_DATA = [
     "identity": "Yuta",
     "description": "Yuta Okkotsu wearing Satoru Gojo's corpse — channeling Infinity and Six Eyes through borrowed flesh.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/b/b5/Yuta_Gojo_Body.png",
+    "portrait_url": "/static/assets/portraits/yuta-gojo-s-body.svg",
+    "portrait_source": "local",
+    "char_type": "Specialist",
+    "role": "Specialist",
     "rarity": "Legendary",
-    "unique_mechanic": "Borrowed Power: Using Infinity: Borrowed while already invulnerable extends invuln by 2 turns instead of resetting to 1.",
-    "achievement_name": "The Weight of Borrowed Power",
-    "achievement_desc": "Become invulnerable 3 times in one battle. Gains +20 damage for 3 turns.",
     "skills": [
       {
         "name": "Copied Technique: Slash",
         "description": "A technique copied through Six Eyes — the optimal strike point revealed. Deals 20 piercing damage.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "blue",
           "black"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -3357,12 +3519,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Cursed Speech: Don't Move",
         "description": "Copied from Inumaki — commands the enemy to halt. Stuns for 1 turn and deals 15 affliction damage.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "blue",
           "white"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -3380,12 +3543,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Rika: AoE Burst",
         "description": "Rika expands outward from Gojo's body. Deals 35 damage to all enemies.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "red",
           "blue"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": true,
         "damage": 35,
@@ -3403,11 +3567,12 @@ const CHARACTERS_DATA = [
       {
         "name": "Infinity: Borrowed",
         "description": "Channels Infinity through Six Eyes and Gojo's corpse. Becomes invulnerable for 1 turn and gains 15 DR for 2 turns.",
-        "cost": [
+        "cooldown": 3,
+        "cooldown_int": 3,
+        "energy": [
           "black"
         ],
         "classes": "Strategic, Instant",
-        "cooldown": 3,
         "target_type": "self",
         "is_aoe": false,
         "damage": 0,
@@ -3429,19 +3594,21 @@ const CHARACTERS_DATA = [
     "identity": "Gojo",
     "description": "Before mastery. Near-death against Toji awakened Infinity — an instinctual survival response. Blue is all he has.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/6/6e/Young_Gojo_%28Anime%29.png",
+    "portrait_url": "/static/assets/portraits/gojo-young.svg",
+    "portrait_source": "local",
+    "char_type": "Specialist",
+    "role": "Specialist",
     "rarity": "Epic",
-    "unique_mechanic": "Near-Death Awakening: Each time Gojo (Young) takes damage, he gains +5 cumulative damage (max +25). Resets on kill.",
-    "achievement_name": "Limitless Awakened",
-    "achievement_desc": "Use Limitless Awakening. Grants +15 damage for 3 turns as the true potential surfaces.",
     "skills": [
       {
         "name": "Cursed Technique Lapse: Blue",
         "description": "Pulls the enemy in with negative space. Deals 15 damage and stuns for 1 turn.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "blue"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 15,
@@ -3459,12 +3626,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Blue: Cascade",
         "description": "A powerful Blue wave sweeps through the enemy line. Deals 25 damage to all enemies.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "blue",
           "black"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": true,
         "damage": 25,
@@ -3482,11 +3650,12 @@ const CHARACTERS_DATA = [
       {
         "name": "Infinity: Awakened Reflex",
         "description": "Infinity activates instinctually — the near-death survival response. Becomes invulnerable for 1 turn.",
-        "cost": [
+        "cooldown": 3,
+        "cooldown_int": 3,
+        "energy": [
           "black"
         ],
         "classes": "Strategic, Instant",
-        "cooldown": 3,
         "target_type": "self",
         "is_aoe": false,
         "damage": 0,
@@ -3504,13 +3673,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Limitless Awakening",
         "description": "Near-death has fully awakened the Limitless — true potential begins to surface. Gains 25 bonus damage for 3 turns.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "blue",
           "white",
           "black"
         ],
         "classes": "Energy, Action",
-        "cooldown": 4,
         "target_type": "self",
         "is_aoe": false,
         "damage": 0,
@@ -3532,20 +3702,22 @@ const CHARACTERS_DATA = [
     "identity": "Gojo",
     "description": "Returned from Prison Realm — furious, fully calibrated, holding nothing back.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/5/5c/Gojo_Unsealed_%28Anime%29.png",
+    "portrait_url": "/static/assets/portraits/gojo-unsealed.svg",
+    "portrait_source": "local",
+    "char_type": "Specialist",
+    "role": "Burst",
     "rarity": "Legendary",
-    "unique_mechanic": "Unbridled Fury: Gojo (Unsealed) cannot be stunned — his rage and absolute focus override all paralysis.",
-    "achievement_name": "Welcome Back",
-    "achievement_desc": "Use Blue: Maximum while all 3 enemies are alive. All enemies are stunned for 1 additional turn.",
     "skills": [
       {
         "name": "Blue: Maximum",
         "description": "Blue at full power — pulls in all enemies simultaneously. Deals 20 damage to all enemies and stuns all for 1 turn.",
-        "cost": [
+        "cooldown": 3,
+        "cooldown_int": 3,
+        "energy": [
           "blue",
           "black"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 3,
         "target_type": "enemy",
         "is_aoe": true,
         "damage": 20,
@@ -3563,12 +3735,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Cursed Technique Reversal: Red",
         "description": "Releases a repulsion blast. Deals 35 piercing damage and weakens by 10 for 1 turn.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "red",
           "blue"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -3586,13 +3759,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Hollow Technique: Purple",
         "description": "Full-power Purple — no longer restrained. Deals 55 affliction damage.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "red",
           "blue",
           "white"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 4,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -3610,11 +3784,12 @@ const CHARACTERS_DATA = [
       {
         "name": "Infinity: Maximum Efficiency",
         "description": "Six Eyes operating at full calibration. Becomes invulnerable for 1 turn.",
-        "cost": [
+        "cooldown": 3,
+        "cooldown_int": 3,
+        "energy": [
           "black"
         ],
         "classes": "Strategic, Instant",
-        "cooldown": 3,
         "target_type": "self",
         "is_aoe": false,
         "damage": 0,
@@ -3636,19 +3811,21 @@ const CHARACTERS_DATA = [
     "identity": "Sukuna",
     "description": "Ryomen Sukuna possessing Yuji Itadori — not at full power, but even a fraction is catastrophic.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/3/3c/Sukuna_%28Anime_2%29.png",
+    "portrait_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/3/3c/Sukuna_%28Anime_2%29.png",
+    "portrait_source": "remote",
+    "char_type": "Specialist",
+    "role": "Burst",
     "rarity": "Legendary",
-    "unique_mechanic": "First Awakening: The very first use of Dismantle each battle costs 0 energy (Sukuna wakes up and immediately strikes).",
-    "achievement_name": "Even a Fraction",
-    "achievement_desc": "Deal 75+ total affliction damage in one battle. All skills deal +10 for 2 turns.",
     "skills": [
       {
         "name": "Innate Technique: Dismantle",
         "description": "An invisible, formless slash cutting through space itself. Deals 25 affliction damage — cannot be blocked.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "red"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -3666,12 +3843,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Innate Technique: Cleave",
         "description": "Adapts cursed energy to the target's defenses. Deals 35 piercing damage.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "red",
           "black"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -3689,12 +3867,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Vessel's Strength",
         "description": "Uses Yuji's extraordinary body at full force. Deals 30 damage and weakens by 15 for 2 turns.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "green",
           "black"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 30,
@@ -3712,13 +3891,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Shrine: Limited Domain",
         "description": "Opens a fragment of the Shrine domain. Deals 40 affliction damage to all enemies.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "red",
           "red",
           "black"
         ],
         "classes": "Bloodline, Action",
-        "cooldown": 4,
         "target_type": "enemy",
         "is_aoe": true,
         "damage": 0,
@@ -3740,20 +3920,22 @@ const CHARACTERS_DATA = [
     "identity": "Sukuna",
     "description": "Twenty fingers. Megumi's body. Shrine domain, Mahoraga at his command — Sukuna at the apex of his reincarnated power.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/f/fa/Sukuna_Megumi_Body_%28Anime%29.png",
+    "portrait_url": "/static/assets/portraits/sukuna-full-power.svg",
+    "portrait_source": "local",
+    "char_type": "Specialist",
+    "role": "AoE",
     "rarity": "Legendary",
-    "unique_mechanic": "No Restraint: When any enemy character dies, all of Sukuna's active cooldowns decrease by 1 turn.",
-    "achievement_name": "The King Has No Mercy",
-    "achievement_desc": "Kill 2 enemies in a single turn. All cooldowns immediately decrease by 2 additional turns.",
     "skills": [
       {
         "name": "Dismantle: Cascade",
         "description": "Formless slashes fan out across all enemies. Deals 25 affliction damage to all enemies.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "red",
           "black"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": true,
         "damage": 0,
@@ -3771,12 +3953,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Cleave: Maximum",
         "description": "Full-power Cleave adapted for maximum penetration. Deals 45 piercing damage.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "red",
           "red"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -3794,12 +3977,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Adaptation: Wheel Guard",
         "description": "Channels Mahoraga's adaptation. Gains 15 DR for 3 turns; attackers take 20 counter-damage.",
-        "cost": [
+        "cooldown": 3,
+        "cooldown_int": 3,
+        "energy": [
           "red",
           "blue"
         ],
         "classes": "Bloodline, Action",
-        "cooldown": 3,
         "target_type": "self",
         "is_aoe": false,
         "damage": 0,
@@ -3817,13 +4001,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Malevolent Shrine",
         "description": "Domain Expansion. Shrine fills the entire area with Dismantle and Cleave. Deals 55 affliction damage to all enemies.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "red",
           "red",
           "blue"
         ],
         "classes": "Bloodline, Action",
-        "cooldown": 4,
         "target_type": "enemy",
         "is_aoe": true,
         "damage": 0,
@@ -3845,20 +4030,22 @@ const CHARACTERS_DATA = [
     "identity": "Sukuna",
     "description": "The King of Curses in his true body — four arms, two faces, the most powerful sorcerer in history.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/9/9a/Sukuna_True_Form_%28Anime%29.png",
+    "portrait_url": "/static/assets/portraits/sukuna-heian-era.svg",
+    "portrait_source": "local",
+    "char_type": "Specialist",
+    "role": "AoE",
     "rarity": "Legendary",
-    "unique_mechanic": "Ancient Dominance: Sukuna (Heian Era) deals +10 damage to any target with an active weaken effect.",
-    "achievement_name": "Bow Before the King",
-    "achievement_desc": "Have all 3 enemies weakened simultaneously. Sukuna deals +15 pierce AoE for 1 turn.",
     "skills": [
       {
         "name": "Four-Arm Strike",
         "description": "Strikes simultaneously with all four arms. Deals 25 damage to all enemies.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "green",
           "black"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": true,
         "damage": 25,
@@ -3876,12 +4063,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Dismantle: Ancient Form",
         "description": "The original Dismantle — refined over centuries. Deals 40 affliction damage.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "red",
           "black"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -3899,12 +4087,13 @@ const CHARACTERS_DATA = [
       {
         "name": "King's Aura",
         "description": "Overwhelming pressure makes lesser beings freeze. Stuns all enemies for 1 turn and gains 20 DR for 2 turns.",
-        "cost": [
+        "cooldown": 3,
+        "cooldown_int": 3,
+        "energy": [
           "red",
           "white"
         ],
         "classes": "Bloodline, Action",
-        "cooldown": 3,
         "target_type": "enemy",
         "is_aoe": true,
         "damage": 0,
@@ -3922,13 +4111,14 @@ const CHARACTERS_DATA = [
       {
         "name": "World Slash",
         "description": "A slash so vast it carves the landscape. Deals 45 piercing damage to all enemies.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "red",
           "red",
           "red"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 4,
         "target_type": "enemy",
         "is_aoe": true,
         "damage": 0,
@@ -3950,19 +4140,21 @@ const CHARACTERS_DATA = [
     "identity": "Yuji",
     "description": "Four consecutive Black Flashes in Shibuya — Yuji's raw cursed energy resonance unlocked at an unprecedented level.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/c/ce/Yuji_Shibuya_%28Anime%29.png",
+    "portrait_url": "/static/assets/portraits/yuji-black-flash.svg",
+    "portrait_source": "local",
+    "char_type": "Specialist",
+    "role": "Burst",
     "rarity": "Epic",
-    "unique_mechanic": "Consecutive Resonance: Each successive damage skill this turn deals +5 more (stacks up to +20; resets each turn).",
-    "achievement_name": "Four Consecutive Flashes",
-    "achievement_desc": "Use 4 or more damage skills in a single battle turn across all characters. The next skill used deals +30 damage.",
     "skills": [
       {
         "name": "Divergent Fist",
         "description": "Strikes for 20 damage. The delayed cursed energy blast deals 10 affliction damage next turn.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "green"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 20,
@@ -3980,12 +4172,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Black Flash: Consecutive",
         "description": "Chains multiple Black Flashes in rapid succession. Deals 40 damage and gains 15 bonus damage for 2 turns.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "green",
           "blue"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 40,
@@ -4003,12 +4196,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Shrine Affinity",
         "description": "Sukuna's technique resonates — affliction slashes erupt outward. Deals 20 affliction damage to all enemies.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "red",
           "black"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": true,
         "damage": 0,
@@ -4026,13 +4220,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Peak Output: Black Flash",
         "description": "Maximum resonance — the perfect Black Flash at peak cursed energy output. Deals 55 damage and stuns for 1 turn.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "green",
           "green",
           "blue"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 4,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 55,
@@ -4054,19 +4249,21 @@ const CHARACTERS_DATA = [
     "identity": "Yuji",
     "description": "Yuji's connection to Kenjaku and Choso surfaces. Blood Manipulation awakens, letting him fight with his own blood.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/a/a3/Yuji_Awakened_%28Anime%29.png",
+    "portrait_url": "/static/assets/portraits/yuji-awakened.svg",
+    "portrait_source": "local",
+    "char_type": "Specialist",
+    "role": "Burst",
     "rarity": "Epic",
-    "unique_mechanic": "Blood Trauma Awakening: First time this battle Yuji takes 20+ affliction damage, permanently gains +10 damage.",
-    "achievement_name": "I Am No Longer Alone",
-    "achievement_desc": "Use Blood Manipulation: Convergence Burst. Heals 20 HP as Choso's blood technique remembers the bond.",
     "skills": [
       {
         "name": "Divergent Fist",
         "description": "Strikes for 20 damage. The delayed cursed energy blast deals 10 affliction damage next turn.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "green"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 20,
@@ -4084,12 +4281,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Piercing Blood",
         "description": "Compresses blood into a needle at extreme speed. Deals 35 piercing damage.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "red",
           "black"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -4107,12 +4305,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Blood Edge",
         "description": "Forms hardened blood into a blade. Deals 25 damage and applies 10 affliction per turn for 2 turns.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "red",
           "green"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 25,
@@ -4130,13 +4329,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Blood Manipulation: Convergence Burst",
         "description": "Compresses his blood to the limit and detonates it at close range. Deals 50 affliction damage.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "red",
           "red",
           "black"
         ],
         "classes": "Bloodline, Instant",
-        "cooldown": 4,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -4158,19 +4358,21 @@ const CHARACTERS_DATA = [
     "identity": "Kenjaku",
     "description": "An ancient sorcerer who has switched bodies for over a thousand years. Currently in Suguru Geto's body.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/3/31/Kenjaku_%28Anime%29.png",
+    "portrait_url": "/static/assets/portraits/kenjaku.svg",
+    "portrait_source": "local",
+    "char_type": "Specialist",
+    "role": "Control",
     "rarity": "Legendary",
-    "unique_mechanic": "Chaos Harvest: Kenjaku gains 1 random energy each time any character dies (either team). He profits from all death.",
-    "achievement_name": "A Thousand Years of Plotting",
-    "achievement_desc": "Survive to turn 10 with Kenjaku alive. Prison Realm fires again, stunning a random enemy for 1 turn.",
     "skills": [
       {
         "name": "Cursed Spirit: Deploy",
         "description": "Deploys a captured cursed spirit to attack. Deals 20 damage and applies 10 affliction per turn for 2 turns.",
-        "cost": [
+        "cooldown": 1,
+        "cooldown_int": 1,
+        "energy": [
           "black"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 1,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 20,
@@ -4188,12 +4390,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Cursed Spirit: Swarm",
         "description": "Releases multiple captured spirits simultaneously. Deals 30 damage to all enemies.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "blue",
           "black"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": true,
         "damage": 30,
@@ -4211,13 +4414,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Prison Realm",
         "description": "Deploys the Prison Realm — a special grade cursed object that seals everything. Stuns one enemy for 2 turns.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "blue",
           "white",
           "black"
         ],
         "classes": "Strategic, Action",
-        "cooldown": 4,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -4235,13 +4439,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Maximum: Uzumaki",
         "description": "Absorbs all captured spirits and fires their combined power. Deals 50 affliction damage to all enemies.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "red",
           "blue",
           "blue"
         ],
         "classes": "Bloodline, Action",
-        "cooldown": 4,
         "target_type": "enemy",
         "is_aoe": true,
         "damage": 0,
@@ -4263,19 +4468,21 @@ const CHARACTERS_DATA = [
     "identity": "Hiromi Higuruma",
     "description": "A lawyer dragged into the Culling Game. Deadly Sentencing domain renders a verdict — Guilty means death.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/e/e8/Hiromi_Higuruma_%28Anime%29.png",
+    "portrait_url": "/static/assets/portraits/hiromi-higuruma.svg",
+    "portrait_source": "local",
+    "char_type": "Specialist",
+    "role": "Burst",
     "rarity": "Epic",
-    "unique_mechanic": "Final Verdict: When Higuruma lands the killing blow, all remaining enemies are weakened by 10 for 2 turns.",
-    "achievement_name": "Guilty",
-    "achievement_desc": "Use Executioner's Sword on a target already weakened by Confiscation. Grants +30 pierce for 2 turns.",
     "skills": [
       {
         "name": "Judicial Gavel",
         "description": "Strikes with the cursed Gavel — the implement of judgment. Deals 20 damage.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "black"
         ],
         "classes": "Physical, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 20,
@@ -4293,12 +4500,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Confiscation",
         "description": "The court rules: technique confiscated. Weakens the enemy by 25 for 2 turns.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "white",
           "black"
         ],
         "classes": "Strategic, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -4316,13 +4524,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Executioner's Sword",
         "description": "The sentence is carried out — a sword that erases the condemned. Deals 60 piercing damage.",
-        "cost": [
+        "cooldown": 3,
+        "cooldown_int": 3,
+        "energy": [
           "blue",
           "blue",
           "black"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 3,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -4340,13 +4549,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Deadly Sentencing",
         "description": "The courtroom renders its judgment. Stuns for 1 turn and weakens by 20 for 2 turns.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "blue",
           "white",
           "black"
         ],
         "classes": "Strategic, Action",
-        "cooldown": 4,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -4368,19 +4578,21 @@ const CHARACTERS_DATA = [
     "identity": "Uraume",
     "description": "Sukuna's devoted retainer for over a thousand years. Ice Formation technique — absolute mastery of cold.",
     "image_url": "https://static.wikia.nocookie.net/jujutsu-kaisen/images/e/ec/Uraume_%28Anime%29.png",
+    "portrait_url": "/static/assets/portraits/uraume.svg",
+    "portrait_source": "local",
+    "char_type": "Specialist",
+    "role": "Control",
     "rarity": "Epic",
-    "unique_mechanic": "Eternal Cold: Uraume's DoT effects cannot be removed by cleanse or dispel effects (the ice cannot be thawed).",
-    "achievement_name": "The King's Retainer",
-    "achievement_desc": "Apply DoT to all 3 enemies in a single battle. DoT damage increases to 25 per tick for 3 turns.",
     "skills": [
       {
         "name": "Ice Shard",
         "description": "Fires a sharpened ice shard at the enemy. Deals 20 piercing damage.",
-        "cost": [
+        "cooldown": 0,
+        "cooldown_int": 0,
+        "energy": [
           "blue"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 0,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -4398,12 +4610,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Frost Calm",
         "description": "Encases the enemy in a perfect layer of ice — complete stillness. Stuns for 1 turn.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "blue",
           "white"
         ],
         "classes": "Energy, Instant",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -4421,12 +4634,13 @@ const CHARACTERS_DATA = [
       {
         "name": "Icefall",
         "description": "A cascade of ice continuously forms over the target. Deals 15 affliction per turn for 3 turns.",
-        "cost": [
+        "cooldown": 2,
+        "cooldown_int": 2,
+        "energy": [
           "blue",
           "black"
         ],
         "classes": "Energy, Action",
-        "cooldown": 2,
         "target_type": "enemy",
         "is_aoe": false,
         "damage": 0,
@@ -4444,13 +4658,14 @@ const CHARACTERS_DATA = [
       {
         "name": "Ice Formation: Absolute Zero",
         "description": "Temperature drops to absolute zero. Deals 35 damage to all enemies and stuns all for 1 turn.",
-        "cost": [
+        "cooldown": 4,
+        "cooldown_int": 4,
+        "energy": [
           "blue",
           "blue",
           "white"
         ],
         "classes": "Energy, Action",
-        "cooldown": 4,
         "target_type": "enemy",
         "is_aoe": true,
         "damage": 35,

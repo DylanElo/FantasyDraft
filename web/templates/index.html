@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@600;700;900&family=Yuji+Mai&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='jjk-tokens.css') }}?v=1">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=28">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=30">
   <link rel="stylesheet" href="{{ url_for('static', filename='jjk-theme.css') }}?v=1">
   <link rel="stylesheet" href="{{ url_for('static', filename='arena-redesign.css') }}?v=1">
   <script src="{{ url_for('static', filename='socket.io.min.js') }}?v=4.7.2"></script>
@@ -420,8 +420,8 @@
     const BATTLE_V2_ENABLED = {{ 'true' if battle_v2_enabled else 'false' }};
     const BATTLE_V2_STARTER_ROSTER = {{ battle_v2_catalog | tojson }};
   </script>
-  <script src="{{ url_for('static', filename='characters_data.js') }}?v=17"></script>
+  <script src="{{ url_for('static', filename='characters_data.js') }}?v=19"></script>
   <script src="{{ url_for('static', filename='effects.js') }}?v=16"></script>
-  <script src="{{ url_for('static', filename='app.js') }}?v=33"></script>
+  <script src="{{ url_for('static', filename='app.js') }}?v=36"></script>
 </body>
 </html>

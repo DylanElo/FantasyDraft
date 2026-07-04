@@ -85,6 +85,7 @@ def serialize_player(player: PlayerState, viewer_id: str) -> dict:
         "team": [serialize_character(character, viewer_id) for character in player.team],
         "active_slots": list(player.active_slots),
         "queue_confirmed": player.queue_confirmed,
+        "energy_converted_this_turn": player.energy_converted_this_turn,
     }
 
 

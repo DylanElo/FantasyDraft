@@ -187,6 +187,7 @@ class PlayerState:
     team: list[CharacterState] = field(default_factory=list)
     active_slots: list[int] = field(default_factory=lambda: [0, 1, 2])
     queue_confirmed: bool = False
+    energy_converted_this_turn: bool = False
 
 
 @dataclass(slots=True)

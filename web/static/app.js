@@ -812,6 +812,25 @@ function v2QueueHTML() {
     }).join('');
 }
 
+function v2LogEntryHTML(event) {
+    const type = String(event.type || 'event').replace(/_/g, ' ');
+    const tone = event.type === 'damage' || event.type === 'status_damage'
+        ? 'damage'
+        : event.type === 'heal' || event.type === 'health_steal'
+            ? 'heal'
+            : event.type === 'battle_finished'
+                ? 'finish'
+                : event.type && event.type.includes('status')
+                    ? 'status'
+                    : 'neutral';
+    return `
+      <div class="log-entry v2-log-entry v2-log-entry--${tone}">
+        <span>Turn ${esc(event.turn_number || '')}</span>
+        <strong>${esc(type)}</strong>
+        <em>${esc(event.message)}</em>
+      </div>`;
+}
+
 function renderClassicV2() {
     const state = v2State.state;
     const title = document.getElementById('v2-phase-title');
@@ -855,9 +874,7 @@ function renderClassicV2() {
         ).join('')}`
         : '<div class="v2-empty">Select one of your fighters.</div>';
     document.getElementById('v2-queue-panel').innerHTML = v2QueueHTML();
-    document.getElementById('v2-log').innerHTML = (state.event_log || []).slice().reverse().slice(0, 8).map(event =>
-        `<div class="log-entry">${esc(event.message)}</div>`
-    ).join('');
+    document.getElementById('v2-log').innerHTML = (state.event_log || []).slice().reverse().slice(0, 10).map(v2LogEntryHTML).join('');
     document.getElementById('btn-v2-confirm').disabled = !isMyTurn || v2State.actions.length === 0;
     document.getElementById('btn-v2-cancel').disabled = !isMyTurn || v2State.actions.length === 0;
     document.getElementById('btn-v2-end-turn').disabled = !isMyTurn;

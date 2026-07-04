@@ -3739,6 +3739,36 @@ html, body {
   overflow-y: auto;
 }
 
+.v2-log-entry {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  gap: 7px;
+  align-items: center;
+}
+
+.v2-log-entry span,
+.v2-log-entry strong {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.v2-log-entry strong {
+  color: #d8b4fe;
+}
+
+.v2-log-entry em {
+  min-width: 0;
+  color: var(--text);
+  font-style: normal;
+  overflow-wrap: anywhere;
+}
+
+.v2-log-entry--damage em { color: #fca5a5; }
+.v2-log-entry--heal em { color: #86efac; }
+.v2-log-entry--status em { color: #fde68a; }
+.v2-log-entry--finish em { color: var(--gold); font-weight: 800; }
+
 @media (max-width: 900px) {
   .v2-layout {
     grid-template-columns: 1fr;

@@ -69,6 +69,17 @@ Clears the current player's pending queue and returns to planning.
 {}
 ```
 
+### `battle_v2_end_turn`
+
+Clears any pending actions and ends the current player's turn without resolving
+skills. Normal turn-end status/cooldown cleanup still runs. In local CPU rooms,
+the server immediately runs CPU turns until control returns to the human or the
+match finishes.
+
+```json
+{}
+```
+
 ### `battle_v2_surrender`
 
 Concedes the v2 match for the current player.

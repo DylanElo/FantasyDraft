@@ -162,6 +162,23 @@ def test_cancel_queue_returns_to_planning():
     assert serialized["queue_order"]["p1"] == []
 
 
+def test_end_turn_clears_pending_actions_and_advances():
+    manager, _ = start_manager()
+    state = manager.get_state("room")
+    state.pending_actions["p1"] = []
+    state.queue_order["p1"] = []
+    p2_energy_before = sum(state.players["p2"].energy.values())
+
+    serialized = manager.end_turn("room", "p1")
+
+    assert serialized["turn_player_id"] == "p2"
+    assert serialized["phase"] == "planning"
+    assert serialized["pending_actions"]["p1"] == []
+    assert serialized["queue_order"]["p1"] == []
+    assert sum(serialized["players"]["p2"]["energy"].values()) == p2_energy_before + 3
+    assert serialized["event_log"][-1]["message"] == "Player One ended their turn"
+
+
 def test_session_can_finish_match_from_full_three_action_queue():
     manager, _ = start_manager()
     state = manager.get_state("room")

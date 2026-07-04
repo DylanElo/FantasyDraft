@@ -93,3 +93,18 @@ def test_battle_v2_socket_surrender_finishes_match(monkeypatch):
 
     finished = received_payload(client, "battle_v2_finished")
     assert finished == {"winner_id": "__cpu_v2__"}
+
+
+def test_battle_v2_socket_end_turn_runs_cpu_response(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    client = socket_client()
+    client.emit("battle_v2_start_classic", {"room_id": "socket-v2", "player_name": "Tester"})
+    start_state = received_payload(client, "battle_v2_update")
+    player_id = start_state["turn_player_id"]
+
+    client.emit("battle_v2_end_turn", {})
+
+    resolved_state = received_payload(client, "battle_v2_update")
+    assert resolved_state["turn_player_id"] == player_id
+    assert any(event["message"] == "Tester ended their turn" for event in resolved_state["event_log"])
+    assert any(event["type"] == "skill_resolved" for event in resolved_state["event_log"])

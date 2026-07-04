@@ -10,8 +10,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from .energy import CORE_ENERGY, gain_turn_energy, normalize_energy, split_cost
-from .models import BattlePhase, BattleState, CharacterState, PendingAction, PlayerState
-from .resolver import ResolverError, resolve_queue, validate_queue
+from .models import BattleEvent, BattlePhase, BattleState, CharacterState, PendingAction, PlayerState
+from .resolver import ResolverError, check_winner, finish_turn, resolve_queue, validate_queue
 from .serialization import serialize_battle_state
 from .starter_roster import SKILLS_BY_ID, STARTER_ROSTER, CharacterSpec
 
@@ -266,6 +266,26 @@ class BattleV2RoomManager:
         state.phase = BattlePhase.PLANNING
         return self.serialize_for_player(room_id, player_id)
 
+    def end_turn(self, room_id: str, player_id: str) -> dict:
+        """End the active player's turn without resolving queued actions."""
+
+        state = self.get_state(room_id)
+        self._ensure_turn_player(state, player_id)
+        player = state.players[player_id]
+        state.pending_actions[player_id] = []
+        state.queue_order[player_id] = []
+        state.event_log.append(
+            BattleEvent(
+                type="turn_skipped",
+                message=f"{player.name} ended their turn",
+                turn_number=state.turn_number,
+            )
+        )
+        finish_turn(state, player_id)
+        check_winner(state)
+        self._grant_next_turn_energy(room_id, player_id)
+        return self.serialize_for_player(room_id, player_id)
+
     def take_cpu_turn(self, room_id: str, player_id: str) -> dict:
         """Submit and resolve a simple first-legal CPU queue for the active turn."""
 
@@ -315,15 +335,7 @@ class BattleV2RoomManager:
             if chosen is not None:
                 actions.append(chosen)
         if not actions:
-            state.event_log.append(
-                BattleEvent(
-                    type="turn_skipped",
-                    message=f"{player.name} has no legal actions",
-                    turn_number=state.turn_number,
-                )
-            )
-            self._advance_without_action(room_id, player_id)
-            return self.serialize_for_player(room_id, player_id)
+            return self.end_turn(room_id, player_id)
         state.pending_actions[player_id] = actions
         state.queue_order[player_id] = [action.id for action in actions]
         state.phase = BattlePhase.QUEUE_REVIEW

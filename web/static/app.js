@@ -764,6 +764,9 @@ function renderClassicV2() {
             const el = document.getElementById(id);
             if (el) el.innerHTML = '';
         });
+        document.getElementById('btn-v2-confirm').disabled = true;
+        document.getElementById('btn-v2-cancel').disabled = true;
+        document.getElementById('btn-v2-end-turn').disabled = true;
         return;
     }
     const { mine, enemy } = v2PlayerIds();
@@ -794,6 +797,7 @@ function renderClassicV2() {
     ).join('');
     document.getElementById('btn-v2-confirm').disabled = !isMyTurn || v2State.actions.length === 0;
     document.getElementById('btn-v2-cancel').disabled = !isMyTurn || v2State.actions.length === 0;
+    document.getElementById('btn-v2-end-turn').disabled = !isMyTurn;
     window.__v2DebugState = {
         selectedCasterSlot: v2State.selectedCasterSlot,
         selectedSkillId: v2State.selectedSkillId,
@@ -878,6 +882,12 @@ document.getElementById('btn-v2-back').addEventListener('click', () => {
 document.getElementById('btn-v2-start').addEventListener('click', v2StartMatch);
 document.getElementById('btn-v2-cancel').addEventListener('click', () => {
     socket.emit('battle_v2_cancel_queue');
+});
+document.getElementById('btn-v2-end-turn').addEventListener('click', () => {
+    v2State.actions = [];
+    v2State.wildcardPays = {};
+    v2State.selectedSkillId = null;
+    socket.emit('battle_v2_end_turn');
 });
 document.getElementById('btn-v2-confirm').addEventListener('click', () => {
     v2UpdateQueue();

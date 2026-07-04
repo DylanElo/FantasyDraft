@@ -793,6 +793,22 @@ def on_battle_v2_cancel_queue(data=None):
         emit_battle_v2_error(exc)
 
 
+@socketio.on('battle_v2_end_turn')
+def on_battle_v2_end_turn(data=None):
+    if not allow_event("battle_v2_end_turn", limit=45, window_seconds=5):
+        return
+    context = active_v2_context(data or {})
+    if not context:
+        return
+    room_id, player_session = context
+    try:
+        battle_v2_manager.end_turn(room_id, player_session)
+        run_battle_v2_cpu_turns(room_id)
+        emit_battle_v2_update(room_id, player_session)
+    except BattleV2SessionError as exc:
+        emit_battle_v2_error(exc)
+
+
 @socketio.on('battle_v2_surrender')
 def on_battle_v2_surrender(data=None):
     if not allow_event("battle_v2_surrender"):

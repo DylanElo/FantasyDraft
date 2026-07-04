@@ -111,6 +111,9 @@ class TestWebHelpers(unittest.TestCase):
             'char_type': "Specialist",
             'role': "Specialist",
             'rarity': "Rare",
+            'unique_mechanic': "",
+            'achievement_name': "",
+            'achievement_desc': "",
             'skills': [{
                 'name': "Test Skill",
                 'description': "Test Description",
@@ -155,6 +158,9 @@ class TestWebHelpers(unittest.TestCase):
             'char_type': "Specialist",
             'role': "Specialist",
             'rarity': "Rare",
+            'unique_mechanic': "",
+            'achievement_name': "",
+            'achievement_desc': "",
             'skills': []
         }
         self.assertEqual(char_to_dict(char), expected)

@@ -1,0 +1,203 @@
+"""Room-level session adapter for Battle System v2."""
+
+from __future__ import annotations
+
+import random
+from copy import deepcopy
+from dataclasses import dataclass
+from typing import Any
+
+from .energy import gain_turn_energy, normalize_energy
+from .models import BattlePhase, BattleState, CharacterState, PendingAction, PlayerState
+from .resolver import ResolverError, resolve_queue, validate_queue
+from .serialization import serialize_battle_state
+from .starter_roster import SKILLS_BY_ID, STARTER_ROSTER, CharacterSpec
+
+
+class BattleV2SessionError(ValueError):
+    """Raised when a v2 room/session operation is invalid."""
+
+
+@dataclass(frozen=True, slots=True)
+class ClassicPlayerConfig:
+    """Configuration needed to start a Classic Arena v2 player."""
+
+    id: str
+    name: str
+    team: list[str]
+
+
+def _character_state(spec: CharacterSpec) -> CharacterState:
+    return CharacterState(character_id=spec.id, name=spec.name)
+
+
+def _coerce_player_config(raw: ClassicPlayerConfig | dict[str, Any]) -> ClassicPlayerConfig:
+    if isinstance(raw, ClassicPlayerConfig):
+        return raw
+    return ClassicPlayerConfig(
+        id=str(raw["id"]),
+        name=str(raw.get("name", raw["id"])),
+        team=[str(character_id) for character_id in raw["team"]],
+    )
+
+
+def _action_from_payload(player_id: str, index: int, payload: dict[str, Any]) -> PendingAction:
+    wildcard_pays = [
+        normalize_energy(energy)
+        for energy in payload.get("wildcard_pays", [])
+    ]
+    return PendingAction(
+        id=str(payload.get("id") or f"{player_id}:action:{index}"),
+        player_id=player_id,
+        caster_slot=int(payload["caster_slot"]),
+        skill_id=str(payload["skill_id"]),
+        target_player_id=str(payload["target_player_id"]),
+        target_slot=(
+            None if payload.get("target_slot") is None else int(payload.get("target_slot"))
+        ),
+        target_slots=[int(slot) for slot in payload.get("target_slots", [])],
+        wildcard_pays=wildcard_pays,
+        queue_index=int(payload.get("queue_index", index)),
+    )
+
+
+class BattleV2RoomManager:
+    """Manage authoritative v2 battle states by room id."""
+
+    def __init__(self, rng_seed: int | None = None):
+        self.rooms: dict[str, BattleState] = {}
+        self.rng_seed = rng_seed
+
+    def start_classic_match(
+        self,
+        room_id: str,
+        players: list[ClassicPlayerConfig | dict[str, Any]],
+    ) -> dict:
+        """Start a Classic Arena match and return serialized state for player one."""
+
+        configs = [_coerce_player_config(player) for player in players]
+        if len(configs) != 2:
+            raise BattleV2SessionError("classic match requires exactly two players")
+        player_states: dict[str, PlayerState] = {}
+        for config in configs:
+            if len(config.team) != 3:
+                raise BattleV2SessionError("classic match requires exactly three characters per player")
+            if config.id in player_states:
+                raise BattleV2SessionError(f"duplicate player id: {config.id}")
+            team = []
+            for character_id in config.team:
+                if character_id not in STARTER_ROSTER:
+                    raise BattleV2SessionError(f"unknown starter character: {character_id}")
+                team.append(_character_state(STARTER_ROSTER[character_id]))
+            player_states[config.id] = PlayerState(id=config.id, name=config.name, team=team)
+
+        turn_player_id = configs[0].id
+        state = BattleState(
+            players=player_states,
+            turn_player_id=turn_player_id,
+            rng_seed=self.rng_seed,
+        )
+        rng = random.Random(self.rng_seed)
+        gain_turn_energy(state.players[turn_player_id], state.turn_number, True, rng)
+        self.rooms[room_id] = state
+        return self.serialize_for_player(room_id, turn_player_id)
+
+    def get_state(self, room_id: str) -> BattleState:
+        try:
+            return self.rooms[room_id]
+        except KeyError as exc:
+            raise BattleV2SessionError(f"unknown room: {room_id}") from exc
+
+    def submit_plan(self, room_id: str, player_id: str, actions: list[dict[str, Any]]) -> dict:
+        """Store pending actions for queue review without spending energy."""
+
+        state = self.get_state(room_id)
+        self._ensure_turn_player(state, player_id)
+        previous_actions = deepcopy(state.pending_actions.get(player_id, []))
+        previous_order = list(state.queue_order.get(player_id, []))
+        parsed = [_action_from_payload(player_id, index, payload) for index, payload in enumerate(actions)]
+        state.pending_actions[player_id] = parsed
+        state.queue_order[player_id] = [action.id for action in sorted(parsed, key=lambda item: item.queue_index)]
+        state.phase = BattlePhase.QUEUE_REVIEW
+        try:
+            if all(not action.wildcard_pays for action in parsed):
+                self._validate_non_wildcard_plan(state, player_id)
+            else:
+                validate_queue(state, player_id, SKILLS_BY_ID)
+        except ResolverError as exc:
+            state.pending_actions[player_id] = previous_actions
+            state.queue_order[player_id] = previous_order
+            state.phase = BattlePhase.PLANNING
+            raise BattleV2SessionError(str(exc)) from exc
+        return self.serialize_for_player(room_id, player_id)
+
+    def update_queue(
+        self,
+        room_id: str,
+        player_id: str,
+        queue_order: list[str],
+        wildcard_pays: dict[str, list[str]],
+    ) -> dict:
+        """Update queue order and wildcard payments, then validate the queue."""
+
+        state = self.get_state(room_id)
+        self._ensure_turn_player(state, player_id)
+        previous_actions = deepcopy(state.pending_actions.get(player_id, []))
+        previous_order = list(state.queue_order.get(player_id, []))
+        action_by_id = {
+            action.id: action
+            for action in state.pending_actions.get(player_id, [])
+        }
+        for action_id, pays in wildcard_pays.items():
+            if action_id not in action_by_id:
+                raise BattleV2SessionError(f"unknown action id: {action_id}")
+            action_by_id[action_id].wildcard_pays = [normalize_energy(energy) for energy in pays]
+        state.queue_order[player_id] = list(queue_order)
+        try:
+            validate_queue(state, player_id, SKILLS_BY_ID)
+        except ResolverError as exc:
+            state.pending_actions[player_id] = previous_actions
+            state.queue_order[player_id] = previous_order
+            raise BattleV2SessionError(str(exc)) from exc
+        return self.serialize_for_player(room_id, player_id)
+
+    def confirm_queue(self, room_id: str, player_id: str) -> dict:
+        """Validate and resolve the current player's queue."""
+
+        state = self.get_state(room_id)
+        self._ensure_turn_player(state, player_id)
+        resolve_queue(state, player_id, SKILLS_BY_ID)
+        return self.serialize_for_player(room_id, player_id)
+
+    def cancel_queue(self, room_id: str, player_id: str) -> dict:
+        """Clear a player's pending queue and return to planning."""
+
+        state = self.get_state(room_id)
+        self._ensure_turn_player(state, player_id)
+        state.pending_actions[player_id] = []
+        state.queue_order[player_id] = []
+        state.phase = BattlePhase.PLANNING
+        return self.serialize_for_player(room_id, player_id)
+
+    def serialize_for_player(self, room_id: str, viewer_id: str) -> dict:
+        state = self.get_state(room_id)
+        if viewer_id not in state.players:
+            raise BattleV2SessionError(f"unknown viewer: {viewer_id}")
+        return serialize_battle_state(state, viewer_id)
+
+    def _ensure_turn_player(self, state: BattleState, player_id: str) -> None:
+        if player_id not in state.players:
+            raise BattleV2SessionError(f"unknown player: {player_id}")
+        if state.turn_player_id != player_id:
+            raise BattleV2SessionError("not this player's turn")
+        if state.phase == BattlePhase.FINISHED:
+            raise BattleV2SessionError("battle is finished")
+
+    def _validate_non_wildcard_plan(self, state: BattleState, player_id: str) -> None:
+        for action in state.pending_actions.get(player_id, []):
+            skill = SKILLS_BY_ID.get(action.skill_id)
+            if skill is None:
+                raise BattleV2SessionError(f"unknown skill: {action.skill_id}")
+            if any(energy.value == "black" for energy in skill.cost):
+                return
+        validate_queue(state, player_id, SKILLS_BY_ID)

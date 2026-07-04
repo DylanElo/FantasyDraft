@@ -119,6 +119,34 @@ def test_nobara_nail_mark_enables_resonance_payoff():
     assert sukuna.hp == 60
 
 
+def test_nobara_hammer_bonus_and_hairpin_consumes_marks():
+    state = make_state()
+    give_all_energy(state.players["p1"])
+    sukuna = state.players["p2"].team[1]
+    sukuna.statuses.append(StatusEffect("nail_mark", "Nail Mark", "p1", 1, "p2", 1, duration=3))
+
+    queue_and_resolve(state, PendingAction("hammer", "p1", 1, "hammer_strike", "p2", 1))
+    assert sukuna.hp == 70
+
+    give_all_energy(state.players["p1"])
+    sukuna.statuses.append(StatusEffect("nail_mark", "Nail Mark", "p1", 1, "p2", 1, duration=3))
+    queue_and_resolve(
+        state,
+        PendingAction(
+            "hairpin",
+            "p1",
+            1,
+            "hairpin",
+            "p2",
+            target_slots=[1],
+            wildcard_pays=[EnergyType.BLUE],
+        ),
+    )
+
+    assert sukuna.hp == 50
+    assert not any(status.id == "nail_mark" for status in sukuna.statuses)
+
+
 def test_gojo_infinity_blocks_non_domain_damage():
     state = make_state()
     give_all_energy(state.players["p2"])
@@ -142,6 +170,37 @@ def test_gojo_infinity_blocks_non_domain_damage():
     assert gojo.hp == 100
 
 
+def test_invulnerable_target_is_illegal_without_bypass():
+    state = make_state()
+    give_all_energy(state.players["p1"])
+    gojo = state.players["p2"].team[0]
+    gojo.statuses.append(
+        StatusEffect(
+            "infinity",
+            "Infinity",
+            "p2",
+            0,
+            "p2",
+            0,
+            duration=1,
+            payload={"invulnerable": True},
+        )
+    )
+
+    with pytest.raises(ResolverError, match="invulnerable"):
+        validate_action(
+            state,
+            PendingAction("strike", "p1", 0, "divergent_fist", "p2", 0),
+            SKILLS_BY_ID,
+        )
+
+    validate_action(
+        state,
+        PendingAction("domain", "p1", 2, "chimera_shadow_garden", "p2", target_slots=[0], wildcard_pays=[EnergyType.BLUE]),
+        SKILLS_BY_ID,
+    )
+
+
 def test_sukuna_binding_vow_is_free_and_records_tradeoff_payloads():
     binding_vow = SKILLS_BY_ID["binding_vow"]
 
@@ -151,6 +210,29 @@ def test_sukuna_binding_vow_is_free_and_records_tradeoff_payloads():
     assert binding_vow.effects[0].payload["damage_bonus"] == 10
     assert binding_vow.effects[1].damage_type == DamageType.SOUL
     assert binding_vow.effects[1].amount == 10
+
+
+def test_sukuna_cleave_scales_with_missing_hp_and_execute_threshold():
+    state = make_state()
+    give_all_energy(state.players["p2"])
+    yuji = state.players["p1"].team[0]
+    yuji.hp = 30
+
+    queue_and_resolve(
+        state,
+        PendingAction(
+            "cleave",
+            "p2",
+            1,
+            "cleave",
+            "p1",
+            0,
+            wildcard_pays=[EnergyType.RED],
+        ),
+    )
+
+    assert yuji.hp == 0
+    assert yuji.alive is False
 
 
 def test_mahito_idle_transfiguration_requires_soul_distortion():

@@ -34,11 +34,36 @@ def _has_invulnerability(character: CharacterState) -> bool:
     )
 
 
+def has_invulnerability(character: CharacterState) -> bool:
+    """Return whether a character currently has active invulnerability."""
+
+    return _has_invulnerability(character)
+
+
 def _has_anti_domain(character: CharacterState) -> bool:
     return has_status(character, "anti_domain") or any(
         status.duration != 0 and status.payload.get("anti_domain", False)
         for status in character.statuses
     )
+
+
+def _damage_bonus(target: CharacterState, effect: EffectSpec) -> int:
+    bonus = 0
+    payload = effect.payload
+    bonus_amount = int(payload.get("bonus_amount", 0))
+    bonus_status = payload.get("bonus_status")
+    if bonus_status and has_status(target, str(bonus_status)):
+        bonus += bonus_amount
+    bonus_statuses = payload.get("bonus_statuses") or []
+    if bonus_statuses and any(has_status(target, str(status_id)) for status_id in bonus_statuses):
+        bonus += bonus_amount
+    missing_hp_step = payload.get("scaling")
+    if missing_hp_step == "missing_hp_25":
+        bonus += ((target.max_hp - target.hp) // 25) * 10
+    execute_threshold = payload.get("execute_threshold")
+    if execute_threshold is not None and target.hp < int(execute_threshold):
+        bonus += int(payload.get("execute_bonus", 0))
+    return bonus
 
 
 def apply_damage(
@@ -142,7 +167,17 @@ def apply_effect(
             raise EffectError("damage effect requires a target slot")
         target = state.players[target_player_id].team[target_slot]
         damage_type = effect.damage_type or DamageType.NORMAL
-        actual = apply_damage(target, effect.amount or 0, damage_type)
+        amount = (effect.amount or 0) + _damage_bonus(target, effect)
+        bypass_invulnerability = bool(
+            effect.payload.get("bypass_invulnerability")
+            or damage_type == DamageType.SURE_HIT
+        )
+        actual = apply_damage(
+            target,
+            amount,
+            damage_type,
+            bypass_invulnerability=bypass_invulnerability,
+        )
         return BattleEvent(
             type="damage",
             message=f"{action.skill_id} dealt {actual} damage",
@@ -152,6 +187,7 @@ def apply_effect(
                 "target_player_id": target_player_id,
                 "target_slot": target_slot,
                 "amount": actual,
+                "attempted_amount": amount,
                 "damage_type": damage_type.value,
             },
         )
@@ -190,6 +226,29 @@ def apply_effect(
                 "status": status.id,
                 "target_player_id": target_player_id,
                 "target_slot": target_slot,
+            },
+        )
+    if effect.type == "remove_status":
+        if target_slot is None:
+            raise EffectError("remove status effect requires a target slot")
+        target = state.players[target_player_id].team[target_slot]
+        before = len(target.statuses)
+        target.statuses = [
+            status
+            for status in target.statuses
+            if status.duration == 0 or (status.id != effect.status and status.name != effect.status)
+        ]
+        removed = before - len(target.statuses)
+        return BattleEvent(
+            type="status_removed",
+            message=f"{effect.status} removed",
+            turn_number=state.turn_number,
+            payload={
+                "action_id": action.id,
+                "status": effect.status,
+                "target_player_id": target_player_id,
+                "target_slot": target_slot,
+                "removed": removed,
             },
         )
     raise EffectError(f"unsupported effect type: {effect.type}")

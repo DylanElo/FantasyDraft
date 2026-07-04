@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from .conditions import has_status
-from .models import BattleState, CharacterState, PendingAction, PlayerState, SkillSpec, TargetRule
+from .effects import has_invulnerability
+from .models import BattleState, CharacterState, DamageType, PendingAction, PlayerState, SkillSpec, TargetRule
 
 
 class TargetingError(ValueError):
@@ -49,6 +50,21 @@ def action_target_slots(action: PendingAction) -> list[int]:
     return []
 
 
+def skill_bypasses_invulnerability(skill: SkillSpec) -> bool:
+    """Return whether a skill may target through invulnerability."""
+
+    if any(skill_class.value == "Domain" for skill_class in skill.classes):
+        return True
+    for effect in skill.effects:
+        if effect.type != "damage":
+            continue
+        if effect.damage_type == DamageType.SURE_HIT:
+            return True
+        if effect.payload.get("bypass_invulnerability"):
+            return True
+    return False
+
+
 def validate_target_rule(
     state: BattleState,
     action: PendingAction,
@@ -91,6 +107,8 @@ def validate_target_rule(
             raise TargetingError("target must be active")
         if not rule.allow_dead and not target.alive:
             raise TargetingError("target is dead")
+        if has_invulnerability(target) and not skill_bypasses_invulnerability(skill):
+            raise TargetingError("target is invulnerable")
         if rule.required_status and not has_status(target, rule.required_status):
             raise TargetingError(f"target lacks required status: {rule.required_status}")
         targets.append(target)

@@ -325,6 +325,16 @@
           <button id="btn-v2-confirm" class="btn-primary" type="button">Confirm Queue</button>
         </div>
         <div id="v2-error" class="v2-error hidden"></div>
+        <div class="v2-picker" id="v2-picker">
+          <div class="v2-picker-column">
+            <div class="team-label">MY STARTERS</div>
+            <div class="v2-picker-grid" id="v2-player-picker"></div>
+          </div>
+          <div class="v2-picker-column">
+            <div class="team-label">CPU STARTERS</div>
+            <div class="v2-picker-grid" id="v2-enemy-picker"></div>
+          </div>
+        </div>
         <div class="v2-energy-row" id="v2-energy-row"></div>
         <div class="v2-layout">
           <section class="v2-team-panel">
@@ -404,6 +414,7 @@
   <script>
     const PLAYER_SESSION_ID = "{{ player_id }}";
     const BATTLE_V2_ENABLED = {{ 'true' if battle_v2_enabled else 'false' }};
+    const BATTLE_V2_STARTER_ROSTER = {{ battle_v2_catalog | tojson }};
   </script>
   <script src="{{ url_for('static', filename='characters_data.js') }}?v=17"></script>
   <script src="{{ url_for('static', filename='effects.js') }}?v=16"></script>

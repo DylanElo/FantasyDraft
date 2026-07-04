@@ -3442,6 +3442,61 @@ html, body {
   min-height: 48px;
 }
 
+.v2-picker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.v2-picker-column {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(7, 9, 17, 0.70);
+}
+
+.v2-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.v2-picker-card {
+  min-height: 64px;
+  padding: 7px;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  color: var(--text);
+  text-align: left;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+  cursor: pointer;
+}
+
+.v2-picker-card strong {
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.v2-picker-card span {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.25;
+}
+
+.v2-picker-card.selected {
+  border-color: rgba(34, 197, 94, 0.62);
+  background: rgba(34, 197, 94, 0.10);
+}
+
+.v2-picker-card:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
 .v2-layout {
   min-height: 0;
   display: grid;
@@ -3674,6 +3729,14 @@ html, body {
 
   .v2-toolbar {
     grid-template-columns: 1fr;
+  }
+
+  .v2-picker {
+    grid-template-columns: 1fr;
+  }
+
+  .v2-picker-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .v2-team {

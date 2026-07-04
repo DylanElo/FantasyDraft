@@ -95,6 +95,28 @@ def test_battle_v2_socket_surrender_finishes_match(monkeypatch):
     assert finished == {"winner_id": "__cpu_v2__"}
 
 
+def test_battle_v2_socket_start_accepts_expanded_roster_teams(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    client = socket_client()
+
+    client.emit(
+        "battle_v2_start_classic",
+        {
+            "room_id": "socket-v2",
+            "player_team": ["aoi_todo", "maki_zenin", "yuta_okkotsu"],
+            "enemy_team": ["hiromi_higuruma", "satoru_gojo", "mahito"],
+        },
+    )
+
+    state = received_payload(client, "battle_v2_update")
+    assert [character["character_id"] for character in state["players"][state["turn_player_id"]]["team"]] == [
+        "aoi_todo",
+        "maki_zenin",
+        "yuta_okkotsu",
+    ]
+    assert "hiromi_higuruma" in state["skill_catalog"]
+
+
 def test_battle_v2_socket_end_turn_runs_cpu_response(monkeypatch):
     monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
     client = socket_client()

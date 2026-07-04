@@ -22,7 +22,7 @@ from jjk_bot.game import GameManager, GameState, CPU_PLAYER_ID
 from jjk_bot.characters import Character, Skill, character_identity
 from jjk_bot.portrait_assets import local_portrait_path
 from jjk_bot.battle_v2.models import BattleEvent, BattlePhase, use_battle_v2
-from jjk_bot.battle_v2.session import BattleV2RoomManager, BattleV2SessionError
+from jjk_bot.battle_v2.session import BattleV2RoomManager, BattleV2SessionError, skill_catalog
 
 def env_flag(name: str, default: bool = False) -> bool:
     value = os.getenv(name)
@@ -442,6 +442,7 @@ def index():
         'index.html',
         player_id=session['player_id'],
         battle_v2_enabled=use_battle_v2(),
+        battle_v2_catalog=skill_catalog() if use_battle_v2() else {},
     )
 
 @app.route('/reset/<room_id>')

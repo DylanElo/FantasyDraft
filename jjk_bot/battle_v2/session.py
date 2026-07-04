@@ -63,7 +63,7 @@ def _action_from_payload(player_id: str, index: int, payload: dict[str, Any]) ->
     )
 
 
-def _skill_catalog() -> dict[str, dict[str, Any]]:
+def skill_catalog() -> dict[str, dict[str, Any]]:
     return {
         character_id: {
             "id": spec.id,
@@ -348,7 +348,7 @@ class BattleV2RoomManager:
         if viewer_id not in state.players:
             raise BattleV2SessionError(f"unknown viewer: {viewer_id}")
         payload = serialize_battle_state(state, viewer_id)
-        payload["skill_catalog"] = _skill_catalog()
+        payload["skill_catalog"] = skill_catalog()
         return payload
 
     def _ensure_turn_player(self, state: BattleState, player_id: str) -> None:

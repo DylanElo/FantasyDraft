@@ -618,6 +618,8 @@ const v2State = {
     selectedSkillId: null,
     actions: [],
     wildcardPays: {},
+    playerTeam: ['yuji_itadori', 'nobara_kugisaki', 'megumi_fushiguro'],
+    enemyTeam: ['satoru_gojo', 'ryomen_sukuna', 'mahito'],
 };
 
 function v2PlayerIds() {
@@ -634,6 +636,29 @@ function v2SkillFor(characterId, skillId) {
 
 function v2SkillsFor(characterId) {
     return v2State.state?.skill_catalog?.[characterId]?.skills || [];
+}
+
+function v2RosterEntries() {
+    return Object.values(BATTLE_V2_STARTER_ROSTER || {});
+}
+
+function v2PickerButtonHTML(character, teamKey) {
+    const selected = v2State[teamKey].includes(character.id);
+    const locked = !selected && v2State[teamKey].length >= 3;
+    return `
+      <button class="v2-picker-card ${selected ? 'selected' : ''}" data-v2-pick-team="${teamKey}" data-character-id="${esc(character.id)}" ${locked ? 'disabled' : ''}>
+        <strong>${esc(character.name)}</strong>
+        <span>${esc(character.role)}</span>
+      </button>`;
+}
+
+function renderV2Picker() {
+    const playerPicker = document.getElementById('v2-player-picker');
+    const enemyPicker = document.getElementById('v2-enemy-picker');
+    if (!playerPicker || !enemyPicker) return;
+    const entries = v2RosterEntries();
+    playerPicker.innerHTML = entries.map(character => v2PickerButtonHTML(character, 'playerTeam')).join('');
+    enemyPicker.innerHTML = entries.map(character => v2PickerButtonHTML(character, 'enemyTeam')).join('');
 }
 
 function v2StatusHTML(character) {
@@ -785,8 +810,11 @@ function renderClassicV2() {
         document.getElementById('btn-v2-confirm').disabled = true;
         document.getElementById('btn-v2-cancel').disabled = true;
         document.getElementById('btn-v2-end-turn').disabled = true;
+        document.getElementById('v2-picker')?.classList.remove('hidden');
+        renderV2Picker();
         return;
     }
+    document.getElementById('v2-picker')?.classList.add('hidden');
     const { mine, enemy } = v2PlayerIds();
     const me = state.players[mine];
     const foe = state.players[enemy];
@@ -830,6 +858,10 @@ function v2StartMatch() {
         toast('Battle v2 is disabled for this server.');
         return;
     }
+    if (v2State.playerTeam.length !== 3 || v2State.enemyTeam.length !== 3) {
+        toast('Choose exactly 3 starters for each side.');
+        return;
+    }
     const nameInput = document.getElementById('player-name').value.trim() || 'Player';
     localStorage.setItem('jjk_player_name', nameInput);
     v2State.actions = [];
@@ -839,6 +871,8 @@ function v2StartMatch() {
     socket.emit('battle_v2_start_classic', {
         room_id: 'classic_v2_' + Math.random().toString(36).slice(2, 8),
         player_name: nameInput,
+        player_team: v2State.playerTeam,
+        enemy_team: v2State.enemyTeam,
     });
     showScreen('classic-v2');
 }
@@ -913,6 +947,20 @@ document.getElementById('btn-v2-confirm').addEventListener('click', () => {
 });
 
 document.getElementById('classic-v2').addEventListener('click', (event) => {
+    const picker = event.target.closest('[data-v2-pick-team]');
+    if (picker) {
+        const teamKey = picker.dataset.v2PickTeam;
+        const characterId = picker.dataset.characterId;
+        const team = v2State[teamKey];
+        if (!Array.isArray(team)) return;
+        if (team.includes(characterId)) {
+            v2State[teamKey] = team.filter(id => id !== characterId);
+        } else if (team.length < 3) {
+            v2State[teamKey] = [...team, characterId];
+        }
+        renderV2Picker();
+        return;
+    }
     const target = event.target.closest('[data-v2-role="target"]');
     if (target && v2State.selectedCasterSlot !== null && v2State.selectedSkillId) {
         const { enemy } = v2PlayerIds();

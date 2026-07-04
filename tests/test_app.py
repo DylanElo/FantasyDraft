@@ -59,6 +59,8 @@ def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
 
     assert 'const BATTLE_V2_ENABLED = true;' in html
     assert 'id="btn-classic-v2" class="btn-ghost roster-lab-entry"' in html
+    assert '"aoi_todo"' in html
+    assert '"hiromi_higuruma"' in html
 
 if __name__ == '__main__':
     unittest.main()

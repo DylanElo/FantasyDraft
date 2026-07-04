@@ -89,6 +89,33 @@ def test_battle_v2_socket_start_submit_confirm(monkeypatch):
     assert any(event["type"] == "skill_resolved" and "used" in event["message"] for event in resolved_state["event_log"])
 
 
+def test_battle_v2_socket_convert_energy(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    client = socket_client()
+    client.emit(
+        "battle_v2_start_classic",
+        {
+            "room_id": "socket-v2",
+            "player_name": "Tester",
+            "player_team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"],
+            "enemy_team": ["satoru_gojo", "ryomen_sukuna", "mahito"],
+        },
+    )
+    start_state = received_payload(client, "battle_v2_update")
+    player_id = start_state["turn_player_id"]
+    state = web_app.battle_v2_manager.get_state("socket-v2")
+    state.players[player_id].energy[EnergyType.GREEN] = 2
+    state.players[player_id].energy[EnergyType.RED] = 0
+
+    client.emit("battle_v2_convert_energy", {"source": "green", "target": "red"})
+    converted = received_payload(client, "battle_v2_update")
+
+    assert converted["players"][player_id]["energy"]["green"] == 0
+    assert converted["players"][player_id]["energy"]["red"] == 1
+    assert converted["players"][player_id]["energy_converted_this_turn"] is True
+    assert any(event["type"] == "energy_converted" for event in converted["event_log"])
+
+
 def test_battle_v2_socket_surrender_finishes_match(monkeypatch):
     monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
     client = socket_client()

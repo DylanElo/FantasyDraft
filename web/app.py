@@ -245,6 +245,10 @@ def clean_v2_wildcard_pays(value) -> dict[str, list[str]]:
     return cleaned
 
 
+def clean_v2_energy_color(value) -> str:
+    return CONTROL_RE.sub("", str(value or "").strip().lower())[:8]
+
+
 def clamp_int(value, minimum: int, maximum: int, default: int = 0) -> int:
     try:
         parsed = int(value)
@@ -421,9 +425,6 @@ def char_to_dict(char: Character) -> dict:
         'char_type': getattr(char, 'char_type', 'Specialist'),
         'role': getattr(char, 'role', infer_character_role(char)),
         'rarity': getattr(char, 'rarity', 'Rare'),
-        'unique_mechanic': getattr(char, 'unique_mechanic', ''),
-        'achievement_name': getattr(char, 'achievement_name', ''),
-        'achievement_desc': getattr(char, 'achievement_desc', ''),
         'skills': [skill_to_dict(s) for s in char.skills],
     }
 
@@ -930,6 +931,27 @@ def on_battle_v2_cancel_queue(data=None):
     room_id, player_session = context
     try:
         battle_v2_manager.cancel_queue(room_id, player_session)
+        emit_battle_v2_update(room_id, player_session)
+    except BattleV2Error as exc:
+        emit_battle_v2_error(exc)
+
+
+@socketio.on('battle_v2_convert_energy')
+def on_battle_v2_convert_energy(data=None):
+    if not allow_event("battle_v2_convert_energy", limit=20, window_seconds=5):
+        return
+    data = data or {}
+    context = active_v2_context(data)
+    if not context:
+        return
+    room_id, player_session = context
+    try:
+        battle_v2_manager.convert_energy(
+            room_id,
+            player_session,
+            clean_v2_energy_color(data.get("source")),
+            clean_v2_energy_color(data.get("target")),
+        )
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
         emit_battle_v2_error(exc)

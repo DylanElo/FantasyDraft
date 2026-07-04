@@ -63,8 +63,9 @@ def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
     assert '"hiromi_higuruma"' in html
     assert 'id="btn-v2-new-match"' in html
     assert 'id="v2-player-summary"' in html
-    assert 'app.js?v=33' in html
-    assert 'style.css?v=28' in html
+    assert 'characters_data.js?v=19' in html
+    assert 'app.js?v=36' in html
+    assert 'style.css?v=30' in html
 
 
 def test_v2_character_id_for_v1_names():

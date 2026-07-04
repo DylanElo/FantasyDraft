@@ -3440,6 +3440,41 @@ html, body {
 
 .v2-energy-row {
   min-height: 48px;
+  display: grid;
+  gap: 7px;
+}
+
+.v2-convert {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(0, 1.2fr) minmax(92px, auto) minmax(92px, auto) auto;
+  gap: 7px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(7, 9, 17, 0.64);
+}
+
+.v2-convert.locked {
+  opacity: 0.68;
+}
+
+.v2-convert strong {
+  font-size: 12px;
+}
+
+.v2-convert span {
+  color: var(--muted);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.v2-convert select {
+  min-width: 0;
+  height: 32px;
+  color: var(--text);
+  background: rgba(0,0,0,0.34);
+  border: 1px solid rgba(255,255,255,0.14);
+  font-size: 11px;
 }
 
 .v2-turn-status {
@@ -3468,6 +3503,11 @@ html, body {
   background: rgba(30, 64, 175, 0.16);
 }
 
+.v2-turn-card.locked {
+  border-color: rgba(250, 204, 21, 0.34);
+  background: rgba(113, 63, 18, 0.18);
+}
+
 .v2-turn-card strong {
   font-size: 12px;
   overflow-wrap: anywhere;
@@ -3477,6 +3517,20 @@ html, body {
   color: var(--muted);
   font-size: 11px;
   overflow-wrap: anywhere;
+}
+
+.v2-queue-meter {
+  height: 5px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(0,0,0,0.24);
+}
+
+.v2-queue-meter span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e, #facc15);
+  transition: width 180ms ease;
 }
 
 .v2-picker {
@@ -3764,6 +3818,16 @@ html, body {
   background: rgba(255,255,255,0.04);
 }
 
+.v2-queue-item.locked {
+  border-color: rgba(250, 204, 21, 0.24);
+  background: rgba(113, 63, 18, 0.14);
+}
+
+.v2-queue-item.locked .v2-queue-controls {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
 .v2-queue-status {
   padding: 8px;
   display: flex;
@@ -3867,6 +3931,23 @@ html, body {
   overflow-y: auto;
 }
 
+.v2-resolution-strip {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 7px;
+}
+
+.v2-resolution-strip span {
+  display: block;
+  padding: 6px 8px;
+  border-left: 3px solid rgba(250, 204, 21, 0.62);
+  background: rgba(250, 204, 21, 0.08);
+  color: #fef3c7;
+  font-size: 11px;
+  line-height: 1.28;
+  overflow-wrap: anywhere;
+}
+
 .v2-log-entry {
   display: grid;
   grid-template-columns: auto auto minmax(0, 1fr);
@@ -3908,6 +3989,15 @@ html, body {
 
   .v2-turn-status {
     grid-template-columns: 1fr;
+  }
+
+  .v2-convert {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .v2-convert strong,
+  .v2-convert span {
+    grid-column: 1 / -1;
   }
 
   .v2-picker {

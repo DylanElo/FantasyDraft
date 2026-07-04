@@ -49,6 +49,41 @@ def test_start_classic_match_serializes_initial_private_view():
     assert manager.get_state("room").turn_player_id == "p1"
 
 
+def test_convert_energy_once_per_turn_and_serializes_flag():
+    manager, _ = start_manager()
+    state = manager.get_state("room")
+    player = state.players["p1"]
+    player.energy[EnergyType.GREEN] = 2
+    player.energy[EnergyType.RED] = 0
+
+    serialized = manager.convert_energy("room", "p1", "green", "red")
+
+    assert serialized["players"]["p1"]["energy"]["green"] == 0
+    assert serialized["players"]["p1"]["energy"]["red"] == 1
+    assert serialized["players"]["p1"]["energy_converted_this_turn"] is True
+    assert any(event["type"] == "energy_converted" for event in serialized["event_log"])
+
+    with pytest.raises(BattleV2Error, match="already used"):
+        manager.convert_energy("room", "p1", "red", "blue")
+
+
+def test_convert_energy_resets_after_turn_advances():
+    manager, _ = start_manager()
+    state = manager.get_state("room")
+    state.players["p1"].energy[EnergyType.GREEN] = 2
+
+    manager.convert_energy("room", "p1", "green", "red")
+    manager.end_turn("room", "p1")
+    state = manager.get_state("room")
+    state.players["p2"].energy[EnergyType.BLUE] = 2
+
+    serialized = manager.convert_energy("room", "p2", "blue", "white")
+
+    assert serialized["players"]["p2"]["energy"]["white"] >= 1
+    assert serialized["players"]["p2"]["energy_converted_this_turn"] is True
+    assert manager.get_state("room").players["p1"].energy_converted_this_turn is False
+
+
 def test_invisible_status_hidden_from_opponent_but_visible_to_owner():
     manager, _ = start_manager()
     state = manager.get_state("room")

@@ -65,8 +65,8 @@ def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
     assert 'id="btn-v2-new-match"' in html
     assert 'id="v2-player-summary"' in html
     assert 'characters_data.js?v=19' in html
-    assert 'app.js?v=37' in html
-    assert 'style.css?v=31' in html
+    assert 'app.js?v=39' in html
+    assert 'style.css?v=34' in html
     assert 'Battle v2 Arena' in html
     assert 'Classic Queue Test' not in html
 

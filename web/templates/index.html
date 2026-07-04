@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@600;700;900&family=Yuji+Mai&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='jjk-tokens.css') }}?v=1">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=31">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=34">
   <link rel="stylesheet" href="{{ url_for('static', filename='jjk-theme.css') }}?v=1">
   <link rel="stylesheet" href="{{ url_for('static', filename='arena-redesign.css') }}?v=1">
   <script src="{{ url_for('static', filename='socket.io.min.js') }}?v=4.7.2"></script>
@@ -341,7 +341,7 @@
         </div>
         <div class="v2-energy-row" id="v2-energy-row"></div>
         <div class="v2-layout">
-          <section class="v2-team-panel">
+          <section class="v2-team-panel v2-team-panel--enemy">
             <div class="team-label">OPPONENT</div>
             <div class="v2-team" id="v2-enemy-team"></div>
           </section>
@@ -350,7 +350,7 @@
             <div class="v2-queue" id="v2-queue-panel"></div>
             <div class="battle-log v2-log" id="v2-log"></div>
           </section>
-          <section class="v2-team-panel">
+          <section class="v2-team-panel v2-team-panel--ally">
             <div class="team-label">MY TEAM</div>
             <div class="v2-team" id="v2-my-team"></div>
           </section>
@@ -422,6 +422,6 @@
   </script>
   <script src="{{ url_for('static', filename='characters_data.js') }}?v=19"></script>
   <script src="{{ url_for('static', filename='effects.js') }}?v=16"></script>
-  <script src="{{ url_for('static', filename='app.js') }}?v=37"></script>
+  <script src="{{ url_for('static', filename='app.js') }}?v=39"></script>
 </body>
 </html>

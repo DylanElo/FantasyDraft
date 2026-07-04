@@ -61,6 +61,10 @@ def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
     assert 'id="btn-classic-v2" class="btn-ghost roster-lab-entry"' in html
     assert '"aoi_todo"' in html
     assert '"hiromi_higuruma"' in html
+    assert 'id="btn-v2-new-match"' in html
+    assert 'id="v2-player-summary"' in html
+    assert 'app.js?v=26' in html
+    assert 'style.css?v=24' in html
 
 if __name__ == '__main__':
     unittest.main()

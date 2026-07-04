@@ -3463,6 +3463,23 @@ html, body {
   gap: 6px;
 }
 
+.v2-picker-summary {
+  min-height: 26px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+
+.v2-picker-summary span {
+  padding: 3px 6px;
+  border: 1px solid rgba(34, 197, 94, 0.32);
+  background: rgba(34, 197, 94, 0.08);
+  color: #bbf7d0;
+  font-size: 10px;
+  line-height: 1.2;
+}
+
 .v2-picker-card {
   min-height: 64px;
   padding: 7px;

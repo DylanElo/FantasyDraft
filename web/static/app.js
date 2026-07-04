@@ -657,8 +657,15 @@ function renderV2Picker() {
     const enemyPicker = document.getElementById('v2-enemy-picker');
     if (!playerPicker || !enemyPicker) return;
     const entries = v2RosterEntries();
+    const byId = Object.fromEntries(entries.map(character => [character.id, character]));
     playerPicker.innerHTML = entries.map(character => v2PickerButtonHTML(character, 'playerTeam')).join('');
     enemyPicker.innerHTML = entries.map(character => v2PickerButtonHTML(character, 'enemyTeam')).join('');
+    document.getElementById('v2-player-summary').innerHTML = v2State.playerTeam.map(id =>
+        `<span>${esc(byId[id]?.name || id)}</span>`
+    ).join('');
+    document.getElementById('v2-enemy-summary').innerHTML = v2State.enemyTeam.map(id =>
+        `<span>${esc(byId[id]?.name || id)}</span>`
+    ).join('');
 }
 
 function v2StatusHTML(character) {
@@ -732,6 +739,15 @@ function v2PendingActionPayloads() {
         queue_index: index,
         wildcard_pays: v2State.wildcardPays[action.id] || [],
     }));
+}
+
+function resetClassicV2Match() {
+    v2State.state = null;
+    v2State.actions = [];
+    v2State.wildcardPays = {};
+    v2State.selectedCasterSlot = null;
+    v2State.selectedSkillId = null;
+    renderClassicV2();
 }
 
 function v2AddAction(casterSlot, skillId, targetPlayerId, targetSlot, targetSlots = []) {
@@ -810,6 +826,7 @@ function renderClassicV2() {
         document.getElementById('btn-v2-confirm').disabled = true;
         document.getElementById('btn-v2-cancel').disabled = true;
         document.getElementById('btn-v2-end-turn').disabled = true;
+        document.getElementById('btn-v2-new-match').disabled = false;
         document.getElementById('v2-picker')?.classList.remove('hidden');
         renderV2Picker();
         return;
@@ -844,6 +861,7 @@ function renderClassicV2() {
     document.getElementById('btn-v2-confirm').disabled = !isMyTurn || v2State.actions.length === 0;
     document.getElementById('btn-v2-cancel').disabled = !isMyTurn || v2State.actions.length === 0;
     document.getElementById('btn-v2-end-turn').disabled = !isMyTurn;
+    document.getElementById('btn-v2-new-match').disabled = false;
     window.__v2DebugState = {
         selectedCasterSlot: v2State.selectedCasterSlot,
         selectedSkillId: v2State.selectedSkillId,
@@ -932,6 +950,7 @@ document.getElementById('btn-v2-back').addEventListener('click', () => {
 });
 
 document.getElementById('btn-v2-start').addEventListener('click', v2StartMatch);
+document.getElementById('btn-v2-new-match').addEventListener('click', resetClassicV2Match);
 document.getElementById('btn-v2-cancel').addEventListener('click', () => {
     socket.emit('battle_v2_cancel_queue');
 });

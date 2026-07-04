@@ -688,6 +688,44 @@ function v2ActionTargetLabel(action) {
     return targetPlayer?.name || action.target_player_id || 'target';
 }
 
+function v2SelectedSkill() {
+    const { mine } = v2PlayerIds();
+    const me = v2State.state?.players?.[mine];
+    const caster = me?.team?.[v2State.selectedCasterSlot];
+    return caster ? v2SkillFor(caster.character_id, v2State.selectedSkillId) : null;
+}
+
+function v2LivingSlots(player) {
+    return (player?.team || [])
+        .map((character, slot) => character.alive ? slot : null)
+        .filter(slot => slot !== null);
+}
+
+function v2HasRequiredStatus(character, skill) {
+    const required = skill?.target_rule?.required_status;
+    if (!required) return true;
+    return (character?.statuses || []).some(status => status.id === required || status.name === required);
+}
+
+function v2CanTargetCharacter(character, slot, isMine, isTurn) {
+    if (!isTurn || !v2State.selectedSkillId || !character?.alive) return false;
+    const skill = v2SelectedSkill();
+    const kind = skill?.target_rule?.kind || 'enemy';
+    if (!v2HasRequiredStatus(character, skill)) return false;
+    if (kind === 'enemy') return !isMine;
+    if (kind === 'ally') {
+        if (!isMine) return false;
+        return skill.target_rule?.allow_self || slot !== v2State.selectedCasterSlot;
+    }
+    return false;
+}
+
+function v2TeamTargetSlots(player, skill) {
+    const slots = v2LivingSlots(player);
+    const maxTargets = skill?.target_rule?.max_targets || slots.length;
+    return slots.slice(0, maxTargets);
+}
+
 function v2RosterEntries() {
     return Object.values(BATTLE_V2_STARTER_ROSTER || {});
 }
@@ -730,12 +768,12 @@ function v2CharacterCardHTML(character, slot, isMine, isTurn) {
     const selected = isMine && v2State.selectedCasterSlot === slot;
     const queued = v2State.actions.some(action => action.caster_slot === slot);
     const dead = !character.alive;
-    const targetable = !isMine && isTurn && v2State.selectedSkillId;
+    const targetable = v2CanTargetCharacter(character, slot, isMine, isTurn);
     const hpPct = Math.max(0, Math.min(100, Math.round((character.hp / character.max_hp) * 100)));
     const stateLabel = dead ? 'Defeated' : queued ? 'Queued' : isMine && isTurn ? 'Ready' : isMine ? 'Standing by' : '';
     return `
       <button class="v2-char ${selected ? 'selected' : ''} ${queued ? 'queued' : ''} ${targetable ? 'targetable' : ''} ${dead ? 'dead' : ''}"
-        data-v2-role="${isMine ? 'caster' : 'target'}" data-slot="${slot}" ${dead ? 'disabled' : ''}>
+        data-v2-role="${isMine ? 'caster' : 'target'}" data-v2-side="${isMine ? 'mine' : 'enemy'}" data-slot="${slot}" ${dead ? 'disabled' : ''}>
         <div class="v2-char-top">
           <strong>${esc(character.name)}</strong>
           <span class="v2-hp-number">${character.hp}/${character.max_hp} HP</span>
@@ -945,6 +983,11 @@ function v2AddAction(casterSlot, skillId, targetPlayerId, targetSlot, targetSlot
         target_slots: targetSlots,
     });
     v2State.selectedSkillId = null;
+    const { mine } = v2PlayerIds();
+    const me = v2State.state?.players?.[mine];
+    const queuedSlots = new Set(v2State.actions.map(action => action.caster_slot));
+    const nextSlot = (me?.team || []).findIndex((character, slot) => character.alive && !queuedSlots.has(slot));
+    v2State.selectedCasterSlot = nextSlot >= 0 ? nextSlot : casterSlot;
     v2SubmitPlan();
     renderClassicV2();
 }
@@ -1209,10 +1252,19 @@ document.getElementById('classic-v2').addEventListener('click', (event) => {
         renderV2Picker();
         return;
     }
-    const target = event.target.closest('[data-v2-role="target"]');
-    if (target && v2State.selectedCasterSlot !== null && v2State.selectedSkillId) {
-        const { enemy } = v2PlayerIds();
-        v2AddAction(v2State.selectedCasterSlot, v2State.selectedSkillId, enemy, Number(target.dataset.slot));
+    const targetCard = event.target.closest('.v2-char[data-slot]');
+    if (targetCard && v2State.selectedCasterSlot !== null && v2State.selectedSkillId) {
+        const { mine, enemy } = v2PlayerIds();
+        const side = targetCard.dataset.v2Side;
+        const targetPlayerId = side === 'mine' ? mine : enemy;
+        const targetPlayer = v2State.state?.players?.[targetPlayerId];
+        const targetSlot = Number(targetCard.dataset.slot);
+        const targetCharacter = targetPlayer?.team?.[targetSlot];
+        if (v2CanTargetCharacter(targetCharacter, targetSlot, side === 'mine', true)) {
+            v2AddAction(v2State.selectedCasterSlot, v2State.selectedSkillId, targetPlayerId, targetSlot);
+            return;
+        }
+        toast('That target is not legal for this skill.');
         return;
     }
     const caster = event.target.closest('[data-v2-role="caster"]');
@@ -1235,10 +1287,14 @@ document.getElementById('classic-v2').addEventListener('click', (event) => {
             return;
         }
         if (targetKind === 'enemy_team') {
-            v2AddAction(v2State.selectedCasterSlot, v2State.selectedSkillId, enemy, null, [0, 1, 2]);
+            v2AddAction(v2State.selectedCasterSlot, v2State.selectedSkillId, enemy, null, v2TeamTargetSlots(v2State.state.players[enemy], selectedSkill));
             return;
         }
-        toast('Choose an enemy target.');
+        if (targetKind === 'ally_team') {
+            v2AddAction(v2State.selectedCasterSlot, v2State.selectedSkillId, mine, null, v2TeamTargetSlots(me, selectedSkill));
+            return;
+        }
+        toast(targetKind === 'ally' ? 'Choose an allied target.' : 'Choose an enemy target.');
         renderClassicV2();
         return;
     }

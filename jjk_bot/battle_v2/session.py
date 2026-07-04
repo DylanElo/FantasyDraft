@@ -66,6 +66,7 @@ class BattleV2RoomManager:
 
     def __init__(self, rng_seed: int | None = None):
         self.rooms: dict[str, BattleState] = {}
+        self.rngs: dict[str, random.Random] = {}
         self.rng_seed = rng_seed
 
     def start_classic_match(
@@ -98,6 +99,7 @@ class BattleV2RoomManager:
             rng_seed=self.rng_seed,
         )
         rng = random.Random(self.rng_seed)
+        self.rngs[room_id] = rng
         gain_turn_energy(state.players[turn_player_id], state.turn_number, True, rng)
         self.rooms[room_id] = state
         return self.serialize_for_player(room_id, turn_player_id)
@@ -167,6 +169,7 @@ class BattleV2RoomManager:
         state = self.get_state(room_id)
         self._ensure_turn_player(state, player_id)
         resolve_queue(state, player_id, SKILLS_BY_ID)
+        self._grant_next_turn_energy(room_id, player_id)
         return self.serialize_for_player(room_id, player_id)
 
     def cancel_queue(self, room_id: str, player_id: str) -> dict:
@@ -192,6 +195,21 @@ class BattleV2RoomManager:
             raise BattleV2SessionError("not this player's turn")
         if state.phase == BattlePhase.FINISHED:
             raise BattleV2SessionError("battle is finished")
+
+    def _grant_next_turn_energy(self, room_id: str, previous_player_id: str) -> None:
+        state = self.get_state(room_id)
+        if state.phase != BattlePhase.PLANNING or state.winner_id is not None:
+            return
+        next_player_id = state.turn_player_id
+        if next_player_id == previous_player_id:
+            return
+        rng = self.rngs.setdefault(room_id, random.Random(state.rng_seed))
+        gain_turn_energy(
+            state.players[next_player_id],
+            state.turn_number,
+            False,
+            rng,
+        )
 
     def _validate_non_wildcard_plan(self, state: BattleState, player_id: str) -> None:
         for action in state.pending_actions.get(player_id, []):

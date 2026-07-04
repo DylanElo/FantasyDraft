@@ -73,6 +73,7 @@ def test_invisible_status_hidden_from_opponent_but_visible_to_owner():
 def test_submit_update_confirm_queue_resolves_and_advances_turn():
     manager, _ = start_manager()
     give_all_energy(manager)
+    p2_energy_before = sum(manager.get_state("room").players["p2"].energy.values())
 
     manager.submit_plan(
         "room",
@@ -106,6 +107,7 @@ def test_submit_update_confirm_queue_resolves_and_advances_turn():
     assert serialized["players"]["p2"]["team"][0]["hp"] == 80
     assert serialized["players"]["p2"]["team"][1]["hp"] == 70
     assert serialized["pending_actions"]["p1"] == []
+    assert sum(serialized["players"]["p2"]["energy"].values()) == p2_energy_before + 3
 
 
 def test_invalid_queue_update_does_not_mutate_saved_actions():

@@ -3819,6 +3819,23 @@ html, body {
   overflow-wrap: anywhere;
 }
 
+.v2-preview-lines {
+  margin-top: 6px;
+  display: grid;
+  gap: 3px;
+}
+
+.v2-preview-lines span {
+  display: block;
+  padding: 3px 5px;
+  border-left: 2px solid rgba(96, 165, 250, 0.60);
+  background: rgba(96, 165, 250, 0.08);
+  color: #e0f2fe;
+  font-size: 10px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
 .v2-queue-controls {
   display: flex;
   align-items: center;

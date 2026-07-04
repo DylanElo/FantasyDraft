@@ -821,6 +821,76 @@ function v2QueuePaymentHTML(player) {
       </div>`;
 }
 
+function v2ActionTargetSlots(action, skill) {
+    const rule = skill?.target_rule || {};
+    if (rule.kind === 'enemy_team' || rule.kind === 'ally_team') {
+        const targetPlayer = v2State.state?.players?.[action.target_player_id];
+        return (targetPlayer?.team || [])
+            .map((character, slot) => character.alive ? slot : null)
+            .filter(slot => slot !== null);
+    }
+    if (action.target_slots && action.target_slots.length) return action.target_slots;
+    return action.target_slot === null || action.target_slot === undefined ? [] : [action.target_slot];
+}
+
+function v2PreviewTargetName(targetPlayer, slot) {
+    return targetPlayer?.team?.[slot]?.name || `Slot ${Number(slot) + 1}`;
+}
+
+function v2EffectPreviewParts(effect, action, skill, hpPreview, ownerPlayerId) {
+    const targetPlayer = v2State.state?.players?.[action.target_player_id];
+    const targets = v2ActionTargetSlots(action, skill);
+    const targetNames = targets.map(slot => v2PreviewTargetName(targetPlayer, slot));
+    const amount = Number(effect.amount || 0);
+    const parts = [];
+
+    if (effect.type === 'damage' || effect.type === 'health_steal') {
+        targets.forEach(slot => {
+            const key = `${action.target_player_id}:${slot}`;
+            const target = targetPlayer?.team?.[slot];
+            if (!target) return;
+            const before = hpPreview[key] ?? target.hp;
+            const after = Math.max(0, before - amount);
+            hpPreview[key] = after;
+            const type = effect.damage_type ? ` ${effect.damage_type}` : '';
+            const bonus = effect.payload?.bonus_amount ? `, +${effect.payload.bonus_amount} if condition hits` : '';
+            parts.push(`${v2PreviewTargetName(targetPlayer, slot)}: ${amount}${type} damage (${before}->${after} HP${bonus})`);
+        });
+        if (effect.type === 'health_steal' && amount) parts.push(`Caster heals ${amount}`);
+    } else if (effect.type === 'heal') {
+        targets.forEach(slot => {
+            const key = `${action.target_player_id}:${slot}`;
+            const target = targetPlayer?.team?.[slot];
+            if (!target) return;
+            const before = hpPreview[key] ?? target.hp;
+            const after = Math.min(target.max_hp || 100, before + amount);
+            hpPreview[key] = after;
+            parts.push(`${v2PreviewTargetName(targetPlayer, slot)}: heals ${amount} (${before}->${after} HP)`);
+        });
+    } else if (effect.type === 'apply_status') {
+        const statusName = effect.payload?.name || effect.status || 'Status';
+        const duration = effect.duration ? ` for ${effect.duration}t` : '';
+        const names = effect.target === 'self'
+            ? [v2State.state?.players?.[ownerPlayerId]?.team?.[action.caster_slot]?.name || 'Caster']
+            : targetNames;
+        parts.push(`${statusName}${duration} on ${names.join(', ') || 'target'}`);
+    } else if (effect.type === 'cleanse') {
+        parts.push(`Cleanse ${targetNames.join(', ') || 'target'}`);
+    } else if (effect.type === 'dispel') {
+        parts.push(`Dispel ${targetNames.join(', ') || 'target'}`);
+    }
+    return parts;
+}
+
+function v2ActionPreviewHTML(action, skill, hpPreview, ownerPlayerId) {
+    if (!skill) return '';
+    const lines = (skill.effects || []).flatMap(effect => v2EffectPreviewParts(effect, action, skill, hpPreview, ownerPlayerId));
+    if (!lines.length) return '';
+    return `<div class="v2-preview-lines">${lines.map(line =>
+        `<span>${esc(line)}</span>`
+    ).join('')}</div>`;
+}
+
 function v2SkillButtonHTML(skill, character, disabled) {
     const cooldown = character.cooldowns?.[skill.id] || 0;
     const { mine } = v2PlayerIds();
@@ -898,6 +968,7 @@ function v2QueueHTML() {
     if (!v2State.actions.length) {
         return '<div class="v2-empty">Queue up to one skill from each active fighter.</div>';
     }
+    const hpPreview = {};
     const items = v2State.actions.map((action, index) => {
         const caster = me?.team?.[action.caster_slot];
         const skill = caster ? v2SkillFor(caster.character_id, action.skill_id) : null;
@@ -915,6 +986,7 @@ function v2QueueHTML() {
               <strong>${index + 1}. ${esc(caster?.name || 'Unknown')}</strong>
               <span>${esc(skill?.name || action.skill_id)}</span>
               <small>Target: ${esc(v2ActionTargetLabel(action))}</small>
+              ${v2ActionPreviewHTML(action, skill, hpPreview, mine)}
             </div>
             <div class="v2-queue-controls">
               ${wildcardControls}

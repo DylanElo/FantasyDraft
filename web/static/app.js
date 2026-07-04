@@ -764,6 +764,63 @@ function v2CanPaySkillCost(energy, cost) {
     return Object.values(remaining).reduce((sum, count) => sum + Math.max(0, count), 0) >= wildcardCount;
 }
 
+function v2QueuePaymentStatus(player) {
+    const energy = player?.energy || {};
+    const remaining = {
+        green: energy.green || 0,
+        red: energy.red || 0,
+        blue: energy.blue || 0,
+        white: energy.white || 0,
+    };
+    let wildcardRequired = 0;
+    let wildcardChosen = 0;
+    const costs = { green: 0, red: 0, blue: 0, white: 0, black: 0 };
+
+    for (const action of v2State.actions) {
+        const caster = player?.team?.[action.caster_slot];
+        const skill = caster ? v2SkillFor(caster.character_id, action.skill_id) : null;
+        for (const color of skill?.cost || []) {
+            costs[color] = (costs[color] || 0) + 1;
+            if (color === 'black') {
+                wildcardRequired += 1;
+            } else {
+                remaining[color] = (remaining[color] || 0) - 1;
+            }
+        }
+        for (const pay of v2State.wildcardPays[action.id] || []) {
+            if (pay && pay in remaining) {
+                wildcardChosen += 1;
+                remaining[pay] -= 1;
+            }
+        }
+    }
+
+    const missingSpecific = Object.entries(remaining)
+        .filter(([, value]) => value < 0)
+        .map(([color]) => color);
+    const needsWildcardChoice = wildcardChosen < wildcardRequired;
+    const canPay = missingSpecific.length === 0 && !needsWildcardChoice;
+    const spent = Object.fromEntries(Object.entries(costs).filter(([, value]) => value > 0));
+    const reason = missingSpecific.length
+        ? `Short on ${missingSpecific.join(', ')}`
+        : needsWildcardChoice
+            ? 'Choose wildcard payments'
+            : 'Queue payable';
+    return { canPay, reason, spent, wildcardRequired, wildcardChosen };
+}
+
+function v2QueuePaymentHTML(player) {
+    if (!v2State.actions.length) return '';
+    const status = v2QueuePaymentStatus(player);
+    const spentColors = ['green', 'red', 'blue', 'white', 'black']
+        .flatMap(color => Array.from({ length: status.spent[color] || 0 }, () => color));
+    return `
+      <div class="v2-queue-status ${status.canPay ? 'payable' : 'blocked'}">
+        <strong>${esc(status.canPay ? 'Queue ready' : status.reason)}</strong>
+        <span>${spentColors.length ? orbsHTML(spentColors) : 'No energy cost'} ${status.wildcardRequired ? `Wildcard ${status.wildcardChosen}/${status.wildcardRequired}` : ''}</span>
+      </div>`;
+}
+
 function v2SkillButtonHTML(skill, character, disabled) {
     const cooldown = character.cooldowns?.[skill.id] || 0;
     const { mine } = v2PlayerIds();
@@ -841,7 +898,7 @@ function v2QueueHTML() {
     if (!v2State.actions.length) {
         return '<div class="v2-empty">Queue up to one skill from each active fighter.</div>';
     }
-    return v2State.actions.map((action, index) => {
+    const items = v2State.actions.map((action, index) => {
         const caster = me?.team?.[action.caster_slot];
         const skill = caster ? v2SkillFor(caster.character_id, action.skill_id) : null;
         const blackCount = (skill?.cost || []).filter(color => color === 'black').length;
@@ -867,6 +924,7 @@ function v2QueueHTML() {
             </div>
           </div>`;
     }).join('');
+    return v2QueuePaymentHTML(me) + items;
 }
 
 function v2LogEntryHTML(event) {
@@ -920,6 +978,7 @@ function renderClassicV2() {
         const turnStatus = document.getElementById('v2-turn-status');
         if (turnStatus) turnStatus.innerHTML = '';
         document.getElementById('btn-v2-confirm').disabled = true;
+        document.getElementById('btn-v2-confirm').textContent = 'Confirm Queue';
         document.getElementById('btn-v2-cancel').disabled = true;
         document.getElementById('btn-v2-end-turn').disabled = true;
         document.getElementById('btn-v2-new-match').disabled = false;
@@ -953,7 +1012,9 @@ function renderClassicV2() {
         : '<div class="v2-empty">Select one of your fighters.</div>';
     document.getElementById('v2-queue-panel').innerHTML = v2QueueHTML();
     document.getElementById('v2-log').innerHTML = (state.event_log || []).slice().reverse().slice(0, 10).map(v2LogEntryHTML).join('');
-    document.getElementById('btn-v2-confirm').disabled = !isMyTurn || v2State.actions.length === 0;
+    const paymentStatus = v2QueuePaymentStatus(me);
+    document.getElementById('btn-v2-confirm').disabled = !isMyTurn || v2State.actions.length === 0 || !paymentStatus.canPay;
+    document.getElementById('btn-v2-confirm').textContent = paymentStatus.canPay ? 'Confirm Queue' : paymentStatus.reason;
     document.getElementById('btn-v2-cancel').disabled = !isMyTurn || v2State.actions.length === 0;
     document.getElementById('btn-v2-end-turn').disabled = !isMyTurn;
     document.getElementById('btn-v2-new-match').disabled = false;

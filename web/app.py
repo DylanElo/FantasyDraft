@@ -8,6 +8,7 @@ is NOT modified — this layer converts between the two ID systems.
 from flask import Flask, abort, render_template, session
 from flask_socketio import SocketIO, emit, join_room
 import os
+import random
 import re
 import secrets
 import uuid
@@ -19,7 +20,7 @@ from collections import defaultdict, deque
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from jjk_bot.game import GameManager, GameState, CPU_PLAYER_ID
-from jjk_bot.characters import Character, Skill, character_identity
+from jjk_bot.characters import CHARACTERS, Character, Skill, character_identity
 from jjk_bot.portrait_assets import local_portrait_path
 from jjk_bot.battle_v2.models import BattleEvent, BattlePhase, use_battle_v2
 from jjk_bot.battle_v2.session import BattleV2RoomManager, BattleV2SessionError, skill_catalog
@@ -48,6 +49,13 @@ game_manager = GameManager()
 battle_v2_manager = BattleV2RoomManager()
 rate_limits = defaultdict(deque)
 CPU_V2_PLAYER_ID = "__cpu_v2__"
+V2_CPU_DRAFT_NAMES = [
+    "Satoru Gojo",
+    "Sukuna (Incarnation)",
+    "Yuta Okkotsu",
+    "Hiromi Higuruma",
+    "Aoi Todo",
+]
 
 ROOM_RE = re.compile(r"[^a-zA-Z0-9_-]+")
 CONTROL_RE = re.compile(r"[\x00-\x1f\x7f]+")
@@ -108,6 +116,76 @@ def v2_team_ids_from_characters(chars: list[Character]) -> list[str] | None:
         return None
     unique_ids = [str(character_id) for character_id in ids]
     return unique_ids if len(set(unique_ids)) == 3 else None
+
+
+def v2_character_by_name(name: str) -> Character:
+    return next(char for char in CHARACTERS if char.name == name)
+
+
+def v2_compatible_draft_pool(exclude: list[str] | None = None) -> list[Character]:
+    excluded = set(exclude or [])
+    return [
+        char
+        for char in CHARACTERS
+        if char.name not in excluded and v2_character_id_for_name(char.name) is not None
+    ]
+
+
+def choose_v2_draft_choices(exclude: list[str] | None = None, count: int = 3) -> list[Character]:
+    pool = v2_compatible_draft_pool(exclude)
+    grouped: dict[str, list[Character]] = {}
+    for char in pool:
+        grouped.setdefault(str(v2_character_id_for_name(char.name)), []).append(char)
+
+    choices: list[Character] = []
+    group_ids = list(grouped)
+    random.shuffle(group_ids)
+    for character_id in group_ids:
+        variants = grouped[character_id]
+        choices.append(random.choice(variants))
+        if len(choices) == count:
+            return choices
+
+    remaining = [char for char in pool if char.name not in {choice.name for choice in choices}]
+    random.shuffle(remaining)
+    return choices + remaining[: max(0, count - len(choices))]
+
+
+def configure_v2_cpu_draft(game) -> None:
+    cpu_id = CPU_PLAYER_ID
+    previous_names = {char.name for char in game.teams.get(cpu_id, [])}
+    game.drafted_names = [name for name in game.drafted_names if name not in previous_names]
+
+    cpu_team = [v2_character_by_name(name) for name in V2_CPU_DRAFT_NAMES]
+    game.teams[cpu_id] = cpu_team
+    game.seen_chars[cpu_id] = [char.name for char in cpu_team]
+    for char in cpu_team:
+        if char.name not in game.drafted_names:
+            game.drafted_names.append(char.name)
+    game.active_teams[cpu_id] = cpu_team[:3]
+    game.bench_teams[cpu_id] = []
+
+
+def draw_v2_compatible_three(game, player_id: int) -> tuple[bool, str, list[Character]]:
+    if player_id != game.get_current_player_id():
+        return False, f"It's not your turn! It's {game.get_current_player_name()}'s turn.", []
+
+    if game.state != GameState.IN_PROGRESS:
+        if game.state == GameState.DECIDING:
+            return False, "You already drew! Choose a character to add to your team.", game.last_drawn_choices.get(player_id, [])
+        return False, "The game is not in progress.", []
+
+    base_exclude = list(game.seen_chars.get(player_id, [])) + game.drafted_names
+    choices = choose_v2_draft_choices(base_exclude, count=3)
+    if len(choices) < 3:
+        return False, "Not enough Battle v2-compatible characters remain for this draft.", []
+
+    for char in choices:
+        if char.name not in game.seen_chars[player_id]:
+            game.seen_chars[player_id].append(char.name)
+    game.last_drawn_choices[player_id] = choices
+    game.state = GameState.DECIDING
+    return True, f"{game.player_names[player_id]} drew 3 Battle v2-ready characters. Pick 1 to add to your team!", choices
 
 
 def clean_v2_team(value, fallback: list[str]) -> list[str]:
@@ -596,6 +674,9 @@ def on_start_vs_cpu(data=None):
 
     player_name = game.player_names.get(int_id, f"Player_{player_session[:4]}")
     success, msg = game.start_game_vs_cpu(int_id, player_name, difficulty=difficulty)
+    if success and use_battle_v2():
+        configure_v2_cpu_draft(game)
+        msg = f"{msg} Battle v2 draft pool enabled."
 
     emit('message', {'text': msg}, room=room_id)
     emit('game_update', get_game_state_dict(game, smap), room=room_id)
@@ -610,7 +691,10 @@ def on_draw_card():
     room_id, _, smap, int_id, int_room = context
 
     game = game_manager.get_game(int_room)
-    success, msg, choices = game.draw_three(int_id)
+    if use_battle_v2() and game.cpu_player_id is not None:
+        success, msg, choices = draw_v2_compatible_three(game, int_id)
+    else:
+        success, msg, choices = game.draw_three(int_id)
     emit('message', {'text': msg}, room=room_id)
     emit('game_update', get_game_state_dict(game, smap), room=room_id)
 

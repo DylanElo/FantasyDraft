@@ -3764,6 +3764,41 @@ html, body {
   background: rgba(255,255,255,0.04);
 }
 
+.v2-queue-status {
+  padding: 8px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid rgba(255,255,255,0.11);
+  background: rgba(255,255,255,0.045);
+}
+
+.v2-queue-status.payable {
+  border-color: rgba(34, 197, 94, 0.34);
+  background: rgba(20, 83, 45, 0.18);
+}
+
+.v2-queue-status.blocked {
+  border-color: rgba(248, 113, 113, 0.36);
+  background: rgba(127, 29, 29, 0.18);
+}
+
+.v2-queue-status strong {
+  min-width: 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.v2-queue-status span {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
 .v2-queue-item strong,
 .v2-queue-item span {
   display: block;
@@ -3882,6 +3917,11 @@ html, body {
 
   .v2-queue-item {
     grid-template-columns: 1fr;
+  }
+
+  .v2-queue-status {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .v2-queue-controls {

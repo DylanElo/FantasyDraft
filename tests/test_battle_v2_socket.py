@@ -192,3 +192,29 @@ def test_submit_team_launches_battle_v2_from_solo_draft_when_convertible(monkeyp
         "ryomen_sukuna",
         "yuta_okkotsu",
     ]
+
+
+def test_vs_cpu_v2_uses_convertible_cpu_and_draw_pool(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    flask_client = web_app.app.test_client()
+    with flask_client.session_transaction() as flask_session:
+        flask_session["player_id"] = "player-v2-pool"
+    client = web_app.socketio.test_client(web_app.app, flask_test_client=flask_client)
+    client.emit("join_room", {"room_id": "pool-v2", "player_name": "Tester"})
+    client.get_received()
+
+    client.emit("start_vs_cpu", {"difficulty": "normal"})
+    client.get_received()
+
+    game = web_app.game_manager.get_game(web_app.str_to_int_id("pool-v2"))
+    assert web_app.v2_team_ids_from_characters(game.active_teams[CPU_PLAYER_ID]) == [
+        "satoru_gojo",
+        "ryomen_sukuna",
+        "yuta_okkotsu",
+    ]
+
+    client.emit("draw_card")
+    update = received_payload(client, "game_update")
+    drawn = update["last_drawn_choices"]
+    assert len(drawn) == 3
+    assert all(web_app.v2_character_id_for_name(char["name"]) for char in drawn)

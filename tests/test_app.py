@@ -1,3 +1,4 @@
+from pathlib import Path
 import unittest
 from web import app as web_app
 from web.app import char_to_dict, v2_character_id_for_name
@@ -64,8 +65,28 @@ def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
     assert 'id="btn-v2-new-match"' in html
     assert 'id="v2-player-summary"' in html
     assert 'characters_data.js?v=19' in html
-    assert 'app.js?v=36' in html
-    assert 'style.css?v=30' in html
+    assert 'app.js?v=37' in html
+    assert 'style.css?v=31' in html
+    assert 'Battle v2 Arena' in html
+    assert 'Classic Queue Test' not in html
+
+
+def test_battle_v2_public_surface_uses_production_copy(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    client = web_app.app.test_client()
+
+    html = client.get("/").get_data(as_text=True)
+    app_js = Path(web_app.app.static_folder, "app.js").read_text(encoding="utf-8")
+    style_css = Path(web_app.app.static_folder, "style.css").read_text(encoding="utf-8")
+
+    assert "Battle v2 Arena" in html
+    assert "Battle v2 Arena" in app_js
+    assert "Classic Queue Test" not in html
+    assert "Classic Queue Test" not in app_js
+    assert "Classic Arena v2" not in html
+    assert "Classic Arena v2" not in style_css
+    assert "dev surface" not in app_js.lower()
+    assert "dev surface" not in style_css.lower()
 
 
 def test_v2_character_id_for_v1_names():

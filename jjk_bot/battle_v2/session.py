@@ -86,6 +86,20 @@ def skill_catalog() -> dict[str, dict[str, Any]]:
                         "required_status": skill.target_rule.required_status,
                     },
                     "classes": [skill_class.value for skill_class in skill.classes],
+                    "effects": [
+                        {
+                            "type": effect.type,
+                            "amount": effect.amount,
+                            "damage_type": effect.damage_type.value if effect.damage_type else None,
+                            "status": effect.status,
+                            "duration": effect.duration,
+                            "stacks": effect.stacks,
+                            "classes": [skill_class.value for skill_class in effect.classes],
+                            "target": effect.target,
+                            "payload": dict(effect.payload),
+                        }
+                        for effect in skill.effects
+                    ],
                     "conditions": [
                         {
                             "type": condition.type,

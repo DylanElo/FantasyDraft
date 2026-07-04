@@ -43,6 +43,8 @@ def test_start_classic_match_serializes_initial_private_view():
     assert serialized["skill_catalog"]["yuji_itadori"]["skills"][0]["id"] == "divergent_fist"
     assert serialized["skill_catalog"]["yuji_itadori"]["skills"][0]["cost"] == ["green"]
     assert serialized["skill_catalog"]["yuji_itadori"]["skills"][0]["target_rule"]["kind"] == "enemy"
+    assert serialized["skill_catalog"]["yuji_itadori"]["skills"][0]["effects"][0]["type"] == "damage"
+    assert serialized["skill_catalog"]["yuji_itadori"]["skills"][0]["effects"][0]["amount"] == 20
     assert sum(serialized["players"]["p1"]["energy"].values()) == 1
     assert manager.get_state("room").turn_player_id == "p1"
 

@@ -3442,6 +3442,43 @@ html, body {
   min-height: 48px;
 }
 
+.v2-turn-status {
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.v2-turn-card {
+  min-width: 0;
+  padding: 9px 10px;
+  display: grid;
+  gap: 2px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(7, 9, 17, 0.74);
+}
+
+.v2-turn-card.active {
+  border-color: rgba(34, 197, 94, 0.45);
+  background: rgba(20, 83, 45, 0.22);
+}
+
+.v2-turn-card.waiting {
+  border-color: rgba(96, 165, 250, 0.36);
+  background: rgba(30, 64, 175, 0.16);
+}
+
+.v2-turn-card strong {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.v2-turn-card span {
+  color: var(--muted);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
 .v2-picker {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3588,6 +3625,14 @@ html, body {
   overflow-wrap: anywhere;
 }
 
+.v2-hp-number {
+  flex: 0 0 auto;
+  color: #f8fafc;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .v2-hp {
   height: 7px;
   overflow: hidden;
@@ -3674,6 +3719,29 @@ html, body {
   white-space: nowrap;
 }
 
+.v2-skill-tags,
+.v2-effect-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.v2-skill-tags span,
+.v2-effect-chip {
+  padding: 2px 5px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.045);
+  color: #dbeafe;
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.v2-effect-chip {
+  color: #fde68a;
+  border-color: rgba(250, 204, 21, 0.24);
+  background: rgba(250, 204, 21, 0.08);
+}
+
 .v2-skill p {
   margin: 0;
   color: var(--muted);
@@ -3706,6 +3774,14 @@ html, body {
 
 .v2-queue-item span {
   color: var(--muted);
+}
+
+.v2-queue-item small {
+  display: block;
+  margin-top: 2px;
+  color: #bfdbfe;
+  font-size: 10px;
+  overflow-wrap: anywhere;
 }
 
 .v2-queue-controls {
@@ -3775,6 +3851,10 @@ html, body {
   }
 
   .v2-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .v2-turn-status {
     grid-template-columns: 1fr;
   }
 

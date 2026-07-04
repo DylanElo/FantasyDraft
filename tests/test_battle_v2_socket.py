@@ -266,6 +266,53 @@ def test_submit_team_launches_battle_v2_from_solo_draft_when_convertible(monkeyp
         "yuta_okkotsu",
     ]
 
+    state = web_app.battle_v2_manager.get_state("draft-v2")
+    state.players[player_session].energy[EnergyType.GREEN] = 2
+    state.players["__cpu_v2__"].energy[EnergyType.GREEN] = 2
+    client.get_received()
+
+    client.emit(
+        "battle_v2_submit_plan",
+        {
+            "actions": [
+                {
+                    "id": "draft-a1",
+                    "caster_slot": 0,
+                    "skill_id": "divergent_fist",
+                    "target_player_id": "__cpu_v2__",
+                    "target_slot": 1,
+                }
+            ]
+        },
+    )
+    queued = received_payload(client, "battle_v2_update")
+    assert queued["phase"] == "queue_review"
+    assert len(queued["pending_actions"][player_session]) == 1
+
+    client.emit("battle_v2_confirm_queue", {})
+    resolved = received_payload(client, "battle_v2_update")
+
+    assert resolved["turn_player_id"] == player_session
+    assert resolved["phase"] == "planning"
+    assert resolved["pending_actions"][player_session] == []
+    assert any(
+        event["type"] == "skill_resolved"
+        and event["payload"].get("player_id") == player_session
+        for event in resolved["event_log"]
+    )
+    assert any(
+        event["type"] == "damage"
+        and event["payload"].get("target_player_id") == "__cpu_v2__"
+        and event["payload"].get("target_slot") == 1
+        and event["payload"].get("amount") == 20
+        for event in resolved["event_log"]
+    )
+    assert any(
+        event["type"] == "skill_resolved"
+        and event["payload"].get("player_id") == "__cpu_v2__"
+        for event in resolved["event_log"]
+    )
+
 
 def test_vs_cpu_v2_uses_convertible_cpu_and_draw_pool(monkeypatch):
     monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")

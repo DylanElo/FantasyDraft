@@ -3396,7 +3396,7 @@ html, body {
   }
 }
 
-/* ── Classic Arena v2 dev surface ─────────────────────────────────────── */
+/* ── Battle v2 arena ──────────────────────────────────────────────────── */
 .v2-shell {
   min-height: calc(100vh - 58px);
   padding: 12px clamp(10px, 2vw, 22px) calc(18px + var(--safe-b));

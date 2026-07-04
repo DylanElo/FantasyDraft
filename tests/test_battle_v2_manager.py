@@ -84,6 +84,29 @@ def test_convert_energy_resets_after_turn_advances():
     assert manager.get_state("room").players["p1"].energy_converted_this_turn is False
 
 
+def test_convert_energy_requires_no_pending_queue():
+    manager, _ = start_manager()
+    state = manager.get_state("room")
+    state.players["p1"].energy[EnergyType.GREEN] = 3
+
+    manager.submit_plan(
+        "room",
+        "p1",
+        [
+            {
+                "id": "a1",
+                "caster_slot": 0,
+                "skill_id": "divergent_fist",
+                "target_player_id": "p2",
+                "target_slot": 0,
+            }
+        ],
+    )
+
+    with pytest.raises(BattleV2Error, match="cancel the current queue"):
+        manager.convert_energy("room", "p1", "green", "red")
+
+
 def test_invisible_status_hidden_from_opponent_but_visible_to_owner():
     manager, _ = start_manager()
     state = manager.get_state("room")

@@ -611,7 +611,7 @@ socket.on('game_update', (data) => {
     renderGame(data);
 });
 
-// ── CLASSIC ARENA V2 DEV SCREEN ─────────────────────────────────────────────
+// ── BATTLE V2 ARENA ─────────────────────────────────────────────────────────
 const v2State = {
     state: null,
     selectedCasterSlot: null,
@@ -1248,8 +1248,8 @@ function renderClassicV2() {
     const title = document.getElementById('v2-phase-title');
     const hint = document.getElementById('v2-phase-hint');
     if (!state) {
-        if (title) title.textContent = 'Classic Queue Test';
-        if (hint) hint.textContent = 'Start a local Battle v2 match behind the feature flag.';
+        if (title) title.textContent = 'Battle v2 Arena';
+        if (hint) hint.textContent = 'Pick two starter teams, queue skills, then resolve the turn.';
         ['v2-my-team', 'v2-enemy-team', 'v2-energy-row', 'v2-selected-panel', 'v2-queue-panel', 'v2-log'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.innerHTML = '';

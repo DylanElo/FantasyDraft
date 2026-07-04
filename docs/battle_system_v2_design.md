@@ -1,0 +1,99 @@
+# JJK Arena Battle System v2 Design
+
+## Objective
+
+Battle System v2 is a new, server-authoritative combat engine for a Naruto Arena-style JJK mode. It is isolated from the current v1 battle flow and is intended to power Classic Arena first, then later Draft or Culling Game modes after the pure engine is tested.
+
+The production default remains v1. Integration code should only use v2 when `JJK_BATTLE_SYSTEM=v2`.
+
+## Core Loop
+
+1. Each player fields three active characters.
+2. During planning, each living active character may choose at most one skill.
+3. The player selects legal targets for each chosen skill.
+4. The player enters queue review.
+5. Wildcard (`black`) costs are assigned from available core energy.
+6. The player orders queued skills left-to-right.
+7. The server validates, spends energy on confirm, and resolves the queue.
+8. Cooldowns, statuses, deaths, domains, and energy update at turn end.
+9. The next player acts unless a winner has been decided.
+
+## Design Pillars
+
+### Tactical clarity first
+
+Every skill should be understandable from its structured data:
+
+- cost
+- target rule
+- classes
+- cooldown
+- duration
+- effect
+- condition
+- counterplay
+
+Resolver-only character exceptions should be avoided. If a mechanic cannot be described with the kit grammar, the grammar should be extended intentionally.
+
+### Data-driven character kits
+
+Character kits should be declared as `SkillSpec` data with `EffectSpec`, `ConditionSpec`, and `TransformationSpec` entries. Character-specific behavior should not be scattered through Python conditionals that check display names.
+
+### Preserve v1
+
+The existing game states and v1 battle behavior remain intact. V2 lives under `jjk_bot/battle_v2/` and should be wired into the web app only after the pure engine, starter roster, and session adapter are tested.
+
+### Server authoritative
+
+The client submits intent only. The server owns legality, damage, cooldowns, targeting, hidden effects, queue resolution, and winner detection.
+
+## Feature Flag
+
+Use the helper exported by `jjk_bot.battle_v2.models`:
+
+```python
+use_battle_v2()
+```
+
+It returns `True` only when `JJK_BATTLE_SYSTEM` is set to `v2`. The default is `v1`.
+
+## Model Boundaries
+
+PR 1 defines data models only. Later PRs should add:
+
+- `energy.py` for deterministic energy gain and wildcard payment validation.
+- `conditions.py` for kit condition evaluation.
+- `targeting.py` for legal target checks.
+- `effects.py` for pure effect application helpers.
+- `resolver.py` for queue resolution.
+- `starter_roster.py` for initial JJK kits.
+- `serialization.py` for public/private state views.
+- `session.py` for room management and SocketIO-facing APIs.
+
+## Turn Phases
+
+- `PLANNING`: player selects skills and targets.
+- `QUEUE_REVIEW`: player orders actions and assigns wildcard payments.
+- `RESOLVING`: server resolves queued actions left-to-right.
+- `TURN_END`: statuses, cooldowns, action/control ticks, and energy update.
+- `FINISHED`: winner decided.
+
+## Damage Families
+
+The resolver should implement these rule families exactly in a later PR:
+
+- Normal damage is reduced by damage reduction and absorbed by destructible defense.
+- Piercing damage ignores damage reduction but still hits destructible defense first.
+- Soul damage ignores damage reduction and destructible defense.
+- Sure-hit damage is for Domain effects and ignores normal target protection unless anti-domain effects apply.
+- Health steal heals the user only for actual HP damage dealt.
+
+## Hidden Information
+
+Invisible statuses must be visible to their owner, hidden from opponents, revealed when triggered, and never leak protected targets through public serialization.
+
+## Initial Acceptance Criteria
+
+- V1 behavior is unchanged.
+- `jjk_bot.battle_v2.models` imports cleanly.
+- Data models cover battle phases, energy, damage, skill classes, skill specs, effects, conditions, transformations, statuses, pending actions, players, events, and battle state.

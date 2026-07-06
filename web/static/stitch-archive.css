@@ -133,6 +133,7 @@
 #classic-v2.screen,
 #classic-v2.v2-battle-active.screen {
   overflow: hidden;
+  overflow-x: clip;
   background: #04040d;
 }
 
@@ -141,11 +142,31 @@
 }
 
 #v2-phone-shell {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: min(430px, 100vw);
+  margin-left: auto;
+  margin-right: auto;
   isolation: isolate;
+  overscroll-behavior-x: none;
 }
 
 #classic-v2.v2-battle-active #v2-bottom-nav {
   display: none !important;
+}
+
+body:has(#classic-v2.active) .btn-sfx-toggle {
+  right: max(12px, calc((100vw - 430px) / 2 + 12px));
+  bottom: 78px;
+  z-index: 70;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: rgba(17,18,24,0.92);
+}
+
+body:has(#classic-v2.active.v2-battle-active) .btn-sfx-toggle {
+  display: none;
 }
 
 #v2-command-zone {
@@ -448,6 +469,202 @@
 
 #v2-result-view.is-victory #v2-result-title {
   color: #f59e0b;
+}
+
+.v2-history-empty-panel {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  min-height: 148px;
+  padding: 18px;
+  border: 1px solid rgba(168,85,247,0.28);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(168,85,247,0.16), transparent 45%),
+    rgba(17,18,24,0.84);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 12px 28px rgba(0,0,0,0.35);
+}
+
+.v2-history-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border: 1px solid rgba(34,211,238,0.32);
+  border-radius: 8px;
+  background: rgba(34,211,238,0.08);
+  color: #22d3ee;
+}
+
+.v2-history-empty-panel h3 {
+  margin: 0 0 6px;
+  color: #fff;
+  font: 800 16px/1.1 "Cinzel", serif;
+  text-transform: uppercase;
+}
+
+.v2-history-empty-panel p {
+  margin: 0;
+  color: #ccc3d8;
+  font: 600 12px/1.45 "Inter", sans-serif;
+}
+
+.v2-history-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.v2-history-stat {
+  min-height: 86px;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.04), transparent),
+    rgba(17,18,24,0.78);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
+.v2-history-stat span,
+.v2-history-meta,
+.v2-history-team,
+.v2-history-synergies span {
+  font-family: "JetBrains Mono", monospace;
+  text-transform: uppercase;
+}
+
+.v2-history-stat span {
+  display: block;
+  margin-bottom: 8px;
+  color: #ccc3d8;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.v2-history-stat strong {
+  display: block;
+  color: #f59e0b;
+  font: 900 24px/1 "JetBrains Mono", monospace;
+}
+
+.v2-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.v2-history-row {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,0.10);
+  border-left-width: 3px;
+  border-radius: 8px;
+  background: rgba(17,18,24,0.84);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.28);
+}
+
+.v2-history-row.is-win {
+  border-left-color: #22c55e;
+}
+
+.v2-history-row.is-loss {
+  border-left-color: #ef4444;
+}
+
+.v2-history-badge {
+  display: grid;
+  place-items: center;
+  height: 36px;
+  border-radius: 7px;
+  font: 900 11px/1 "JetBrains Mono", monospace;
+}
+
+.v2-history-row.is-win .v2-history-badge {
+  border: 1px solid rgba(34,197,94,0.42);
+  background: rgba(34,197,94,0.12);
+  color: #22c55e;
+}
+
+.v2-history-row.is-loss .v2-history-badge {
+  border: 1px solid rgba(239,68,68,0.42);
+  background: rgba(239,68,68,0.12);
+  color: #ef4444;
+}
+
+.v2-history-row-main {
+  min-width: 0;
+}
+
+.v2-history-opponent {
+  color: #fff;
+  font: 800 14px/1.15 "Cinzel", serif;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v2-history-team {
+  margin-top: 4px;
+  color: #ccc3d8;
+  font-size: 9px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v2-history-synergies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 7px;
+}
+
+.v2-history-synergies span {
+  max-width: 120px;
+  padding: 3px 5px;
+  border: 1px solid rgba(168,85,247,0.25);
+  border-radius: 6px;
+  background: rgba(168,85,247,0.08);
+  color: #d2bbff;
+  font-size: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v2-history-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: flex-end;
+  max-width: 82px;
+  color: #ccc3d8;
+  font-size: 8px;
+  text-align: right;
+}
+
+.v2-history-meta strong {
+  color: #22d3ee;
+  font-size: 9px;
+  line-height: 1.2;
+}
+
+@media (max-width: 380px) {
+  .v2-history-row {
+    grid-template-columns: 42px minmax(0, 1fr);
+  }
+
+  .v2-history-meta {
+    grid-column: 2;
+    align-items: flex-start;
+    max-width: none;
+    text-align: left;
+  }
 }
 
 @media (max-height: 760px) {

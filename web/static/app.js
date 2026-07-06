@@ -619,6 +619,7 @@ function renderHistory() {
     if (!history.length) {
         el.innerHTML = '<div class="history-empty">No matches yet</div>';
         renderV2LobbyActivity();
+        renderV2HistoryView();
         return;
     }
     const wins = history.filter(h => h.won).length;
@@ -663,6 +664,7 @@ function renderHistory() {
         </div>
         <div class="history-rows">${rows}</div>`;
     renderV2LobbyActivity();
+    renderV2HistoryView();
 }
 
 function renderV2LobbyActivity() {
@@ -689,6 +691,95 @@ function renderV2LobbyActivity() {
             <span class="font-tactical-data text-[10px] text-on-surface-variant shrink-0">${esc(turns)} · ${esc(hit)}</span>
           </div>`;
     }).join('');
+}
+
+function v2HistoryTeamLabel(team) {
+    if (!Array.isArray(team) || !team.length) return 'Unknown lineup';
+    return team.slice(0, 3).map(member => {
+        if (typeof member === 'string') return member.replace(/_/g, ' ');
+        return member?.name || member?.id || 'Unknown';
+    }).join(' / ');
+}
+
+function renderV2HistoryView() {
+    const content = document.getElementById('v2-history-view-content');
+    const record = document.getElementById('v2-history-record');
+    if (!content && !record) return;
+
+    const history = loadHistory();
+    const wins = history.filter(h => h.won).length;
+    const losses = history.length - wins;
+    if (record) record.textContent = `${wins}W ${losses}L`;
+
+    if (!content) return;
+    if (!history.length) {
+        content.innerHTML = `
+          <section class="v2-history-empty-panel">
+            <div class="v2-history-empty-icon">
+              <span class="material-symbols-outlined">history</span>
+            </div>
+            <div>
+              <h3>No combat records yet</h3>
+              <p>Finish a Quick Play or Private PvP battle and the result will be archived here.</p>
+            </div>
+          </section>`;
+        return;
+    }
+
+    const wonMatches = history.filter(h => h.won && Number(h.turns || 0) > 0);
+    const fastestWin = wonMatches.length ? Math.min(...wonMatches.map(h => Number(h.turns || 0))) : null;
+    const biggestHit = Math.max(...history.map(h => Number(h.biggestHit || 0)), 0);
+    const winRate = history.length ? Math.round((wins / history.length) * 100) : 0;
+    const recentRows = history.slice().reverse().slice(0, 10).map(h => {
+        const resultClass = h.won ? 'is-win' : 'is-loss';
+        const resultLabel = h.won ? 'WIN' : 'LOSS';
+        const turns = Number(h.turns || 0);
+        const hit = Number(h.biggestHit || 0);
+        const synergies = Array.isArray(h.synergies) && h.synergies.length
+            ? `<div class="v2-history-synergies">${h.synergies.slice(0, 4).map(s => `<span>${esc(s)}</span>`).join('')}</div>`
+            : '';
+        const detailBits = [
+            h.difficulty || '',
+            turns ? `${turns} turns` : '',
+            hit ? `Max ${hit}` : '',
+        ].filter(Boolean);
+        return `
+          <article class="v2-history-row ${resultClass}">
+            <div class="v2-history-badge">${resultLabel}</div>
+            <div class="v2-history-row-main">
+              <div class="v2-history-opponent">vs ${esc(h.opponent || 'Unknown')}</div>
+              <div class="v2-history-team">${esc(v2HistoryTeamLabel(h.team))}</div>
+              ${synergies}
+            </div>
+            <div class="v2-history-meta">
+              <span>${esc(h.date || 'Recent')}</span>
+              <strong>${esc(detailBits.join(' / ') || 'Local')}</strong>
+            </div>
+          </article>`;
+    }).join('');
+
+    content.innerHTML = `
+      <section class="v2-history-stat-grid" aria-label="Combat record summary">
+        <div class="v2-history-stat">
+          <span>Record</span>
+          <strong>${wins}-${losses}</strong>
+        </div>
+        <div class="v2-history-stat">
+          <span>Win Rate</span>
+          <strong>${winRate}%</strong>
+        </div>
+        <div class="v2-history-stat">
+          <span>Fastest Win</span>
+          <strong>${fastestWin ? `${fastestWin}T` : '--'}</strong>
+        </div>
+        <div class="v2-history-stat">
+          <span>Max Strike</span>
+          <strong>${biggestHit || '--'}</strong>
+        </div>
+      </section>
+      <section class="v2-history-list" aria-label="Recent combat records">
+        ${recentRows}
+      </section>`;
 }
 
 // ── SOCKET EVENTS ─────────────────────────────────────────────────────────────
@@ -723,7 +814,7 @@ const v2State = {
 };
 
 function setV2UiScreen(screen) {
-    v2State.uiScreen = screen === 'team' ? 'team' : 'lobby';
+    v2State.uiScreen = screen === 'team' ? 'team' : screen === 'history' ? 'history' : 'lobby';
 }
 
 function v2StoredValue(key, fallback = '') {
@@ -774,7 +865,7 @@ function v2ReadLobbyFields() {
 }
 
 function renderV2BottomNav() {
-    const active = v2State.state ? 'arena' : (v2State.uiScreen === 'team' ? 'roster' : 'lobby');
+    const active = v2State.state ? 'arena' : (v2State.uiScreen === 'team' ? 'roster' : v2State.uiScreen === 'history' ? 'history' : 'lobby');
     document.querySelectorAll('#v2-bottom-nav [data-v2-nav]').forEach(button => {
         const isActive = button.dataset.v2Nav === active;
         button.classList.toggle('text-primary', isActive);
@@ -1851,6 +1942,7 @@ function renderClassicV2() {
     const state = v2State.state;
     const classicScreen = document.getElementById('classic-v2');
     const lobbyView = document.getElementById('v2-lobby-view');
+    const historyView = document.getElementById('v2-history-view');
     const setupView = document.getElementById('v2-setup-view');
     const battleView = document.getElementById('v2-battle-view');
     const resultView = document.getElementById('v2-result-view');
@@ -1862,19 +1954,24 @@ function renderClassicV2() {
     const cancelButton = document.getElementById('btn-v2-cancel');
     const endTurnButton = document.getElementById('btn-v2-end-turn');
     const confirmButton = document.getElementById('btn-v2-confirm');
+    if (classicScreen) classicScreen.scrollLeft = 0;
     if (!state) {
         hydrateV2LobbyFields();
-        const showLobby = v2State.uiScreen !== 'team' && v2State.lobbyStatus?.status !== 'waiting';
+        const showHistory = v2State.uiScreen === 'history' && v2State.lobbyStatus?.status !== 'waiting';
+        const showTeam = v2State.uiScreen === 'team' || v2State.lobbyStatus?.status === 'waiting';
+        const showLobby = !showTeam && !showHistory;
         classicScreen?.classList.remove('v2-battle-active');
         classicScreen?.classList.remove('v2-finished');
         classicScreen?.classList.add('v2-setup-active');
         lobbyView?.classList.toggle('hidden', !showLobby);
-        setupView?.classList.toggle('hidden', showLobby);
+        historyView?.classList.toggle('hidden', !showHistory);
+        setupView?.classList.toggle('hidden', !showTeam);
         battleView?.classList.add('hidden');
         resultView?.classList.add('hidden');
         bottomNav?.classList.remove('hidden');
         renderV2BottomNav();
-        renderV2LobbyActivity();
+        if (showHistory) renderV2HistoryView();
+        if (showLobby) renderV2LobbyActivity();
         if (title) title.textContent = 'Assemble Your Trio';
         if (hint) {
             hint.textContent = v2State.matchMode === 'pvp'
@@ -1910,7 +2007,7 @@ function renderClassicV2() {
             newMatchButton.textContent = v2State.lobbyStatus?.status === 'waiting' ? 'Cancel Wait' : 'New Match';
         }
         document.getElementById('v2-picker')?.classList.remove('hidden');
-        if (!showLobby) renderV2Picker();
+        if (showTeam) renderV2Picker();
         return;
     }
     classicScreen?.classList.add('v2-battle-active');
@@ -1919,6 +2016,7 @@ function renderClassicV2() {
     if (classicScreen) classicScreen.scrollTop = 0;
     window.scrollTo(0, 0);
     lobbyView?.classList.add('hidden');
+    historyView?.classList.add('hidden');
     setupView?.classList.add('hidden');
     battleView?.classList.toggle('hidden', !!state.winner_id);
     resultView?.classList.toggle('hidden', !state.winner_id);
@@ -2196,7 +2294,9 @@ document.getElementById('classic-v2').addEventListener('click', (event) => {
     const navButton = event.target.closest('[data-v2-nav]');
     if (navButton) {
         const destination = navButton.dataset.v2Nav;
-        if (destination === 'lobby' || destination === 'history') {
+        if (destination === 'history') {
+            setV2UiScreen('history');
+        } else if (destination === 'lobby') {
             setV2UiScreen('lobby');
         } else {
             setV2UiScreen('team');

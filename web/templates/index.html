@@ -116,7 +116,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=51">
   <link rel="stylesheet" href="{{ url_for('static', filename='jjk-theme.css') }}?v=1">
   <link rel="stylesheet" href="{{ url_for('static', filename='arena-redesign.css') }}?v=1">
-  <link rel="stylesheet" href="{{ url_for('static', filename='stitch-archive.css') }}?v=6">
+  <link rel="stylesheet" href="{{ url_for('static', filename='stitch-archive.css') }}?v=7">
   <script src="{{ url_for('static', filename='socket.io.min.js') }}?v=4.7.2"></script>
 </head>
 <body>
@@ -497,6 +497,19 @@
         </main>
       </section>
 
+      <section id="v2-history-view" class="hidden relative z-10 h-full flex flex-col overflow-hidden">
+        <main class="flex-1 mt-16 mb-16 p-gutter relative z-10 overflow-y-auto">
+          <div class="flex items-end justify-between border-b border-outline-variant/30 pb-4 mb-stack-md">
+            <div>
+              <h2 class="font-headline-lg-mobile text-headline-lg-mobile text-inverse-surface tracking-wide uppercase">Combat Records</h2>
+              <p class="font-body-standard text-body-standard text-on-surface-variant mt-1">Review local results, best hits, and recent domains.</p>
+            </div>
+            <div id="v2-history-record" class="font-tactical-data text-[10px] text-prestige-gold uppercase">0W 0L</div>
+          </div>
+          <div id="v2-history-view-content" class="flex flex-col gap-stack-md"></div>
+        </main>
+      </section>
+
       <section id="v2-setup-view" class="hidden relative z-10 h-full flex flex-col overflow-hidden">
         <main class="flex-1 mt-16 mb-[220px] p-gutter relative z-10 flex flex-col gap-stack-lg overflow-y-auto">
           <div class="flex justify-between items-end border-b border-outline-variant/30 pb-4">
@@ -720,6 +733,6 @@
   <script src="{{ url_for('static', filename='effects.js') }}?v=16"></script>
   <script src="{{ url_for('static', filename='vendor/phaser.min.js') }}?v=3.90.0"></script>
   <script src="{{ url_for('static', filename='phaser-battle.js') }}?v=4"></script>
-  <script src="{{ url_for('static', filename='app.js') }}?v=70"></script>
+  <script src="{{ url_for('static', filename='app.js') }}?v=71"></script>
 </body>
 </html>

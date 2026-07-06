@@ -421,7 +421,83 @@
 
       <div id="v2-error" class="hidden absolute top-20 left-4 right-4 z-[80] bg-error-container text-on-error-container border border-error rounded-lg px-3 py-2 font-tactical-data text-[11px]"></div>
 
-      <section id="v2-setup-view" class="relative z-10 h-full flex flex-col overflow-hidden">
+      <section id="v2-lobby-view" class="relative z-10 h-full flex flex-col overflow-hidden">
+        <main class="flex-1 mt-16 mb-16 p-gutter relative z-10 overflow-y-auto">
+          <div class="flex items-end justify-between border-b border-outline-variant/30 pb-4 mb-stack-md">
+            <div>
+              <h2 class="font-headline-lg-mobile text-headline-lg-mobile text-inverse-surface tracking-wide uppercase">Select Operation</h2>
+              <p class="font-body-standard text-body-standard text-on-surface-variant mt-1">Choose a domain, then draft your trio.</p>
+            </div>
+            <div class="flex items-center gap-2 font-tactical-data text-[10px] text-health-emerald uppercase">
+              <span class="w-2 h-2 rounded-full bg-health-emerald shadow-[0_0_8px_rgba(34,197,94,0.8)] animate-pulse"></span>
+              Online
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 gap-stack-md">
+            <button type="button" data-v2-enter-mode="cpu" class="group relative min-h-[230px] overflow-hidden rounded-xl border border-outline-variant/30 bg-void-surface text-left shadow-[0_8px_32px_rgba(0,0,0,0.6)]">
+              <div class="absolute inset-0 z-0 bg-cover bg-center opacity-45 transition-transform duration-500 group-hover:scale-105 group-hover:opacity-65" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCATJhkC_sTTuzlo5eJgtUrGGC7yL8hFLsH4snMSpIPm4b89oCEOjznY4-LIzW8c4a9IHrODQNSicghYWbEEeFA8GCan1LKeYgpNF-whk11OVjfEPWRt9O1qB2EZA257XSJo9qc6soOxfrIUhUGzHYuilcemSL3tFUogKj-sGBzHkxTOyQch8iAxbrJTS805vnjue8Zfctg9enrXER0drgxkdD8Xz8ZEQ4jhd0oGjZ39da7Jq-38hTk7B9QQoYWonAYVulkbaYnv70')"></div>
+              <div class="absolute inset-0 z-0 bg-gradient-to-t from-obsidian-base via-obsidian-base/60 to-transparent"></div>
+              <div class="relative z-10 flex min-h-[230px] flex-col justify-end p-stack-md">
+                <div class="absolute right-4 top-4 flex items-center gap-2 rounded border border-energy-cyan/30 bg-obsidian-base/80 px-3 py-1 font-tactical-data text-[10px] uppercase tracking-widest text-energy-cyan">
+                  <span class="material-symbols-outlined text-sm">bolt</span>
+                  Training
+                </div>
+                <h3 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface mb-2">QUICK PLAY VS CPU</h3>
+                <p class="font-body-standard text-body-standard text-on-surface-variant mb-5">Immediate combat simulation against automated curses.</p>
+                <div class="flex gap-2">
+                  <span class="rounded bg-primary-container/20 border border-primary/50 px-3 py-2 font-tactical-data text-[11px] text-primary">NORMAL</span>
+                  <span class="rounded bg-surface-container-high border border-outline-variant/50 px-3 py-2 font-tactical-data text-[11px] text-on-surface-variant">3V3</span>
+                </div>
+              </div>
+            </button>
+
+            <div class="grid grid-cols-2 gap-stack-md">
+              <button type="button" data-v2-enter-mode="pvp" class="relative min-h-[156px] overflow-hidden rounded-xl border border-energy-cyan/20 bg-charcoal-plate p-stack-md text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition-colors hover:border-energy-cyan/60">
+                <div class="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-energy-cyan/10 blur-2xl"></div>
+                <div class="relative z-10 mb-4 flex items-center justify-between">
+                  <div class="flex h-10 w-10 items-center justify-center rounded border border-energy-cyan/30 bg-energy-cyan/10">
+                    <span class="material-symbols-outlined text-energy-cyan">wifi_tethering</span>
+                  </div>
+                  <span class="font-tactical-data text-[9px] uppercase tracking-widest text-energy-cyan">Custom</span>
+                </div>
+                <h3 class="relative z-10 font-headline-lg-mobile text-[18px] text-on-surface">PRIVATE PvP</h3>
+                <p class="relative z-10 mt-1 font-body-standard text-[12px] text-on-surface-variant">Closed domain with room code.</p>
+              </button>
+
+              <button type="button" disabled class="relative min-h-[156px] cursor-not-allowed overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-stack-md text-center opacity-80">
+                <div class="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(255,255,255,0.02)_10px,rgba(255,255,255,0.02)_20px)]"></div>
+                <div class="relative z-10 mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-prestige-gold/30 bg-surface-variant">
+                  <span class="material-symbols-outlined text-prestige-gold">lock</span>
+                </div>
+                <h3 class="relative z-10 font-headline-lg-mobile text-[18px] text-on-surface/50">RANKED DRAFT</h3>
+                <p class="relative z-10 mt-2 font-tactical-data text-[9px] uppercase tracking-widest text-prestige-gold/70">Unlocks at Grade 2</p>
+              </button>
+            </div>
+
+            <section class="rounded-xl border border-outline-variant/20 bg-charcoal-plate/80 p-stack-md shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
+              <div class="mb-4 flex items-center justify-between border-b border-outline-variant/20 pb-2">
+                <h3 class="font-tactical-data text-[12px] text-on-surface">RECENT ACTIVITY</h3>
+                <span class="font-tactical-data text-[9px] uppercase tracking-widest text-primary">Local</span>
+              </div>
+              <div class="space-y-2">
+                <div class="flex items-center justify-between rounded-lg border-l-2 border-health-emerald bg-surface-container-low p-3">
+                  <span class="font-tactical-data text-[12px] text-health-emerald">W</span>
+                  <span class="font-tactical-data text-[12px] text-on-surface">vs. ShadowCurse</span>
+                  <span class="font-tactical-data text-[10px] text-on-surface-variant">2m ago</span>
+                </div>
+                <div class="flex items-center justify-between rounded-lg border-l-2 border-blood-crimson bg-surface-container-low p-3">
+                  <span class="font-tactical-data text-[12px] text-blood-crimson">L</span>
+                  <span class="font-tactical-data text-[12px] text-on-surface">vs. GojoFan99</span>
+                  <span class="font-tactical-data text-[10px] text-on-surface-variant">1h ago</span>
+                </div>
+              </div>
+            </section>
+          </div>
+        </main>
+      </section>
+
+      <section id="v2-setup-view" class="hidden relative z-10 h-full flex flex-col overflow-hidden">
         <main class="flex-1 mt-16 mb-[220px] p-gutter relative z-10 flex flex-col gap-stack-lg overflow-y-auto">
           <div class="flex justify-between items-end border-b border-outline-variant/30 pb-4">
             <div>
@@ -505,11 +581,70 @@
         </div>
       </section>
 
-      <section id="v2-result-view" class="hidden relative z-10 h-full flex items-center justify-center px-gutter">
-        <div class="bg-surface-container/80 backdrop-blur-xl border border-primary/20 rounded-lg p-5 text-center max-w-md">
-          <span class="font-tactical-data text-[11px] text-on-surface-variant uppercase">Victory Recap</span>
-          <strong id="v2-result-title" class="block font-headline-lg text-headline-lg text-prestige-gold my-3">Mission Complete</strong>
-          <small id="v2-result-copy" class="font-body-standard text-body-standard text-on-surface-variant">Review the combat log and return to the lobby for another bout.</small>
+      <section id="v2-result-view" class="hidden relative z-10 h-full overflow-hidden">
+        <div class="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.12)_0%,transparent_70%)] pointer-events-none"></div>
+        <main class="relative z-10 h-full overflow-y-auto px-gutter pt-20 pb-28">
+          <div class="flex flex-col items-center mb-6 relative">
+            <div class="w-32 h-32 mb-3 relative drop-shadow-[0_0_30px_rgba(245,158,11,0.6)]">
+              <img class="w-full h-full object-contain" data-alt="Golden cursed clash victory trophy" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcd1CFL9UVRPGTG8rRpAw0P8F2lf1MLY_NTEGK7-PDfNMveNnovCu3z0wZjvuqsmw9YUE0yDGxh0p__n8V35QTHU7AGrld4e75FZxbSqywvHGZVYMzCQDsmJgAZjHRicBvkzdOILpHwNA9EtucFvgwIq5EDjvHN5xKkvwKWpx-9LSRW_1KS8W-sxCZQ9tyQtem8rxh6zbg1MgwJlF8OkAFqdF6_sxzXzN_nM5ITZcxC82I4BaWTPTPXWCQT6vglat5D2bXEaNPMA4"/>
+            </div>
+            <h1 id="v2-result-title" class="font-display-hero text-display-hero text-prestige-gold tracking-widest text-center drop-shadow-[0_0_20px_rgba(245,158,11,0.8)]">VICTORY</h1>
+            <p id="v2-result-copy" class="font-tactical-data text-[10px] text-on-surface-variant uppercase tracking-widest mt-2">Mission complete</p>
+          </div>
+
+          <div class="w-full bg-charcoal-plate rounded-xl p-4 mb-stack-md border border-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.5)] flex items-center justify-between">
+            <div class="flex items-center gap-4 min-w-0">
+              <div class="w-12 h-12 rounded-full bg-surface-container-high border-2 border-prestige-gold flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.4)] shrink-0">
+                <span class="material-symbols-outlined text-prestige-gold">military_tech</span>
+              </div>
+              <div class="min-w-0">
+                <h2 id="v2-result-winner" class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface truncate">Player</h2>
+                <p class="font-tactical-data text-[10px] text-prestige-gold uppercase">Rank up +45</p>
+              </div>
+            </div>
+            <div class="flex flex-col items-end">
+              <span class="font-tactical-data text-[9px] text-on-surface-variant mb-1 uppercase">Defeated</span>
+              <div id="v2-result-defeated" class="flex gap-2 opacity-60"></div>
+            </div>
+          </div>
+
+          <div class="w-full grid grid-cols-2 gap-stack-sm mb-stack-md">
+            <div class="col-span-2 bg-charcoal-plate rounded-xl p-4 border border-white/10 relative overflow-hidden">
+              <div class="absolute inset-0 opacity-10 bg-[repeating-linear-gradient(135deg,rgba(239,68,68,0.6)_0_2px,transparent_2px_12px)]"></div>
+              <span class="font-tactical-data text-[10px] text-on-surface-variant relative z-10 uppercase">Total damage dealt</span>
+              <div class="font-tactical-data text-headline-lg text-blood-crimson flex items-baseline gap-2 relative z-10">
+                <span id="v2-result-damage">0</span>
+                <span class="text-[10px] text-on-surface-variant">DMG</span>
+              </div>
+            </div>
+            <div class="bg-charcoal-plate rounded-xl p-4 border border-white/10">
+              <span class="font-tactical-data text-[10px] text-on-surface-variant mb-1 flex items-center gap-1 uppercase">
+                <span class="material-symbols-outlined text-[14px] text-energy-purple">bolt</span> Energy
+              </span>
+              <div id="v2-result-energy" class="font-tactical-data text-headline-lg-mobile text-energy-purple">1/10</div>
+            </div>
+            <div class="bg-charcoal-plate rounded-xl p-4 border border-white/10">
+              <span class="font-tactical-data text-[10px] text-on-surface-variant mb-1 flex items-center gap-1 uppercase">
+                <span class="material-symbols-outlined text-[14px] text-energy-cyan">hourglass_empty</span> Turns
+              </span>
+              <div id="v2-result-turns" class="font-tactical-data text-headline-lg-mobile text-energy-cyan">0</div>
+            </div>
+          </div>
+
+          <div class="w-full bg-surface-container rounded-xl border border-outline-variant p-4 mb-stack-lg shadow-lg">
+            <h3 class="font-headline-lg-mobile text-[18px] text-on-surface mb-4 border-b border-outline-variant pb-2">Biggest Strikes</h3>
+            <ul id="v2-result-highlights" class="space-y-3 font-tactical-data text-body-standard"></ul>
+          </div>
+        </main>
+        <div class="absolute bottom-0 left-0 right-0 z-50 p-gutter bg-surface-container-lowest/95 border-t border-outline-variant flex gap-4 backdrop-blur-md">
+          <button class="flex-1 py-3 px-4 rounded-lg bg-surface-container-high text-on-surface font-tactical-data text-[12px] border border-outline-variant flex items-center justify-center gap-2" type="button" data-v2-result-action="rematch">
+            <span class="material-symbols-outlined text-[18px]">replay</span>
+            Rematch
+          </button>
+          <button class="flex-1 py-3 px-4 rounded-lg bg-primary-container text-on-primary-container font-tactical-data text-[12px] shadow-[0_0_15px_rgba(124,58,237,0.5)] flex items-center justify-center gap-2" type="button" data-v2-result-action="lobby">
+            <span class="material-symbols-outlined text-[18px]">fort</span>
+            Lobby
+          </button>
         </div>
       </section>
       <nav id="v2-bottom-nav" class="absolute bottom-0 left-0 right-0 z-50 h-16 bg-obsidian-base/95 border-t border-outline-variant/30 backdrop-blur-xl grid grid-cols-4 text-on-surface-variant font-tactical-data text-[10px] uppercase">
@@ -599,6 +734,6 @@
   <script src="{{ url_for('static', filename='effects.js') }}?v=16"></script>
   <script src="{{ url_for('static', filename='vendor/phaser.min.js') }}?v=3.90.0"></script>
   <script src="{{ url_for('static', filename='phaser-battle.js') }}?v=4"></script>
-  <script src="{{ url_for('static', filename='app.js') }}?v=66"></script>
+  <script src="{{ url_for('static', filename='app.js') }}?v=67"></script>
 </body>
 </html>

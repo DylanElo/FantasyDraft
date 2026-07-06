@@ -679,6 +679,7 @@ socket.on('game_update', (data) => {
 // ── BATTLE V2 ARENA ─────────────────────────────────────────────────────────
 const v2State = {
     state: null,
+    uiScreen: 'lobby',
     selectedCasterSlot: null,
     selectedSkillId: null,
     actions: [],
@@ -691,6 +692,19 @@ const v2State = {
     matchMode: 'cpu',
     lobbyStatus: null,
 };
+
+function setV2UiScreen(screen) {
+    v2State.uiScreen = screen === 'team' ? 'team' : 'lobby';
+}
+
+function renderV2BottomNav() {
+    const active = v2State.state ? 'arena' : (v2State.uiScreen === 'team' ? 'roster' : 'lobby');
+    document.querySelectorAll('#v2-bottom-nav [data-v2-nav]').forEach(button => {
+        const isActive = button.dataset.v2Nav === active;
+        button.classList.toggle('text-primary', isActive);
+        button.classList.toggle('text-on-surface-variant', !isActive);
+    });
+}
 
 function v2PlayerIds() {
     const ids = v2State.state ? Object.keys(v2State.state.players || {}) : [];
@@ -1459,6 +1473,7 @@ function resetClassicV2Match() {
     v2State.selectedCasterSlot = null;
     v2State.selectedSkillId = null;
     v2State.lobbyStatus = null;
+    setV2UiScreen('lobby');
     renderClassicV2();
 }
 
@@ -1629,6 +1644,54 @@ function v2RecentResolutionHTML(state) {
       </div>`;
 }
 
+function v2EventDamageAmount(event) {
+    const direct = Number(event.amount ?? event.damage ?? event.payload?.amount ?? event.payload?.damage);
+    if (Number.isFinite(direct) && direct > 0) return direct;
+    const match = String(event.message || '').match(/(?:-|for\s+)(\d+)/i);
+    return match ? Number(match[1]) : 0;
+}
+
+function v2RenderResultView(state, me, foe, mine) {
+    const winner = state.players[state.winner_id];
+    const iWon = state.winner_id === mine;
+    const loser = iWon ? foe : me;
+    const damageEvents = (state.event_log || []).filter(event => event.type === 'damage' || event.type === 'status_damage');
+    const totalDamage = damageEvents.reduce((sum, event) => sum + v2EventDamageAmount(event), 0);
+    const highlights = damageEvents.slice(-3).reverse();
+    const energyTotal = Object.values(me?.energy || {}).reduce((sum, value) => sum + Number(value || 0), 0);
+    const title = document.getElementById('v2-result-title');
+    const copy = document.getElementById('v2-result-copy');
+    const winnerEl = document.getElementById('v2-result-winner');
+    const defeatedEl = document.getElementById('v2-result-defeated');
+    const damageEl = document.getElementById('v2-result-damage');
+    const energyEl = document.getElementById('v2-result-energy');
+    const turnsEl = document.getElementById('v2-result-turns');
+    const highlightsEl = document.getElementById('v2-result-highlights');
+    if (title) title.textContent = iWon ? 'VICTORY' : 'DEFEAT';
+    if (copy) copy.textContent = `${winner?.name || state.winner_id} controls the domain`;
+    if (winnerEl) winnerEl.textContent = winner?.name || state.winner_id;
+    if (defeatedEl) {
+        defeatedEl.innerHTML = (loser?.team || []).slice(0, 3).map(character => `
+          <div class="w-8 h-8 rounded bg-surface-container-highest overflow-hidden border border-outline-variant/50">
+            ${v2ArchiveImageHTML(character, 'w-full h-full object-cover')}
+          </div>
+        `).join('');
+    }
+    if (damageEl) damageEl.textContent = totalDamage.toLocaleString();
+    if (energyEl) energyEl.textContent = `${energyTotal}/10`;
+    if (turnsEl) turnsEl.textContent = String(state.turn_number || 0);
+    if (highlightsEl) {
+        highlightsEl.innerHTML = highlights.length
+            ? highlights.map(event => `
+              <li class="flex justify-between items-center bg-surface-container-high p-2 rounded gap-3">
+                <span class="text-on-surface truncate">${esc(event.message || event.type)}</span>
+                <span class="text-blood-crimson font-bold shrink-0">-${v2EventDamageAmount(event).toLocaleString()} DMG</span>
+              </li>
+            `).join('')
+            : '<li class="bg-surface-container-high p-2 rounded text-on-surface-variant">No strike data recorded.</li>';
+    }
+}
+
 function v2CommandAvatarHTML(character, slot, selectedSlot) {
     const queued = v2State.actions.some(action => Number(action.caster_slot) === slot);
     const active = Number(selectedSlot) === slot;
@@ -1648,6 +1711,7 @@ function v2CommandAvatarHTML(character, slot, selectedSlot) {
 function renderClassicV2() {
     const state = v2State.state;
     const classicScreen = document.getElementById('classic-v2');
+    const lobbyView = document.getElementById('v2-lobby-view');
     const setupView = document.getElementById('v2-setup-view');
     const battleView = document.getElementById('v2-battle-view');
     const resultView = document.getElementById('v2-result-view');
@@ -1660,13 +1724,16 @@ function renderClassicV2() {
     const endTurnButton = document.getElementById('btn-v2-end-turn');
     const confirmButton = document.getElementById('btn-v2-confirm');
     if (!state) {
+        const showLobby = v2State.uiScreen !== 'team' && v2State.lobbyStatus?.status !== 'waiting';
         classicScreen?.classList.remove('v2-battle-active');
         classicScreen?.classList.remove('v2-finished');
         classicScreen?.classList.add('v2-setup-active');
-        setupView?.classList.remove('hidden');
+        lobbyView?.classList.toggle('hidden', !showLobby);
+        setupView?.classList.toggle('hidden', showLobby);
         battleView?.classList.add('hidden');
         resultView?.classList.add('hidden');
         bottomNav?.classList.remove('hidden');
+        renderV2BottomNav();
         if (title) title.textContent = 'Assemble Your Trio';
         if (hint) {
             hint.textContent = v2State.matchMode === 'pvp'
@@ -1701,7 +1768,7 @@ function renderClassicV2() {
             newMatchButton.textContent = v2State.lobbyStatus?.status === 'waiting' ? 'Cancel Wait' : 'New Match';
         }
         document.getElementById('v2-picker')?.classList.remove('hidden');
-        renderV2Picker();
+        if (!showLobby) renderV2Picker();
         return;
     }
     classicScreen?.classList.add('v2-battle-active');
@@ -1709,10 +1776,12 @@ function renderClassicV2() {
     classicScreen?.classList.toggle('v2-finished', !!state.winner_id);
     if (classicScreen) classicScreen.scrollTop = 0;
     window.scrollTo(0, 0);
+    lobbyView?.classList.add('hidden');
     setupView?.classList.add('hidden');
-    battleView?.classList.remove('hidden');
+    battleView?.classList.toggle('hidden', !!state.winner_id);
     resultView?.classList.toggle('hidden', !state.winner_id);
     bottomNav?.classList.add('hidden');
+    renderV2BottomNav();
     startButton?.classList.add('hidden');
     newMatchButton?.classList.remove('hidden');
     cancelButton?.classList.toggle('hidden', v2State.actions.length === 0);
@@ -1723,6 +1792,7 @@ function renderClassicV2() {
     const me = state.players[mine];
     const foe = state.players[enemy];
     const isMyTurn = state.turn_player_id === mine && state.phase !== 'finished';
+    if (state.winner_id) v2RenderResultView(state, me, foe, mine);
     v2EnsureSelectedCaster(me, isMyTurn);
     document.getElementById('v2-turn-badge').textContent = `Turn ${state.turn_number}`;
     title.textContent = state.winner_id ? 'Victory Recap' : state.phase.replace(/_/g, ' ').toUpperCase();
@@ -1776,13 +1846,6 @@ function renderClassicV2() {
       <div class="text-energy-cyan uppercase mb-1">Log ${esc(eventLog.length)}</div>
       ${v2RecentResolutionHTML(state)}
       ${eventLog.slice().reverse().slice(0, 6).map(v2LogEntryHTML).join('')}`;
-    if (state.winner_id) {
-        const winnerName = state.players[state.winner_id]?.name || state.winner_id;
-        const resultTitle = document.getElementById('v2-result-title');
-        const resultCopy = document.getElementById('v2-result-copy');
-        if (resultTitle) resultTitle.textContent = `${winnerName} Wins`;
-        if (resultCopy) resultCopy.textContent = `${v2AliveCount(me)} allies alive. ${v2AliveCount(foe)} enemies alive.`;
-    }
     const paymentStatus = v2QueuePaymentStatus(me);
     confirmButton.disabled = !isMyTurn || v2State.actions.length === 0 || !paymentStatus.canPay || !!me?.queue_confirmed || v2State.queueSubmitting;
     confirmButton.textContent = v2State.queueSubmitting ? 'Resolving...' : paymentStatus.canPay ? 'Confirm' : paymentStatus.reason;
@@ -1818,6 +1881,7 @@ function v2StartMatch() {
     v2State.selectedCasterSlot = null;
     v2State.selectedSkillId = null;
     v2State.lobbyStatus = null;
+    setV2UiScreen('team');
     if (v2State.matchMode === 'pvp') {
         socket.emit('battle_v2_join_pvp', {
             room_id: roomInput,
@@ -1894,6 +1958,7 @@ classicV2Button.addEventListener('click', () => {
         return;
     }
     showScreen('classic-v2');
+    setV2UiScreen('lobby');
     renderClassicV2();
 });
 
@@ -1901,12 +1966,18 @@ socket.on('battle_v2_lobby', (data) => {
     v2State.state = null;
     v2State.lobbyStatus = data.status === 'cancelled' ? null : data;
     v2State.queueSubmitting = false;
+    if (v2State.lobbyStatus?.status === 'waiting') setV2UiScreen('team');
     showScreen('classic-v2');
     renderClassicV2();
 });
 classicV2Button.disabled = !BATTLE_V2_ENABLED;
 
 document.getElementById('btn-v2-back').addEventListener('click', () => {
+    if (!v2State.state && v2State.uiScreen === 'team') {
+        setV2UiScreen('lobby');
+        renderClassicV2();
+        return;
+    }
     showScreen('setup');
 });
 
@@ -1934,6 +2005,41 @@ document.getElementById('btn-v2-confirm').addEventListener('click', () => {
 });
 
 document.getElementById('classic-v2').addEventListener('click', (event) => {
+    const resultAction = event.target.closest('[data-v2-result-action]');
+    if (resultAction) {
+        const action = resultAction.dataset.v2ResultAction;
+        v2State.state = null;
+        v2State.actions = [];
+        v2State.wildcardPays = {};
+        v2State.selectedCasterSlot = null;
+        v2State.selectedSkillId = null;
+        v2State.lobbyStatus = null;
+        setV2UiScreen(action === 'rematch' ? 'team' : 'lobby');
+        renderClassicV2();
+        return;
+    }
+
+    const lobbyEntry = event.target.closest('[data-v2-enter-mode]');
+    if (lobbyEntry) {
+        v2State.matchMode = lobbyEntry.dataset.v2EnterMode === 'pvp' ? 'pvp' : 'cpu';
+        v2State.lobbyStatus = null;
+        setV2UiScreen('team');
+        renderClassicV2();
+        return;
+    }
+
+    const navButton = event.target.closest('[data-v2-nav]');
+    if (navButton) {
+        const destination = navButton.dataset.v2Nav;
+        if (destination === 'lobby' || destination === 'history') {
+            setV2UiScreen('lobby');
+        } else {
+            setV2UiScreen('team');
+        }
+        renderClassicV2();
+        return;
+    }
+
     const modeButton = event.target.closest('[data-v2-mode]');
     if (modeButton) {
         v2State.matchMode = modeButton.dataset.v2Mode === 'pvp' ? 'pvp' : 'cpu';

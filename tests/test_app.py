@@ -64,6 +64,9 @@ def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
     assert '"aoi_todo"' in html
     assert '"hiromi_higuruma"' in html
     assert 'id="btn-v2-new-match"' in html
+    assert 'id="v2-lobby-view"' in html
+    assert 'data-v2-enter-mode="cpu"' in html
+    assert 'data-v2-result-action="lobby"' in html
     assert 'id="v2-player-summary"' in html
     assert 'data-v2-mode="cpu"' in html
     assert 'data-v2-mode="pvp"' in html
@@ -71,7 +74,7 @@ def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
     assert 'characters_data.js?v=19' in html
     assert 'vendor/phaser.min.js?v=3.90.0' in html
     assert 'phaser-battle.js?v=4' in html
-    assert 'app.js?v=66' in html
+    assert 'app.js?v=67' in html
     assert 'style.css?v=51' in html
     assert 'stitch-archive.css?v=3' in html
     assert 'Battle v2 Arena' in html

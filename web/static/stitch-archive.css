@@ -1463,7 +1463,7 @@ body:has(#classic-v2.active.v2-battle-active) .btn-sfx-toggle {
 }
 
 #classic-v2 .v2-dock-body {
-  gap: 8px !important;
+  display: none !important;
 }
 
 #classic-v2 .v2-dock-team {
@@ -1789,5 +1789,263 @@ body:has(#classic-v2.active.v2-battle-active) .btn-sfx-toggle {
   #classic-v2 .v2-command-actions button {
     padding-left: 9px !important;
     padding-right: 9px !important;
+  }
+}
+
+/* Stitch handoff alignment: layout language from the supplied lobby, team, arena, and results screens. */
+#classic-v2.screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.42;
+  background:
+    radial-gradient(circle at 50% 16%, rgba(168,85,247,0.18), transparent 34%),
+    radial-gradient(circle at 72% 78%, rgba(34,211,238,0.12), transparent 32%),
+    linear-gradient(rgba(255,255,255,0.026) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.026) 1px, transparent 1px);
+  background-size: auto, auto, 32px 32px, 32px 32px;
+}
+
+#classic-v2 > * {
+  position: relative;
+  z-index: 1;
+}
+
+#classic-v2 .v2-mode-button,
+#classic-v2 .v2-draft-chip,
+#classic-v2 .v2-roster-card,
+#classic-v2 .v2-selection-dock,
+#classic-v2 .v2-skill-card,
+#classic-v2 .v2-fighter-card {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
+}
+
+#classic-v2 .v2-roster-card {
+  min-height: 260px;
+  border-width: 1px;
+  background: #161630;
+  box-shadow: 0 14px 32px rgba(0,0,0,0.52), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+#classic-v2 .v2-roster-card.is-selected {
+  border-width: 2px;
+  border-color: rgba(168,85,247,0.9);
+  box-shadow: 0 0 20px rgba(168,85,247,0.34), 0 16px 34px rgba(0,0,0,0.56);
+}
+
+#classic-v2 .v2-roster-card.is-leader {
+  border-width: 2px;
+  border-color: rgba(245,158,11,0.95);
+  box-shadow: 0 0 22px rgba(245,158,11,0.36), 0 16px 34px rgba(0,0,0,0.56);
+}
+
+#classic-v2 .v2-roster-art {
+  height: 184px;
+}
+
+#classic-v2 .v2-roster-image {
+  object-fit: cover;
+  object-position: center;
+  filter: saturate(1.14) contrast(1.08);
+}
+
+#classic-v2 .v2-roster-card.is-locked .v2-roster-image {
+  mix-blend-mode: luminosity;
+  filter: grayscale(1) contrast(1.05);
+}
+
+#classic-v2 .v2-roster-vignette {
+  background:
+    linear-gradient(180deg, transparent 20%, rgba(4,4,13,0.18) 56%, rgba(4,4,13,0.92) 100%),
+    linear-gradient(135deg, rgba(168,85,247,0.10), rgba(34,211,238,0.08), rgba(239,68,68,0.08));
+  mix-blend-mode: screen;
+}
+
+#classic-v2 .v2-roster-copy {
+  min-height: 76px;
+  border-top: 1px solid rgba(255,255,255,0.10);
+  background: rgba(22,22,48,0.92);
+  backdrop-filter: blur(10px);
+}
+
+#classic-v2 .v2-roster-name-row strong {
+  color: #f7f3ff;
+  letter-spacing: 0.05em;
+}
+
+#classic-v2 .v2-roster-icon {
+  top: 8px;
+  right: 8px;
+  border-color: rgba(210,187,255,0.42);
+  background: rgba(31,30,42,0.80);
+  backdrop-filter: blur(8px);
+}
+
+#classic-v2 .v2-draft-footer {
+  gap: 10px !important;
+}
+
+#classic-v2 .v2-selection-dock {
+  padding: 9px !important;
+  border-color: rgba(210,187,255,0.22) !important;
+  background: rgba(31,30,42,0.82) !important;
+  backdrop-filter: blur(20px);
+}
+
+#classic-v2 .v2-dock-head {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+  color: #e4e0f1;
+}
+
+#classic-v2 .v2-dock-head strong {
+  margin-left: auto;
+}
+
+#classic-v2 .v2-dock-synergy {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 0;
+  padding: 7px;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  background: rgba(22,22,48,0.52);
+}
+
+#classic-v2 .v2-dock-synergy-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(124,58,237,0.42);
+  border-radius: 8px;
+  background: rgba(124,58,237,0.20);
+  color: #d2bbff;
+}
+
+#classic-v2 .v2-dock-synergy strong,
+#classic-v2 .v2-dock-synergy span,
+#classic-v2 .v2-dock-synergy small {
+  display: block;
+  font-family: "JetBrains Mono", monospace;
+  text-transform: uppercase;
+}
+
+#classic-v2 .v2-dock-synergy strong {
+  color: #e4e0f1;
+  font-size: 10px;
+}
+
+#classic-v2 .v2-dock-synergy span {
+  color: #22d3ee;
+  font-size: 8px;
+}
+
+#classic-v2 .v2-dock-synergy small {
+  color: #ccc3d8;
+  font-size: 10px;
+}
+
+#classic-v2 .v2-dock-slot {
+  height: 38px;
+  border-radius: 6px;
+}
+
+#classic-v2 .v2-start-button {
+  height: 58px !important;
+  opacity: 0.96;
+}
+
+#classic-v2 .v2-start-button-label {
+  background: linear-gradient(90deg, #22d3ee, #d2bbff, #a855f7);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+#classic-v2.v2-battle-active #v2-battle-view main {
+  padding-top: 104px !important;
+  padding-bottom: 318px !important;
+}
+
+#classic-v2 .v2-fighter-card {
+  border-color: rgba(255,255,255,0.10) !important;
+  background: #161630 !important;
+}
+
+#classic-v2 .v2-fighter-card.is-selected {
+  border-width: 2px !important;
+  box-shadow: 0 0 20px rgba(245,158,11,0.50), 0 16px 34px rgba(0,0,0,0.58) !important;
+}
+
+#classic-v2 .v2-fighter-art::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, transparent 35%, rgba(4,4,13,0.86)),
+    linear-gradient(135deg, rgba(168,85,247,0.10), rgba(34,211,238,0.06), rgba(239,68,68,0.08));
+}
+
+#classic-v2 .v2-fighter-copy {
+  border: 0;
+  background: transparent;
+}
+
+#classic-v2 .v2-fighter-hp-readout {
+  background: rgba(13,13,24,0.76);
+  backdrop-filter: blur(8px);
+}
+
+#classic-v2 .v2-command-avatar {
+  border-radius: 999px;
+}
+
+#classic-v2 .v2-command-avatar.is-active {
+  border-width: 2px;
+}
+
+#classic-v2 .v2-skill-card {
+  min-height: 74px;
+  border-radius: 8px;
+  border-left-width: 1px;
+  background: rgba(22,22,48,0.96);
+}
+
+#classic-v2 .v2-skill-card.is-selected {
+  border-color: rgba(210,187,255,0.78);
+  box-shadow: 0 0 18px rgba(210,187,255,0.26);
+}
+
+#classic-v2 #v2-result-view main {
+  background:
+    radial-gradient(circle at center, rgba(245,158,11,0.12), transparent 70%),
+    transparent;
+}
+
+@media (max-height: 760px) {
+  #classic-v2 .v2-roster-card {
+    min-height: 240px;
+  }
+
+  #classic-v2 .v2-roster-art {
+    height: 166px;
+  }
+
+  #classic-v2 .v2-dock-synergy {
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    padding: 6px;
+  }
+
+  #classic-v2 .v2-dock-synergy-icon {
+    width: 30px;
+    height: 30px;
   }
 }

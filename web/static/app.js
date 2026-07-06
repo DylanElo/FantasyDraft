@@ -1112,7 +1112,9 @@ function v2PickerButtonHTML(character, teamKey) {
         .slice(0, 3);
     const cardClass = [
         'v2-roster-card',
+        'blade-cut',
         selected ? 'is-selected' : '',
+        selected ? 'holo-shimmer' : '',
         selectedIndex === 0 ? 'is-leader' : '',
         locked ? 'is-locked' : '',
         teamKey === 'enemyTeam' ? 'is-enemy-pick' : 'is-player-pick',
@@ -1227,11 +1229,26 @@ function renderV2SelectionDock() {
     if (!dock) return;
     const ready = v2State.playerTeam.length === 3 && (v2State.matchMode === 'pvp' || v2State.enemyTeam.length === 3);
     const modeLabel = v2State.matchMode === 'pvp' ? 'Private domain' : 'CPU simulation';
+    const synergyTitle = ready ? 'Active Synergies' : 'Formation Sync';
+    const synergyName = ready ? 'Special Grade Formation' : 'Awaiting final unit';
+    const synergyDetail = ready
+        ? (v2State.matchMode === 'pvp' ? 'Private domain loadout ready' : '3v3 cursed energy link online')
+        : `${v2State.playerTeam.length}/3 player slots locked`;
     dock.innerHTML = `
       <div class="v2-dock-head">
         <span class="material-symbols-outlined text-prestige-gold text-[16px]">stars</span>
-        <span>Draft Loadout</span>
+        <span>${esc(synergyTitle)}</span>
         <strong>${ready ? 'Ready' : 'Choose 3'}</strong>
+      </div>
+      <div class="v2-dock-synergy">
+        <div class="v2-dock-synergy-icon">
+          <span class="material-symbols-outlined">${ready ? 'bolt' : 'sync'}</span>
+        </div>
+        <div>
+          <strong>${esc(synergyName)}</strong>
+          <span>${esc(synergyDetail)}</span>
+        </div>
+        <small>${v2State.playerTeam.length}/3</small>
       </div>
       <div class="v2-dock-body">
         ${v2TeamSelectionStripHTML(v2State.playerTeam, 'My trio', 'text-primary')}
@@ -1655,7 +1672,9 @@ function v2SkillButtonHTML(skill, character, disabled) {
     const tone = ['red', 'blue', 'green', 'white', 'black'].includes(cost[0]) ? cost[0] : 'neutral';
     const cardClass = [
         'v2-skill-card',
+        'blade-cut',
         `v2-skill-card--${tone}`,
+        selected ? 'foil-sweep' : '',
         selected ? 'is-selected' : '',
         isDisabled ? 'is-disabled' : '',
         cooldown > 0 ? 'is-cooldown' : '',

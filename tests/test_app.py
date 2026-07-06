@@ -69,6 +69,9 @@ def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
     assert 'id="v2-lobby-view"' in html
     assert 'id="v2-player-name"' in html
     assert 'id="v2-room-id"' in html
+    assert 'id="v2-lobby-activity"' in html
+    assert 'id="v2-selection-dock"' in html
+    assert 'id="v2-result-rank"' in html
     assert 'data-v2-enter-mode="cpu"' in html
     assert 'data-v2-result-action="lobby"' in html
     assert 'id="v2-player-summary"' in html
@@ -78,9 +81,9 @@ def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
     assert 'characters_data.js?v=19' in html
     assert 'vendor/phaser.min.js?v=3.90.0' in html
     assert 'phaser-battle.js?v=4' in html
-    assert 'app.js?v=68' in html
+    assert 'app.js?v=70' in html
     assert 'style.css?v=51' in html
-    assert 'stitch-archive.css?v=5' in html
+    assert 'stitch-archive.css?v=6' in html
     assert 'stitch/archive/lobby_cursed_clash/screen.png' in html
     assert 'stitch/archive/victory_recap/screen.png' in html
     assert 'Open Cursed Clash' in html

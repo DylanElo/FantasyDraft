@@ -116,7 +116,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=51">
   <link rel="stylesheet" href="{{ url_for('static', filename='jjk-theme.css') }}?v=1">
   <link rel="stylesheet" href="{{ url_for('static', filename='arena-redesign.css') }}?v=1">
-  <link rel="stylesheet" href="{{ url_for('static', filename='stitch-archive.css') }}?v=5">
+  <link rel="stylesheet" href="{{ url_for('static', filename='stitch-archive.css') }}?v=6">
   <script src="{{ url_for('static', filename='socket.io.min.js') }}?v=4.7.2"></script>
 </head>
 <body>
@@ -491,18 +491,7 @@
                 <h3 class="font-tactical-data text-[12px] text-on-surface">RECENT ACTIVITY</h3>
                 <span class="font-tactical-data text-[9px] uppercase tracking-widest text-primary">Local</span>
               </div>
-              <div class="space-y-2">
-                <div class="flex items-center justify-between rounded-lg border-l-2 border-health-emerald bg-surface-container-low p-3">
-                  <span class="font-tactical-data text-[12px] text-health-emerald">W</span>
-                  <span class="font-tactical-data text-[12px] text-on-surface">vs. ShadowCurse</span>
-                  <span class="font-tactical-data text-[10px] text-on-surface-variant">2m ago</span>
-                </div>
-                <div class="flex items-center justify-between rounded-lg border-l-2 border-blood-crimson bg-surface-container-low p-3">
-                  <span class="font-tactical-data text-[12px] text-blood-crimson">L</span>
-                  <span class="font-tactical-data text-[12px] text-on-surface">vs. GojoFan99</span>
-                  <span class="font-tactical-data text-[10px] text-on-surface-variant">1h ago</span>
-                </div>
-              </div>
+              <div class="space-y-2" id="v2-lobby-activity"></div>
             </section>
           </div>
         </main>
@@ -543,21 +532,7 @@
         </main>
 
         <div class="absolute bottom-16 left-0 right-0 w-full z-40 px-gutter pb-4 flex flex-col gap-4 pointer-events-none">
-          <div class="bg-surface-container/80 backdrop-blur-xl border border-primary/20 rounded-lg p-3 pointer-events-auto flex flex-col gap-2 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
-            <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-prestige-gold text-[16px]">stars</span>
-              <span class="font-tactical-data text-[12px] text-inverse-surface tracking-wide uppercase">Active Synergies</span>
-              <span id="v2-required-picks" class="ml-auto font-tactical-data text-[12px] text-on-surface-variant">3v3</span>
-            </div>
-            <div class="flex items-center gap-3 bg-charcoal-plate/50 p-2 rounded border border-white/5">
-              <div class="w-8 h-8 rounded bg-primary-container/20 flex items-center justify-center text-primary"><span class="material-symbols-outlined text-[18px]">bolt</span></div>
-              <div class="flex-1">
-                <div class="font-body-standard text-[13px] font-bold text-on-surface">Special Grade Pair</div>
-                <div class="font-tactical-data text-[10px] text-energy-cyan">+15% Cursed Energy Regen</div>
-              </div>
-              <span class="font-tactical-data text-[12px] text-on-surface-variant">2/2</span>
-            </div>
-          </div>
+          <div id="v2-selection-dock" class="bg-surface-container/80 backdrop-blur-xl border border-primary/20 rounded-lg p-3 pointer-events-auto flex flex-col gap-2 shadow-[0_4px_20px_rgba(0,0,0,0.5)]"></div>
           <button id="btn-v2-start" class="w-full h-14 bg-holographic-foil rounded-lg blade-cut pointer-events-auto relative overflow-hidden group shadow-[0_0_30px_rgba(168,85,247,0.4)] flex items-center justify-center opacity-90 hover:opacity-100 transition-opacity" type="button">
             <span class="absolute inset-[2px] bg-obsidian-base blade-cut z-10 transition-colors group-hover:bg-charcoal-plate flex items-center justify-center font-headline-lg-mobile text-headline-lg-mobile text-transparent bg-clip-text bg-gradient-to-r from-energy-cyan to-energy-purple tracking-widest font-bold">IGNITE BATTLE</span>
             <span class="absolute inset-0 bg-energy-purple/20 blur-md z-10 animate-pulse"></span>
@@ -610,7 +585,7 @@
               </div>
               <div class="min-w-0">
                 <h2 id="v2-result-winner" class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface truncate">Player</h2>
-                <p class="font-tactical-data text-[10px] text-prestige-gold uppercase">Rank up +45</p>
+                <p id="v2-result-rank" class="font-tactical-data text-[10px] text-prestige-gold uppercase">Grade result</p>
               </div>
             </div>
             <div class="flex flex-col items-end">
@@ -745,6 +720,6 @@
   <script src="{{ url_for('static', filename='effects.js') }}?v=16"></script>
   <script src="{{ url_for('static', filename='vendor/phaser.min.js') }}?v=3.90.0"></script>
   <script src="{{ url_for('static', filename='phaser-battle.js') }}?v=4"></script>
-  <script src="{{ url_for('static', filename='app.js') }}?v=68"></script>
+  <script src="{{ url_for('static', filename='app.js') }}?v=70"></script>
 </body>
 </html>

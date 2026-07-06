@@ -71,8 +71,9 @@ def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
     assert 'characters_data.js?v=19' in html
     assert 'vendor/phaser.min.js?v=3.90.0' in html
     assert 'phaser-battle.js?v=4' in html
-    assert 'app.js?v=58' in html
-    assert 'style.css?v=47' in html
+    assert 'app.js?v=66' in html
+    assert 'style.css?v=51' in html
+    assert 'stitch-archive.css?v=3' in html
     assert 'Battle v2 Arena' in html
     assert 'Classic Queue Test' not in html
 
@@ -86,7 +87,7 @@ def test_battle_v2_public_surface_uses_production_copy(monkeypatch):
     style_css = Path(web_app.app.static_folder, "style.css").read_text(encoding="utf-8")
 
     assert "Battle v2 Arena" in html
-    assert "Battle v2 Arena" in app_js
+    assert "Assemble Your Trio" in app_js
     assert "Classic Queue Test" not in html
     assert "Classic Queue Test" not in app_js
     assert "Classic Arena v2" not in html

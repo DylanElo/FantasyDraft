@@ -1,4 +1,4 @@
-/**
+﻿/**
  * JJK Fantasy Draft — Multiplayer Client
  * 
  * Based on the canonical Design System prototype (docs/app.js),
@@ -133,27 +133,31 @@ function characterArtStyle(char) {
     return hasReliablePortrait(char) ? `background-image:url('${esc(char.portrait_url)}')` : '';
 }
 
-const V2_LOCAL_PORTRAITS = {
-    yuji_itadori: '/static/assets/portraits/yuji-black-flash.svg',
-    satoru_gojo: '/static/assets/portraits/gojo-unsealed.svg',
-    ryomen_sukuna: '/static/assets/portraits/sukuna-heian-era.svg',
-    yuta_okkotsu: '/static/assets/portraits/yuta-okkotsu-sendai.svg',
-    hiromi_higuruma: '/static/assets/portraits/hiromi-higuruma.svg',
+const V2_STITCH_PORTRAITS = {
+    yuji_itadori: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBy5IXCKXxF01GGxXBDPaf3opNHF31JhKWJM-3xumfu9QiRRRKE9Afp7AGjDvlYMSMiRL7X87KGzeRKX9VpK6tcSaEDtg02mMHpqlU2ahCxYseQ6mGsSpBISZhVdASMl6tu_FpciC_283xiXx_KF1VPKOVC4Z8dhklUuzWlEO6N_eWCbSkgkmuQ2Nyzi7tmz7fWchMdPoj-SMEGo92LsuPlJx8_TK8asn1gFSCXYU99TjAcAVH_Kni7bSQMV2vBwVMwXrczb_du5b8',
+    nobara_kugisaki: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBYC-nEbkmU6IV5PH3Rk78TrWMNGaTWla2Eb98dbZV8twUoW26WLGnP0yZKLw0PIBnZeDzEvVn-10FM53jRZtSzfWh1HHKS8BKmJfjbqaOgZMfCOOtpJ_9UsCCMMJkdENGEKiPuTrO-ccG83MtC1Z-TIvGucue7noodxdH_vUWFehfKlmMkKyNDYeEuzGCBA4q5rdXWenxic9peg2y4FIQ3P1IeAEJZ917YJf6N1mHWRTziOnHE4Gv63KJhrz3mlt8wGCDacoJWPds',
+    megumi_fushiguro: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCHnqm25FHFBp7WMvIR57l2TKHaeJ4IFFs5UA5uYjzi3H8I4kcuIvelQoAzQgJgpBpayY0Vp6jgVvyXoNSCIqABtNEnPdzl2Uk6o8jKY5faC5XGJ07J6NmnCeEXcjnXcfBjmWHsQgvcd26F_mLIZpL6UNfE3a2pMtKVwLV6CR5SVz5zzhuerURP9frFEkTz8XKlGkiiaIJ_-HEgoesNPhCryrsrTdZjvLfO1WAlgyuQK6sj3t3mGDHH1F8LeVwaXxUJDYZ5m4WKV0M',
+    satoru_gojo: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDTTTyQrcm1bUcs7Ul7EGEqKAWe03Vosmvo3fuQ5bn5RZXm7ch0ksgOwj5-HDUt67rit0mmH2YIVYT6sg8H0uTWY3VM-8HkKEgEfIiQW7zOCxSxfjcpVjMBPcLeZVWQY77hRG_l57Sug5bbYfcWOk8EJt0646Afz8PKyVa8cqInfdj9iLCfqZmrXHnFqnf76NcjbdWBVkbVQ1-Nno6UaXblrGJDXN3FzGBLoeoP10HUFxCVe7ViV249FVRQykEGQbGzqEKpt0iuFPg',
+    ryomen_sukuna: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDmQTF94uQ3T8ntttSoyV0iY8WE1z0vc313e6DV6O9eQ2AjKtzI-oJoLnOslJN4ku5CqWq8RsreMI36-iAnpBMAj6dbKqMAkIxxmMe1NAiAap6XElBBLN7t6TNFXuSoVXAR8E6XiqTnOCKrCyzLnyNm_rSYx41hFq7BjWSeKpPhsfULf_ibJe4ZrVN2BZl5-zOQOsapsINME-ZsA6C_BV0cEsVeJB_0LBxAKgjGWW7ejAj56NWmJQur5BR6WuT7WokQUapsdIyZGwA',
+    mahito: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDJpH9cbYF450BL73Mgf-yCDTFflHBfITIDmyWbpUGf5NkhLwCSvPZaorIYUykQKlhkedheNrv8QIddPjaGGNbubuTaVsI9QjQLXZjUar_4gCbubZRzRTvH_oOAn0xh0daW8qrGLN-IypYuuYuPWgJmCH7yR4DpfOu1nVbDt87HPyTUev4Gviquf-68LV9lAjw2Qp8vv1imh5jbhZS9u1Isi9ZyXpmwZWc8kqz3WhyxRQkUTqNUOlZheG123xQBTsR1WmVAmmUgm54',
+    aoi_todo: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDyDMFM5a5GUW7WpnPYUKcQFJIxALEKXW_LWCo3YeCD9jxC5PFS5zkfXE6T2u3YRED4luNIgKzEPfjXwrC5f471LOuPaPXTGxDWNR5-rUtVNSACy9CIk53t2ERpOMu7qpP06UKyyTDCoITBdVcBSLWuYG-UzE-EiwXt30NTpQP97l4iFmMmms9kVnhN-VsvjNoQBkCLYY5eEJVpsKnVuA4yDPVyxVCOdBN8g-CELOCxufuUR9Eiy-AnaGyGtJhniZxRtdtsqtDXNI4',
+    maki_zenin: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCYB4yILQ1u3ul2sOHZVvI5hQKgUUb7kvFmT8TgOeVc-g05syn7yLyBHVQn77KIHX3TWvSgH7gDQh7BchpNAA1U6kjxMwRqrybce6UzQzfVHNJKVJ_f6CiQLJBGP6Khi636Hj7M6zA0osxJiP6Y-7qntmTBJhTPhGdxNHTfv9dZm-zmW-fdNCDhbK9yXiTd9yfphEOYNTNKh5RCQ7Sbn-IL86PsMUMfwP73lsON8VUyix0jC9U8yBp1k_VJcipLuPGRn0O2swZojT0',
+    yuta_okkotsu: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBjv-RN6bBH6kkFRa-mg9e-QWZAsqTxIxxGYFh1-lghR_r4GQb-kqfwIpigvpa2sk9uaZkLmTfckbpaeJ6ZIbI3wj01IBAcUjuPNEAANw6cdRjv0pnaoIcsqEnqA84DqAtK_X7tuOr2FM8EzweV1x32tpOuq6rXkH8j2xrj0Y3xV_93Ubh80tprpxvchvCisaWEbAHO8wiW1ivvLD6SXqiTjwMD1tYJWBOfM-5CrU5s9LuIpXTujmVDs2BW9hG2E7hmubUfTev8waQ',
+    hiromi_higuruma: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD8rc_Te8S_YDqVR7kCmE62ZNO9yYVf1SemTDUltFwMOPImac6Fs96hqJ6up7YXqOZ-QNahvc6OY_tg0dSMRcZ7cA675NUGhsL9UHWFtTZKy6Xb1ei9_4L_2ehLX5a3mvgIPUtcglwEPNXvaiwbgaNhAuLQRuG4F-ObkTfxAIB0jwnoYEdmDrcDBNO0QbixNW-sUQhcJOGptC-hPnwjU7gb9fKXMT6IPtEwR3jDKR3PmTc5x9JQUWOjPRI3nVEZOHRrGp49oVMxQp8',
 };
 
+const V2_STITCH_FALLBACK_PORTRAITS = Object.values(V2_STITCH_PORTRAITS);
+
 function v2CatalogCharacter(character) {
-    return BATTLE_V2_STARTER_ROSTER?.[character?.character_id] || null;
+    const key = character?.character_id || character?.id;
+    return BATTLE_V2_STARTER_ROSTER?.[key] || null;
 }
 
 function v2PortraitUrl(character) {
-    const local = V2_LOCAL_PORTRAITS[character?.character_id];
-    if (local) return local;
-    const catalog = v2CatalogCharacter(character);
-    const name = character?.name || catalog?.name;
-    const fromRoster = typeof CHARACTERS_DATA !== 'undefined'
-        ? CHARACTERS_DATA.find(entry => entry.name === name || entry.identity === name)
-        : null;
-    return fromRoster?.portrait_url || '';
+    const characterId = character?.character_id || character?.id;
+    if (V2_STITCH_PORTRAITS[characterId]) return V2_STITCH_PORTRAITS[characterId];
+    const seed = String(characterId || character?.name || '').split('').reduce((sum, letter) => sum + letter.charCodeAt(0), 0);
+    return V2_STITCH_FALLBACK_PORTRAITS[seed % V2_STITCH_FALLBACK_PORTRAITS.length] || '';
 }
 
 function v2PortraitStyle(character) {
@@ -161,10 +165,37 @@ function v2PortraitStyle(character) {
     return url ? `background-image:url('${esc(url)}')` : '';
 }
 
-function v2PortraitHTML(character, className = 'v2-char-portrait') {
+function v2PortraitHTML(character, className = 'stitch-archive-portrait') {
     const url = v2PortraitUrl(character);
-    const local = url.startsWith('/static/');
-    return `<div class="${className} ${local ? 'has-portrait' : ''}" style="${url ? `background-image:url('${esc(url)}')` : ''}"><span>${esc(charInitials(character?.name))}</span></div>`;
+    return `<div class="${className}" style="${url ? `background-image:url('${esc(url)}')` : ''}"><span>${esc(charInitials(character?.name))}</span></div>`;
+}
+
+function v2ArchiveImageHTML(character, className = 'w-full h-full object-cover') {
+    const url = v2PortraitUrl(character);
+    if (!url) {
+        return `<div class="${className} bg-surface-container-highest flex items-center justify-center font-tactical-data text-primary">${esc(charInitials(character?.name))}</div>`;
+    }
+    return `<img class="${className}" data-alt="${esc(character?.name || 'Stitch arena fighter portrait')}" src="${esc(url)}"/>`;
+}
+
+function v2EnergyOrbHTML(color, className = 'w-3 h-3', count = null) {
+    const tone = {
+        red: 'bg-blood-crimson shadow-[0_0_8px_rgba(239,68,68,0.65)]',
+        blue: 'bg-energy-cyan shadow-[0_0_8px_rgba(34,211,238,0.65)]',
+        green: 'bg-primary shadow-[0_0_8px_rgba(210,187,255,0.65)]',
+        white: 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.65)]',
+        black: 'bg-surface-variant border border-outline-variant/60',
+    }[color] || 'bg-surface-variant border border-outline-variant/60';
+    const label = count === null ? '' : `<span class="absolute inset-0 flex items-center justify-center font-tactical-data text-[9px] text-obsidian-base">${esc(count)}</span>`;
+    return `<div class="${className} energy-orb ${tone} flex-shrink-0 relative overflow-hidden" title="${esc(color)}">${label}</div>`;
+}
+
+function v2EnergyOrbRowHTML(cost, maxSlots = 3) {
+    const orbs = (cost || []).slice(0, maxSlots).map(color => v2EnergyOrbHTML(color)).join('');
+    const empty = Array.from({ length: Math.max(0, maxSlots - (cost || []).length) }, () =>
+        '<div class="w-3 h-3 rounded-full bg-surface-variant flex-shrink-0"></div>'
+    ).join('');
+    return `${orbs}${empty}`;
 }
 
 function showScreen(id) {
@@ -891,10 +922,55 @@ function v2RosterEntries() {
 function v2PickerButtonHTML(character, teamKey) {
     const selected = v2State[teamKey].includes(character.id);
     const locked = !selected && v2State[teamKey].length >= 3;
+    const selectedIndex = v2State[teamKey].indexOf(character.id);
+    const role = character.role || 'Fighter';
+    const state = character.state || 'Cursed Energy';
+    const costPreview = (character.skills || [])
+        .flatMap(skill => skill.cost || [])
+        .filter(Boolean)
+        .slice(0, 3);
+    const cardClass = locked
+        ? 'relative rounded-lg overflow-hidden blade-cut border border-error-container bg-surface-container-highest flex flex-col h-[260px] cursor-not-allowed opacity-60'
+        : selected
+            ? (selectedIndex === 0
+                ? 'relative rounded-lg overflow-hidden blade-cut shadow-[0_0_20px_rgba(245,158,11,0.4)] border-2 border-prestige-gold holo-shimmer bg-charcoal-plate flex flex-col h-[260px] cursor-pointer group'
+                : 'relative rounded-lg overflow-hidden blade-cut shadow-[0_0_20px_rgba(168,85,247,0.3)] border-2 border-energy-purple holo-shimmer bg-charcoal-plate flex flex-col h-[260px] cursor-pointer group')
+            : 'relative rounded-lg overflow-hidden blade-cut border border-outline-variant bg-charcoal-plate flex flex-col h-[260px] cursor-pointer group hover:border-outline transition-colors';
+    const accent = selectedIndex === 0 ? 'text-prestige-gold border-prestige-gold/50' : selected ? 'text-energy-purple border-energy-purple/50' : 'text-on-surface-variant border-outline/30';
+    const icon = selected ? (selectedIndex === 0 ? 'bolt' : 'swords') : 'shield';
+    const imageClass = locked
+        ? 'absolute inset-0 w-full h-full object-cover grayscale mix-blend-luminosity'
+        : selected
+            ? 'absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110'
+            : 'absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-80 group-hover:opacity-100';
     return `
-      <button class="v2-picker-card ${selected ? 'selected' : ''}" data-v2-pick-team="${teamKey}" data-character-id="${esc(character.id)}" ${locked ? 'disabled' : ''}>
-        <strong>${esc(character.name)}</strong>
-        <span>${esc(character.role)}</span>
+      <button class="${cardClass}" type="button" data-v2-pick-team="${teamKey}" data-character-id="${esc(character.id)}" aria-pressed="${selected ? 'true' : 'false'}" ${locked ? 'disabled' : ''}>
+        <div class="absolute inset-0 bg-gradient-to-t from-obsidian-base ${locked ? 'via-error-container/20' : 'via-transparent'} to-transparent z-10"></div>
+        <div class="absolute top-2 right-2 z-20 flex flex-col gap-1">
+          <div class="w-6 h-6 bg-surface-container/80 backdrop-blur-sm border ${accent} rounded flex items-center justify-center">
+            <span class="material-symbols-outlined text-[14px] ${accent.split(' ')[0]}">${icon}</span>
+          </div>
+        </div>
+        ${locked ? `
+        <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSJ0cmFuc3BhcmVudCI+PC9yZWN0Pgo8cGF0aCBkPSJNMCA4TDggMFoiIHN0cm9rZT0iI2VmNDQ0NCIgc3Ryb2tlLXdpZHRoPSIxIiBzdHJva2Utb3BhY2l0eT0iLjIiPjwvcGF0aD4KPC9zdmc+')] z-20 pointer-events-none"></div>
+        <div class="absolute inset-0 z-30 flex items-center justify-center">
+          <div class="bg-surface-container/90 backdrop-blur-sm px-3 py-1.5 rounded blade-cut border border-blood-crimson flex items-center gap-2">
+            <span class="material-symbols-outlined text-[16px] text-blood-crimson">lock</span>
+            <span class="font-label-micro text-label-micro text-blood-crimson">SQUAD FULL</span>
+          </div>
+        </div>` : ''}
+        <div class="flex-1 relative">
+          ${v2ArchiveImageHTML(character, imageClass)}
+        </div>
+        <div class="relative z-20 p-3 ${locked ? 'bg-surface-container-highest border-t border-white/5' : 'bg-charcoal-plate/90 backdrop-blur-md border-t border-white/10'} flex flex-col gap-2">
+          <div class="flex justify-between items-center gap-2">
+            <span class="font-tactical-data text-[12px] font-bold ${selected ? accent.split(' ')[0] : 'text-on-surface'} uppercase tracking-wider truncate">${esc(character.name)}</span>
+            <span class="font-label-micro text-label-micro text-on-surface-variant">${selected ? `P${selectedIndex + 1}` : ''}</span>
+          </div>
+          <div class="font-tactical-data text-[10px] text-on-surface-variant truncate">${esc(role.split('/')[0].trim())} / ${esc(state)}</div>
+          <div class="flex items-center gap-1 ${locked ? 'opacity-50' : ''}">${v2EnergyOrbRowHTML(costPreview)}</div>
+        </div>
+        ${selected ? '<div class="absolute inset-0 border-2 border-prestige-gold/50 z-30 pointer-events-none rounded-lg mix-blend-overlay"></div>' : ''}
       </button>`;
 }
 
@@ -906,8 +982,13 @@ function renderV2Picker() {
     const byId = Object.fromEntries(entries.map(character => [character.id, character]));
     document.getElementById('v2-picker')?.classList.toggle('pvp', v2State.matchMode === 'pvp');
     document.querySelectorAll('[data-v2-mode]').forEach(button => {
-        button.classList.toggle('active', button.dataset.v2Mode === v2State.matchMode);
+        const active = button.dataset.v2Mode === v2State.matchMode;
+        button.className = active
+            ? 'h-10 rounded-lg border border-primary/30 bg-primary-container/20 text-primary font-tactical-data text-[11px] uppercase'
+            : 'h-10 rounded-lg border border-outline-variant bg-surface-container/60 text-on-surface-variant font-tactical-data text-[11px] uppercase';
     });
+    const pickerCount = document.getElementById('v2-picker-count');
+    if (pickerCount) pickerCount.textContent = `${v2State.playerTeam.length}/3`;
     playerPicker.innerHTML = entries.map(character => v2PickerButtonHTML(character, 'playerTeam')).join('');
     const enemyColumn = document.getElementById('v2-enemy-picker-column');
     const enemyLabel = document.getElementById('v2-enemy-picker-label');
@@ -916,11 +997,11 @@ function renderV2Picker() {
     enemyPicker.innerHTML = v2State.matchMode === 'pvp'
         ? ''
         : entries.map(character => v2PickerButtonHTML(character, 'enemyTeam')).join('');
-    document.getElementById('v2-player-summary').innerHTML = v2State.playerTeam.map(id =>
-        `<span>${esc(byId[id]?.name || id)}</span>`
+    document.getElementById('v2-player-summary').innerHTML = v2State.playerTeam.map((id, index) =>
+        `<span class="bg-charcoal-plate/80 border border-primary/20 text-primary rounded px-2 py-1 font-tactical-data text-[10px] uppercase">${index + 1}. ${esc(byId[id]?.name || id)}</span>`
     ).join('');
-    document.getElementById('v2-enemy-summary').innerHTML = v2State.enemyTeam.map(id =>
-        `<span>${esc(byId[id]?.name || id)}</span>`
+    document.getElementById('v2-enemy-summary').innerHTML = v2State.enemyTeam.map((id, index) =>
+        `<span class="bg-charcoal-plate/80 border border-blood-crimson/20 text-blood-crimson rounded px-2 py-1 font-tactical-data text-[10px] uppercase">${index + 1}. ${esc(byId[id]?.name || id)}</span>`
     ).join('');
     const lobbyNote = document.getElementById('v2-lobby-note');
     if (lobbyNote) {
@@ -941,10 +1022,10 @@ function renderV2Picker() {
 function v2StatusHTML(character) {
     const statuses = character.statuses || [];
     if (!statuses.length) return '';
-    return `<div class="v2-status-row">${statuses.map(status => {
+    return `<div class="flex flex-wrap gap-1 mt-1">${statuses.slice(0, 2).map(status => {
         const details = v2StatusPayloadParts({ payload: status.payload || {} }).slice(0, 2);
         const duration = status.duration > 0 ? `${status.duration}t` : 'perm';
-        return `<span class="v2-status" title="${esc(details.join(', '))}">${esc(status.name)} ${duration}${details.length ? ` · ${esc(details[0])}` : ''}</span>`;
+        return `<span class="bg-primary/15 text-primary border border-primary/20 rounded px-1 py-0.5 font-tactical-data text-[8px] uppercase" title="${esc(details.join(', '))}">${esc(status.name)} ${duration}</span>`;
     }).join('')}</div>`;
 }
 
@@ -972,27 +1053,35 @@ function v2CharacterCardHTML(character, slot, isMine, isTurn) {
                                 ? 'Standing by'
                                 : '';
     const hpTone = hpPct <= 30 ? 'critical' : hpPct <= 60 ? 'wounded' : 'healthy';
-    const catalog = v2CatalogCharacter(character);
-    const role = catalog?.role || 'Fighter';
-    const trait = catalog?.state || 'Cursed Energy';
+    const hpColor = isMine ? 'bg-health-emerald' : 'bg-blood-crimson';
+    const hpShadow = isMine ? 'shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'shadow-[0_0_8px_rgba(239,68,68,0.8)]';
+    const cardClass = selected
+        ? 'relative w-[34%] h-full bg-charcoal-plate rounded-lg flex flex-col overflow-hidden z-30 ring-2 ring-prestige-gold shadow-[0_0_20px_rgba(245,158,11,0.5)] transform -translate-y-4 text-left'
+        : targetable
+            ? 'relative w-[34%] h-[110%] bg-charcoal-plate rounded-lg flex flex-col overflow-hidden intent-glow z-20 animate-float text-left'
+            : isMine
+                ? 'relative w-[30%] h-[90%] bg-charcoal-plate rounded-lg border border-white/10 flex flex-col overflow-hidden shadow-lg opacity-80 text-left'
+                : 'relative w-[30%] h-full bg-charcoal-plate rounded-lg border border-white/10 flex flex-col overflow-hidden animate-float text-left';
+    const stateBadge = dead
+        ? `<div class="absolute inset-0 z-30 bg-obsidian-base/70 flex items-center justify-center"><span class="font-tactical-data text-[10px] text-error uppercase">Defeated</span></div>`
+        : selected
+            ? `<div class="absolute top-1 left-1 bg-charcoal-plate/80 backdrop-blur text-prestige-gold font-tactical-data text-[10px] px-1 rounded flex items-center z-20"><span class="material-symbols-outlined text-[12px] mr-1">star</span> LEAD</div>`
+            : targetable
+                ? `<div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-blood-crimson text-white font-tactical-data text-[10px] px-2 py-0.5 rounded flex items-center gap-1 z-30 shadow-[0_0_10px_rgba(239,68,68,0.8)]"><span class="material-symbols-outlined text-[10px]">local_fire_department</span> STRIKE</div>`
+                : queued
+                    ? `<div class="absolute top-1 left-1 bg-charcoal-plate/80 backdrop-blur text-energy-cyan font-tactical-data text-[10px] px-1 rounded flex items-center z-20"><span class="material-symbols-outlined text-[12px] mr-1">done</span> Q${queuedIndex + 1}</div>`
+                    : '';
     return `
-      <button class="v2-char ${selected ? 'selected' : ''} ${queued ? 'queued' : ''} ${targetable ? 'targetable' : ''} ${dead ? 'dead' : ''} hp-${hpTone}"
-        data-v2-role="${isMine ? 'caster' : 'target'}" data-v2-side="${isMine ? 'mine' : 'enemy'}" data-slot="${slot}" ${dead ? 'disabled' : ''}>
-        <span class="v2-char-aura"></span>
-        ${v2PortraitHTML(character)}
-        <div class="v2-char-copy">
-          <div class="v2-char-top">
-            <strong>${esc(character.name)}</strong>
-            <span class="v2-hp-number">${character.hp}/${character.max_hp}</span>
-          </div>
-          <div class="v2-char-meta">
-            <span>${esc(trait)}</span>
-            <span>${esc(role.split('/')[0].trim())}</span>
-          </div>
-          <div class="v2-hp"><span style="width:${hpPct}%"></span></div>
-          ${v2StatusHTML(character)}
-          <div class="v2-char-foot">${esc(stateLabel)}</div>
+      <button class="${cardClass} ${dead ? 'grayscale opacity-45' : ''} ${queued && !selected ? 'ring-1 ring-energy-cyan/70' : ''}"
+        type="button" style="animation-delay: ${slot * 0.5}s;" data-v2-role="${isMine ? 'caster' : 'target'}" data-v2-side="${isMine ? 'mine' : 'enemy'}" data-slot="${slot}" data-hp-tone="${hpTone}" ${dead ? 'disabled' : ''}>
+        ${stateBadge}
+        <div class="flex-1 bg-surface-container relative bg-cover bg-center" data-alt="${esc(character.name)}" style="${v2PortraitStyle(character)}; background-size: cover; background-position: center;">
+          ${(character.statuses || []).length && !dead ? `<div class="absolute top-1 right-1 flex gap-1 z-20">${(character.statuses || []).slice(0, 2).map(status => `<span class="material-symbols-outlined text-[12px] ${isMine ? 'text-energy-cyan' : 'text-error'}" title="${esc(status.name)}">warning</span>`).join('')}</div>` : ''}
         </div>
+        <div class="${selected || targetable ? 'h-2.5' : 'h-2'} w-full bg-surface-container-highest absolute bottom-0 left-0">
+          <div class="h-full ${hpColor} ${hpShadow}" style="width:${hpPct}%"></div>
+        </div>
+        <span class="sr-only">${esc(character.name)} ${esc(stateLabel)} ${character.hp}/${character.max_hp} HP</span>
       </button>`;
 }
 
@@ -1199,6 +1288,7 @@ function v2EnergyConversionHTML(player) {
     const hasSourceEnergy = Number(player.energy?.[source] || 0) >= 2;
     const hardLocked = v2ControlsLocked() || v2State.actions.length > 0 || !!player.energy_converted_this_turn;
     const locked = hardLocked || !hasSourceEnergy;
+    if (locked) return '';
     v2State.convertSource = source;
     v2State.convertTarget = target;
     const sourceOptions = colors.map(color =>
@@ -1217,12 +1307,11 @@ function v2EnergyConversionHTML(player) {
                 ? 'Unavailable'
                 : 'Convert';
     return `
-      <div class="v2-convert ${locked ? 'locked' : ''}">
-        <strong>Energy Convert</strong>
-        <span>2 source into 1 target, once per turn.</span>
-        <select class="v2-convert-source" ${hardLocked ? 'disabled' : ''}>${sourceOptions}</select>
-        <select class="v2-convert-target" ${hardLocked ? 'disabled' : ''}>${targetOptions}</select>
-        <button class="btn-ghost v2-convert-submit" type="button" ${locked ? 'disabled' : ''}>${esc(reason)}</button>
+      <div class="pointer-events-auto flex items-center gap-1 bg-charcoal-plate/80 backdrop-blur-md rounded-full px-2 py-1 border border-outline-variant/30 shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${locked ? 'opacity-60' : ''}">
+        <span class="material-symbols-outlined text-[14px] text-energy-cyan">sync_alt</span>
+        <select class="v2-convert-source bg-obsidian-base text-on-surface-variant border border-outline-variant/40 rounded-full text-[10px] font-tactical-data py-1 pl-2 pr-6" ${hardLocked ? 'disabled' : ''}>${sourceOptions}</select>
+        <select class="v2-convert-target bg-obsidian-base text-on-surface-variant border border-outline-variant/40 rounded-full text-[10px] font-tactical-data py-1 pl-2 pr-6" ${hardLocked ? 'disabled' : ''}>${targetOptions}</select>
+        <button class="v2-convert-submit bg-primary-container/25 text-primary border border-primary/30 rounded-full px-2 py-1 font-tactical-data text-[10px] uppercase" type="button" ${locked ? 'disabled' : ''}>${esc(reason)}</button>
       </div>`;
 }
 
@@ -1311,28 +1400,44 @@ function v2SkillButtonHTML(skill, character, disabled) {
     const isDisabled = disabled || cooldown > 0 || !fit.canFit || !hasTeamTargets;
     const selected = v2State.selectedSkillId === slotId;
     const reason = cooldown > 0 ? `Cooldown ${cooldown}` : !fit.canFit ? fit.reason : !hasTeamTargets ? 'No legal targets' : '';
-    const replacementNote = skill.replaced_from ? `<small>Replaces ${esc(skill.replaced_from)}</small>` : '';
+    const replacementNote = skill.replaced_from ? `Replaces ${skill.replaced_from}` : '';
     const primaryClass = (skill.classes || [])[0] || 'Skill';
-    const skillInitial = String(skill.name || '?').trim()[0] || '?';
+    const cost = skill.cost || [];
+    const effect = (skill.effects || []).map(v2EffectLabel).filter(Boolean)[0] || v2TargetLabel(skill);
+    const skillName = String(skill.name || '?').toUpperCase();
+    const title = skillName.length > 18 ? `${skillName.slice(0, 16)}...` : skillName;
+    const activeClass = selected
+        ? 'relative bg-charcoal-plate border border-primary/50 rounded-lg p-3 text-left overflow-hidden foil-sweep shadow-[0_0_15px_rgba(210,187,255,0.2)] hover:shadow-[0_0_20px_rgba(210,187,255,0.4)] transition-all flex flex-col justify-between h-24'
+        : 'relative bg-surface-variant border border-outline-variant/50 rounded-lg p-3 text-left flex flex-col justify-between h-24 hover:border-white/30 transition-colors';
+    const disabledClass = cooldown > 0
+        ? 'relative bg-obsidian-base border border-surface-container-high rounded-lg p-3 text-left flex flex-col justify-center items-center h-24 opacity-60 cursor-not-allowed'
+        : 'relative bg-charcoal-plate border border-error/30 rounded-lg p-3 text-left overflow-hidden h-24 cursor-not-allowed';
+    const blockedLabel = cooldown > 0
+        ? `${cooldown} TURNS`
+        : !fit.canFit
+            ? 'NO ENERGY'
+            : !hasTeamTargets
+                ? 'NO TARGET'
+                : 'LOCKED';
     return `
-      <button class="v2-skill ${selected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}" data-skill-id="${esc(slotId)}" data-effective-skill-id="${esc(skill.effective_skill_id || skill.id)}" ${reason ? `title="${esc(reason)}"` : ''} ${isDisabled ? 'disabled' : ''}>
-        <div class="v2-skill-icon" aria-hidden="true">${esc(skillInitial)}</div>
-        <div class="v2-skill-body">
-          <div class="v2-skill-head">
-            <strong>${esc(skill.name)}</strong>
-            <span>${orbsHTML(skill.cost)} CD ${cooldown || skill.cooldown || 0}</span>
+      <button class="${isDisabled ? disabledClass : activeClass}" type="button" data-skill-id="${esc(slotId)}" data-effective-skill-id="${esc(skill.effective_skill_id || skill.id)}" ${reason ? `title="${esc(reason)}"` : ''} ${isDisabled ? 'disabled' : ''}>
+        ${isDisabled && cooldown <= 0 ? '<div class="absolute inset-0 pointer-events-none opacity-20" style="background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(239,68,68,0.5) 10px, rgba(239,68,68,0.5) 11px);"></div>' : ''}
+        ${isDisabled && cooldown > 0 ? `
+          <span class="material-symbols-outlined text-outline text-3xl mb-1">hourglass_empty</span>
+          <span class="font-tactical-data text-lg text-outline">${esc(blockedLabel)}</span>
+          <div class="absolute top-2 left-2 font-headline-lg-mobile text-[12px] text-outline-variant">${esc(title)}</div>
+        ` : `
+          <div class="flex justify-between items-start ${isDisabled ? 'opacity-50' : ''}">
+            <span class="font-headline-lg-mobile text-[16px] ${selected ? 'text-primary' : 'text-on-surface'}">${esc(title)}</span>
+            <div class="flex gap-1">${cost.length ? cost.map(color => v2EnergyOrbHTML(color)).join('') : '<span class="font-tactical-data text-[10px] text-on-surface-variant">FREE</span>'}</div>
           </div>
-          <div class="v2-skill-tags">
-            <span>${esc(v2TargetLabel(skill))}</span>
-            <span>${esc(primaryClass)}</span>
+          <div class="flex justify-between items-end gap-2 ${isDisabled ? 'opacity-50' : ''}">
+            <span class="bg-primary/20 text-primary font-tactical-data text-[10px] px-1.5 py-0.5 rounded truncate">${esc(primaryClass)}</span>
+            <span class="font-tactical-data text-xs text-on-surface-variant truncate">${esc(effect)}</span>
           </div>
-          ${v2EffectChipsHTML(skill)}
-          <p>${esc(skill.text)}</p>
-          <div class="v2-skill-foot">
-            ${replacementNote}
-            <small>${reason ? esc(reason) : 'Ready'}</small>
-          </div>
-        </div>
+          ${replacementNote ? `<div class="absolute bottom-1 left-3 font-tactical-data text-[8px] text-energy-cyan">${esc(replacementNote)}</div>` : ''}
+        `}
+        ${isDisabled && cooldown <= 0 ? `<div class="absolute inset-0 flex items-center justify-center"><span class="font-tactical-data text-sm text-error bg-obsidian-base/80 px-2 py-1 rounded">${esc(blockedLabel)}</span></div>` : ''}
       </button>`;
 }
 
@@ -1459,10 +1564,8 @@ function v2LogEntryHTML(event) {
                     ? 'status'
                     : 'neutral';
     return `
-      <div class="log-entry v2-log-entry v2-log-entry--${tone}">
-        <span>Turn ${esc(event.turn_number || '')}</span>
-        <strong>${esc(type)}</strong>
-        <em>${esc(event.message)}</em>
+      <div class="${tone === 'damage' ? 'text-blood-crimson' : tone === 'heal' ? 'text-health-emerald' : tone === 'finish' ? 'text-prestige-gold' : 'text-on-surface-variant'}">
+        [T${esc(event.turn_number || '')}] ${esc(type).toUpperCase()} ${esc(event.message)}
       </div>`;
 }
 
@@ -1521,14 +1624,34 @@ function v2RecentResolutionHTML(state) {
         .reverse();
     if (!recent.length) return '';
     return `
-      <div class="v2-resolution-strip">
-        ${recent.map(event => `<span>${esc(event.message)}</span>`).join('')}
+      <div class="flex flex-col gap-1 mb-1">
+        ${recent.map(event => `<div>${esc(event.message)}</div>`).join('')}
       </div>`;
+}
+
+function v2CommandAvatarHTML(character, slot, selectedSlot) {
+    const queued = v2State.actions.some(action => Number(action.caster_slot) === slot);
+    const active = Number(selectedSlot) === slot;
+    const dead = !character?.alive;
+    const avatarClass = active
+        ? 'w-12 h-12 rounded-full border-2 border-prestige-gold bg-surface-container shadow-[0_0_15px_rgba(245,158,11,0.4)] overflow-hidden relative'
+        : queued || dead
+            ? 'w-10 h-10 rounded-full border border-outline-variant opacity-50 grayscale bg-surface-container overflow-hidden relative'
+            : 'w-10 h-10 rounded-full border border-outline-variant bg-surface-container overflow-hidden relative';
+    return `
+      <button class="${avatarClass}" type="button" data-v2-role="caster" data-v2-side="mine" data-slot="${slot}" ${dead ? 'disabled' : ''} title="${esc(character?.name || `Slot ${slot + 1}`)}">
+        ${queued && !active ? '<div class="absolute inset-0 bg-black/40 flex items-center justify-center font-tactical-data text-xs text-white z-10">DONE</div>' : ''}
+        ${v2ArchiveImageHTML(character, 'w-full h-full object-cover')}
+      </button>`;
 }
 
 function renderClassicV2() {
     const state = v2State.state;
     const classicScreen = document.getElementById('classic-v2');
+    const setupView = document.getElementById('v2-setup-view');
+    const battleView = document.getElementById('v2-battle-view');
+    const resultView = document.getElementById('v2-result-view');
+    const bottomNav = document.getElementById('v2-bottom-nav');
     const title = document.getElementById('v2-phase-title');
     const hint = document.getElementById('v2-phase-hint');
     const startButton = document.getElementById('btn-v2-start');
@@ -1538,13 +1661,19 @@ function renderClassicV2() {
     const confirmButton = document.getElementById('btn-v2-confirm');
     if (!state) {
         classicScreen?.classList.remove('v2-battle-active');
-        if (title) title.textContent = 'Battle v2 Arena';
+        classicScreen?.classList.remove('v2-finished');
+        classicScreen?.classList.add('v2-setup-active');
+        setupView?.classList.remove('hidden');
+        battleView?.classList.add('hidden');
+        resultView?.classList.add('hidden');
+        bottomNav?.classList.remove('hidden');
+        if (title) title.textContent = 'Assemble Your Trio';
         if (hint) {
             hint.textContent = v2State.matchMode === 'pvp'
                 ? (v2State.lobbyStatus?.status === 'waiting'
-                    ? 'Waiting for your opponent to join this room.'
-                    : 'Choose your starters, enter a room code on setup, then join Private PvP.')
-                : 'Pick two starter teams, queue skills, then resolve the turn.';
+                    ? 'Waiting for your opponent to enter the domain.'
+                    : 'Choose three fighters, enter a room code on setup, then open a Private PvP domain.')
+                : 'Select three fighters for your squad and three CPU opponents for the upcoming bout.';
         }
         ['v2-my-team', 'v2-enemy-team', 'v2-energy-row', 'v2-selected-panel', 'v2-queue-panel', 'v2-log'].forEach(id => {
             const el = document.getElementById(id);
@@ -1564,8 +1693,8 @@ function renderClassicV2() {
         if (startButton) {
             startButton.disabled = v2State.lobbyStatus?.status === 'waiting';
             startButton.textContent = v2State.matchMode === 'pvp'
-                ? (v2State.lobbyStatus?.status === 'waiting' ? 'Waiting for Opponent' : 'Join PvP Room')
-                : 'Start CPU Match';
+                ? (v2State.lobbyStatus?.status === 'waiting' ? 'Waiting for Opponent' : 'Open PvP Domain')
+                : 'Ignite Battle';
         }
         if (newMatchButton) {
             newMatchButton.disabled = false;
@@ -1576,11 +1705,19 @@ function renderClassicV2() {
         return;
     }
     classicScreen?.classList.add('v2-battle-active');
+    classicScreen?.classList.remove('v2-setup-active');
+    classicScreen?.classList.toggle('v2-finished', !!state.winner_id);
+    if (classicScreen) classicScreen.scrollTop = 0;
+    window.scrollTo(0, 0);
+    setupView?.classList.add('hidden');
+    battleView?.classList.remove('hidden');
+    resultView?.classList.toggle('hidden', !state.winner_id);
+    bottomNav?.classList.add('hidden');
     startButton?.classList.add('hidden');
     newMatchButton?.classList.remove('hidden');
-    cancelButton?.classList.remove('hidden');
-    endTurnButton?.classList.remove('hidden');
-    confirmButton?.classList.remove('hidden');
+    cancelButton?.classList.toggle('hidden', v2State.actions.length === 0);
+    endTurnButton?.classList.toggle('hidden', v2State.actions.length === 0);
+    confirmButton?.classList.toggle('hidden', v2State.actions.length === 0);
     document.getElementById('v2-picker')?.classList.add('hidden');
     const { mine, enemy } = v2PlayerIds();
     const me = state.players[mine];
@@ -1588,7 +1725,7 @@ function renderClassicV2() {
     const isMyTurn = state.turn_player_id === mine && state.phase !== 'finished';
     v2EnsureSelectedCaster(me, isMyTurn);
     document.getElementById('v2-turn-badge').textContent = `Turn ${state.turn_number}`;
-    title.textContent = state.phase.replace(/_/g, ' ').toUpperCase();
+    title.textContent = state.winner_id ? 'Victory Recap' : state.phase.replace(/_/g, ' ').toUpperCase();
     hint.textContent = v2PhaseHint(state, me, isMyTurn);
     document.getElementById('v2-turn-status').innerHTML = v2TurnStatusHTML(state, me, foe, isMyTurn);
     document.getElementById('v2-energy-row').innerHTML = renderEnergyPool(me?.energy || {}) + v2EnergyConversionHTML(me);
@@ -1601,48 +1738,54 @@ function renderClassicV2() {
     v2SyncPhaserArena(state, me, foe, isMyTurn);
     const selected = me?.team?.[v2State.selectedCasterSlot];
     const selectedLocked = selected && v2State.actions.some(a => a.caster_slot === v2State.selectedCasterSlot);
-    const selectedHpPct = selected ? Math.max(0, Math.min(100, Math.round((selected.hp / selected.max_hp) * 100))) : 0;
     const commandHint = selectedLocked
         ? 'This fighter already has an action queued.'
         : isMyTurn
             ? 'Choose an ability, then tap a highlighted target.'
             : 'Waiting for the opponent to finish planning.';
+    const commandAvatars = (me?.team || []).map((character, slot) =>
+        v2CommandAvatarHTML(character, slot, v2State.selectedCasterSlot)
+    ).join('');
     document.getElementById('v2-selected-panel').innerHTML = selected
-        ? `<div class="v2-command-head">
-             ${v2PortraitHTML(selected, 'v2-command-portrait')}
-             <div class="v2-command-copy">
-               <span>Commanding</span>
-               <strong>${esc(selected.name)}</strong>
-               <small>${esc(commandHint)}</small>
-               <div class="v2-command-hp"><span style="width:${selectedHpPct}%"></span></div>
-             </div>
-             <div class="v2-command-count">
-               <strong>${v2State.actions.length}/${v2QueueLimit(me)}</strong>
-               <span>Queue</span>
+        ? `<div class="flex justify-center gap-4 py-3 px-margin-safe border-b border-white/5 relative">
+             ${commandAvatars}
+             <div class="absolute right-4 top-1/2 -translate-y-1/2 text-right pointer-events-none">
+               <div class="font-tactical-data text-[10px] text-prestige-gold uppercase">${selectedLocked ? 'Queued' : 'Lead'}</div>
+               <div class="font-tactical-data text-[9px] text-on-surface-variant">${v2State.actions.length}/${v2QueueLimit(me)} queue</div>
              </div>
            </div>
-           <div class="v2-skill-grid">${v2SkillsFor(selected).map(skill =>
+           <div class="flex-1 p-4 grid grid-cols-2 gap-3 pb-6">${v2SkillsFor(selected).map(skill =>
             v2SkillButtonHTML(skill, selected, !isMyTurn || v2QueuedSkillIds().has(skill.original_slot_id || skill.id) || selectedLocked)
         ).join('')}</div>`
-        : `<div class="v2-command-head v2-command-head--empty">
-             <div class="v2-command-portrait"><span>?</span></div>
-             <div class="v2-command-copy">
-               <span>No fighter selected</span>
-               <strong>Tap a ready ally</strong>
-               <small>Select a living fighter in the arena to open their ability deck.</small>
+        : `<div class="flex justify-center gap-4 py-3 px-margin-safe border-b border-white/5 relative">
+             ${commandAvatars}
+           </div>
+           <div class="p-4 pb-6">
+             <div class="relative bg-surface-variant border border-outline-variant/50 rounded-lg p-3 text-left flex flex-col justify-center h-24">
+               <span class="font-headline-lg-mobile text-[16px] text-on-surface">SELECT FIGHTER</span>
+               <span class="font-tactical-data text-xs text-on-surface-variant">${esc(commandHint)}</span>
              </div>
            </div>`;
-    document.getElementById('v2-queue-panel').innerHTML = v2QueueHTML();
-    document.getElementById('v2-log').innerHTML = `
-      <div class="v2-section-head">
-        <span>Battle Log</span>
-        <strong>${(state.event_log || []).length} events</strong>
-      </div>
+    const queuePanel = document.getElementById('v2-queue-panel');
+    queuePanel.innerHTML = v2QueueHTML();
+    queuePanel.classList.toggle('is-empty', v2State.actions.length === 0);
+    const logPanel = document.getElementById('v2-log');
+    const eventLog = state.event_log || [];
+    logPanel.classList.toggle('hidden', eventLog.length === 0);
+    logPanel.innerHTML = `
+      <div class="text-energy-cyan uppercase mb-1">Log ${esc(eventLog.length)}</div>
       ${v2RecentResolutionHTML(state)}
-      ${(state.event_log || []).slice().reverse().slice(0, 10).map(v2LogEntryHTML).join('')}`;
+      ${eventLog.slice().reverse().slice(0, 6).map(v2LogEntryHTML).join('')}`;
+    if (state.winner_id) {
+        const winnerName = state.players[state.winner_id]?.name || state.winner_id;
+        const resultTitle = document.getElementById('v2-result-title');
+        const resultCopy = document.getElementById('v2-result-copy');
+        if (resultTitle) resultTitle.textContent = `${winnerName} Wins`;
+        if (resultCopy) resultCopy.textContent = `${v2AliveCount(me)} allies alive. ${v2AliveCount(foe)} enemies alive.`;
+    }
     const paymentStatus = v2QueuePaymentStatus(me);
     confirmButton.disabled = !isMyTurn || v2State.actions.length === 0 || !paymentStatus.canPay || !!me?.queue_confirmed || v2State.queueSubmitting;
-    confirmButton.textContent = v2State.queueSubmitting ? 'Resolving...' : paymentStatus.canPay ? 'Confirm Queue' : paymentStatus.reason;
+    confirmButton.textContent = v2State.queueSubmitting ? 'Resolving...' : paymentStatus.canPay ? 'Confirm' : paymentStatus.reason;
     cancelButton.disabled = !isMyTurn || v2State.actions.length === 0 || !!me?.queue_confirmed || v2State.queueSubmitting;
     endTurnButton.disabled = !isMyTurn || v2State.queueSubmitting;
     newMatchButton.disabled = false;
@@ -1823,7 +1966,7 @@ document.getElementById('classic-v2').addEventListener('click', (event) => {
         });
         return;
     }
-    const targetCard = event.target.closest('.v2-char[data-slot]');
+    const targetCard = event.target.closest('[data-v2-role][data-slot]');
     if (controlsLocked && targetCard) return;
     if (targetCard && v2State.selectedCasterSlot !== null && v2State.selectedSkillId) {
         const { mine, enemy } = v2PlayerIds();
@@ -1847,7 +1990,7 @@ document.getElementById('classic-v2').addEventListener('click', (event) => {
         renderClassicV2();
         return;
     }
-    const skill = event.target.closest('.v2-skill');
+    const skill = event.target.closest('[data-skill-id]');
     if (controlsLocked && skill) return;
     if (skill && !skill.disabled) {
         v2State.selectedSkillId = skill.dataset.skillId;
@@ -1910,7 +2053,7 @@ window.addEventListener('jjk:v2-arena-click', (event) => {
     const side = detail.side === 'enemy' ? 'enemy' : 'mine';
     const slot = Number(detail.slot);
     if (!Number.isFinite(slot)) return;
-    const button = document.querySelector(`#classic-v2 .v2-char[data-v2-side="${side}"][data-slot="${slot}"]`);
+    const button = document.querySelector(`#classic-v2 [data-v2-side="${side}"][data-slot="${slot}"]`);
     button?.click();
 });
 
@@ -2734,6 +2877,25 @@ function renderEnergyPool(energy) {
           <div class="energy-chip-label">${label}</div>
         </div>`;
     }).join('');
+}
+
+// Stitch arena energy rack override for Battle v2.
+function renderEnergyPool(energy) {
+    if (!energy) return '';
+    const colors = [
+        { key: 'red', label: 'Blood' },
+        { key: 'blue', label: 'Curse' },
+        { key: 'green', label: 'Focus' },
+        { key: 'white', label: 'Strat' },
+    ];
+    const total = colors.reduce((sum, { key }) => sum + Number(energy[key] || 0), 0);
+    const cap = Math.max(10, total);
+    const chips = colors.map(({ key, label }) => v2EnergyOrbHTML(key, 'w-5 h-5', energy[key] || 0).replace(`title="${esc(key)}"`, `title="${esc(label)} ${energy[key] || 0}"`)).join('');
+    return `
+      <div class="flex items-center gap-2 bg-charcoal-plate/80 backdrop-blur-md rounded-full px-4 py-2 border border-outline-variant/30 shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
+        ${chips}
+        <span class="font-tactical-data text-tactical-data ml-2 text-on-surface-variant">${total}/${cap}</span>
+      </div>`;
 }
 
 function renderJjkEnergyCore(energy) {

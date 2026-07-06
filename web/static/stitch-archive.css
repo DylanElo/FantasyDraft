@@ -1,0 +1,224 @@
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+.blade-cut {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%);
+}
+
+.holo-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.holo-shimmer::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 100%);
+  transform: rotate(30deg);
+  animation: shimmer 3s infinite linear;
+  pointer-events: none;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%) rotate(30deg); }
+  100% { transform: translateX(100%) rotate(30deg); }
+}
+
+.void-particles {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
+  background: radial-gradient(circle at center, transparent 0%, #04040d 100%);
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 25px rgba(239, 68, 68, 0.8); }
+}
+
+.intent-glow {
+  animation: pulse-glow 2s infinite;
+  border: 1px solid #ef4444;
+}
+
+.scanline-effect::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to bottom, transparent 50%, rgba(255, 255, 255, 0.05) 51%, transparent 51%);
+  background-size: 100% 4px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.foil-sweep {
+  position: relative;
+  overflow: hidden;
+}
+
+.foil-sweep::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(135deg, #a855f7 0%, #38bdf8 50%, #ef4444 100%);
+  opacity: 0.15;
+  transform: rotate(45deg);
+  animation: sweep 3s infinite linear;
+  pointer-events: none;
+}
+
+@keyframes sweep {
+  0% { transform: translateX(-100%) rotate(45deg); }
+  100% { transform: translateX(100%) rotate(45deg); }
+}
+
+.energy-orb {
+  border-radius: 50%;
+  box-shadow: inset -4px -4px 8px rgba(0,0,0,0.6), inset 4px 4px 8px rgba(255,255,255,0.4);
+  position: relative;
+}
+
+.energy-orb::after {
+  content: "";
+  position: absolute;
+  top: 15%;
+  left: 15%;
+  width: 30%;
+  height: 30%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.8), transparent);
+}
+
+#classic-v2 .hidden {
+  display: none !important;
+}
+
+#classic-v2.screen,
+#classic-v2.v2-battle-active.screen {
+  overflow: hidden;
+  background: #04040d;
+}
+
+#classic-v2 .bg-holographic-foil {
+  background-image: linear-gradient(135deg, #a855f7 0%, #38bdf8 50%, #ef4444 100%);
+}
+
+#v2-phone-shell {
+  isolation: isolate;
+}
+
+#classic-v2.v2-battle-active #v2-bottom-nav {
+  display: none !important;
+}
+
+#v2-command-zone {
+  max-height: min(42vh, 320px);
+}
+
+#v2-selected-panel {
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (max-height: 760px) {
+  #v2-command-zone {
+    height: 224px !important;
+    max-height: 224px !important;
+  }
+
+  #v2-battle-view main {
+    padding-top: 116px !important;
+    padding-bottom: 224px !important;
+  }
+
+  #v2-enemy-team {
+    height: 132px !important;
+  }
+
+  #v2-my-team {
+    height: 136px !important;
+  }
+
+  #v2-center-stage {
+    margin-top: 8px !important;
+    margin-bottom: 8px !important;
+    min-height: 64px !important;
+  }
+
+  #v2-selected-panel > .grid {
+    gap: 0.5rem !important;
+    padding: 0.5rem 1rem 0.75rem !important;
+  }
+
+  #v2-selected-panel [data-skill-id] {
+    height: 3.75rem !important;
+    padding: 0.5rem !important;
+    overflow: hidden;
+  }
+
+  #v2-selected-panel [data-skill-id] .font-headline-lg-mobile {
+    font-size: 13px !important;
+    line-height: 1.1 !important;
+  }
+
+  #v2-selected-panel [data-skill-id] .font-tactical-data {
+    font-size: 9px !important;
+    line-height: 1.1 !important;
+  }
+}
+
+@media (max-height: 660px) {
+  #v2-battle-view main {
+    padding-top: 108px !important;
+  }
+
+  #v2-enemy-team,
+  #v2-my-team {
+    height: 112px !important;
+  }
+
+  #v2-center-stage {
+    min-height: 56px !important;
+  }
+
+  #v2-center-stage .font-display-hero {
+    font-size: 56px !important;
+  }
+}

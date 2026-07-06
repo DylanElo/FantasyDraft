@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="dark" lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -11,10 +11,112 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@600;700;900&family=Yuji+Mai&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  <script>
+    window.tailwind = window.tailwind || {};
+    window.tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "on-tertiary-container": "#ffdeda",
+            "surface-container": "#1f1e2a",
+            "surface-tint": "#d2bbff",
+            "inverse-surface": "#e4e0f1",
+            "charcoal-plate": "#161630",
+            "tertiary-fixed-dim": "#ffb4ab",
+            "on-tertiary-fixed-variant": "#93000b",
+            "secondary-container": "#00a6e0",
+            "on-background": "#e4e0f1",
+            "energy-cyan": "#22d3ee",
+            "energy-purple": "#a855f7",
+            "surface-container-low": "#1b1a26",
+            "on-secondary": "#00354a",
+            "inverse-primary": "#732ee4",
+            "on-surface": "#e4e0f1",
+            "inverse-on-surface": "#302f3b",
+            "on-tertiary": "#690005",
+            "on-surface-variant": "#ccc3d8",
+            "on-error-container": "#ffdad6",
+            "holographic-foil": "linear-gradient(135deg, #a855f7 0%, #38bdf8 50%, #ef4444 100%)",
+            "primary-container": "#7c3aed",
+            "on-primary": "#3f008e",
+            "surface-container-lowest": "#0d0d18",
+            "outline": "#958da1",
+            "secondary-fixed": "#c4e7ff",
+            "error-container": "#93000a",
+            "on-primary-fixed-variant": "#5a00c6",
+            "on-primary-container": "#ede0ff",
+            "primary-fixed": "#eaddff",
+            "on-secondary-fixed": "#001e2c",
+            "secondary": "#7bd0ff",
+            "primary": "#d2bbff",
+            "on-primary-fixed": "#25005a",
+            "on-secondary-fixed-variant": "#004c69",
+            "tertiary": "#ffb4ab",
+            "surface": "#12121d",
+            "surface-container-high": "#292935",
+            "tertiary-fixed": "#ffdad6",
+            "on-secondary-container": "#00374d",
+            "health-emerald": "#22c55e",
+            "background": "#12121d",
+            "tertiary-container": "#cb161c",
+            "obsidian-base": "#04040d",
+            "on-error": "#690005",
+            "secondary-fixed-dim": "#7bd0ff",
+            "surface-bright": "#393844",
+            "prestige-gold": "#f59e0b",
+            "primary-fixed-dim": "#d2bbff",
+            "surface-dim": "#12121d",
+            "surface-variant": "#343440",
+            "blood-crimson": "#ef4444",
+            "error": "#ffb4ab",
+            "on-tertiary-fixed": "#410002",
+            "surface-container-highest": "#343440",
+            "outline-variant": "#4a4455",
+            "void-surface": "#07071a"
+          },
+          borderRadius: {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          spacing: {
+            "gutter": "16px",
+            "margin-safe": "24px",
+            "stack-sm": "8px",
+            "stack-md": "16px",
+            "stack-lg": "32px"
+          },
+          fontFamily: {
+            "tactical-data": ["JetBrains Mono"],
+            "body-standard": ["Inter"],
+            "headline-lg": ["Cinzel"],
+            "display-hero": ["Cinzel Decorative"],
+            "label-micro": ["Inter"],
+            "headline-lg-mobile": ["Cinzel"],
+            "kanji-accent": ["Yuji Mai"]
+          },
+          fontSize: {
+            "tactical-data": ["16px", { "lineHeight": "1.4", "fontWeight": "700" }],
+            "body-standard": ["14px", { "lineHeight": "1.5", "fontWeight": "400" }],
+            "headline-lg": ["32px", { "lineHeight": "1.2", "fontWeight": "700" }],
+            "display-hero": ["48px", { "lineHeight": "1.1", "letterSpacing": "0.05em", "fontWeight": "900" }],
+            "label-micro": ["10px", { "lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "800" }],
+            "headline-lg-mobile": ["24px", { "lineHeight": "1.2", "fontWeight": "700" }],
+            "kanji-accent": ["64px", { "lineHeight": "1", "fontWeight": "400" }]
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link rel="stylesheet" href="{{ url_for('static', filename='jjk-tokens.css') }}?v=1">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=47">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=51">
   <link rel="stylesheet" href="{{ url_for('static', filename='jjk-theme.css') }}?v=1">
   <link rel="stylesheet" href="{{ url_for('static', filename='arena-redesign.css') }}?v=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='stitch-archive.css') }}?v=3">
   <script src="{{ url_for('static', filename='socket.io.min.js') }}?v=4.7.2"></script>
 </head>
 <body>
@@ -300,69 +402,134 @@
 
     </section>
 
-    <section id="classic-v2" class="screen">
-      <header class="app-header">
-        <div class="header-left">
-          <span class="header-logo">JJK</span>
-          <span class="header-title">Battle v2 Arena</span>
-        </div>
-        <div class="header-right">
-          <div class="round-badge" id="v2-turn-badge">Turn 1</div>
-          <button class="icon-btn" id="btn-v2-back" aria-label="Back to setup" title="Back">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+    <section id="classic-v2" class="screen bg-obsidian-base text-on-surface font-body-standard text-body-standard h-screen w-screen overflow-hidden flex flex-col relative selection:bg-energy-purple selection:text-white">
+      <div class="absolute inset-0 z-0 bg-obsidian-base pointer-events-none">
+        <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-energy-purple/5 rounded-full blur-3xl"></div>
+        <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-energy-cyan/5 rounded-full blur-3xl"></div>
+      </div>
+      <div class="absolute inset-0 z-0 scanline-effect pointer-events-none bg-void-surface opacity-80" style="background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px); background-size: 32px 32px; transform: perspective(500px) rotateX(60deg) scale(2); transform-origin: center bottom;"></div>
+
+      <div id="v2-phone-shell" class="relative z-10 mx-auto h-full w-full max-w-[430px] overflow-hidden bg-obsidian-base border-x border-outline-variant/20 shadow-[0_0_50px_rgba(0,0,0,0.65)]">
+      <header class="absolute top-0 left-0 right-0 w-full z-50 flex justify-between items-center px-gutter h-16 bg-obsidian-base flat no shadows text-primary font-headline-lg-mobile text-headline-lg-mobile docked full-width top-0">
+        <button class="flex items-center justify-center p-2 rounded-full hover:text-energy-cyan transition-colors active:scale-95 duration-150 text-primary" id="btn-v2-back" aria-label="Back to setup" title="Back">
+          <span class="material-symbols-outlined" data-icon="menu">menu</span>
+        </button>
+        <h1 class="font-kanji-accent text-primary drop-shadow-[0_0_10px_rgba(210,187,255,0.8)] tracking-widest">CURSED CLASH</h1>
+        <button id="btn-v2-new-match" class="hidden w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant text-[8px] font-tactical-data text-primary uppercase leading-none">New</button>
+        <div class="w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant overflow-hidden flex items-center justify-center text-[8px] font-tactical-data text-on-surface-variant" id="v2-turn-badge">T1</div>
+      </header>
+
+      <div id="v2-error" class="hidden absolute top-20 left-4 right-4 z-[80] bg-error-container text-on-error-container border border-error rounded-lg px-3 py-2 font-tactical-data text-[11px]"></div>
+
+      <section id="v2-setup-view" class="relative z-10 h-full flex flex-col overflow-hidden">
+        <main class="flex-1 mt-16 mb-[220px] p-gutter relative z-10 flex flex-col gap-stack-lg overflow-y-auto">
+          <div class="flex justify-between items-end border-b border-outline-variant/30 pb-4">
+            <div>
+              <h2 id="v2-phase-title" class="font-headline-lg-mobile text-headline-lg-mobile text-inverse-surface">Assemble Your Trio</h2>
+              <p id="v2-phase-hint" class="font-body-standard text-body-standard text-on-surface-variant mt-1">Select fighters for the upcoming bout.</p>
+            </div>
+            <div class="font-tactical-data text-tactical-data text-energy-cyan flex items-center gap-2">
+              <span class="material-symbols-outlined text-[18px]">group</span>
+              <span id="v2-picker-count">0/3</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-stack-sm" role="group" aria-label="Battle v2 mode">
+            <button class="h-10 rounded-lg border border-primary/30 bg-primary-container/20 text-primary font-tactical-data text-[11px] uppercase" type="button" data-v2-mode="cpu">Arena</button>
+            <button class="h-10 rounded-lg border border-outline-variant bg-surface-container/60 text-on-surface-variant font-tactical-data text-[11px] uppercase" type="button" data-v2-mode="pvp">Private</button>
+          </div>
+
+          <div class="v2-lobby-note hidden bg-surface-container/80 backdrop-blur-xl border border-primary/20 rounded-lg p-3 font-tactical-data text-[11px] text-energy-cyan" id="v2-lobby-note"></div>
+
+          <div id="v2-picker" class="flex flex-col gap-stack-lg">
+            <div>
+              <div class="font-tactical-data text-[12px] text-inverse-surface tracking-wide uppercase mb-2">My Starters</div>
+              <div class="v2-picker-summary flex flex-wrap gap-2 mb-3" id="v2-player-summary"></div>
+              <div class="grid grid-cols-2 gap-stack-md" id="v2-player-picker"></div>
+            </div>
+            <div id="v2-enemy-picker-column">
+              <div class="font-tactical-data text-[12px] text-inverse-surface tracking-wide uppercase mb-2" id="v2-enemy-picker-label">CPU Starters</div>
+              <div class="v2-picker-summary flex flex-wrap gap-2 mb-3" id="v2-enemy-summary"></div>
+              <div class="grid grid-cols-2 gap-stack-md" id="v2-enemy-picker"></div>
+            </div>
+          </div>
+        </main>
+
+        <div class="absolute bottom-16 left-0 right-0 w-full z-40 px-gutter pb-4 flex flex-col gap-4 pointer-events-none">
+          <div class="bg-surface-container/80 backdrop-blur-xl border border-primary/20 rounded-lg p-3 pointer-events-auto flex flex-col gap-2 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-prestige-gold text-[16px]">stars</span>
+              <span class="font-tactical-data text-[12px] text-inverse-surface tracking-wide uppercase">Active Synergies</span>
+              <span id="v2-required-picks" class="ml-auto font-tactical-data text-[12px] text-on-surface-variant">3v3</span>
+            </div>
+            <div class="flex items-center gap-3 bg-charcoal-plate/50 p-2 rounded border border-white/5">
+              <div class="w-8 h-8 rounded bg-primary-container/20 flex items-center justify-center text-primary"><span class="material-symbols-outlined text-[18px]">bolt</span></div>
+              <div class="flex-1">
+                <div class="font-body-standard text-[13px] font-bold text-on-surface">Special Grade Pair</div>
+                <div class="font-tactical-data text-[10px] text-energy-cyan">+15% Cursed Energy Regen</div>
+              </div>
+              <span class="font-tactical-data text-[12px] text-on-surface-variant">2/2</span>
+            </div>
+          </div>
+          <button id="btn-v2-start" class="w-full h-14 bg-holographic-foil rounded-lg blade-cut pointer-events-auto relative overflow-hidden group shadow-[0_0_30px_rgba(168,85,247,0.4)] flex items-center justify-center opacity-90 hover:opacity-100 transition-opacity" type="button">
+            <span class="absolute inset-[2px] bg-obsidian-base blade-cut z-10 transition-colors group-hover:bg-charcoal-plate flex items-center justify-center font-headline-lg-mobile text-headline-lg-mobile text-transparent bg-clip-text bg-gradient-to-r from-energy-cyan to-energy-purple tracking-widest font-bold">IGNITE BATTLE</span>
+            <span class="absolute inset-0 bg-energy-purple/20 blur-md z-10 animate-pulse"></span>
           </button>
         </div>
-      </header>
-      <div class="v2-shell">
-        <div class="v2-toolbar">
-          <div class="v2-title-block">
-            <strong id="v2-phase-title">Battle v2 Arena</strong>
-            <span id="v2-phase-hint">Pick two starter teams, queue skills, then resolve the turn.</span>
+      </section>
+
+      <section id="v2-battle-view" class="hidden relative z-10 h-full w-full overflow-hidden">
+        <div id="v2-energy-row" class="absolute top-20 left-0 right-0 w-full z-40 flex justify-center gap-2 px-margin-safe pointer-events-none"></div>
+        <main class="flex-1 relative z-10 flex flex-col justify-start pt-32 pb-48 px-gutter h-full overflow-hidden">
+          <div id="v2-enemy-team" class="flex justify-between items-center w-full max-w-md mx-auto h-40 shrink-0"></div>
+          <div id="v2-center-stage" class="flex-1 flex items-center justify-center relative pointer-events-none my-4">
+            <div id="v2-phaser-arena" class="absolute inset-0 z-0 opacity-50 pointer-events-none" aria-label="Battle v2 animated arena"></div>
+            <div class="font-display-hero text-display-hero text-surface-variant opacity-30 select-none tracking-widest" style="font-size: 80px;">VS</div>
+            <div class="absolute inset-0 flex items-center justify-center">
+              <div class="w-2 h-2 bg-energy-purple rounded-full absolute animate-ping opacity-50" style="top: 20%; left: 30%;"></div>
+              <div class="w-1 h-1 bg-energy-cyan rounded-full absolute animate-ping opacity-70" style="top: 70%; right: 20%; animation-delay: 1s;"></div>
+            </div>
           </div>
-          <button id="btn-v2-start" class="btn-primary" type="button">Start v2 Match</button>
-          <button id="btn-v2-new-match" class="btn-ghost" type="button">New Match</button>
-          <button id="btn-v2-cancel" class="btn-ghost" type="button">Cancel Queue</button>
-          <button id="btn-v2-end-turn" class="btn-ghost" type="button">End Turn</button>
-          <button id="btn-v2-confirm" class="btn-primary" type="button">Confirm Queue</button>
-        </div>
-        <div id="v2-error" class="v2-error hidden"></div>
-        <div id="v2-turn-status" class="v2-turn-status"></div>
-        <div class="v2-picker" id="v2-picker">
-          <div class="v2-mode-row" role="group" aria-label="Battle v2 mode">
-            <button class="v2-mode-option active" type="button" data-v2-mode="cpu">CPU Practice</button>
-            <button class="v2-mode-option" type="button" data-v2-mode="pvp">Private PvP</button>
-          </div>
-          <div class="v2-lobby-note hidden" id="v2-lobby-note"></div>
-          <div class="v2-picker-column">
-            <div class="team-label">MY STARTERS</div>
-            <div class="v2-picker-summary" id="v2-player-summary"></div>
-            <div class="v2-picker-grid" id="v2-player-picker"></div>
-          </div>
-          <div class="v2-picker-column" id="v2-enemy-picker-column">
-            <div class="team-label" id="v2-enemy-picker-label">CPU STARTERS</div>
-            <div class="v2-picker-summary" id="v2-enemy-summary"></div>
-            <div class="v2-picker-grid" id="v2-enemy-picker"></div>
+          <div id="v2-my-team" class="flex justify-between items-end w-full max-w-md mx-auto h-44 z-20 shrink-0"></div>
+        </main>
+        <div id="v2-log" class="absolute top-20 left-4 w-48 bg-charcoal-plate/40 backdrop-blur-sm border border-outline-variant/20 rounded p-2 z-30 font-tactical-data text-[10px] text-on-surface-variant flex flex-col gap-1 pointer-events-none"></div>
+        <div id="v2-turn-status" class="hidden"></div>
+        <div id="v2-command-zone" class="absolute bottom-0 left-0 right-0 w-full z-40 bg-surface-container-lowest border-t border-outline-variant/30 rounded-t-xl shadow-[0_-10px_30px_rgba(0,0,0,0.8)] flex flex-col">
+          <div id="v2-selected-panel"></div>
+          <section id="v2-queue-panel" class="hidden"></section>
+          <div class="px-4 pb-4 absolute -top-14 right-4 z-50 flex gap-2">
+            <button id="btn-v2-cancel" class="bg-charcoal-plate/90 text-on-surface-variant font-tactical-data text-[11px] px-3 py-3 rounded-lg border border-outline-variant/40" type="button">Cancel</button>
+            <button id="btn-v2-end-turn" class="bg-charcoal-plate/90 text-on-surface-variant font-tactical-data text-[11px] px-3 py-3 rounded-lg border border-outline-variant/40" type="button">End</button>
+            <button id="btn-v2-confirm" class="bg-energy-purple text-white font-tactical-data text-sm px-6 py-3 rounded-lg shadow-[0_0_20px_rgba(168,85,247,0.6)] flex items-center gap-2 hover:bg-primary transition-colors foil-sweep" type="button">Confirm <span class="material-symbols-outlined text-[16px]" data-icon="bolt">bolt</span></button>
           </div>
         </div>
-        <div class="v2-energy-row" id="v2-energy-row"></div>
-        <div class="v2-layout">
-          <section class="v2-arena-panel">
-            <div id="v2-phaser-arena" class="v2-phaser-arena" aria-label="Battle v2 animated arena"></div>
-            <section class="v2-team-panel v2-team-panel--enemy v2-dom-backing">
-              <div class="team-label">OPPONENT</div>
-              <div class="v2-team" id="v2-enemy-team"></div>
-            </section>
-            <section class="v2-team-panel v2-team-panel--ally v2-dom-backing">
-              <div class="team-label">MY TEAM</div>
-              <div class="v2-team" id="v2-my-team"></div>
-            </section>
-          </section>
-          <section class="v2-center-panel">
-            <div class="v2-selected" id="v2-selected-panel"></div>
-            <div class="v2-queue" id="v2-queue-panel"></div>
-            <div class="battle-log v2-log" id="v2-log"></div>
-          </section>
+      </section>
+
+      <section id="v2-result-view" class="hidden relative z-10 h-full flex items-center justify-center px-gutter">
+        <div class="bg-surface-container/80 backdrop-blur-xl border border-primary/20 rounded-lg p-5 text-center max-w-md">
+          <span class="font-tactical-data text-[11px] text-on-surface-variant uppercase">Victory Recap</span>
+          <strong id="v2-result-title" class="block font-headline-lg text-headline-lg text-prestige-gold my-3">Mission Complete</strong>
+          <small id="v2-result-copy" class="font-body-standard text-body-standard text-on-surface-variant">Review the combat log and return to the lobby for another bout.</small>
         </div>
+      </section>
+      <nav id="v2-bottom-nav" class="absolute bottom-0 left-0 right-0 z-50 h-16 bg-obsidian-base/95 border-t border-outline-variant/30 backdrop-blur-xl grid grid-cols-4 text-on-surface-variant font-tactical-data text-[10px] uppercase">
+        <button class="flex flex-col items-center justify-center gap-1 text-primary" type="button" data-v2-nav="arena">
+          <span class="material-symbols-outlined text-[20px]">sports_mma</span>
+          <span>Arena</span>
+        </button>
+        <button class="flex flex-col items-center justify-center gap-1" type="button" data-v2-nav="roster">
+          <span class="material-symbols-outlined text-[20px]">groups</span>
+          <span>Roster</span>
+        </button>
+        <button class="flex flex-col items-center justify-center gap-1" type="button" data-v2-nav="lobby">
+          <span class="material-symbols-outlined text-[20px]">hub</span>
+          <span>Lobby</span>
+        </button>
+        <button class="flex flex-col items-center justify-center gap-1" type="button" data-v2-nav="history">
+          <span class="material-symbols-outlined text-[20px]">history</span>
+          <span>History</span>
+        </button>
+      </nav>
       </div>
     </section>
 
@@ -432,6 +599,6 @@
   <script src="{{ url_for('static', filename='effects.js') }}?v=16"></script>
   <script src="{{ url_for('static', filename='vendor/phaser.min.js') }}?v=3.90.0"></script>
   <script src="{{ url_for('static', filename='phaser-battle.js') }}?v=4"></script>
-  <script src="{{ url_for('static', filename='app.js') }}?v=58"></script>
+  <script src="{{ url_for('static', filename='app.js') }}?v=66"></script>
 </body>
 </html>

@@ -134,31 +134,45 @@ function characterArtStyle(char) {
     return hasReliablePortrait(char) ? `background-image:url('${esc(char.portrait_url)}')` : '';
 }
 
-const V2_STITCH_PORTRAITS = {
-    yuji_itadori: '/static/assets/portraits/yuji-black-flash.svg',
-    nobara_kugisaki: '/static/assets/portraits/nobara-kugisaki.svg',
-    megumi_fushiguro: '/static/assets/portraits/megumi-fushiguro.svg',
-    satoru_gojo: '/static/assets/portraits/gojo-unsealed.svg',
-    ryomen_sukuna: '/static/assets/portraits/sukuna-heian-era.svg',
-    mahito: '/static/assets/portraits/mahito.svg',
-    aoi_todo: '/static/assets/portraits/aoi-todo.svg',
-    maki_zenin: '/static/assets/portraits/maki-zenin.svg',
-    yuta_okkotsu: '/static/assets/portraits/yuta-okkotsu-sendai.svg',
-    hiromi_higuruma: '/static/assets/portraits/hiromi-higuruma.svg',
+const V2_STITCH_LOCAL_PORTRAITS = {
+    'Yuta Okkotsu (JJK 0)': '/static/assets/portraits/yuta-okkotsu-jjk-0.svg',
+    'Yuta Okkotsu (Sendai)': '/static/assets/portraits/yuta-okkotsu-sendai.svg',
+    "Yuta (Gojo's Body)": '/static/assets/portraits/yuta-gojo-s-body.svg',
+    'Gojo (Young)': '/static/assets/portraits/gojo-young.svg',
+    'Gojo (Unsealed)': '/static/assets/portraits/gojo-unsealed.svg',
+    'Sukuna (Full Power)': '/static/assets/portraits/sukuna-full-power.svg',
+    'Sukuna (Heian Era)': '/static/assets/portraits/sukuna-heian-era.svg',
+    'Yuji (Black Flash)': '/static/assets/portraits/yuji-black-flash.svg',
+    'Yuji (Awakened)': '/static/assets/portraits/yuji-awakened.svg',
+    Kenjaku: '/static/assets/portraits/kenjaku.svg',
+    'Hiromi Higuruma': '/static/assets/portraits/hiromi-higuruma.svg',
+    Uraume: '/static/assets/portraits/uraume.svg',
 };
 
-const V2_STITCH_FALLBACK_PORTRAITS = Object.values(V2_STITCH_PORTRAITS);
+const V2_STITCH_REMOTE_PORTRAITS = {
+    ryomen_sukuna: 'https://static.wikia.nocookie.net/jujutsu-kaisen/images/3/3c/Sukuna_%28Anime_2%29.png',
+    mahito: 'https://static.wikia.nocookie.net/jujutsu-kaisen/images/4/4e/Mahito_%28Anime%29.png/revision/latest?cb=20240618013419',
+};
 
 function v2CatalogCharacter(character) {
     const key = character?.character_id || character?.id;
     return BATTLE_V2_STARTER_ROSTER?.[key] || null;
 }
 
+function v2FullRosterCharacter(character) {
+    const chars = Array.isArray(window.CHARACTERS_DATA) ? window.CHARACTERS_DATA : (typeof CHARACTERS_DATA !== 'undefined' ? CHARACTERS_DATA : []);
+    const name = character?.name || v2CatalogCharacter(character)?.name;
+    if (!name || !Array.isArray(chars)) return null;
+    return chars.find(entry => entry?.name === name) || null;
+}
+
 function v2PortraitUrl(character) {
-    const characterId = character?.character_id || character?.id;
-    if (V2_STITCH_PORTRAITS[characterId]) return V2_STITCH_PORTRAITS[characterId];
-    const seed = String(characterId || character?.name || '').split('').reduce((sum, letter) => sum + letter.charCodeAt(0), 0);
-    return V2_STITCH_FALLBACK_PORTRAITS[seed % V2_STITCH_FALLBACK_PORTRAITS.length] || '';
+    const fromCatalog = v2CatalogCharacter(character);
+    const fromFullRoster = v2FullRosterCharacter(character);
+    const characterId = character?.character_id || character?.id || fromCatalog?.id;
+    const portraitUrl = character?.portrait_url || fromFullRoster?.portrait_url || fromCatalog?.portrait_url || character?.image_url || fromFullRoster?.image_url || fromCatalog?.image_url || V2_STITCH_REMOTE_PORTRAITS[characterId] || '';
+    if (portraitUrl && !portraitUrl.includes('placeholder')) return portraitUrl;
+    return V2_STITCH_LOCAL_PORTRAITS[character?.name] || V2_STITCH_LOCAL_PORTRAITS[fromFullRoster?.name] || V2_STITCH_LOCAL_PORTRAITS[fromCatalog?.name] || '';
 }
 
 function v2PortraitStyle(character) {

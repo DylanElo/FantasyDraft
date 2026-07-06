@@ -1569,12 +1569,13 @@ body:has(#classic-v2.active.v2-battle-active) .btn-sfx-toggle {
 #classic-v2 .v2-fighter-art {
   min-height: 0;
   overflow: hidden;
-  background-size: cover !important;
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
   background-position: center top !important;
 }
 
 #classic-v2 .v2-fighter-card.is-enemy .v2-fighter-art {
-  background-position: center !important;
+  background-position: center top !important;
 }
 
 #classic-v2 .v2-fighter-copy {
@@ -1846,8 +1847,8 @@ body:has(#classic-v2.active.v2-battle-active) .btn-sfx-toggle {
 }
 
 #classic-v2 .v2-roster-image {
-  object-fit: cover;
-  object-position: center;
+  object-fit: contain;
+  object-position: center top;
   filter: saturate(1.14) contrast(1.08);
 }
 

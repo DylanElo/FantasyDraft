@@ -135,16 +135,16 @@ function characterArtStyle(char) {
 }
 
 const V2_STITCH_PORTRAITS = {
-    yuji_itadori: '/static/assets/portraits/yuji-black-flash.svg',
-    nobara_kugisaki: '/static/assets/portraits/yuta-okkotsu-jjk-0.svg',
-    megumi_fushiguro: '/static/assets/portraits/gojo-young.svg',
-    satoru_gojo: '/static/assets/portraits/gojo-unsealed.svg',
-    ryomen_sukuna: '/static/assets/portraits/sukuna-heian-era.svg',
-    mahito: '/static/assets/portraits/kenjaku.svg',
-    aoi_todo: '/static/assets/portraits/yuji-awakened.svg',
-    maki_zenin: '/static/assets/portraits/uraume.svg',
-    yuta_okkotsu: '/static/assets/portraits/yuta-okkotsu-sendai.svg',
-    hiromi_higuruma: '/static/assets/portraits/hiromi-higuruma.svg',
+    yuji_itadori: '/static/stitch/generated/arena-yuji.jpg',
+    nobara_kugisaki: '/static/stitch/generated/arena-nobara.jpg',
+    megumi_fushiguro: '/static/stitch/generated/team-megumi.jpg',
+    satoru_gojo: '/static/stitch/generated/team-gojo.jpg',
+    ryomen_sukuna: '/static/stitch/generated/arena-sukuna.jpg',
+    mahito: '/static/stitch/generated/arena-mahito.jpg',
+    aoi_todo: '/static/stitch/generated/team-todo.jpg',
+    maki_zenin: '/static/stitch/generated/arena-nobara.jpg',
+    yuta_okkotsu: '/static/stitch/generated/team-megumi.jpg',
+    hiromi_higuruma: '/static/stitch/generated/arena-prism-curse.jpg',
 };
 
 const V2_STITCH_FALLBACK_PORTRAITS = Object.values(V2_STITCH_PORTRAITS);
@@ -176,7 +176,7 @@ function v2ArchiveImageHTML(character, className = 'w-full h-full object-cover')
     if (!url) {
         return `<div class="${className} bg-surface-container-highest flex items-center justify-center font-tactical-data text-primary">${esc(charInitials(character?.name))}</div>`;
     }
-    return `<img class="${className}" data-alt="${esc(character?.name || 'Stitch arena fighter portrait')}" src="${esc(url)}"/>`;
+    return `<img class="${className}" alt="${esc(character?.name || 'Stitch arena fighter portrait')}" src="${esc(url)}"/>`;
 }
 
 function v2EnergyOrbHTML(color, className = 'w-3 h-3', count = null) {
@@ -1310,10 +1310,10 @@ function v2CharacterCardHTML(character, slot, isMine, isTurn) {
                     ? `<div class="absolute top-1 left-1 bg-charcoal-plate/80 backdrop-blur text-energy-cyan font-tactical-data text-[10px] px-1 rounded flex items-center z-20"><span class="material-symbols-outlined text-[12px] mr-1">done</span> Q${queuedIndex + 1}</div>`
                     : '';
     return `
-      <button class="${cardClass} ${dead ? 'grayscale opacity-45' : ''} ${queued && !selected ? 'ring-1 ring-energy-cyan/70' : ''}"
+      <button class="v2-fighter-card ${isMine ? 'is-mine' : 'is-enemy'} ${selected ? 'is-selected' : ''} ${targetable ? 'is-targetable' : ''} ${queued ? 'is-queued' : ''} ${cardClass} ${dead ? 'grayscale opacity-45 is-dead' : ''} ${queued && !selected ? 'ring-1 ring-energy-cyan/70' : ''}"
         type="button" style="animation-delay: ${slot * 0.5}s;" data-v2-role="${isMine ? 'caster' : 'target'}" data-v2-side="${isMine ? 'mine' : 'enemy'}" data-slot="${slot}" data-hp-tone="${hpTone}" ${dead ? 'disabled' : ''}>
         ${stateBadge}
-        <div class="flex-1 bg-surface-container relative bg-cover bg-center" data-alt="${esc(character.name)}" style="${v2PortraitStyle(character)}; background-size: cover; background-position: center;">
+        <div class="v2-fighter-art flex-1 bg-surface-container relative bg-cover bg-center" data-alt="${esc(character.name)}" style="${v2PortraitStyle(character)}; background-size: cover; background-position: center;">
           ${(character.statuses || []).length && !dead ? `<div class="absolute top-1 right-1 flex gap-1 z-20">${(character.statuses || []).slice(0, 2).map(status => `<span class="material-symbols-outlined text-[12px] ${isMine ? 'text-energy-cyan' : 'text-error'}" title="${esc(status.name)}">warning</span>`).join('')}</div>` : ''}
           <div class="v2-fighter-copy ${isMine ? 'is-mine' : 'is-enemy'}">
             <strong>${esc(character.name)}</strong>

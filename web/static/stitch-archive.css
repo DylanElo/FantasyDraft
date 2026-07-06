@@ -156,17 +156,24 @@
 }
 
 body:has(#classic-v2.active) .btn-sfx-toggle {
-  right: max(12px, calc((100vw - 430px) / 2 + 12px));
-  bottom: 78px;
-  z-index: 70;
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  background: rgba(17,18,24,0.92);
+  display: none;
 }
 
 body:has(#classic-v2.active.v2-battle-active) .btn-sfx-toggle {
   display: none;
+}
+
+#classic-v2 *::-webkit-scrollbar {
+  width: 5px;
+}
+
+#classic-v2 *::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#classic-v2 *::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(210,187,255,0.24);
 }
 
 .v2-draft-main {
@@ -1331,5 +1338,456 @@ body:has(#classic-v2.active.v2-battle-active) .btn-sfx-toggle {
 
   #v2-center-stage .font-display-hero {
     font-size: 56px !important;
+  }
+}
+
+/* Stitch asset integration pass: restore image-led mobile-game proportions. */
+#classic-v2 .v2-draft-main {
+  margin-bottom: 242px !important;
+  padding-left: 14px !important;
+  padding-right: 14px !important;
+  scroll-padding-bottom: 250px;
+}
+
+#classic-v2 .v2-draft-section {
+  padding: 0 0 4px;
+}
+
+#classic-v2 .v2-draft-section-title {
+  margin-bottom: 10px !important;
+  color: #f7f3ff !important;
+  font-size: 12px !important;
+  letter-spacing: 0.12em !important;
+}
+
+#classic-v2 .v2-picker-summary {
+  min-height: 28px;
+  margin-bottom: 12px !important;
+}
+
+#classic-v2 .v2-roster-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+}
+
+#classic-v2 .v2-roster-card {
+  min-height: 294px;
+  display: flex;
+  flex-direction: column;
+  border-color: rgba(255,255,255,0.16);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0)),
+    #0b0b14;
+  box-shadow: 0 18px 38px rgba(0,0,0,0.46), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+#classic-v2 .v2-roster-card.is-selected,
+#classic-v2 .v2-roster-card.is-leader {
+  border-color: rgba(245,158,11,0.8);
+  box-shadow: 0 0 0 1px rgba(245,158,11,0.24), 0 22px 44px rgba(0,0,0,0.54), 0 0 30px rgba(245,158,11,0.16);
+}
+
+#classic-v2 .v2-roster-art {
+  height: 216px;
+  flex: 0 0 auto;
+  background: #05050b;
+}
+
+#classic-v2 .v2-roster-image {
+  object-position: center top;
+  transform: none;
+  transition: transform 240ms ease, opacity 240ms ease;
+}
+
+#classic-v2 .v2-roster-card.is-enemy-pick .v2-roster-image {
+  object-position: center;
+}
+
+#classic-v2 .v2-roster-card:not(.is-locked):hover .v2-roster-image {
+  transform: scale(1.035);
+}
+
+#classic-v2 .v2-roster-vignette {
+  background:
+    linear-gradient(180deg, rgba(4,4,13,0) 42%, rgba(4,4,13,0.84) 100%),
+    linear-gradient(0deg, rgba(0,0,0,0.14), transparent 42%);
+}
+
+#classic-v2 .v2-roster-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(5,5,12,0.78);
+}
+
+#classic-v2 .v2-roster-copy {
+  flex: 1 1 auto;
+  gap: 7px;
+  padding: 12px;
+  background: rgba(10,10,20,0.94);
+}
+
+#classic-v2 .v2-roster-name-row strong {
+  font-size: 12px;
+  line-height: 1.12;
+}
+
+#classic-v2 .v2-roster-copy small {
+  font-size: 9px;
+  line-height: 1.25;
+}
+
+#classic-v2 .v2-roster-energy .energy-orb {
+  width: 13px;
+  height: 13px;
+}
+
+#classic-v2 .v2-draft-footer {
+  gap: 14px !important;
+  padding-left: 14px !important;
+  padding-right: 14px !important;
+  padding-bottom: 14px !important;
+}
+
+#classic-v2 .v2-selection-dock {
+  min-height: 0;
+  padding: 9px !important;
+  border-color: rgba(210,187,255,0.26) !important;
+  background: rgba(9,9,18,0.96) !important;
+  box-shadow: 0 18px 44px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.07) !important;
+}
+
+#classic-v2 .v2-dock-head {
+  display: none !important;
+}
+
+#classic-v2 .v2-dock-body {
+  gap: 8px !important;
+}
+
+#classic-v2 .v2-dock-team {
+  padding: 6px !important;
+  background: rgba(255,255,255,0.04);
+}
+
+#classic-v2 .v2-dock-slot {
+  height: 34px;
+  aspect-ratio: auto;
+  border-radius: 8px;
+}
+
+#classic-v2 .v2-dock-label {
+  margin-bottom: 3px;
+  font-size: 8px;
+}
+
+#classic-v2 .v2-dock-mode {
+  display: none !important;
+}
+
+#classic-v2 .v2-start-button {
+  height: 56px !important;
+  border-radius: 8px !important;
+  box-shadow: 0 0 26px rgba(168,85,247,0.28), 0 16px 32px rgba(0,0,0,0.48) !important;
+}
+
+#classic-v2 .v2-start-button-label {
+  font-size: 20px;
+  color: #f7f3ff;
+  background: none;
+  background-clip: initial;
+  -webkit-background-clip: initial;
+  text-shadow: 0 0 16px rgba(255,255,255,0.34), 0 0 24px rgba(168,85,247,0.52);
+}
+
+#classic-v2.v2-battle-active #v2-battle-view main {
+  padding-top: 104px !important;
+  padding-bottom: 318px !important;
+}
+
+#classic-v2.v2-battle-active #v2-energy-row {
+  top: 72px !important;
+}
+
+#classic-v2.v2-battle-active #v2-enemy-team,
+#classic-v2.v2-battle-active #v2-my-team {
+  max-width: 410px;
+  gap: 9px;
+  padding-left: 12px;
+  padding-right: 12px;
+  box-sizing: border-box;
+}
+
+#classic-v2.v2-battle-active #v2-enemy-team {
+  height: 150px !important;
+}
+
+#classic-v2.v2-battle-active #v2-my-team {
+  height: 158px !important;
+}
+
+#classic-v2.v2-battle-active #v2-center-stage {
+  flex: 0 0 82px !important;
+  min-height: 82px !important;
+  margin-top: 10px !important;
+  margin-bottom: 10px !important;
+}
+
+#classic-v2.v2-battle-active #v2-center-stage .font-display-hero {
+  font-size: 62px !important;
+  opacity: 0.22 !important;
+}
+
+#classic-v2 .v2-fighter-card {
+  width: calc((100% - 18px) / 3) !important;
+  height: 100% !important;
+  min-width: 0;
+  border: 1px solid rgba(255,255,255,0.15) !important;
+  border-radius: 8px !important;
+  background: #0b0b14 !important;
+  box-shadow: 0 16px 32px rgba(0,0,0,0.46), inset 0 1px 0 rgba(255,255,255,0.06) !important;
+  opacity: 1 !important;
+}
+
+#classic-v2 .v2-fighter-card.is-selected {
+  height: 106% !important;
+  transform: translateY(-8px) !important;
+  border-color: rgba(245,158,11,0.86) !important;
+  box-shadow: 0 0 0 1px rgba(245,158,11,0.24), 0 20px 42px rgba(0,0,0,0.58), 0 0 28px rgba(245,158,11,0.24) !important;
+}
+
+#classic-v2 .v2-fighter-card.is-targetable {
+  height: 108% !important;
+  border-color: rgba(239,68,68,0.78) !important;
+}
+
+#classic-v2 .v2-fighter-card.is-queued:not(.is-selected) {
+  border-color: rgba(34,211,238,0.62) !important;
+}
+
+#classic-v2 .v2-fighter-art {
+  min-height: 0;
+  overflow: hidden;
+  background-size: cover !important;
+  background-position: center top !important;
+}
+
+#classic-v2 .v2-fighter-card.is-enemy .v2-fighter-art {
+  background-position: center !important;
+}
+
+#classic-v2 .v2-fighter-copy {
+  left: 7px;
+  right: 7px;
+  bottom: 14px;
+  gap: 2px;
+  padding: 7px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(4,4,13,0.20), rgba(4,4,13,0.90));
+}
+
+#classic-v2 .v2-fighter-copy strong {
+  font-size: 10px;
+}
+
+#classic-v2 .v2-fighter-copy span,
+#classic-v2 .v2-fighter-copy small {
+  font-size: 7px;
+}
+
+#classic-v2 .v2-fighter-hp-readout {
+  right: 7px;
+  top: 7px;
+  border-radius: 8px;
+  font-size: 10px;
+}
+
+#classic-v2 #v2-command-zone {
+  height: min(38vh, 318px);
+  min-height: 302px;
+  max-height: 318px;
+  border-radius: 8px 8px 0 0 !important;
+  background: rgba(7,7,16,0.98) !important;
+  box-shadow: 0 -22px 54px rgba(0,0,0,0.88), inset 0 1px 0 rgba(255,255,255,0.07) !important;
+}
+
+#classic-v2 .v2-command-avatar-row {
+  min-height: 64px;
+  gap: 14px;
+  padding: 10px 18px;
+}
+
+#classic-v2 .v2-command-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+}
+
+#classic-v2 .v2-command-avatar.is-active {
+  width: 58px;
+  height: 58px;
+}
+
+#classic-v2 .v2-command-focus {
+  min-height: 58px;
+  padding: 9px 16px;
+}
+
+#classic-v2 .v2-command-focus-copy strong {
+  font-size: 16px;
+}
+
+#classic-v2 .v2-command-focus-copy span {
+  font-size: 9px;
+}
+
+#classic-v2 .v2-command-focus-copy small {
+  font-size: 9px;
+}
+
+#classic-v2 .v2-skill-deck {
+  gap: 9px;
+  grid-auto-rows: minmax(66px, 1fr);
+  padding: 10px 14px 14px;
+}
+
+#classic-v2 .v2-skill-card {
+  min-height: 66px;
+  gap: 5px;
+  padding: 9px;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0)),
+    rgba(18,18,29,0.96);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+}
+
+#classic-v2 .v2-skill-card strong {
+  font-size: 12px;
+  line-height: 1.08;
+}
+
+#classic-v2 .v2-skill-card p {
+  font-size: 8px;
+}
+
+#classic-v2 .v2-command-actions {
+  top: -54px !important;
+}
+
+#classic-v2 .v2-command-actions button {
+  min-height: 42px;
+}
+
+#classic-v2 #v2-log {
+  max-height: 124px;
+  overflow: hidden;
+  opacity: 0.84;
+}
+
+@media (max-height: 760px) {
+  #classic-v2 .v2-roster-card {
+    min-height: 258px;
+  }
+
+  #classic-v2 .v2-roster-art {
+    height: 184px;
+  }
+
+  #classic-v2 .v2-draft-main {
+    margin-bottom: 224px !important;
+    scroll-padding-bottom: 232px;
+  }
+
+  #classic-v2 .v2-selection-dock {
+    min-height: 0;
+  }
+
+  #classic-v2 .v2-dock-slot {
+    height: 32px;
+  }
+
+  #classic-v2.v2-battle-active #v2-battle-view main {
+    padding-top: 94px !important;
+    padding-bottom: 292px !important;
+  }
+
+  #classic-v2.v2-battle-active #v2-energy-row {
+    top: 66px !important;
+  }
+
+  #classic-v2.v2-battle-active #v2-enemy-team {
+    height: 124px !important;
+  }
+
+  #classic-v2.v2-battle-active #v2-my-team {
+    height: 132px !important;
+  }
+
+  #classic-v2.v2-battle-active #v2-center-stage {
+    flex-basis: 62px !important;
+    min-height: 62px !important;
+    margin-top: 6px !important;
+    margin-bottom: 6px !important;
+  }
+
+  #classic-v2 #v2-command-zone {
+    height: 286px !important;
+    min-height: 286px !important;
+    max-height: 286px !important;
+  }
+
+  #classic-v2 .v2-command-avatar-row {
+    min-height: 52px;
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+  }
+
+  #classic-v2 .v2-command-avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  #classic-v2 .v2-command-avatar.is-active {
+    width: 48px;
+    height: 48px;
+  }
+
+  #classic-v2 .v2-command-focus {
+    min-height: 50px;
+  }
+
+  #classic-v2 .v2-skill-deck {
+    grid-auto-rows: minmax(58px, 1fr) !important;
+    gap: 7px !important;
+    padding: 8px 12px 10px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  #classic-v2 .v2-roster-grid {
+    gap: 10px !important;
+  }
+
+  #classic-v2 .v2-roster-card {
+    min-height: 244px;
+  }
+
+  #classic-v2 .v2-roster-art {
+    height: 172px;
+  }
+
+  #classic-v2 .v2-roster-copy {
+    padding: 9px;
+  }
+
+  #classic-v2 .v2-dock-body {
+    gap: 8px !important;
+  }
+
+  #classic-v2 .v2-command-actions button {
+    padding-left: 9px !important;
+    padding-right: 9px !important;
   }
 }

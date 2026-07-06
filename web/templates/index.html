@@ -116,7 +116,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=51">
   <link rel="stylesheet" href="{{ url_for('static', filename='jjk-theme.css') }}?v=1">
   <link rel="stylesheet" href="{{ url_for('static', filename='arena-redesign.css') }}?v=1">
-  <link rel="stylesheet" href="{{ url_for('static', filename='stitch-archive.css') }}?v=3">
+  <link rel="stylesheet" href="{{ url_for('static', filename='stitch-archive.css') }}?v=5">
   <script src="{{ url_for('static', filename='socket.io.min.js') }}?v=4.7.2"></script>
 </head>
 <body>
@@ -130,7 +130,7 @@
       <div class="jjk-smoke-blob b3"></div>
     </div>
     <!-- ── SETUP ── -->
-    <section id="setup" class="screen active">
+    <section id="setup" class="screen{% if not battle_v2_enabled %} active{% endif %}">
       <div class="bg-glow bg-glow-purple"></div>
       <div class="bg-glow bg-glow-red"></div>
       <div class="setup-scroll">
@@ -166,7 +166,7 @@
                 Open Roster Lab
               </button>
               <button id="btn-classic-v2" class="btn-ghost roster-lab-entry{% if not battle_v2_enabled %} hidden{% endif %}" type="button" disabled>
-                Battle v2 Arena
+                Open Cursed Clash
               </button>
             </div>
 
@@ -402,7 +402,7 @@
 
     </section>
 
-    <section id="classic-v2" class="screen bg-obsidian-base text-on-surface font-body-standard text-body-standard h-screen w-screen overflow-hidden flex flex-col relative selection:bg-energy-purple selection:text-white">
+    <section id="classic-v2" class="screen{% if battle_v2_enabled %} active{% endif %} bg-obsidian-base text-on-surface font-body-standard text-body-standard h-screen w-screen overflow-hidden flex flex-col relative selection:bg-energy-purple selection:text-white">
       <div class="absolute inset-0 z-0 bg-obsidian-base pointer-events-none">
         <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-energy-purple/5 rounded-full blur-3xl"></div>
         <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-energy-cyan/5 rounded-full blur-3xl"></div>
@@ -434,9 +434,20 @@
             </div>
           </div>
 
+          <section class="grid grid-cols-2 gap-stack-sm mb-stack-md" aria-label="Player identity">
+            <label class="flex flex-col gap-2 rounded-lg border border-outline-variant/30 bg-charcoal-plate/80 p-3">
+              <span class="font-tactical-data text-[9px] uppercase tracking-widest text-on-surface-variant">Codename</span>
+              <input id="v2-player-name" class="bg-transparent font-tactical-data text-[13px] text-on-surface outline-none placeholder:text-on-surface-variant/60" type="text" placeholder="Player" autocomplete="off">
+            </label>
+            <label class="flex flex-col gap-2 rounded-lg border border-outline-variant/30 bg-charcoal-plate/80 p-3">
+              <span class="font-tactical-data text-[9px] uppercase tracking-widest text-on-surface-variant">Room Code</span>
+              <input id="v2-room-id" class="bg-transparent font-tactical-data text-[13px] text-on-surface outline-none placeholder:text-on-surface-variant/60" type="text" placeholder="lobby" autocomplete="off">
+            </label>
+          </section>
+
           <div class="grid grid-cols-1 gap-stack-md">
             <button type="button" data-v2-enter-mode="cpu" class="group relative min-h-[230px] overflow-hidden rounded-xl border border-outline-variant/30 bg-void-surface text-left shadow-[0_8px_32px_rgba(0,0,0,0.6)]">
-              <div class="absolute inset-0 z-0 bg-cover bg-center opacity-45 transition-transform duration-500 group-hover:scale-105 group-hover:opacity-65" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCATJhkC_sTTuzlo5eJgtUrGGC7yL8hFLsH4snMSpIPm4b89oCEOjznY4-LIzW8c4a9IHrODQNSicghYWbEEeFA8GCan1LKeYgpNF-whk11OVjfEPWRt9O1qB2EZA257XSJo9qc6soOxfrIUhUGzHYuilcemSL3tFUogKj-sGBzHkxTOyQch8iAxbrJTS805vnjue8Zfctg9enrXER0drgxkdD8Xz8ZEQ4jhd0oGjZ39da7Jq-38hTk7B9QQoYWonAYVulkbaYnv70')"></div>
+              <div class="absolute inset-0 z-0 bg-cover bg-center opacity-45 transition-transform duration-500 group-hover:scale-105 group-hover:opacity-65" style="background-image: url('{{ url_for('static', filename='stitch/archive/lobby_cursed_clash/screen.png') }}')"></div>
               <div class="absolute inset-0 z-0 bg-gradient-to-t from-obsidian-base via-obsidian-base/60 to-transparent"></div>
               <div class="relative z-10 flex min-h-[230px] flex-col justify-end p-stack-md">
                 <div class="absolute right-4 top-4 flex items-center gap-2 rounded border border-energy-cyan/30 bg-obsidian-base/80 px-3 py-1 font-tactical-data text-[10px] uppercase tracking-widest text-energy-cyan">
@@ -586,7 +597,7 @@
         <main class="relative z-10 h-full overflow-y-auto px-gutter pt-20 pb-28">
           <div class="flex flex-col items-center mb-6 relative">
             <div class="w-32 h-32 mb-3 relative drop-shadow-[0_0_30px_rgba(245,158,11,0.6)]">
-              <img class="w-full h-full object-contain" data-alt="Golden cursed clash victory trophy" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcd1CFL9UVRPGTG8rRpAw0P8F2lf1MLY_NTEGK7-PDfNMveNnovCu3z0wZjvuqsmw9YUE0yDGxh0p__n8V35QTHU7AGrld4e75FZxbSqywvHGZVYMzCQDsmJgAZjHRicBvkzdOILpHwNA9EtucFvgwIq5EDjvHN5xKkvwKWpx-9LSRW_1KS8W-sxCZQ9tyQtem8rxh6zbg1MgwJlF8OkAFqdF6_sxzXzN_nM5ITZcxC82I4BaWTPTPXWCQT6vglat5D2bXEaNPMA4"/>
+              <img class="w-full h-full rounded-xl border border-prestige-gold/30 object-cover" alt="Cursed Clash victory recap" src="{{ url_for('static', filename='stitch/archive/victory_recap/screen.png') }}"/>
             </div>
             <h1 id="v2-result-title" class="font-display-hero text-display-hero text-prestige-gold tracking-widest text-center drop-shadow-[0_0_20px_rgba(245,158,11,0.8)]">VICTORY</h1>
             <p id="v2-result-copy" class="font-tactical-data text-[10px] text-on-surface-variant uppercase tracking-widest mt-2">Mission complete</p>
@@ -734,6 +745,6 @@
   <script src="{{ url_for('static', filename='effects.js') }}?v=16"></script>
   <script src="{{ url_for('static', filename='vendor/phaser.min.js') }}?v=3.90.0"></script>
   <script src="{{ url_for('static', filename='phaser-battle.js') }}?v=4"></script>
-  <script src="{{ url_for('static', filename='app.js') }}?v=67"></script>
+  <script src="{{ url_for('static', filename='app.js') }}?v=68"></script>
 </body>
 </html>

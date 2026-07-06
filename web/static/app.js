@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const nameField = document.getElementById('player-name');
         if (nameField) nameField.value = storedName;
     }
+    hydrateV2LobbyFields();
     mountJjkSmokeParticles();
 });
 
@@ -134,16 +135,16 @@ function characterArtStyle(char) {
 }
 
 const V2_STITCH_PORTRAITS = {
-    yuji_itadori: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBy5IXCKXxF01GGxXBDPaf3opNHF31JhKWJM-3xumfu9QiRRRKE9Afp7AGjDvlYMSMiRL7X87KGzeRKX9VpK6tcSaEDtg02mMHpqlU2ahCxYseQ6mGsSpBISZhVdASMl6tu_FpciC_283xiXx_KF1VPKOVC4Z8dhklUuzWlEO6N_eWCbSkgkmuQ2Nyzi7tmz7fWchMdPoj-SMEGo92LsuPlJx8_TK8asn1gFSCXYU99TjAcAVH_Kni7bSQMV2vBwVMwXrczb_du5b8',
-    nobara_kugisaki: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBYC-nEbkmU6IV5PH3Rk78TrWMNGaTWla2Eb98dbZV8twUoW26WLGnP0yZKLw0PIBnZeDzEvVn-10FM53jRZtSzfWh1HHKS8BKmJfjbqaOgZMfCOOtpJ_9UsCCMMJkdENGEKiPuTrO-ccG83MtC1Z-TIvGucue7noodxdH_vUWFehfKlmMkKyNDYeEuzGCBA4q5rdXWenxic9peg2y4FIQ3P1IeAEJZ917YJf6N1mHWRTziOnHE4Gv63KJhrz3mlt8wGCDacoJWPds',
-    megumi_fushiguro: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCHnqm25FHFBp7WMvIR57l2TKHaeJ4IFFs5UA5uYjzi3H8I4kcuIvelQoAzQgJgpBpayY0Vp6jgVvyXoNSCIqABtNEnPdzl2Uk6o8jKY5faC5XGJ07J6NmnCeEXcjnXcfBjmWHsQgvcd26F_mLIZpL6UNfE3a2pMtKVwLV6CR5SVz5zzhuerURP9frFEkTz8XKlGkiiaIJ_-HEgoesNPhCryrsrTdZjvLfO1WAlgyuQK6sj3t3mGDHH1F8LeVwaXxUJDYZ5m4WKV0M',
-    satoru_gojo: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDTTTyQrcm1bUcs7Ul7EGEqKAWe03Vosmvo3fuQ5bn5RZXm7ch0ksgOwj5-HDUt67rit0mmH2YIVYT6sg8H0uTWY3VM-8HkKEgEfIiQW7zOCxSxfjcpVjMBPcLeZVWQY77hRG_l57Sug5bbYfcWOk8EJt0646Afz8PKyVa8cqInfdj9iLCfqZmrXHnFqnf76NcjbdWBVkbVQ1-Nno6UaXblrGJDXN3FzGBLoeoP10HUFxCVe7ViV249FVRQykEGQbGzqEKpt0iuFPg',
-    ryomen_sukuna: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDmQTF94uQ3T8ntttSoyV0iY8WE1z0vc313e6DV6O9eQ2AjKtzI-oJoLnOslJN4ku5CqWq8RsreMI36-iAnpBMAj6dbKqMAkIxxmMe1NAiAap6XElBBLN7t6TNFXuSoVXAR8E6XiqTnOCKrCyzLnyNm_rSYx41hFq7BjWSeKpPhsfULf_ibJe4ZrVN2BZl5-zOQOsapsINME-ZsA6C_BV0cEsVeJB_0LBxAKgjGWW7ejAj56NWmJQur5BR6WuT7WokQUapsdIyZGwA',
-    mahito: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDJpH9cbYF450BL73Mgf-yCDTFflHBfITIDmyWbpUGf5NkhLwCSvPZaorIYUykQKlhkedheNrv8QIddPjaGGNbubuTaVsI9QjQLXZjUar_4gCbubZRzRTvH_oOAn0xh0daW8qrGLN-IypYuuYuPWgJmCH7yR4DpfOu1nVbDt87HPyTUev4Gviquf-68LV9lAjw2Qp8vv1imh5jbhZS9u1Isi9ZyXpmwZWc8kqz3WhyxRQkUTqNUOlZheG123xQBTsR1WmVAmmUgm54',
-    aoi_todo: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDyDMFM5a5GUW7WpnPYUKcQFJIxALEKXW_LWCo3YeCD9jxC5PFS5zkfXE6T2u3YRED4luNIgKzEPfjXwrC5f471LOuPaPXTGxDWNR5-rUtVNSACy9CIk53t2ERpOMu7qpP06UKyyTDCoITBdVcBSLWuYG-UzE-EiwXt30NTpQP97l4iFmMmms9kVnhN-VsvjNoQBkCLYY5eEJVpsKnVuA4yDPVyxVCOdBN8g-CELOCxufuUR9Eiy-AnaGyGtJhniZxRtdtsqtDXNI4',
-    maki_zenin: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCYB4yILQ1u3ul2sOHZVvI5hQKgUUb7kvFmT8TgOeVc-g05syn7yLyBHVQn77KIHX3TWvSgH7gDQh7BchpNAA1U6kjxMwRqrybce6UzQzfVHNJKVJ_f6CiQLJBGP6Khi636Hj7M6zA0osxJiP6Y-7qntmTBJhTPhGdxNHTfv9dZm-zmW-fdNCDhbK9yXiTd9yfphEOYNTNKh5RCQ7Sbn-IL86PsMUMfwP73lsON8VUyix0jC9U8yBp1k_VJcipLuPGRn0O2swZojT0',
-    yuta_okkotsu: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBjv-RN6bBH6kkFRa-mg9e-QWZAsqTxIxxGYFh1-lghR_r4GQb-kqfwIpigvpa2sk9uaZkLmTfckbpaeJ6ZIbI3wj01IBAcUjuPNEAANw6cdRjv0pnaoIcsqEnqA84DqAtK_X7tuOr2FM8EzweV1x32tpOuq6rXkH8j2xrj0Y3xV_93Ubh80tprpxvchvCisaWEbAHO8wiW1ivvLD6SXqiTjwMD1tYJWBOfM-5CrU5s9LuIpXTujmVDs2BW9hG2E7hmubUfTev8waQ',
-    hiromi_higuruma: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD8rc_Te8S_YDqVR7kCmE62ZNO9yYVf1SemTDUltFwMOPImac6Fs96hqJ6up7YXqOZ-QNahvc6OY_tg0dSMRcZ7cA675NUGhsL9UHWFtTZKy6Xb1ei9_4L_2ehLX5a3mvgIPUtcglwEPNXvaiwbgaNhAuLQRuG4F-ObkTfxAIB0jwnoYEdmDrcDBNO0QbixNW-sUQhcJOGptC-hPnwjU7gb9fKXMT6IPtEwR3jDKR3PmTc5x9JQUWOjPRI3nVEZOHRrGp49oVMxQp8',
+    yuji_itadori: '/static/assets/portraits/yuji-black-flash.svg',
+    nobara_kugisaki: '/static/assets/portraits/yuta-okkotsu-jjk-0.svg',
+    megumi_fushiguro: '/static/assets/portraits/gojo-young.svg',
+    satoru_gojo: '/static/assets/portraits/gojo-unsealed.svg',
+    ryomen_sukuna: '/static/assets/portraits/sukuna-heian-era.svg',
+    mahito: '/static/assets/portraits/kenjaku.svg',
+    aoi_todo: '/static/assets/portraits/yuji-awakened.svg',
+    maki_zenin: '/static/assets/portraits/uraume.svg',
+    yuta_okkotsu: '/static/assets/portraits/yuta-okkotsu-sendai.svg',
+    hiromi_higuruma: '/static/assets/portraits/hiromi-higuruma.svg',
 };
 
 const V2_STITCH_FALLBACK_PORTRAITS = Object.values(V2_STITCH_PORTRAITS);
@@ -697,6 +698,53 @@ function setV2UiScreen(screen) {
     v2State.uiScreen = screen === 'team' ? 'team' : 'lobby';
 }
 
+function v2StoredValue(key, fallback = '') {
+    try {
+        return localStorage.getItem(key) || fallback;
+    } catch (error) {
+        return fallback;
+    }
+}
+
+function v2SetStoredValue(key, value) {
+    try {
+        localStorage.setItem(key, value);
+    } catch (error) {
+        // Storage can be unavailable in private contexts; the match can still start.
+    }
+}
+
+function v2FieldValue(primaryId, fallbackId, fallbackValue = '') {
+    const primary = document.getElementById(primaryId);
+    const fallback = document.getElementById(fallbackId);
+    return (primary?.value || fallback?.value || fallbackValue || '').trim();
+}
+
+function v2SyncFieldPair(primaryId, fallbackId, value) {
+    [primaryId, fallbackId].forEach(id => {
+        const field = document.getElementById(id);
+        if (field && field.value !== value) field.value = value;
+    });
+}
+
+function hydrateV2LobbyFields() {
+    const name = v2FieldValue('v2-player-name', 'player-name', v2StoredValue('jjk_player_name', 'Player')) || 'Player';
+    const room = v2FieldValue('v2-room-id', 'room-id', v2StoredValue('jjk_room_id', 'lobby')) || 'lobby';
+    v2SyncFieldPair('v2-player-name', 'player-name', name);
+    v2SyncFieldPair('v2-room-id', 'room-id', room);
+    return { name, room };
+}
+
+function v2ReadLobbyFields() {
+    const name = v2FieldValue('v2-player-name', 'player-name', 'Player') || 'Player';
+    const room = v2FieldValue('v2-room-id', 'room-id', 'lobby') || 'lobby';
+    v2SyncFieldPair('v2-player-name', 'player-name', name);
+    v2SyncFieldPair('v2-room-id', 'room-id', room);
+    v2SetStoredValue('jjk_player_name', name);
+    v2SetStoredValue('jjk_room_id', room);
+    return { name, room };
+}
+
 function renderV2BottomNav() {
     const active = v2State.state ? 'arena' : (v2State.uiScreen === 'team' ? 'roster' : 'lobby');
     document.querySelectorAll('#v2-bottom-nav [data-v2-nav]').forEach(button => {
@@ -1020,11 +1068,11 @@ function renderV2Picker() {
     const lobbyNote = document.getElementById('v2-lobby-note');
     if (lobbyNote) {
         if (v2State.matchMode === 'pvp') {
-            const roomId = document.getElementById('room-id')?.value.trim() || 'lobby';
+            const roomId = v2FieldValue('v2-room-id', 'room-id', 'lobby') || 'lobby';
             const waiting = v2State.lobbyStatus?.status === 'waiting';
             lobbyNote.textContent = waiting
                 ? `Waiting in room ${v2State.lobbyStatus.room_id}. Share this room code with your opponent.`
-                : `Private PvP uses the room code from setup: ${roomId}. Your opponent chooses their own starters.`;
+                : `Private PvP will open room ${roomId}. Your opponent chooses their own starters.`;
             lobbyNote.classList.remove('hidden');
         } else {
             lobbyNote.classList.add('hidden');
@@ -1724,6 +1772,7 @@ function renderClassicV2() {
     const endTurnButton = document.getElementById('btn-v2-end-turn');
     const confirmButton = document.getElementById('btn-v2-confirm');
     if (!state) {
+        hydrateV2LobbyFields();
         const showLobby = v2State.uiScreen !== 'team' && v2State.lobbyStatus?.status !== 'waiting';
         classicScreen?.classList.remove('v2-battle-active');
         classicScreen?.classList.remove('v2-finished');
@@ -1739,13 +1788,14 @@ function renderClassicV2() {
             hint.textContent = v2State.matchMode === 'pvp'
                 ? (v2State.lobbyStatus?.status === 'waiting'
                     ? 'Waiting for your opponent to enter the domain.'
-                    : 'Choose three fighters, enter a room code on setup, then open a Private PvP domain.')
+                    : 'Choose three fighters and open a Private PvP domain from the lobby room code.')
                 : 'Select three fighters for your squad and three CPU opponents for the upcoming bout.';
         }
         ['v2-my-team', 'v2-enemy-team', 'v2-energy-row', 'v2-selected-panel', 'v2-queue-panel', 'v2-log'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.innerHTML = '';
         });
+        document.getElementById('v2-queue-panel')?.classList.add('hidden');
         const turnStatus = document.getElementById('v2-turn-status');
         if (turnStatus) turnStatus.innerHTML = '';
         startButton?.classList.remove('hidden');
@@ -1837,8 +1887,11 @@ function renderClassicV2() {
              </div>
            </div>`;
     const queuePanel = document.getElementById('v2-queue-panel');
-    queuePanel.innerHTML = v2QueueHTML();
-    queuePanel.classList.toggle('is-empty', v2State.actions.length === 0);
+    if (queuePanel) {
+        queuePanel.innerHTML = v2QueueHTML();
+        queuePanel.classList.toggle('is-empty', v2State.actions.length === 0);
+        queuePanel.classList.toggle('hidden', v2State.actions.length === 0);
+    }
     const logPanel = document.getElementById('v2-log');
     const eventLog = state.event_log || [];
     logPanel.classList.toggle('hidden', eventLog.length === 0);
@@ -1848,7 +1901,8 @@ function renderClassicV2() {
       ${eventLog.slice().reverse().slice(0, 6).map(v2LogEntryHTML).join('')}`;
     const paymentStatus = v2QueuePaymentStatus(me);
     confirmButton.disabled = !isMyTurn || v2State.actions.length === 0 || !paymentStatus.canPay || !!me?.queue_confirmed || v2State.queueSubmitting;
-    confirmButton.textContent = v2State.queueSubmitting ? 'Resolving...' : paymentStatus.canPay ? 'Confirm' : paymentStatus.reason;
+    confirmButton.textContent = v2State.queueSubmitting ? 'Resolving...' : paymentStatus.canPay ? 'Confirm' : 'Pay Energy';
+    confirmButton.title = paymentStatus.canPay ? 'Confirm queued actions' : paymentStatus.reason;
     cancelButton.disabled = !isMyTurn || v2State.actions.length === 0 || !!me?.queue_confirmed || v2State.queueSubmitting;
     endTurnButton.disabled = !isMyTurn || v2State.queueSubmitting;
     newMatchButton.disabled = false;
@@ -1872,9 +1926,7 @@ function v2StartMatch() {
         toast(v2State.matchMode === 'pvp' ? 'Choose exactly 3 starters.' : 'Choose exactly 3 starters for each side.');
         return;
     }
-    const nameInput = document.getElementById('player-name').value.trim() || 'Player';
-    const roomInput = document.getElementById('room-id').value.trim() || 'lobby';
-    localStorage.setItem('jjk_player_name', nameInput);
+    const { name: nameInput, room: roomInput } = v2ReadLobbyFields();
     v2State.actions = [];
     v2State.wildcardPays = {};
     v2State.queueSubmitting = false;
@@ -1974,6 +2026,11 @@ classicV2Button.disabled = !BATTLE_V2_ENABLED;
 
 document.getElementById('btn-v2-back').addEventListener('click', () => {
     if (!v2State.state && v2State.uiScreen === 'team') {
+        setV2UiScreen('lobby');
+        renderClassicV2();
+        return;
+    }
+    if (BATTLE_V2_ENABLED && !v2State.state) {
         setV2UiScreen('lobby');
         renderClassicV2();
         return;
@@ -2190,6 +2247,31 @@ document.getElementById('classic-v2').addEventListener('change', (event) => {
     v2UpdateQueue();
     renderClassicV2();
 });
+
+['v2-player-name', 'player-name'].forEach(id => {
+    const field = document.getElementById(id);
+    field?.addEventListener('input', (event) => {
+        const value = event.target.value;
+        v2SyncFieldPair('v2-player-name', 'player-name', value);
+        v2SetStoredValue('jjk_player_name', value);
+    });
+});
+
+['v2-room-id', 'room-id'].forEach(id => {
+    const field = document.getElementById(id);
+    field?.addEventListener('input', (event) => {
+        const value = event.target.value;
+        v2SyncFieldPair('v2-room-id', 'room-id', value);
+        v2SetStoredValue('jjk_room_id', value);
+    });
+});
+
+hydrateV2LobbyFields();
+if (BATTLE_V2_ENABLED) {
+    showScreen('classic-v2');
+    setV2UiScreen('lobby');
+    renderClassicV2();
+}
 
 ['roster-search', 'roster-role-filter', 'roster-identity-filter', 'roster-flag-filter'].forEach(id => {
     const el = document.getElementById(id);

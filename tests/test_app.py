@@ -61,10 +61,14 @@ def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
     assert 'const BATTLE_V2_ENABLED = true;' in html
     assert 'id="btn-classic-v2" class="btn-ghost roster-lab-entry"' in html
     assert 'id="btn-classic-v2" class="btn-ghost roster-lab-entry" type="button" disabled' in html
+    assert 'id="setup" class="screen"' in html
+    assert 'id="classic-v2" class="screen active' in html
     assert '"aoi_todo"' in html
     assert '"hiromi_higuruma"' in html
     assert 'id="btn-v2-new-match"' in html
     assert 'id="v2-lobby-view"' in html
+    assert 'id="v2-player-name"' in html
+    assert 'id="v2-room-id"' in html
     assert 'data-v2-enter-mode="cpu"' in html
     assert 'data-v2-result-action="lobby"' in html
     assert 'id="v2-player-summary"' in html
@@ -74,10 +78,12 @@ def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
     assert 'characters_data.js?v=19' in html
     assert 'vendor/phaser.min.js?v=3.90.0' in html
     assert 'phaser-battle.js?v=4' in html
-    assert 'app.js?v=67' in html
+    assert 'app.js?v=68' in html
     assert 'style.css?v=51' in html
-    assert 'stitch-archive.css?v=3' in html
-    assert 'Battle v2 Arena' in html
+    assert 'stitch-archive.css?v=5' in html
+    assert 'stitch/archive/lobby_cursed_clash/screen.png' in html
+    assert 'stitch/archive/victory_recap/screen.png' in html
+    assert 'Open Cursed Clash' in html
     assert 'Classic Queue Test' not in html
 
 
@@ -89,11 +95,12 @@ def test_battle_v2_public_surface_uses_production_copy(monkeypatch):
     app_js = Path(web_app.app.static_folder, "app.js").read_text(encoding="utf-8")
     style_css = Path(web_app.app.static_folder, "style.css").read_text(encoding="utf-8")
 
-    assert "Battle v2 Arena" in html
+    assert "Open Cursed Clash" in html
     assert "Assemble Your Trio" in app_js
     assert "Classic Queue Test" not in html
     assert "Classic Queue Test" not in app_js
     assert "Classic Arena v2" not in html
+    assert "Battle v2 Arena" not in html
     assert "Classic Arena v2" not in style_css
     assert "dev surface" not in app_js.lower()
     assert "dev surface" not in style_css.lower()

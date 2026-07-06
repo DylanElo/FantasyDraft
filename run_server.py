@@ -1,8 +1,8 @@
-from run_server import DEBUG_MODE, HOST, PORT, app, socketio
+from web.app import DEBUG_MODE, HOST, PORT, app, socketio
 
 
 if __name__ == "__main__":
-    print("main.py is kept as a compatibility shim. Prefer: python run_server.py")
+    print(f"Starting JJK Fantasy Draft on http://{HOST}:{PORT}...")
     socketio.run(
         app,
         debug=DEBUG_MODE,
@@ -10,4 +10,3 @@ if __name__ == "__main__":
         port=PORT,
         allow_unsafe_werkzeug=DEBUG_MODE,
     )
-

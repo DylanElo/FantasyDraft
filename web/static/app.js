@@ -133,6 +133,40 @@ function characterArtStyle(char) {
     return hasReliablePortrait(char) ? `background-image:url('${esc(char.portrait_url)}')` : '';
 }
 
+const V2_LOCAL_PORTRAITS = {
+    yuji_itadori: '/static/assets/portraits/yuji-black-flash.svg',
+    satoru_gojo: '/static/assets/portraits/gojo-unsealed.svg',
+    ryomen_sukuna: '/static/assets/portraits/sukuna-heian-era.svg',
+    yuta_okkotsu: '/static/assets/portraits/yuta-okkotsu-sendai.svg',
+    hiromi_higuruma: '/static/assets/portraits/hiromi-higuruma.svg',
+};
+
+function v2CatalogCharacter(character) {
+    return BATTLE_V2_STARTER_ROSTER?.[character?.character_id] || null;
+}
+
+function v2PortraitUrl(character) {
+    const local = V2_LOCAL_PORTRAITS[character?.character_id];
+    if (local) return local;
+    const catalog = v2CatalogCharacter(character);
+    const name = character?.name || catalog?.name;
+    const fromRoster = typeof CHARACTERS_DATA !== 'undefined'
+        ? CHARACTERS_DATA.find(entry => entry.name === name || entry.identity === name)
+        : null;
+    return fromRoster?.portrait_url || '';
+}
+
+function v2PortraitStyle(character) {
+    const url = v2PortraitUrl(character);
+    return url ? `background-image:url('${esc(url)}')` : '';
+}
+
+function v2PortraitHTML(character, className = 'v2-char-portrait') {
+    const url = v2PortraitUrl(character);
+    const local = url.startsWith('/static/');
+    return `<div class="${className} ${local ? 'has-portrait' : ''}" style="${url ? `background-image:url('${esc(url)}')` : ''}"><span>${esc(charInitials(character?.name))}</span></div>`;
+}
+
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
@@ -623,6 +657,8 @@ const v2State = {
     convertTarget: 'red',
     playerTeam: ['yuji_itadori', 'nobara_kugisaki', 'megumi_fushiguro'],
     enemyTeam: ['satoru_gojo', 'ryomen_sukuna', 'mahito'],
+    matchMode: 'cpu',
+    lobbyStatus: null,
 };
 
 function v2PlayerIds() {
@@ -632,13 +668,50 @@ function v2PlayerIds() {
     return { mine, enemy };
 }
 
-function v2SkillFor(characterId, skillId) {
+function v2BaseSkillFor(characterId, skillId) {
     const character = v2State.state?.skill_catalog?.[characterId];
     return (character?.skills || []).find(skill => skill.id === skillId);
 }
 
-function v2SkillsFor(characterId) {
-    return v2State.state?.skill_catalog?.[characterId]?.skills || [];
+function v2SkillFor(characterId, skillId, characterState = null) {
+    const replacementId = characterState?.skill_replacements?.[skillId];
+    const effective = replacementId ? v2BaseSkillFor(characterId, replacementId) : null;
+    const base = v2BaseSkillFor(characterId, skillId);
+    const skill = effective || base;
+    if (!skill) return null;
+    return {
+        ...skill,
+        original_slot_id: skillId,
+        effective_skill_id: skill.id,
+        replaced_from: replacementId && effective ? skillId : null,
+    };
+}
+
+function v2SkillsFor(characterState) {
+    const characterId = characterState?.character_id;
+    return (v2State.state?.skill_catalog?.[characterId]?.skills || []).map(skill =>
+        v2SkillFor(characterId, skill.id, characterState) || skill
+    );
+}
+
+function v2ReplacementDebugEntries(player) {
+    const entries = [];
+    (player?.team || []).forEach((character, slot) => {
+        Object.entries(character.skill_replacements || {}).forEach(([baseSkillId, replacementSkillId]) => {
+            const rendered = v2SkillFor(character.character_id, baseSkillId, character);
+            const ok = rendered?.effective_skill_id === replacementSkillId && rendered?.original_slot_id === baseSkillId;
+            console.assert(ok, `Battle v2 replacement skill did not render in original slot: ${baseSkillId} -> ${replacementSkillId}`);
+            entries.push({
+                slot,
+                character_id: character.character_id,
+                base_skill_id: baseSkillId,
+                replacement_skill_id: replacementSkillId,
+                rendered_skill_id: rendered?.effective_skill_id || null,
+                ok,
+            });
+        });
+    });
+    return entries;
 }
 
 function v2AliveCount(player) {
@@ -744,7 +817,7 @@ function v2SelectedSkill() {
     const { mine } = v2PlayerIds();
     const me = v2State.state?.players?.[mine];
     const caster = me?.team?.[v2State.selectedCasterSlot];
-    return caster ? v2SkillFor(caster.character_id, v2State.selectedSkillId) : null;
+    return caster ? v2SkillFor(caster.character_id, v2State.selectedSkillId, caster) : null;
 }
 
 function v2LivingSlots(player) {
@@ -800,9 +873,15 @@ function v2CanTargetCharacter(character, slot, isMine, isTurn) {
 }
 
 function v2TeamTargetSlots(player, skill) {
-    const slots = v2LivingSlots(player);
+    const slots = v2LivingSlots(player).filter(slot => v2HasRequiredStatus(player?.team?.[slot], skill));
     const maxTargets = skill?.target_rule?.max_targets || slots.length;
     return slots.slice(0, maxTargets);
+}
+
+function v2TeamSkillHasTargets(player, skill) {
+    const rule = skill?.target_rule || {};
+    if (rule.kind !== 'enemy_team' && rule.kind !== 'ally_team') return true;
+    return v2TeamTargetSlots(player, skill).length >= (rule.min_targets || 1);
 }
 
 function v2RosterEntries() {
@@ -825,14 +904,38 @@ function renderV2Picker() {
     if (!playerPicker || !enemyPicker) return;
     const entries = v2RosterEntries();
     const byId = Object.fromEntries(entries.map(character => [character.id, character]));
+    document.getElementById('v2-picker')?.classList.toggle('pvp', v2State.matchMode === 'pvp');
+    document.querySelectorAll('[data-v2-mode]').forEach(button => {
+        button.classList.toggle('active', button.dataset.v2Mode === v2State.matchMode);
+    });
     playerPicker.innerHTML = entries.map(character => v2PickerButtonHTML(character, 'playerTeam')).join('');
-    enemyPicker.innerHTML = entries.map(character => v2PickerButtonHTML(character, 'enemyTeam')).join('');
+    const enemyColumn = document.getElementById('v2-enemy-picker-column');
+    const enemyLabel = document.getElementById('v2-enemy-picker-label');
+    enemyColumn?.classList.toggle('hidden', v2State.matchMode === 'pvp');
+    if (enemyLabel) enemyLabel.textContent = v2State.matchMode === 'pvp' ? 'OPPONENT STARTERS' : 'CPU STARTERS';
+    enemyPicker.innerHTML = v2State.matchMode === 'pvp'
+        ? ''
+        : entries.map(character => v2PickerButtonHTML(character, 'enemyTeam')).join('');
     document.getElementById('v2-player-summary').innerHTML = v2State.playerTeam.map(id =>
         `<span>${esc(byId[id]?.name || id)}</span>`
     ).join('');
     document.getElementById('v2-enemy-summary').innerHTML = v2State.enemyTeam.map(id =>
         `<span>${esc(byId[id]?.name || id)}</span>`
     ).join('');
+    const lobbyNote = document.getElementById('v2-lobby-note');
+    if (lobbyNote) {
+        if (v2State.matchMode === 'pvp') {
+            const roomId = document.getElementById('room-id')?.value.trim() || 'lobby';
+            const waiting = v2State.lobbyStatus?.status === 'waiting';
+            lobbyNote.textContent = waiting
+                ? `Waiting in room ${v2State.lobbyStatus.room_id}. Share this room code with your opponent.`
+                : `Private PvP uses the room code from setup: ${roomId}. Your opponent chooses their own starters.`;
+            lobbyNote.classList.remove('hidden');
+        } else {
+            lobbyNote.classList.add('hidden');
+            lobbyNote.textContent = '';
+        }
+    }
 }
 
 function v2StatusHTML(character) {
@@ -869,38 +972,98 @@ function v2CharacterCardHTML(character, slot, isMine, isTurn) {
                                 ? 'Standing by'
                                 : '';
     const hpTone = hpPct <= 30 ? 'critical' : hpPct <= 60 ? 'wounded' : 'healthy';
+    const catalog = v2CatalogCharacter(character);
+    const role = catalog?.role || 'Fighter';
+    const trait = catalog?.state || 'Cursed Energy';
     return `
       <button class="v2-char ${selected ? 'selected' : ''} ${queued ? 'queued' : ''} ${targetable ? 'targetable' : ''} ${dead ? 'dead' : ''} hp-${hpTone}"
         data-v2-role="${isMine ? 'caster' : 'target'}" data-v2-side="${isMine ? 'mine' : 'enemy'}" data-slot="${slot}" ${dead ? 'disabled' : ''}>
-        <div class="v2-char-top">
-          <strong>${esc(character.name)}</strong>
-          <span class="v2-hp-number">${character.hp}/${character.max_hp} HP</span>
+        <span class="v2-char-aura"></span>
+        ${v2PortraitHTML(character)}
+        <div class="v2-char-copy">
+          <div class="v2-char-top">
+            <strong>${esc(character.name)}</strong>
+            <span class="v2-hp-number">${character.hp}/${character.max_hp}</span>
+          </div>
+          <div class="v2-char-meta">
+            <span>${esc(trait)}</span>
+            <span>${esc(role.split('/')[0].trim())}</span>
+          </div>
+          <div class="v2-hp"><span style="width:${hpPct}%"></span></div>
+          ${v2StatusHTML(character)}
+          <div class="v2-char-foot">${esc(stateLabel)}</div>
         </div>
-        <div class="v2-hp"><span style="width:${hpPct}%"></span></div>
-        ${v2StatusHTML(character)}
-        <div class="v2-char-foot">${esc(stateLabel)}</div>
       </button>`;
+}
+
+function v2ArenaFighterModel(character, slot, side, isTurn) {
+    const selected = side === 'mine' && v2State.selectedCasterSlot === slot;
+    const queuedIndex = v2State.actions.findIndex(action => Number(action.caster_slot) === slot);
+    const targetable = v2CanTargetCharacter(character, slot, side === 'mine', isTurn);
+    const dead = !character.alive;
+    const locked = side === 'mine' && v2ControlsLocked();
+    const stateLabel = dead
+        ? 'Defeated'
+        : queuedIndex >= 0
+            ? `Queued #${queuedIndex + 1}`
+            : targetable
+                ? 'Target'
+                : selected
+                    ? 'Active'
+                    : locked
+                        ? 'Locked'
+                        : side === 'mine' && isTurn
+                            ? 'Ready'
+                            : '';
+    return {
+        side,
+        slot,
+        name: character.name,
+        role: v2CatalogCharacter(character)?.role || '',
+        state: v2CatalogCharacter(character)?.state || '',
+        hp: character.hp,
+        maxHp: character.max_hp,
+        alive: character.alive,
+        statuses: character.statuses || [],
+        selected,
+        queued: queuedIndex >= 0,
+        targetable,
+        stateLabel,
+    };
+}
+
+function v2SyncPhaserArena(state, me, foe, isMyTurn) {
+    const element = document.getElementById('v2-phaser-arena');
+    if (!element || !window.JJKPhaserBattle || !state || !me || !foe) return;
+    const renderer = window.JJKPhaserBattle.mount(element);
+    if (!renderer) return;
+    const selected = me.team?.[v2State.selectedCasterSlot];
+    const skill = selected && v2State.selectedSkillId
+        ? v2SkillFor(selected.character_id, v2State.selectedSkillId, selected)
+        : null;
+    const prompt = skill
+        ? 'Choose a legal target'
+        : selected
+            ? 'Choose a skill'
+            : isMyTurn
+                ? 'Choose your fighter'
+                : 'Waiting for opponent';
+    renderer.update({
+        presentation: 'dom_overlay',
+        phase: state.phase,
+        turn: state.turn_number,
+        prompt,
+        queueCount: v2State.actions.length,
+        mine: (me.team || []).map((character, slot) => v2ArenaFighterModel(character, slot, 'mine', isMyTurn)),
+        enemy: (foe.team || []).map((character, slot) => v2ArenaFighterModel(character, slot, 'enemy', isMyTurn)),
+    });
 }
 
 function v2QueuedSkillIds() {
     return new Set(v2State.actions.map(action => action.skill_id));
 }
 
-function v2CanPaySkillCost(energy, cost) {
-    const remaining = { green: energy.green || 0, red: energy.red || 0, blue: energy.blue || 0, white: energy.white || 0 };
-    let wildcardCount = 0;
-    for (const color of cost || []) {
-        if (color === 'black') {
-            wildcardCount += 1;
-            continue;
-        }
-        remaining[color] = (remaining[color] || 0) - 1;
-        if (remaining[color] < 0) return false;
-    }
-    return Object.values(remaining).reduce((sum, count) => sum + Math.max(0, count), 0) >= wildcardCount;
-}
-
-function v2QueuePaymentStatus(player) {
+function v2QueueCostSummary(player, actions = v2State.actions) {
     const energy = player?.energy || {};
     const remaining = {
         green: energy.green || 0,
@@ -908,15 +1071,18 @@ function v2QueuePaymentStatus(player) {
         blue: energy.blue || 0,
         white: energy.white || 0,
     };
+    const spent = { green: 0, red: 0, blue: 0, white: 0, black: 0 };
+    const actionCosts = {};
     let wildcardRequired = 0;
     let wildcardChosen = 0;
-    const costs = { green: 0, red: 0, blue: 0, white: 0, black: 0 };
 
-    for (const action of v2State.actions) {
+    for (const action of actions) {
         const caster = player?.team?.[action.caster_slot];
-        const skill = caster ? v2SkillFor(caster.character_id, action.skill_id) : null;
-        for (const color of skill?.cost || []) {
-            costs[color] = (costs[color] || 0) + 1;
+        const skill = caster ? v2SkillFor(caster.character_id, action.skill_id, caster) : null;
+        const cost = skill?.cost || [];
+        actionCosts[action.id] = cost;
+        for (const color of cost) {
+            spent[color] = (spent[color] || 0) + 1;
             if (color === 'black') {
                 wildcardRequired += 1;
             } else {
@@ -936,13 +1102,72 @@ function v2QueuePaymentStatus(player) {
         .map(([color]) => color);
     const needsWildcardChoice = wildcardChosen < wildcardRequired;
     const canPay = missingSpecific.length === 0 && !needsWildcardChoice;
-    const spent = Object.fromEntries(Object.entries(costs).filter(([, value]) => value > 0));
     const reason = missingSpecific.length
         ? `Short on ${missingSpecific.join(', ')}`
         : needsWildcardChoice
             ? 'Choose wildcard payments'
             : 'Queue payable';
-    return { canPay, reason, spent, wildcardRequired, wildcardChosen };
+
+    return {
+        actionCosts,
+        canPay,
+        missingSpecific,
+        needsWildcardChoice,
+        reason,
+        remaining,
+        spent,
+        wildcardRequired,
+        wildcardChosen,
+    };
+}
+
+function v2QueuePaymentStatus(player) {
+    return v2QueueCostSummary(player);
+}
+
+function v2QueuedSkillFitStatus(skill) {
+    const { mine } = v2PlayerIds();
+    const player = v2State.state?.players?.[mine];
+    if (!player || !skill) return { canFit: false, reason: 'Unavailable' };
+
+    const summary = v2QueueCostSummary(player);
+    const remaining = { ...summary.remaining };
+    let wildcardNeeded = Math.max(0, summary.wildcardRequired - summary.wildcardChosen);
+
+    for (const color of skill.cost || []) {
+        if (color === 'black') {
+            wildcardNeeded += 1;
+        } else {
+            remaining[color] = (remaining[color] || 0) - 1;
+        }
+    }
+
+    const missingSpecific = Object.entries(remaining)
+        .filter(([, value]) => value < 0)
+        .map(([color]) => color);
+    if (missingSpecific.length) {
+        return { canFit: false, reason: `Would be short on ${missingSpecific.join(', ')}` };
+    }
+
+    const spareEnergy = Object.values(remaining).reduce((sum, value) => sum + Math.max(0, value), 0);
+    if (spareEnergy < wildcardNeeded) {
+        return { canFit: false, reason: 'Not enough energy for wildcard' };
+    }
+
+    return { canFit: true, reason: '' };
+}
+
+function v2RemainingEnergyHTML(summary) {
+    return ['green', 'red', 'blue', 'white'].map(color => {
+        const value = summary.remaining[color] || 0;
+        const tone = value < 0 ? 'short' : value === 0 ? 'spent' : 'ok';
+        return `<span class="v2-energy-balance ${tone}"><span class="orb orb-${color}"></span><span>${esc(color)}</span><strong>${esc(value)}</strong></span>`;
+    }).join('');
+}
+
+function v2CostText(cost) {
+    if (!cost || !cost.length) return 'No cost';
+    return cost.map(color => color === 'black' ? 'wildcard' : color).join(' + ');
 }
 
 function v2QueuePaymentHTML(player) {
@@ -952,8 +1177,16 @@ function v2QueuePaymentHTML(player) {
         .flatMap(color => Array.from({ length: status.spent[color] || 0 }, () => color));
     return `
       <div class="v2-queue-status ${status.canPay ? 'payable' : 'blocked'}">
-        <strong>${esc(status.canPay ? 'Queue ready' : status.reason)}</strong>
+        <div>
+          <strong>${esc(status.canPay ? 'Queue ready' : status.reason)}</strong>
+          <small>${status.canPay
+              ? 'All queued costs are covered.'
+              : status.needsWildcardChoice
+                  ? 'Choose a wildcard payment for each black cost.'
+                  : 'Remove an action or pick a cheaper skill.'}</small>
+        </div>
         <span>${spentColors.length ? orbsHTML(spentColors) : 'No energy cost'} ${status.wildcardRequired ? `Wildcard ${status.wildcardChosen}/${status.wildcardRequired}` : ''}</span>
+        <div class="v2-energy-balance-row" title="Energy remaining after queued costs">${v2RemainingEnergyHTML(status)}</div>
       </div>`;
 }
 
@@ -1067,27 +1300,39 @@ function v2ActionPreviewHTML(action, skill, hpPreview, ownerPlayerId) {
 }
 
 function v2SkillButtonHTML(skill, character, disabled) {
-    const cooldown = character.cooldowns?.[skill.id] || 0;
-    const { mine } = v2PlayerIds();
-    const myEnergy = v2State.state?.players?.[mine]?.energy || {};
-    const affordable = v2CanPaySkillCost(myEnergy, skill.cost);
-    const isDisabled = disabled || cooldown > 0 || !affordable;
-    const selected = v2State.selectedSkillId === skill.id;
-    const classes = (skill.classes || []).slice(0, 3).join(' / ');
-    const reason = cooldown > 0 ? `Cooldown ${cooldown}` : !affordable ? 'Not enough energy' : '';
+    const slotId = skill.original_slot_id || skill.id;
+    const cooldown = character.cooldowns?.[skill.effective_skill_id || skill.id] || 0;
+    const fit = v2QueuedSkillFitStatus(skill);
+    const { mine, enemy } = v2PlayerIds();
+    const targetPlayer = skill.target_rule?.kind === 'ally_team'
+        ? v2State.state?.players?.[mine]
+        : v2State.state?.players?.[enemy];
+    const hasTeamTargets = v2TeamSkillHasTargets(targetPlayer, skill);
+    const isDisabled = disabled || cooldown > 0 || !fit.canFit || !hasTeamTargets;
+    const selected = v2State.selectedSkillId === slotId;
+    const reason = cooldown > 0 ? `Cooldown ${cooldown}` : !fit.canFit ? fit.reason : !hasTeamTargets ? 'No legal targets' : '';
+    const replacementNote = skill.replaced_from ? `<small>Replaces ${esc(skill.replaced_from)}</small>` : '';
+    const primaryClass = (skill.classes || [])[0] || 'Skill';
+    const skillInitial = String(skill.name || '?').trim()[0] || '?';
     return `
-      <button class="v2-skill ${selected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}" data-skill-id="${esc(skill.id)}" ${reason ? `title="${esc(reason)}"` : ''} ${isDisabled ? 'disabled' : ''}>
-        <div class="v2-skill-head">
-          <strong>${esc(skill.name)}</strong>
-          <span>${orbsHTML(skill.cost)} CD ${cooldown || skill.cooldown || 0}</span>
+      <button class="v2-skill ${selected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}" data-skill-id="${esc(slotId)}" data-effective-skill-id="${esc(skill.effective_skill_id || skill.id)}" ${reason ? `title="${esc(reason)}"` : ''} ${isDisabled ? 'disabled' : ''}>
+        <div class="v2-skill-icon" aria-hidden="true">${esc(skillInitial)}</div>
+        <div class="v2-skill-body">
+          <div class="v2-skill-head">
+            <strong>${esc(skill.name)}</strong>
+            <span>${orbsHTML(skill.cost)} CD ${cooldown || skill.cooldown || 0}</span>
+          </div>
+          <div class="v2-skill-tags">
+            <span>${esc(v2TargetLabel(skill))}</span>
+            <span>${esc(primaryClass)}</span>
+          </div>
+          ${v2EffectChipsHTML(skill)}
+          <p>${esc(skill.text)}</p>
+          <div class="v2-skill-foot">
+            ${replacementNote}
+            <small>${reason ? esc(reason) : 'Ready'}</small>
+          </div>
         </div>
-        <div class="v2-skill-tags">
-          <span>${esc(v2TargetLabel(skill))}</span>
-          <span>${esc(classes || 'Skill')}</span>
-        </div>
-        ${v2EffectChipsHTML(skill)}
-        <p>${esc(skill.text)}</p>
-        <small>${reason ? esc(reason) : 'Ready when paid'}</small>
       </button>`;
 }
 
@@ -1100,11 +1345,15 @@ function v2PendingActionPayloads() {
 }
 
 function resetClassicV2Match() {
+    if (!v2State.state && v2State.lobbyStatus?.status === 'waiting') {
+        socket.emit('battle_v2_leave_pvp', { room_id: v2State.lobbyStatus.room_id });
+    }
     v2State.state = null;
     v2State.actions = [];
     v2State.wildcardPays = {};
     v2State.selectedCasterSlot = null;
     v2State.selectedSkillId = null;
+    v2State.lobbyStatus = null;
     renderClassicV2();
 }
 
@@ -1155,10 +1404,12 @@ function v2QueueHTML() {
           <div class="v2-empty">Queue up to one skill from each active fighter. Actions resolve top to bottom.</div>`;
     }
     const hpPreview = {};
+    const paymentSummary = v2QueuePaymentStatus(me);
     const items = v2State.actions.map((action, index) => {
         const caster = me?.team?.[action.caster_slot];
-        const skill = caster ? v2SkillFor(caster.character_id, action.skill_id) : null;
+        const skill = caster ? v2SkillFor(caster.character_id, action.skill_id, caster) : null;
         const blackCount = (skill?.cost || []).filter(color => color === 'black').length;
+        const actionCost = paymentSummary.actionCosts[action.id] || skill?.cost || [];
         const pays = v2State.wildcardPays[action.id] || [];
         const wildcardControls = Array.from({ length: blackCount }, (_, payIndex) => `
           <select class="v2-wildcard-select" data-action-id="${esc(action.id)}" data-pay-index="${payIndex}">
@@ -1172,6 +1423,11 @@ function v2QueueHTML() {
               <strong>${index + 1}. ${esc(caster?.name || 'Unknown')}</strong>
               <span>${esc(skill?.name || action.skill_id)}</span>
               <small>Target: ${esc(v2ActionTargetLabel(action))}</small>
+              <div class="v2-action-cost">
+                <strong>Cost</strong>
+                ${actionCost.length ? orbsHTML(actionCost) : ''}
+                <span class="v2-action-cost-text">${esc(v2CostText(actionCost))}</span>
+              </div>
               ${v2ActionPreviewHTML(action, skill, hpPreview, mine)}
             </div>
             <div class="v2-queue-controls">
@@ -1218,9 +1474,22 @@ function v2TurnStatusHTML(state, me, foe, isMyTurn) {
     const safeLimit = Math.max(1, mineLimit);
     const progressPct = Math.min(100, Math.round((mineQueued / safeLimit) * 100));
     const locked = me?.queue_confirmed || v2State.queueSubmitting;
+    const paymentStatus = v2State.actions.length ? v2QueuePaymentStatus(me) : null;
     const confirmed = me?.queue_confirmed ? 'Confirmed' : v2State.queueSubmitting ? 'Resolving' : `${mineQueued}/${mineLimit} queued`;
     const openSlots = Math.max(0, mineLimit - mineQueued);
     const turnTone = isMyTurn ? 'active' : 'waiting';
+    const secondCardTitle = locked
+        ? 'Queue locked'
+        : paymentStatus && !paymentStatus.canPay
+            ? paymentStatus.reason
+            : openSlots
+                ? `${openSlots} action${openSlots === 1 ? '' : 's'} left`
+                : 'Queue full';
+    const secondCardHint = paymentStatus && !paymentStatus.canPay
+        ? 'Fix queue payment before confirming.'
+        : openSlots
+            ? 'Pick another ready fighter or confirm now.'
+            : 'Confirm to resolve from top to bottom.';
     return `
       <div class="v2-turn-card ${turnTone}">
         <strong>${isMyTurn ? 'Your action window' : `${esc(current?.name || 'Opponent')} acting`}</strong>
@@ -1228,8 +1497,8 @@ function v2TurnStatusHTML(state, me, foe, isMyTurn) {
       </div>
       <div class="v2-turn-card ${locked ? 'locked' : ''}">
         <div class="v2-queue-meter" aria-hidden="true"><span style="width:${progressPct}%"></span></div>
-        <strong>${locked ? 'Queue locked' : openSlots ? `${openSlots} action${openSlots === 1 ? '' : 's'} left` : 'Queue full'}</strong>
-        <span>${openSlots ? 'Pick another ready fighter or confirm now.' : 'Confirm to resolve from top to bottom.'}</span>
+        <strong>${esc(secondCardTitle)}</strong>
+        <span>${esc(secondCardHint)}</span>
       </div>`;
 }
 
@@ -1238,6 +1507,8 @@ function v2PhaseHint(state, me, isMyTurn) {
     if (!isMyTurn) return `Waiting on ${state.players[state.turn_player_id]?.name || 'opponent'}.`;
     if (v2State.queueSubmitting || me?.queue_confirmed) return 'Resolving queued actions. Results will appear in the log.';
     if (!v2State.actions.length) return 'Select a fighter, choose a skill, then choose a legal target.';
+    const paymentStatus = v2QueuePaymentStatus(me);
+    if (!paymentStatus.canPay) return `${paymentStatus.reason}. Fix the queue before confirming.`;
     const remaining = Math.max(0, v2QueueLimit(me) - v2State.actions.length);
     if (remaining > 0) return `${remaining} fighter${remaining === 1 ? '' : 's'} can still queue an action, or confirm now.`;
     return 'All living fighters are queued. Confirm to resolve.';
@@ -1257,6 +1528,7 @@ function v2RecentResolutionHTML(state) {
 
 function renderClassicV2() {
     const state = v2State.state;
+    const classicScreen = document.getElementById('classic-v2');
     const title = document.getElementById('v2-phase-title');
     const hint = document.getElementById('v2-phase-hint');
     const startButton = document.getElementById('btn-v2-start');
@@ -1265,8 +1537,15 @@ function renderClassicV2() {
     const endTurnButton = document.getElementById('btn-v2-end-turn');
     const confirmButton = document.getElementById('btn-v2-confirm');
     if (!state) {
+        classicScreen?.classList.remove('v2-battle-active');
         if (title) title.textContent = 'Battle v2 Arena';
-        if (hint) hint.textContent = 'Pick two starter teams, queue skills, then resolve the turn.';
+        if (hint) {
+            hint.textContent = v2State.matchMode === 'pvp'
+                ? (v2State.lobbyStatus?.status === 'waiting'
+                    ? 'Waiting for your opponent to join this room.'
+                    : 'Choose your starters, enter a room code on setup, then join Private PvP.')
+                : 'Pick two starter teams, queue skills, then resolve the turn.';
+        }
         ['v2-my-team', 'v2-enemy-team', 'v2-energy-row', 'v2-selected-panel', 'v2-queue-panel', 'v2-log'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.innerHTML = '';
@@ -1274,7 +1553,7 @@ function renderClassicV2() {
         const turnStatus = document.getElementById('v2-turn-status');
         if (turnStatus) turnStatus.innerHTML = '';
         startButton?.classList.remove('hidden');
-        newMatchButton?.classList.add('hidden');
+        newMatchButton?.classList.toggle('hidden', v2State.lobbyStatus?.status !== 'waiting');
         cancelButton?.classList.add('hidden');
         endTurnButton?.classList.add('hidden');
         confirmButton?.classList.add('hidden');
@@ -1282,10 +1561,21 @@ function renderClassicV2() {
             confirmButton.disabled = true;
             confirmButton.textContent = 'Confirm Queue';
         }
+        if (startButton) {
+            startButton.disabled = v2State.lobbyStatus?.status === 'waiting';
+            startButton.textContent = v2State.matchMode === 'pvp'
+                ? (v2State.lobbyStatus?.status === 'waiting' ? 'Waiting for Opponent' : 'Join PvP Room')
+                : 'Start CPU Match';
+        }
+        if (newMatchButton) {
+            newMatchButton.disabled = false;
+            newMatchButton.textContent = v2State.lobbyStatus?.status === 'waiting' ? 'Cancel Wait' : 'New Match';
+        }
         document.getElementById('v2-picker')?.classList.remove('hidden');
         renderV2Picker();
         return;
     }
+    classicScreen?.classList.add('v2-battle-active');
     startButton?.classList.add('hidden');
     newMatchButton?.classList.remove('hidden');
     cancelButton?.classList.remove('hidden');
@@ -1308,18 +1598,40 @@ function renderClassicV2() {
     document.getElementById('v2-enemy-team').innerHTML = (foe?.team || []).map((character, slot) =>
         v2CharacterCardHTML(character, slot, false, isMyTurn)
     ).join('');
+    v2SyncPhaserArena(state, me, foe, isMyTurn);
     const selected = me?.team?.[v2State.selectedCasterSlot];
+    const selectedLocked = selected && v2State.actions.some(a => a.caster_slot === v2State.selectedCasterSlot);
+    const selectedHpPct = selected ? Math.max(0, Math.min(100, Math.round((selected.hp / selected.max_hp) * 100))) : 0;
+    const commandHint = selectedLocked
+        ? 'This fighter already has an action queued.'
+        : isMyTurn
+            ? 'Choose an ability, then tap a highlighted target.'
+            : 'Waiting for the opponent to finish planning.';
     document.getElementById('v2-selected-panel').innerHTML = selected
-        ? `<div class="v2-section-head">
-             <span>Skill Panel</span>
-             <strong>${esc(selected.name)}</strong>
-           </div>${v2SkillsFor(selected.character_id).map(skill =>
-            v2SkillButtonHTML(skill, selected, !isMyTurn || v2QueuedSkillIds().has(skill.id) || v2State.actions.some(a => a.caster_slot === v2State.selectedCasterSlot))
-        ).join('')}`
-        : `<div class="v2-section-head">
-             <span>Skill Panel</span>
-             <strong>No fighter selected</strong>
-           </div><div class="v2-empty">Select one of your fighters.</div>`;
+        ? `<div class="v2-command-head">
+             ${v2PortraitHTML(selected, 'v2-command-portrait')}
+             <div class="v2-command-copy">
+               <span>Commanding</span>
+               <strong>${esc(selected.name)}</strong>
+               <small>${esc(commandHint)}</small>
+               <div class="v2-command-hp"><span style="width:${selectedHpPct}%"></span></div>
+             </div>
+             <div class="v2-command-count">
+               <strong>${v2State.actions.length}/${v2QueueLimit(me)}</strong>
+               <span>Queue</span>
+             </div>
+           </div>
+           <div class="v2-skill-grid">${v2SkillsFor(selected).map(skill =>
+            v2SkillButtonHTML(skill, selected, !isMyTurn || v2QueuedSkillIds().has(skill.original_slot_id || skill.id) || selectedLocked)
+        ).join('')}</div>`
+        : `<div class="v2-command-head v2-command-head--empty">
+             <div class="v2-command-portrait"><span>?</span></div>
+             <div class="v2-command-copy">
+               <span>No fighter selected</span>
+               <strong>Tap a ready ally</strong>
+               <small>Select a living fighter in the arena to open their ability deck.</small>
+             </div>
+           </div>`;
     document.getElementById('v2-queue-panel').innerHTML = v2QueueHTML();
     document.getElementById('v2-log').innerHTML = `
       <div class="v2-section-head">
@@ -1334,12 +1646,14 @@ function renderClassicV2() {
     cancelButton.disabled = !isMyTurn || v2State.actions.length === 0 || !!me?.queue_confirmed || v2State.queueSubmitting;
     endTurnButton.disabled = !isMyTurn || v2State.queueSubmitting;
     newMatchButton.disabled = false;
+    newMatchButton.textContent = 'New Match';
     window.__v2DebugState = {
         selectedCasterSlot: v2State.selectedCasterSlot,
         selectedSkillId: v2State.selectedSkillId,
         actionCount: v2State.actions.length,
         phase: state.phase,
         turnPlayerId: state.turn_player_id,
+        replacementSkillSlots: v2ReplacementDebugEntries(me),
     };
 }
 
@@ -1348,28 +1662,40 @@ function v2StartMatch() {
         toast('Battle v2 is disabled for this server.');
         return;
     }
-    if (v2State.playerTeam.length !== 3 || v2State.enemyTeam.length !== 3) {
-        toast('Choose exactly 3 starters for each side.');
+    if (v2State.playerTeam.length !== 3 || (v2State.matchMode === 'cpu' && v2State.enemyTeam.length !== 3)) {
+        toast(v2State.matchMode === 'pvp' ? 'Choose exactly 3 starters.' : 'Choose exactly 3 starters for each side.');
         return;
     }
     const nameInput = document.getElementById('player-name').value.trim() || 'Player';
+    const roomInput = document.getElementById('room-id').value.trim() || 'lobby';
     localStorage.setItem('jjk_player_name', nameInput);
     v2State.actions = [];
     v2State.wildcardPays = {};
     v2State.queueSubmitting = false;
     v2State.selectedCasterSlot = null;
     v2State.selectedSkillId = null;
-    socket.emit('battle_v2_start_classic', {
-        room_id: 'classic_v2_' + Math.random().toString(36).slice(2, 8),
-        player_name: nameInput,
-        player_team: v2State.playerTeam,
-        enemy_team: v2State.enemyTeam,
-    });
+    v2State.lobbyStatus = null;
+    if (v2State.matchMode === 'pvp') {
+        socket.emit('battle_v2_join_pvp', {
+            room_id: roomInput,
+            player_name: nameInput,
+            player_team: v2State.playerTeam,
+        });
+    } else {
+        socket.emit('battle_v2_start_classic', {
+            room_id: 'classic_v2_' + Math.random().toString(36).slice(2, 8),
+            player_name: nameInput,
+            player_team: v2State.playerTeam,
+            enemy_team: v2State.enemyTeam,
+        });
+    }
     showScreen('classic-v2');
+    renderClassicV2();
 }
 
 socket.on('battle_v2_update', (data) => {
     v2State.state = data;
+    v2State.lobbyStatus = null;
     v2State.queueSubmitting = false;
     const { mine } = v2PlayerIds();
     const ownPending = data.pending_actions?.[mine] || [];
@@ -1401,9 +1727,13 @@ socket.on('battle_v2_finished', (data) => {
 });
 
 // ── SETUP SCREEN ──────────────────────────────────────────────────────────────
-// Render history on load
-renderHistory();
-renderRosterLab();
+// Render cached panels without blocking core navigation bindings.
+try {
+    renderHistory();
+    renderRosterLab();
+} catch (error) {
+    console.warn('Initial panel render failed', error);
+}
 
 document.getElementById('btn-roster-lab').addEventListener('click', () => {
     renderRosterLab();
@@ -1414,7 +1744,8 @@ document.getElementById('btn-roster-back').addEventListener('click', () => {
     showScreen('setup');
 });
 
-document.getElementById('btn-classic-v2').addEventListener('click', () => {
+const classicV2Button = document.getElementById('btn-classic-v2');
+classicV2Button.addEventListener('click', () => {
     if (!BATTLE_V2_ENABLED) {
         toast('Battle v2 is disabled for this server.');
         return;
@@ -1422,6 +1753,15 @@ document.getElementById('btn-classic-v2').addEventListener('click', () => {
     showScreen('classic-v2');
     renderClassicV2();
 });
+
+socket.on('battle_v2_lobby', (data) => {
+    v2State.state = null;
+    v2State.lobbyStatus = data.status === 'cancelled' ? null : data;
+    v2State.queueSubmitting = false;
+    showScreen('classic-v2');
+    renderClassicV2();
+});
+classicV2Button.disabled = !BATTLE_V2_ENABLED;
 
 document.getElementById('btn-v2-back').addEventListener('click', () => {
     showScreen('setup');
@@ -1451,6 +1791,14 @@ document.getElementById('btn-v2-confirm').addEventListener('click', () => {
 });
 
 document.getElementById('classic-v2').addEventListener('click', (event) => {
+    const modeButton = event.target.closest('[data-v2-mode]');
+    if (modeButton) {
+        v2State.matchMode = modeButton.dataset.v2Mode === 'pvp' ? 'pvp' : 'cpu';
+        v2State.lobbyStatus = null;
+        renderClassicV2();
+        return;
+    }
+
     const controlsLocked = v2ControlsLocked();
     const picker = event.target.closest('[data-v2-pick-team]');
     if (picker) {
@@ -1506,18 +1854,28 @@ document.getElementById('classic-v2').addEventListener('click', (event) => {
         const { mine, enemy } = v2PlayerIds();
         const me = v2State.state.players[mine];
         const selectedCharacter = me?.team?.[v2State.selectedCasterSlot];
-        const selectedSkill = selectedCharacter ? v2SkillFor(selectedCharacter.character_id, v2State.selectedSkillId) : null;
+        const selectedSkill = selectedCharacter ? v2SkillFor(selectedCharacter.character_id, v2State.selectedSkillId, selectedCharacter) : null;
         const targetKind = selectedSkill?.target_rule?.kind || 'enemy';
         if (targetKind === 'self') {
             v2AddAction(v2State.selectedCasterSlot, v2State.selectedSkillId, mine, v2State.selectedCasterSlot);
             return;
         }
         if (targetKind === 'enemy_team') {
-            v2AddAction(v2State.selectedCasterSlot, v2State.selectedSkillId, enemy, null, v2TeamTargetSlots(v2State.state.players[enemy], selectedSkill));
+            const targetSlots = v2TeamTargetSlots(v2State.state.players[enemy], selectedSkill);
+            if (!targetSlots.length) {
+                toast('No legal targets for this skill.');
+                return;
+            }
+            v2AddAction(v2State.selectedCasterSlot, v2State.selectedSkillId, enemy, null, targetSlots);
             return;
         }
         if (targetKind === 'ally_team') {
-            v2AddAction(v2State.selectedCasterSlot, v2State.selectedSkillId, mine, null, v2TeamTargetSlots(me, selectedSkill));
+            const targetSlots = v2TeamTargetSlots(me, selectedSkill);
+            if (!targetSlots.length) {
+                toast('No legal targets for this skill.');
+                return;
+            }
+            v2AddAction(v2State.selectedCasterSlot, v2State.selectedSkillId, mine, null, targetSlots);
             return;
         }
         toast(targetKind === 'ally' ? 'Choose an allied target.' : 'Choose an enemy target.');
@@ -1545,6 +1903,15 @@ document.getElementById('classic-v2').addEventListener('click', (event) => {
             renderClassicV2();
         }
     }
+});
+
+window.addEventListener('jjk:v2-arena-click', (event) => {
+    const detail = event.detail || {};
+    const side = detail.side === 'enemy' ? 'enemy' : 'mine';
+    const slot = Number(detail.slot);
+    if (!Number.isFinite(slot)) return;
+    const button = document.querySelector(`#classic-v2 .v2-char[data-v2-side="${side}"][data-slot="${slot}"]`);
+    button?.click();
 });
 
 document.getElementById('classic-v2').addEventListener('change', (event) => {

@@ -430,7 +430,7 @@ MAHITO = CharacterSpec(
 )
 
 
-TODO = CharacterSpec(
+AOI_TODO = CharacterSpec(
     id="aoi_todo",
     name="Aoi Todo",
     role="Disruptor / setup partner / position control",
@@ -701,7 +701,7 @@ HIGURUMA = CharacterSpec(
 
 STARTER_ROSTER: dict[str, CharacterSpec] = {
     character.id: character
-    for character in [YUJI, NOBARA, MEGUMI, GOJO, SUKUNA, MAHITO, TODO, MAKI, YUTA, HIGURUMA]
+    for character in [YUJI, NOBARA, MEGUMI, GOJO, SUKUNA, MAHITO, AOI_TODO, MAKI, YUTA, HIGURUMA]
 }
 
 SKILLS_BY_ID: dict[str, SkillSpec] = {

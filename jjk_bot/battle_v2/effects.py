@@ -19,6 +19,10 @@ class EffectError(ValueError):
     """Raised when an effect cannot be applied."""
 
 
+def _label_identifier(value: str | None) -> str:
+    return str(value or "status").replace("_", " ").title()
+
+
 def _status_amount(character: CharacterState, payload_key: str) -> int:
     return sum(
         int(status.payload.get(payload_key, 0))
@@ -219,8 +223,11 @@ def apply_effect(
     effect: EffectSpec,
     target_player_id: str,
     target_slot: int | None,
+    skill_name: str | None = None,
 ) -> BattleEvent:
     """Apply one effect and return an event-log entry."""
+
+    display_name = skill_name or action.skill_id
 
     if effect.type == "damage":
         if target_slot is None:
@@ -244,7 +251,7 @@ def apply_effect(
         _apply_damage_payload_side_effects(target, effect)
         event = BattleEvent(
             type="damage",
-            message=f"{action.skill_id} dealt {actual} damage",
+            message=f"{display_name} dealt {actual} damage to {target.name}",
             turn_number=state.turn_number,
             payload={
                 "action_id": action.id,
@@ -267,7 +274,7 @@ def apply_effect(
         caster.hp = min(caster.max_hp, caster.hp + actual)
         return BattleEvent(
             type="health_steal",
-            message=f"{action.skill_id} stole {actual} health",
+            message=f"{display_name} stole {actual} health from {target.name}",
             turn_number=state.turn_number,
             payload={"action_id": action.id, "amount": actual},
         )
@@ -283,7 +290,7 @@ def apply_effect(
             target.alive = True
         return BattleEvent(
             type="heal",
-            message=f"{action.skill_id} healed {actual} HP",
+            message=f"{display_name} healed {target.name} for {actual} HP",
             turn_number=state.turn_number,
             payload={
                 "action_id": action.id,
@@ -301,7 +308,7 @@ def apply_effect(
         if condition_status and not has_status(target, str(condition_status)):
             return BattleEvent(
                 type="status_skipped",
-                message=f"{effect.status} condition was not met",
+                message=f"{display_name} did not meet the {_label_identifier(effect.status)} condition",
                 turn_number=state.turn_number,
                 payload={"action_id": action.id, "status": effect.status},
             )
@@ -334,7 +341,7 @@ def apply_effect(
         target.statuses = kept
         return BattleEvent(
             type="status_removed",
-            message=f"{effect.status} removed",
+            message=f"{display_name} removed {_label_identifier(effect.status)}",
             turn_number=state.turn_number,
             payload={
                 "action_id": action.id,
@@ -347,17 +354,29 @@ def apply_effect(
     raise EffectError(f"unsupported effect type: {effect.type}")
 
 
+def should_tick_status(status: StatusEffect, acting_player_id: str | None = None) -> bool:
+    """Return whether a status duration advances on this cleanup pass."""
+
+    clock = str(status.payload.get("duration_clock", "global_turn"))
+    if clock == "source_turn":
+        return acting_player_id is None or status.source_player_id == acting_player_id
+    if clock in {"target_turn", "round"}:
+        return acting_player_id is None or status.target_player_id == acting_player_id
+    return True
+
+
 def apply_turn_end_statuses(
     character: CharacterState,
     player_id: str,
     slot: int,
     turn_number: int,
+    acting_player_id: str | None = None,
 ) -> list[BattleEvent]:
     """Apply recurring turn-end payloads from active statuses."""
 
     events: list[BattleEvent] = []
     for status in list(character.statuses):
-        if status.duration == 0:
+        if status.duration == 0 or not should_tick_status(status, acting_player_id):
             continue
         amount = int(status.payload.get("turn_end_damage", 0))
         if amount > 0:
@@ -385,12 +404,12 @@ def apply_turn_end_statuses(
     return events
 
 
-def tick_statuses(character: CharacterState) -> None:
+def tick_statuses(character: CharacterState, acting_player_id: str | None = None) -> None:
     """Tick finite-duration statuses and remove expired ones."""
 
     kept: list[StatusEffect] = []
     for status in character.statuses:
-        if status.duration > 0:
+        if status.duration > 0 and should_tick_status(status, acting_player_id):
             status.duration -= 1
         if status.duration != 0:
             kept.append(status)

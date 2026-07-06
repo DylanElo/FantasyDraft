@@ -2,7 +2,7 @@
 
 ## Objective
 
-Battle System v2 is a new, server-authoritative combat engine for a Naruto Arena-style JJK mode. It is isolated from the current v1 battle flow and is intended to power Classic Arena first, then later Draft or Culling Game modes after the pure engine is tested.
+Battle System v2 is a server-authoritative combat engine for a Naruto Arena-style JJK mode. It is isolated from the current v1 battle flow and powers the feature-flagged Battle v2 Arena, including CPU practice and private two-human PvP rooms.
 
 The production default remains v1. Integration code should only use v2 when `JJK_BATTLE_SYSTEM=v2`.
 
@@ -41,7 +41,7 @@ Character kits should be declared as `SkillSpec` data with `EffectSpec`, `Condit
 
 ### Preserve v1
 
-The existing game states and v1 battle behavior remain intact. V2 lives under `jjk_bot/battle_v2/` and should be wired into the web app only after the pure engine, starter roster, and session adapter are tested.
+The existing game states and v1 battle behavior remain intact. V2 lives under `jjk_bot/battle_v2/` and is wired into the web app only when `JJK_BATTLE_SYSTEM=v2`.
 
 ### Server authoritative
 
@@ -59,8 +59,6 @@ It returns `True` only when `JJK_BATTLE_SYSTEM` is set to `v2`. The default is `
 
 ## Model Boundaries
 
-PR 1 defines data models only. Later PRs should add:
-
 - `energy.py` for deterministic energy gain and wildcard payment validation.
 - `conditions.py` for kit condition evaluation.
 - `targeting.py` for legal target checks.
@@ -68,7 +66,8 @@ PR 1 defines data models only. Later PRs should add:
 - `resolver.py` for queue resolution.
 - `starter_roster.py` for initial JJK kits.
 - `serialization.py` for public/private state views.
-- `session.py` for room management and SocketIO-facing APIs.
+- `manager.py` for room/match orchestration and CPU turn selection.
+- `web/app.py` for SocketIO-facing room, CPU, and private PvP flows.
 
 ## Turn Phases
 
@@ -80,7 +79,7 @@ PR 1 defines data models only. Later PRs should add:
 
 ## Damage Families
 
-The resolver should implement these rule families exactly in a later PR:
+The resolver implements these rule families:
 
 - Normal damage is reduced by damage reduction and absorbed by destructible defense.
 - Piercing damage ignores damage reduction but still hits destructible defense first.
@@ -92,8 +91,11 @@ The resolver should implement these rule families exactly in a later PR:
 
 Invisible statuses must be visible to their owner, hidden from opponents, revealed when triggered, and never leak protected targets through public serialization.
 
-## Initial Acceptance Criteria
+## Acceptance Criteria
 
 - V1 behavior is unchanged.
 - `jjk_bot.battle_v2.models` imports cleanly.
 - Data models cover battle phases, energy, damage, skill classes, skill specs, effects, conditions, transformations, statuses, pending actions, players, events, and battle state.
+- CPU practice can start from the browser and run CPU responses.
+- Private PvP lobbies wait for a second player, emit viewer-specific state, and clean up on cancel, reset, or disconnect.
+- Invisible statuses, private events, and pending queues serialize per viewer.

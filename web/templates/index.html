@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@600;700;900&family=Yuji+Mai&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='jjk-tokens.css') }}?v=1">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=34">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=47">
   <link rel="stylesheet" href="{{ url_for('static', filename='jjk-theme.css') }}?v=1">
   <link rel="stylesheet" href="{{ url_for('static', filename='arena-redesign.css') }}?v=1">
   <script src="{{ url_for('static', filename='socket.io.min.js') }}?v=4.7.2"></script>
@@ -63,7 +63,7 @@
               <button id="btn-roster-lab" class="btn-ghost roster-lab-entry" type="button">
                 Open Roster Lab
               </button>
-              <button id="btn-classic-v2" class="btn-ghost roster-lab-entry{% if not battle_v2_enabled %} hidden{% endif %}" type="button">
+              <button id="btn-classic-v2" class="btn-ghost roster-lab-entry{% if not battle_v2_enabled %} hidden{% endif %}" type="button" disabled>
                 Battle v2 Arena
               </button>
             </div>
@@ -107,7 +107,7 @@
     <section id="roster-lab" class="screen">
       <header class="app-header">
         <div class="header-left">
-          <span class="header-logo">å‘ª</span>
+          <span class="header-logo">JJK</span>
           <span class="header-title">Roster Lab</span>
         </div>
         <div class="header-right">
@@ -303,7 +303,7 @@
     <section id="classic-v2" class="screen">
       <header class="app-header">
         <div class="header-left">
-          <span class="header-logo">å‘ª</span>
+          <span class="header-logo">JJK</span>
           <span class="header-title">Battle v2 Arena</span>
         </div>
         <div class="header-right">
@@ -328,31 +328,39 @@
         <div id="v2-error" class="v2-error hidden"></div>
         <div id="v2-turn-status" class="v2-turn-status"></div>
         <div class="v2-picker" id="v2-picker">
+          <div class="v2-mode-row" role="group" aria-label="Battle v2 mode">
+            <button class="v2-mode-option active" type="button" data-v2-mode="cpu">CPU Practice</button>
+            <button class="v2-mode-option" type="button" data-v2-mode="pvp">Private PvP</button>
+          </div>
+          <div class="v2-lobby-note hidden" id="v2-lobby-note"></div>
           <div class="v2-picker-column">
             <div class="team-label">MY STARTERS</div>
             <div class="v2-picker-summary" id="v2-player-summary"></div>
             <div class="v2-picker-grid" id="v2-player-picker"></div>
           </div>
-          <div class="v2-picker-column">
-            <div class="team-label">CPU STARTERS</div>
+          <div class="v2-picker-column" id="v2-enemy-picker-column">
+            <div class="team-label" id="v2-enemy-picker-label">CPU STARTERS</div>
             <div class="v2-picker-summary" id="v2-enemy-summary"></div>
             <div class="v2-picker-grid" id="v2-enemy-picker"></div>
           </div>
         </div>
         <div class="v2-energy-row" id="v2-energy-row"></div>
         <div class="v2-layout">
-          <section class="v2-team-panel v2-team-panel--enemy">
-            <div class="team-label">OPPONENT</div>
-            <div class="v2-team" id="v2-enemy-team"></div>
+          <section class="v2-arena-panel">
+            <div id="v2-phaser-arena" class="v2-phaser-arena" aria-label="Battle v2 animated arena"></div>
+            <section class="v2-team-panel v2-team-panel--enemy v2-dom-backing">
+              <div class="team-label">OPPONENT</div>
+              <div class="v2-team" id="v2-enemy-team"></div>
+            </section>
+            <section class="v2-team-panel v2-team-panel--ally v2-dom-backing">
+              <div class="team-label">MY TEAM</div>
+              <div class="v2-team" id="v2-my-team"></div>
+            </section>
           </section>
           <section class="v2-center-panel">
             <div class="v2-selected" id="v2-selected-panel"></div>
             <div class="v2-queue" id="v2-queue-panel"></div>
             <div class="battle-log v2-log" id="v2-log"></div>
-          </section>
-          <section class="v2-team-panel v2-team-panel--ally">
-            <div class="team-label">MY TEAM</div>
-            <div class="v2-team" id="v2-my-team"></div>
           </section>
         </div>
       </div>
@@ -422,6 +430,8 @@
   </script>
   <script src="{{ url_for('static', filename='characters_data.js') }}?v=19"></script>
   <script src="{{ url_for('static', filename='effects.js') }}?v=16"></script>
-  <script src="{{ url_for('static', filename='app.js') }}?v=39"></script>
+  <script src="{{ url_for('static', filename='vendor/phaser.min.js') }}?v=3.90.0"></script>
+  <script src="{{ url_for('static', filename='phaser-battle.js') }}?v=4"></script>
+  <script src="{{ url_for('static', filename='app.js') }}?v=58"></script>
 </body>
 </html>

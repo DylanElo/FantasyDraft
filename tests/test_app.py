@@ -60,13 +60,19 @@ def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
 
     assert 'const BATTLE_V2_ENABLED = true;' in html
     assert 'id="btn-classic-v2" class="btn-ghost roster-lab-entry"' in html
+    assert 'id="btn-classic-v2" class="btn-ghost roster-lab-entry" type="button" disabled' in html
     assert '"aoi_todo"' in html
     assert '"hiromi_higuruma"' in html
     assert 'id="btn-v2-new-match"' in html
     assert 'id="v2-player-summary"' in html
+    assert 'data-v2-mode="cpu"' in html
+    assert 'data-v2-mode="pvp"' in html
+    assert 'id="v2-lobby-note"' in html
     assert 'characters_data.js?v=19' in html
-    assert 'app.js?v=39' in html
-    assert 'style.css?v=34' in html
+    assert 'vendor/phaser.min.js?v=3.90.0' in html
+    assert 'phaser-battle.js?v=4' in html
+    assert 'app.js?v=58' in html
+    assert 'style.css?v=47' in html
     assert 'Battle v2 Arena' in html
     assert 'Classic Queue Test' not in html
 

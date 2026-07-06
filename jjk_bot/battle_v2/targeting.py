@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from .conditions import has_status
-from .effects import has_invulnerability
 from .models import BattleState, CharacterState, DamageType, PendingAction, PlayerState, SkillSpec, TargetRule
 
 
@@ -65,6 +64,48 @@ def skill_bypasses_invulnerability(skill: SkillSpec) -> bool:
     return False
 
 
+def skill_is_harmful_to_target(skill: SkillSpec, action: PendingAction, target_player_id: str) -> bool:
+    """Return whether this skill is hostile to the selected target side."""
+
+    if target_player_id != action.player_id:
+        return True
+    return any(
+        effect.target != "self"
+        and effect.type in {"damage", "health_steal"}
+        for effect in skill.effects
+    )
+
+
+def target_has_anti_domain(target: CharacterState) -> bool:
+    return has_status(target, "anti_domain") or any(
+        status.duration != 0 and status.payload.get("anti_domain", False)
+        for status in target.statuses
+    )
+
+
+def invulnerability_blocks_skill(target: CharacterState, skill: SkillSpec, action: PendingAction, target_player_id: str) -> bool:
+    """Return whether active invulnerability prevents this target selection."""
+
+    invulnerable_statuses = [
+        status
+        for status in target.statuses
+        if status.duration != 0 and status.payload.get("invulnerable", False)
+    ]
+    if not invulnerable_statuses:
+        return False
+
+    if any(status.payload.get("invulnerable_to_all", False) for status in invulnerable_statuses):
+        return True
+
+    harmful = skill_is_harmful_to_target(skill, action, target_player_id)
+    if harmful:
+        if skill_bypasses_invulnerability(skill) and not target_has_anti_domain(target):
+            return False
+        return True
+
+    return any(status.payload.get("invulnerable_to_helpful", False) for status in invulnerable_statuses)
+
+
 def validate_target_rule(
     state: BattleState,
     action: PendingAction,
@@ -107,7 +148,7 @@ def validate_target_rule(
             raise TargetingError("target must be active")
         if not rule.allow_dead and not target.alive:
             raise TargetingError("target is dead")
-        if has_invulnerability(target) and not skill_bypasses_invulnerability(skill):
+        if invulnerability_blocks_skill(target, skill, action, target_player_id):
             raise TargetingError("target is invulnerable")
         if rule.required_status and not has_status(target, rule.required_status):
             raise TargetingError(f"target lacks required status: {rule.required_status}")

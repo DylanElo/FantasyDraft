@@ -1,6 +1,6 @@
 import pytest
 
-from jjk_bot.battle_v2.models import EnergyType
+from jjk_bot.battle_v2.models import EnergyType, SkillClass, StatusEffect
 from jjk_bot.characters import CHARACTERS
 from jjk_bot.game import CPU_PLAYER_ID, GameState
 from web import app as web_app
@@ -10,13 +10,22 @@ from web import app as web_app
 def clear_v2_rooms():
     web_app.battle_v2_manager.rooms.clear()
     web_app.battle_v2_manager.rngs.clear()
+    web_app.v2_pvp_lobbies.clear()
     yield
     web_app.battle_v2_manager.rooms.clear()
     web_app.battle_v2_manager.rngs.clear()
+    web_app.v2_pvp_lobbies.clear()
 
 
 def socket_client():
     flask_client = web_app.app.test_client()
+    return web_app.socketio.test_client(web_app.app, flask_test_client=flask_client)
+
+
+def socket_client_with_player(player_id):
+    flask_client = web_app.app.test_client()
+    with flask_client.session_transaction() as flask_session:
+        flask_session["player_id"] = player_id
     return web_app.socketio.test_client(web_app.app, flask_test_client=flask_client)
 
 
@@ -338,3 +347,212 @@ def test_vs_cpu_v2_uses_convertible_cpu_and_draw_pool(monkeypatch):
     drawn = update["last_drawn_choices"]
     assert len(drawn) == 3
     assert all(web_app.v2_character_id_for_name(char["name"]) for char in drawn)
+
+
+def test_battle_v2_socket_broadcasts_viewer_specific_private_state(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    p1_client = socket_client_with_player("p1")
+    p2_client = socket_client_with_player("p2")
+    p1_client.emit("join_room", {"room_id": "human-v2", "player_name": "P1"})
+    p2_client.emit("join_room", {"room_id": "human-v2", "player_name": "P2"})
+    p1_client.get_received()
+    p2_client.get_received()
+
+    web_app.battle_v2_manager.start_classic_match(
+        "human-v2",
+        [
+            {"id": "p1", "name": "P1", "team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]},
+            {"id": "p2", "name": "P2", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+        ],
+    )
+    state = web_app.battle_v2_manager.get_state("human-v2")
+    state.players["p2"].team[0].statuses.append(
+        StatusEffect(
+            "hidden_trap",
+            "Hidden Trap",
+            "p1",
+            2,
+            "p2",
+            0,
+            duration=2,
+            classes=[SkillClass.INVISIBLE],
+            invisible=True,
+        )
+    )
+
+    p1_client.emit("battle_v2_cancel_queue", {})
+    p1_update = received_payload(p1_client, "battle_v2_update")
+    p2_update = received_payload(p2_client, "battle_v2_update")
+
+    assert p1_update["players"]["p2"]["team"][0]["statuses"][0]["id"] == "hidden_trap"
+    assert p2_update["players"]["p2"]["team"][0]["statuses"] == []
+
+
+def test_battle_v2_pvp_join_waits_then_starts_two_human_room(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    p1_client = socket_client_with_player("p1")
+    p2_client = socket_client_with_player("p2")
+
+    p1_client.emit(
+        "battle_v2_join_pvp",
+        {
+            "room_id": "human-start",
+            "player_name": "P1",
+            "player_team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"],
+        },
+    )
+
+    waiting = received_payload(p1_client, "battle_v2_lobby")
+    assert waiting["status"] == "waiting"
+    assert waiting["room_id"] == "human-start"
+    assert "human-start" not in web_app.battle_v2_manager.rooms
+
+    p2_client.emit(
+        "battle_v2_join_pvp",
+        {
+            "room_id": "human-start",
+            "player_name": "P2",
+            "player_team": ["satoru_gojo", "ryomen_sukuna", "mahito"],
+        },
+    )
+
+    p1_update = received_payload(p1_client, "battle_v2_update")
+    p2_update = received_payload(p2_client, "battle_v2_update")
+
+    assert set(p1_update["players"]) == {"p1", "p2"}
+    assert set(p2_update["players"]) == {"p1", "p2"}
+    assert "__cpu_v2__" not in p1_update["players"]
+
+
+def test_battle_v2_pvp_waiting_player_can_cancel_lobby(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    p1_client = socket_client_with_player("p1")
+    p2_client = socket_client_with_player("p2")
+
+    p1_client.emit(
+        "battle_v2_join_pvp",
+        {
+            "room_id": "human-cancel",
+            "player_name": "P1",
+            "player_team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"],
+        },
+    )
+    assert received_payload(p1_client, "battle_v2_lobby")["status"] == "waiting"
+
+    p1_client.emit("battle_v2_leave_pvp", {"room_id": "human-cancel"})
+    cancelled = received_payload(p1_client, "battle_v2_lobby")
+
+    assert cancelled["status"] == "cancelled"
+    assert "human-cancel" not in web_app.v2_pvp_lobbies
+
+    p2_client.emit(
+        "battle_v2_join_pvp",
+        {
+            "room_id": "human-cancel",
+            "player_name": "P2",
+            "player_team": ["satoru_gojo", "ryomen_sukuna", "mahito"],
+        },
+    )
+    waiting = received_payload(p2_client, "battle_v2_lobby")
+
+    assert waiting["status"] == "waiting"
+    assert "human-cancel" not in web_app.battle_v2_manager.rooms
+
+
+def test_battle_v2_pvp_disconnect_cleans_waiting_lobby(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    p1_client = socket_client_with_player("p1")
+    p2_client = socket_client_with_player("p2")
+
+    p1_client.emit(
+        "battle_v2_join_pvp",
+        {
+            "room_id": "human-disconnect",
+            "player_name": "P1",
+            "player_team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"],
+        },
+    )
+    assert received_payload(p1_client, "battle_v2_lobby")["status"] == "waiting"
+
+    p1_client.disconnect()
+
+    assert "human-disconnect" not in web_app.v2_pvp_lobbies
+
+    p2_client.emit(
+        "battle_v2_join_pvp",
+        {
+            "room_id": "human-disconnect",
+            "player_name": "P2",
+            "player_team": ["satoru_gojo", "ryomen_sukuna", "mahito"],
+        },
+    )
+    waiting = received_payload(p2_client, "battle_v2_lobby")
+
+    assert waiting["status"] == "waiting"
+    assert "human-disconnect" not in web_app.battle_v2_manager.rooms
+
+
+def test_reset_room_clears_waiting_v2_pvp_lobby(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    client = socket_client_with_player("p1")
+    client.emit("join_room", {"room_id": "human-reset", "player_name": "P1"})
+    client.get_received()
+    client.emit(
+        "battle_v2_join_pvp",
+        {
+            "room_id": "human-reset",
+            "player_name": "P1",
+            "player_team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"],
+        },
+    )
+    assert received_payload(client, "battle_v2_lobby")["status"] == "waiting"
+
+    client.emit("reset_room")
+
+    assert "human-reset" not in web_app.v2_pvp_lobbies
+    assert "human-reset" not in web_app.battle_v2_manager.rooms
+
+
+def test_battle_v2_human_confirm_does_not_run_cpu_turn(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    p1_client = socket_client_with_player("p1")
+    p2_client = socket_client_with_player("p2")
+    for client, player_id, team in [
+        (p1_client, "P1", ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]),
+        (p2_client, "P2", ["satoru_gojo", "ryomen_sukuna", "mahito"]),
+    ]:
+        client.emit(
+            "battle_v2_join_pvp",
+            {
+                "room_id": "human-turns",
+                "player_name": player_id,
+                "player_team": team,
+            },
+        )
+    p1_client.get_received()
+    p2_client.get_received()
+    state = web_app.battle_v2_manager.get_state("human-turns")
+    state.players["p1"].energy[EnergyType.GREEN] = 1
+
+    p1_client.emit(
+        "battle_v2_submit_plan",
+        {
+            "actions": [
+                {
+                    "id": "a1",
+                    "caster_slot": 0,
+                    "skill_id": "divergent_fist",
+                    "target_player_id": "p2",
+                    "target_slot": 0,
+                }
+            ]
+        },
+    )
+    p1_client.get_received()
+
+    p1_client.emit("battle_v2_confirm_queue", {})
+    update = received_payload(p1_client, "battle_v2_update")
+
+    assert update["turn_player_id"] == "p2"
+    assert update["players"]["p2"]["team"][0]["hp"] == 80
+    assert update["phase"] == "planning"

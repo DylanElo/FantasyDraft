@@ -377,11 +377,11 @@ def resolve_queue(
 
         for effect in skill.effects:
             if effect.target == "self":
-                event = apply_effect(state, action, effect, action.player_id, action.caster_slot)
+                event = apply_effect(state, action, effect, action.player_id, action.caster_slot, skill.name)
                 _append_event(events, state, event)
                 continue
             if not targets:
-                event = apply_effect(state, action, effect, target_player_id, None)
+                event = apply_effect(state, action, effect, target_player_id, None, skill.name)
                 _append_event(events, state, event)
                 continue
             for slot in target_slots:
@@ -390,7 +390,7 @@ def resolve_queue(
                 if slot in reflected_slots and _is_harmful_effect(effect):
                     effect_target_player_id = action.player_id
                     effect_target_slot = action.caster_slot
-                event = apply_effect(state, action, effect, effect_target_player_id, effect_target_slot)
+                event = apply_effect(state, action, effect, effect_target_player_id, effect_target_slot, skill.name)
                 _append_event(events, state, event)
         _apply_post_skill_punish(state, events, action, caster, skill)
 
@@ -405,9 +405,9 @@ def finish_turn(state: BattleState, player_id: str) -> list[BattleEvent]:
     events: list[BattleEvent] = []
     for player in state.players.values():
         for slot, character in enumerate(player.team):
-            for event in apply_turn_end_statuses(character, player.id, slot, state.turn_number):
+            for event in apply_turn_end_statuses(character, player.id, slot, state.turn_number, player_id):
                 _append_event(events, state, event)
-            tick_statuses(character)
+            tick_statuses(character, player_id)
             tick_cooldowns(character)
             character.acted_this_turn = False
         player.queue_confirmed = False

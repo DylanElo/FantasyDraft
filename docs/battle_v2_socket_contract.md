@@ -22,6 +22,30 @@ provide both teams:
 If `player_team` is omitted, the starter trio Yuji/Nobara/Megumi is used. If
 `enemy_team` is omitted, Gojo/Sukuna/Mahito is used.
 
+### `battle_v2_join_pvp`
+
+Joins a private two-human Battle v2 room. The first player is held in a waiting
+lobby; the second player starts the match with each player's selected team.
+
+```json
+{
+  "room_id": "private-room",
+  "player_name": "Player",
+  "player_team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]
+}
+```
+
+### `battle_v2_leave_pvp`
+
+Leaves a waiting PvP lobby before the second player joins. This does not end an
+already-started Battle v2 match.
+
+```json
+{
+  "room_id": "private-room"
+}
+```
+
 ### `battle_v2_submit_plan`
 
 Stores pending actions for queue review without spending energy.
@@ -95,10 +119,24 @@ Concedes the v2 match for the current player.
 
 ## Server Events
 
+### `battle_v2_lobby`
+
+Emitted to a player waiting for a second human opponent in a private PvP room.
+Also confirms when a waiting player cancels the lobby.
+
+```json
+{
+  "room_id": "private-room",
+  "status": "waiting",
+  "players": [{"id": "session-id", "name": "Player"}]
+}
+```
+
 ### `battle_v2_update`
 
-Emitted only to the requesting socket. The payload is serialized for that viewer
-so invisible statuses and pending queues do not leak to opponents.
+Emitted to each human player in the room through that player's private socket
+room. Every payload is serialized for its viewer, so invisible statuses,
+private events, and pending queues do not leak to opponents.
 
 ### `battle_v2_error`
 
@@ -113,12 +151,13 @@ fails, or the room/action is invalid.
 
 ### `battle_v2_log`
 
-Reserved for later public log fan-out. Current handlers keep authoritative state
-updates private via `battle_v2_update`.
+Reserved for later public log fan-out. Current handlers keep authoritative
+viewer-specific state updates private via `battle_v2_update`.
 
 ### `battle_v2_finished`
 
-Emitted to the requesting socket after a confirm or surrender produces a winner.
+Emitted to each human player in the room after a confirm, end-turn CPU response,
+or surrender produces a winner.
 
 ```json
 {

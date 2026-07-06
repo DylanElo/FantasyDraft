@@ -1,9 +1,9 @@
 """
 Flask + SocketIO multiplayer bridge for the JJK Fantasy Draft game.
 
-This file adapts the original game.py (which uses integer IDs from Telegram)
-to work with string-based browser session UUIDs. The game engine itself
-is NOT modified — this layer converts between the two ID systems.
+This file adapts the legacy integer-id game engine to work with string-based
+browser session UUIDs. The game engine itself is not modified; this layer
+converts between the two ID systems.
 """
 from flask import Flask, abort, render_template, session
 from flask_socketio import SocketIO, emit, join_room
@@ -47,6 +47,7 @@ socketio = SocketIO(app, cors_allowed_origins=CORS_ORIGINS)
 
 game_manager = GameManager()
 battle_v2_manager = BattleV2Manager()
+v2_pvp_lobbies = {}
 rate_limits = defaultdict(deque)
 CPU_V2_PLAYER_ID = "__cpu_v2__"
 V2_CPU_DRAFT_NAMES = [
@@ -278,17 +279,26 @@ def active_v2_context(data=None):
     if not player_session:
         player_session = str(uuid.uuid4())
         session["player_id"] = player_session
-    room_id = session.get("room_id") or clean_room_id(data.get("room_id", "classic-v2"))
+    requested_room_id = clean_room_id(data["room_id"]) if data.get("room_id") else None
+    room_id = requested_room_id or session.get("room_id") or "classic-v2"
     session["room_id"] = room_id
     join_room(room_id)
+    join_room(player_session)
     return room_id, player_session
 
 
-def emit_battle_v2_update(room_id: str, viewer_id: str):
-    state = battle_v2_manager.serialize_for_player(room_id, viewer_id)
-    emit("battle_v2_update", state)
-    if state.get("winner_id"):
-        emit("battle_v2_finished", {"winner_id": state["winner_id"]})
+def emit_battle_v2_update(room_id: str, viewer_id: str | None = None):
+    state = battle_v2_manager.get_state(room_id)
+    viewer_ids = [player_id for player_id in state.players if player_id != CPU_V2_PLAYER_ID]
+    if viewer_id and viewer_id not in viewer_ids and viewer_id in state.players:
+        viewer_ids.append(viewer_id)
+    if not viewer_ids and viewer_id:
+        viewer_ids = [viewer_id]
+    for target_viewer_id in viewer_ids:
+        payload = battle_v2_manager.serialize_for_player(room_id, target_viewer_id)
+        emit("battle_v2_update", payload, room=target_viewer_id)
+        if payload.get("winner_id"):
+            emit("battle_v2_finished", {"winner_id": payload["winner_id"]}, room=target_viewer_id)
 
 
 def emit_battle_v2_error(exc: Exception):
@@ -301,6 +311,24 @@ def run_battle_v2_cpu_turns(room_id: str):
         if state.winner_id or state.turn_player_id != CPU_V2_PLAYER_ID:
             return
         battle_v2_manager.take_cpu_turn(room_id, CPU_V2_PLAYER_ID)
+
+
+def battle_v2_has_cpu(room_id: str) -> bool:
+    try:
+        state = battle_v2_manager.get_state(room_id)
+    except BattleV2Error:
+        return False
+    return CPU_V2_PLAYER_ID in state.players
+
+
+def remove_v2_pvp_lobby_player(room_id: str, player_session: str) -> list[dict]:
+    lobby = v2_pvp_lobbies.get(room_id, [])
+    kept = [entry for entry in lobby if entry["id"] != player_session]
+    if kept:
+        v2_pvp_lobbies[room_id] = kept
+    else:
+        v2_pvp_lobbies.pop(room_id, None)
+    return kept
 
 
 def allow_event(event_name: str, limit: int = 30, window_seconds: int = 5) -> bool:
@@ -612,6 +640,7 @@ def on_join(data):
     player_name = clean_player_name(data.get('player_name', ''), f"Player_{player_session[:4]}")
 
     join_room(room_id)
+    join_room(player_session)
     session['room_id'] = room_id
 
     # Map string session -> int id
@@ -868,6 +897,72 @@ def on_battle_v2_start_classic(data=None):
         emit_battle_v2_error(exc)
 
 
+@socketio.on('battle_v2_join_pvp')
+def on_battle_v2_join_pvp(data=None):
+    if not allow_event("battle_v2_join_pvp", limit=10, window_seconds=10):
+        return
+    data = data or {}
+    context = active_v2_context(data)
+    if not context:
+        return
+    room_id, player_session = context
+    player_name = clean_player_name(data.get("player_name", ""), f"Player_{player_session[:4]}")
+    player_team = clean_v2_team(
+        data.get("player_team") or data.get("team"),
+        ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"],
+    )
+    try:
+        existing_state = battle_v2_manager.rooms.get(room_id)
+        if existing_state:
+            if player_session not in existing_state.players:
+                raise BattleV2Error("Battle v2 room already started.")
+            emit_battle_v2_update(room_id, player_session)
+            return
+
+        lobby = v2_pvp_lobbies.setdefault(room_id, [])
+        lobby = [entry for entry in lobby if entry["id"] != player_session]
+        lobby.append({"id": player_session, "name": player_name, "team": player_team})
+        v2_pvp_lobbies[room_id] = lobby[:2]
+
+        if len(v2_pvp_lobbies[room_id]) < 2:
+            emit(
+                "battle_v2_lobby",
+                {
+                    "room_id": room_id,
+                    "status": "waiting",
+                    "players": [{"id": entry["id"], "name": entry["name"]} for entry in v2_pvp_lobbies[room_id]],
+                },
+                room=player_session,
+            )
+            return
+
+        battle_v2_manager.start_classic_match(room_id, v2_pvp_lobbies.pop(room_id))
+        emit_battle_v2_update(room_id, player_session)
+    except BattleV2Error as exc:
+        emit_battle_v2_error(exc)
+
+
+@socketio.on('battle_v2_leave_pvp')
+def on_battle_v2_leave_pvp(data=None):
+    if not allow_event("battle_v2_leave_pvp", limit=20, window_seconds=10):
+        return
+    data = data or {}
+    context = active_v2_context(data)
+    if not context:
+        return
+    room_id, player_session = context
+    kept = remove_v2_pvp_lobby_player(room_id, player_session)
+    emit(
+        "battle_v2_lobby",
+        {
+            "room_id": room_id,
+            "status": "cancelled",
+            "players": [{"id": entry["id"], "name": entry["name"]} for entry in kept],
+        },
+        room=player_session,
+    )
+
+
 @socketio.on('battle_v2_submit_plan')
 def on_battle_v2_submit_plan(data=None):
     if not allow_event("battle_v2_submit_plan", limit=45, window_seconds=5):
@@ -915,7 +1010,8 @@ def on_battle_v2_confirm_queue(data=None):
     room_id, player_session = context
     try:
         battle_v2_manager.confirm_queue(room_id, player_session)
-        run_battle_v2_cpu_turns(room_id)
+        if battle_v2_has_cpu(room_id):
+            run_battle_v2_cpu_turns(room_id)
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
         emit_battle_v2_error(exc)
@@ -967,7 +1063,8 @@ def on_battle_v2_end_turn(data=None):
     room_id, player_session = context
     try:
         battle_v2_manager.end_turn(room_id, player_session)
-        run_battle_v2_cpu_turns(room_id)
+        if battle_v2_has_cpu(room_id):
+            run_battle_v2_cpu_turns(room_id)
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
         emit_battle_v2_error(exc)
@@ -1009,10 +1106,21 @@ def on_reset_room():
         return
     int_room = str_to_int_id(room_id)
     game_manager.reset_game(int_room)
+    battle_v2_manager.rooms.pop(room_id, None)
+    battle_v2_manager.rngs.pop(room_id, None)
+    v2_pvp_lobbies.pop(room_id, None)
     if room_id in room_session_maps:
         del room_session_maps[room_id]
     session.pop('room_id', None)
     emit('room_reset', {}, room=room_id)
+
+
+@socketio.on('disconnect')
+def on_disconnect():
+    room_id = session.get('room_id')
+    player_session = session.get('player_id')
+    if room_id and player_session:
+        remove_v2_pvp_lobby_player(room_id, player_session)
 
 if __name__ == '__main__':
     socketio.run(

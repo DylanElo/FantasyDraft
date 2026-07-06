@@ -13,5 +13,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application code into the container
 COPY . .
 
-# Run main.py when the container launches
-CMD ["python", "main.py"]
+# Run the web server when the container launches
+CMD ["python", "run_server.py"]

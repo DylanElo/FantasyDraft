@@ -19,7 +19,7 @@ from jjk_bot.battle_v2.models import (
     StatusEffect,
     TargetRule,
 )
-from jjk_bot.battle_v2.resolver import ResolverError, confirm_queue, resolve_queue, validate_action, validate_queue
+from jjk_bot.battle_v2.resolver import ResolverError, confirm_queue, finish_turn, resolve_queue, validate_action, validate_queue
 
 
 def make_player(player_id, names):
@@ -207,6 +207,138 @@ def test_heal_effect_restores_target_and_respects_healing_delta():
     assert any(event.type == "heal" and event.payload["amount"] == 20 for event in events)
 
 
+def test_yuta_style_heal_can_target_invulnerable_ally():
+    state = make_state()
+    ally = state.players["p1"].team[1]
+    ally.hp = 40
+    ally.statuses.append(
+        StatusEffect(
+            "infinity",
+            "Infinity",
+            "p1",
+            0,
+            "p1",
+            1,
+            duration=2,
+            payload={"invulnerable": True},
+        )
+    )
+    rct = skill(
+        "reverse_cursed_technique",
+        target_rule=TargetRule(kind="ally", allow_self=True),
+        effects=[EffectSpec(type="heal", amount=30)],
+    )
+    state.pending_actions["p1"] = [
+        PendingAction("a1", "p1", 0, "reverse_cursed_technique", "p1", 1)
+    ]
+    state.queue_order["p1"] = ["a1"]
+
+    resolve_queue(state, "p1", {"reverse_cursed_technique": rct})
+
+    assert ally.hp == 70
+
+
+def test_enemy_harmful_skill_cannot_target_invulnerable_character():
+    state = make_state()
+    target = state.players["p2"].team[0]
+    target.statuses.append(
+        StatusEffect(
+            "infinity",
+            "Infinity",
+            "p2",
+            0,
+            "p2",
+            0,
+            duration=2,
+            payload={"invulnerable": True},
+        )
+    )
+
+    with pytest.raises(ResolverError, match="invulnerable"):
+        validate_action(
+            state,
+            PendingAction("a1", "p1", 0, "strike", "p2", 0),
+            {"strike": skill()},
+        )
+
+
+def test_status_can_explicitly_block_helpful_effects():
+    state = make_state()
+    ally = state.players["p1"].team[1]
+    ally.statuses.append(
+        StatusEffect(
+            "closed_barrier",
+            "Closed Barrier",
+            "p1",
+            0,
+            "p1",
+            1,
+            duration=2,
+            payload={"invulnerable": True, "invulnerable_to_helpful": True},
+        )
+    )
+    rct = skill(
+        "reverse_cursed_technique",
+        target_rule=TargetRule(kind="ally", allow_self=True),
+        effects=[EffectSpec(type="heal", amount=30)],
+    )
+
+    with pytest.raises(ResolverError, match="invulnerable"):
+        validate_action(
+            state,
+            PendingAction("a1", "p1", 0, "reverse_cursed_technique", "p1", 1),
+            {"reverse_cursed_technique": rct},
+        )
+
+
+def test_domain_sure_hit_bypasses_invulnerability_unless_anti_domain_converts_it():
+    state = make_state()
+    target = state.players["p2"].team[0]
+    target.statuses.append(
+        StatusEffect(
+            "infinity",
+            "Infinity",
+            "p2",
+            0,
+            "p2",
+            0,
+            duration=2,
+            payload={"invulnerable": True},
+        )
+    )
+    domain_hit = skill(
+        "domain_hit",
+        classes=[SkillClass.DOMAIN, SkillClass.INSTANT],
+        effects=[EffectSpec(type="damage", amount=30, damage_type=DamageType.SURE_HIT)],
+    )
+
+    validate_action(
+        state,
+        PendingAction("a1", "p1", 0, "domain_hit", "p2", 0),
+        {"domain_hit": domain_hit},
+    )
+
+    target.statuses.append(
+        StatusEffect(
+            "simple_domain",
+            "Simple Domain",
+            "p2",
+            0,
+            "p2",
+            0,
+            duration=2,
+            payload={"anti_domain": True},
+        )
+    )
+
+    with pytest.raises(ResolverError, match="invulnerable"):
+        validate_action(
+            state,
+            PendingAction("a2", "p1", 0, "domain_hit", "p2", 0),
+            {"domain_hit": domain_hit},
+        )
+
+
 def test_queue_validation_rejects_two_skills_from_same_caster_without_mutating():
     state = make_state()
     state.pending_actions["p1"] = [
@@ -246,6 +378,24 @@ def test_target_status_condition_and_queue_order_resolution():
     assert [event.payload["amount"] for event in damage_events] == [30, 10]
     assert target.hp == 60
     assert state.turn_player_id == "p2"
+
+
+def test_effect_log_uses_skill_display_name_and_target_name():
+    state = make_state()
+    named_skill = skill(
+        "divergent_fist",
+        effects=[EffectSpec(type="damage", amount=20, damage_type=DamageType.NORMAL)],
+    )
+    named_skill.name = "Divergent Fist"
+    state.pending_actions["p1"] = [PendingAction("a1", "p1", 0, "divergent_fist", "p2", 1)]
+    state.queue_order["p1"] = ["a1"]
+
+    events = resolve_queue(state, "p1", {"divergent_fist": named_skill})
+
+    assert any(
+        event.type == "damage" and event.message == "Divergent Fist dealt 20 damage to Sukuna"
+        for event in events
+    )
 
 
 def test_queue_validation_checks_aggregate_energy_without_mutating():
@@ -783,3 +933,84 @@ def test_punish_non_domain_status_does_not_stun_domain_skill():
     resolve_queue(state, "p1", {"domain": domain_skill})
 
     assert not any(status.id == "domain_stun" for status in caster.statuses)
+
+
+def test_default_status_duration_ticks_on_every_finished_turn():
+    state = make_state()
+    target = state.players["p2"].team[0]
+    target.statuses.append(
+        StatusEffect(
+            "burning",
+            "Burning",
+            "p1",
+            0,
+            "p2",
+            0,
+            duration=2,
+            payload={"turn_end_damage": 5},
+        )
+    )
+
+    finish_turn(state, "p1")
+
+    assert target.hp == 95
+    assert target.statuses[0].duration == 1
+
+    finish_turn(state, "p2")
+
+    assert target.hp == 90
+    assert target.statuses == []
+
+
+def test_source_turn_status_duration_only_ticks_on_source_turn():
+    state = make_state()
+    target = state.players["p2"].team[0]
+    target.statuses.append(
+        StatusEffect(
+            "ritual",
+            "Ritual",
+            "p1",
+            0,
+            "p2",
+            0,
+            duration=2,
+            payload={"duration_clock": "source_turn", "turn_end_damage": 5},
+        )
+    )
+
+    finish_turn(state, "p1")
+
+    assert target.hp == 95
+    assert target.statuses[0].duration == 1
+
+    finish_turn(state, "p2")
+
+    assert target.hp == 95
+    assert target.statuses[0].duration == 1
+
+
+def test_target_turn_status_duration_only_ticks_on_target_turn():
+    state = make_state()
+    target = state.players["p2"].team[0]
+    target.statuses.append(
+        StatusEffect(
+            "marked",
+            "Marked",
+            "p1",
+            0,
+            "p2",
+            0,
+            duration=2,
+            payload={"duration_clock": "target_turn", "turn_end_damage": 5},
+        )
+    )
+
+    finish_turn(state, "p1")
+
+    assert target.hp == 100
+    assert target.statuses[0].duration == 2
+
+    finish_turn(state, "p2")
+
+    assert target.hp == 95
+    assert target.statuses[0].duration == 1

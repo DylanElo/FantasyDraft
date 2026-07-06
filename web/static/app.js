@@ -135,16 +135,16 @@ function characterArtStyle(char) {
 }
 
 const V2_STITCH_PORTRAITS = {
-    yuji_itadori: '/static/stitch/generated/arena-yuji.jpg',
-    nobara_kugisaki: '/static/stitch/generated/arena-nobara.jpg',
-    megumi_fushiguro: '/static/stitch/generated/team-megumi.jpg',
-    satoru_gojo: '/static/stitch/generated/team-gojo.jpg',
-    ryomen_sukuna: '/static/stitch/generated/arena-sukuna.jpg',
-    mahito: '/static/stitch/generated/arena-mahito.jpg',
-    aoi_todo: '/static/stitch/generated/team-todo.jpg',
-    maki_zenin: '/static/stitch/generated/arena-nobara.jpg',
-    yuta_okkotsu: '/static/stitch/generated/team-megumi.jpg',
-    hiromi_higuruma: '/static/stitch/generated/arena-prism-curse.jpg',
+    yuji_itadori: '/static/assets/portraits/yuji-black-flash.svg',
+    nobara_kugisaki: '/static/assets/portraits/nobara-kugisaki.svg',
+    megumi_fushiguro: '/static/assets/portraits/megumi-fushiguro.svg',
+    satoru_gojo: '/static/assets/portraits/gojo-unsealed.svg',
+    ryomen_sukuna: '/static/assets/portraits/sukuna-heian-era.svg',
+    mahito: '/static/assets/portraits/mahito.svg',
+    aoi_todo: '/static/assets/portraits/aoi-todo.svg',
+    maki_zenin: '/static/assets/portraits/maki-zenin.svg',
+    yuta_okkotsu: '/static/assets/portraits/yuta-okkotsu-sendai.svg',
+    hiromi_higuruma: '/static/assets/portraits/hiromi-higuruma.svg',
 };
 
 const V2_STITCH_FALLBACK_PORTRAITS = Object.values(V2_STITCH_PORTRAITS);

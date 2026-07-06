@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 560" role="img" aria-label="Aoi Todo">
+  <defs>
+    <radialGradient id="a" cx="50%" cy="20%" r="72%">
+      <stop offset="0" stop-color="#bbf7d0" stop-opacity="0.7"/>
+      <stop offset="0.38" stop-color="#166534" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="#03140a"/>
+    </radialGradient>
+    <linearGradient id="b" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#166534" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#111827" stop-opacity="0.8"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="420" height="560" rx="34" fill="url(#a)"/>
+  <path d="M30 80 C100 28 320 28 390 80 L366 128 C286 88 134 88 54 128 Z" fill="#166534" opacity="0.28"/>
+  <circle cx="210" cy="178" r="82" fill="#0f172a" opacity="0.86"/>
+  <path d="M92 456 C112 318 150 260 210 260 C270 260 308 318 328 456 Z" fill="url(#b)"/>
+  <path d="M98 414 C138 378 282 378 322 414" fill="none" stroke="#bbf7d0" stroke-width="10" opacity="0.34"/>
+  <path d="M88 462 L332 462" stroke="#bbf7d0" stroke-width="8" stroke-linecap="round" opacity="0.34"/>
+  <path d="M72 496 L348 496" stroke="#166534" stroke-width="3" opacity="0.75"/>
+  <text x="210" y="198" text-anchor="middle" dominant-baseline="middle" font-family="Georgia, serif" font-size="74" font-weight="900" fill="#bbf7d0" filter="url(#glow)">T</text>
+  <text x="210" y="518" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800" letter-spacing="2" fill="#bbf7d0" opacity="0.9">AOI TODO</text>
+</svg>

@@ -83,9 +83,9 @@ def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
     assert 'characters_data.js?v=19' in html
     assert 'vendor/phaser.min.js?v=3.90.0' in html
     assert 'phaser-battle.js?v=4' in html
-    assert 'app.js?v=71' in html
+    assert 'app.js?v=72' in html
     assert 'style.css?v=51' in html
-    assert 'stitch-archive.css?v=7' in html
+    assert 'stitch-archive.css?v=8' in html
     assert 'stitch/archive/lobby_cursed_clash/screen.png' in html
     assert 'stitch/archive/victory_recap/screen.png' in html
     assert 'Open Cursed Clash' in html

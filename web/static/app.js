@@ -1110,49 +1110,49 @@ function v2PickerButtonHTML(character, teamKey) {
         .flatMap(skill => skill.cost || [])
         .filter(Boolean)
         .slice(0, 3);
-    const cardClass = locked
-        ? 'relative rounded-lg overflow-hidden blade-cut border border-error-container bg-surface-container-highest flex flex-col h-[260px] cursor-not-allowed opacity-60'
-        : selected
-            ? (selectedIndex === 0
-                ? 'relative rounded-lg overflow-hidden blade-cut shadow-[0_0_20px_rgba(245,158,11,0.4)] border-2 border-prestige-gold holo-shimmer bg-charcoal-plate flex flex-col h-[260px] cursor-pointer group'
-                : 'relative rounded-lg overflow-hidden blade-cut shadow-[0_0_20px_rgba(168,85,247,0.3)] border-2 border-energy-purple holo-shimmer bg-charcoal-plate flex flex-col h-[260px] cursor-pointer group')
-            : 'relative rounded-lg overflow-hidden blade-cut border border-outline-variant bg-charcoal-plate flex flex-col h-[260px] cursor-pointer group hover:border-outline transition-colors';
-    const accent = selectedIndex === 0 ? 'text-prestige-gold border-prestige-gold/50' : selected ? 'text-energy-purple border-energy-purple/50' : 'text-on-surface-variant border-outline/30';
+    const cardClass = [
+        'v2-roster-card',
+        selected ? 'is-selected' : '',
+        selectedIndex === 0 ? 'is-leader' : '',
+        locked ? 'is-locked' : '',
+        teamKey === 'enemyTeam' ? 'is-enemy-pick' : 'is-player-pick',
+    ].filter(Boolean).join(' ');
     const icon = selected ? (selectedIndex === 0 ? 'bolt' : 'swords') : 'shield';
+    const roleLabel = role.split('/')[0].trim();
     const imageClass = locked
-        ? 'absolute inset-0 w-full h-full object-cover grayscale mix-blend-luminosity'
+        ? 'v2-roster-image grayscale'
         : selected
-            ? 'absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110'
-            : 'absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-80 group-hover:opacity-100';
+            ? 'v2-roster-image'
+            : 'v2-roster-image';
     return `
       <button class="${cardClass}" type="button" data-v2-pick-team="${teamKey}" data-character-id="${esc(character.id)}" aria-pressed="${selected ? 'true' : 'false'}" ${locked ? 'disabled' : ''}>
-        <div class="absolute inset-0 bg-gradient-to-t from-obsidian-base ${locked ? 'via-error-container/20' : 'via-transparent'} to-transparent z-10"></div>
-        <div class="absolute top-2 right-2 z-20 flex flex-col gap-1">
-          <div class="w-6 h-6 bg-surface-container/80 backdrop-blur-sm border ${accent} rounded flex items-center justify-center">
-            <span class="material-symbols-outlined text-[14px] ${accent.split(' ')[0]}">${icon}</span>
-          </div>
-        </div>
-        ${locked ? `
-        <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSJ0cmFuc3BhcmVudCI+PC9yZWN0Pgo8cGF0aCBkPSJNMCA4TDggMFoiIHN0cm9rZT0iI2VmNDQ0NCIgc3Ryb2tlLXdpZHRoPSIxIiBzdHJva2Utb3BhY2l0eT0iLjIiPjwvcGF0aD4KPC9zdmc+')] z-20 pointer-events-none"></div>
-        <div class="absolute inset-0 z-30 flex items-center justify-center">
-          <div class="bg-surface-container/90 backdrop-blur-sm px-3 py-1.5 rounded blade-cut border border-blood-crimson flex items-center gap-2">
-            <span class="material-symbols-outlined text-[16px] text-blood-crimson">lock</span>
-            <span class="font-label-micro text-label-micro text-blood-crimson">SQUAD FULL</span>
-          </div>
-        </div>` : ''}
-        <div class="flex-1 relative">
+        <div class="v2-roster-art">
           ${v2ArchiveImageHTML(character, imageClass)}
+          <div class="v2-roster-vignette"></div>
+          <span class="v2-roster-icon material-symbols-outlined">${icon}</span>
+          ${locked ? '<div class="v2-roster-lock"><span class="material-symbols-outlined">lock</span><strong>FULL</strong></div>' : ''}
         </div>
-        <div class="relative z-20 p-3 ${locked ? 'bg-surface-container-highest border-t border-white/5' : 'bg-charcoal-plate/90 backdrop-blur-md border-t border-white/10'} flex flex-col gap-2">
-          <div class="flex justify-between items-center gap-2">
-            <span class="font-tactical-data text-[12px] font-bold ${selected ? accent.split(' ')[0] : 'text-on-surface'} uppercase tracking-wider truncate">${esc(character.name)}</span>
-            <span class="font-label-micro text-label-micro text-on-surface-variant">${selected ? `P${selectedIndex + 1}` : ''}</span>
+        <div class="v2-roster-copy">
+          <div class="v2-roster-name-row">
+            <strong>${esc(character.name)}</strong>
+            ${selected ? `<span>${selectedIndex === 0 ? 'Lead' : `P${selectedIndex + 1}`}</span>` : ''}
           </div>
-          <div class="font-tactical-data text-[10px] text-on-surface-variant truncate">${esc(role.split('/')[0].trim())} / ${esc(state)}</div>
-          <div class="flex items-center gap-1 ${locked ? 'opacity-50' : ''}">${v2EnergyOrbRowHTML(costPreview)}</div>
+          <small>${esc(roleLabel)} / ${esc(state)}</small>
+          <div class="v2-roster-energy">${v2EnergyOrbRowHTML(costPreview)}</div>
         </div>
-        ${selected ? '<div class="absolute inset-0 border-2 border-prestige-gold/50 z-30 pointer-events-none rounded-lg mix-blend-overlay"></div>' : ''}
       </button>`;
+}
+
+function v2SortedRosterEntries(entries, teamKey) {
+    const selected = v2State[teamKey] || [];
+    return entries.slice().sort((a, b) => {
+        const aIndex = selected.indexOf(a.id);
+        const bIndex = selected.indexOf(b.id);
+        if (aIndex >= 0 && bIndex >= 0) return aIndex - bIndex;
+        if (aIndex >= 0) return -1;
+        if (bIndex >= 0) return 1;
+        return String(a.name || a.id).localeCompare(String(b.name || b.id));
+    });
 }
 
 function renderV2Picker() {
@@ -1164,26 +1164,26 @@ function renderV2Picker() {
     document.getElementById('v2-picker')?.classList.toggle('pvp', v2State.matchMode === 'pvp');
     document.querySelectorAll('[data-v2-mode]').forEach(button => {
         const active = button.dataset.v2Mode === v2State.matchMode;
-        button.className = active
-            ? 'h-10 rounded-lg border border-primary/30 bg-primary-container/20 text-primary font-tactical-data text-[11px] uppercase'
-            : 'h-10 rounded-lg border border-outline-variant bg-surface-container/60 text-on-surface-variant font-tactical-data text-[11px] uppercase';
+        button.className = `v2-mode-button${active ? ' is-active' : ''}`;
     });
     const pickerCount = document.getElementById('v2-picker-count');
     if (pickerCount) pickerCount.textContent = `${v2State.playerTeam.length}/3`;
-    playerPicker.innerHTML = entries.map(character => v2PickerButtonHTML(character, 'playerTeam')).join('');
+    playerPicker.innerHTML = v2SortedRosterEntries(entries, 'playerTeam')
+        .map(character => v2PickerButtonHTML(character, 'playerTeam')).join('');
     const enemyColumn = document.getElementById('v2-enemy-picker-column');
     const enemyLabel = document.getElementById('v2-enemy-picker-label');
     enemyColumn?.classList.toggle('hidden', v2State.matchMode === 'pvp');
     if (enemyLabel) enemyLabel.textContent = v2State.matchMode === 'pvp' ? 'OPPONENT STARTERS' : 'CPU STARTERS';
     enemyPicker.innerHTML = v2State.matchMode === 'pvp'
         ? ''
-        : entries.map(character => v2PickerButtonHTML(character, 'enemyTeam')).join('');
+        : v2SortedRosterEntries(entries, 'enemyTeam')
+            .map(character => v2PickerButtonHTML(character, 'enemyTeam')).join('');
     document.getElementById('v2-player-summary').innerHTML = v2State.playerTeam.map((id, index) =>
-        `<span class="bg-charcoal-plate/80 border border-primary/20 text-primary rounded px-2 py-1 font-tactical-data text-[10px] uppercase">${index + 1}. ${esc(byId[id]?.name || id)}</span>`
-    ).join('');
+        `<span class="v2-draft-chip is-player">${index + 1}. ${esc(byId[id]?.name || id)}</span>`
+    ).join('') || '<span class="v2-draft-chip is-empty">Choose 3 fighters</span>';
     document.getElementById('v2-enemy-summary').innerHTML = v2State.enemyTeam.map((id, index) =>
-        `<span class="bg-charcoal-plate/80 border border-blood-crimson/20 text-blood-crimson rounded px-2 py-1 font-tactical-data text-[10px] uppercase">${index + 1}. ${esc(byId[id]?.name || id)}</span>`
-    ).join('');
+        `<span class="v2-draft-chip is-enemy">${index + 1}. ${esc(byId[id]?.name || id)}</span>`
+    ).join('') || '<span class="v2-draft-chip is-empty">Choose CPU trio</span>';
     renderV2SelectionDock();
     const lobbyNote = document.getElementById('v2-lobby-note');
     if (lobbyNote) {
@@ -1243,6 +1243,13 @@ function renderV2SelectionDock() {
         <span>${esc(modeLabel)}</span>
         <span>${v2State.playerTeam.length}/3 locked</span>
       </div>`;
+}
+
+function v2SetStartButtonLabel(button, label) {
+    if (!button) return;
+    button.innerHTML = `
+      <span class="v2-start-button-label">${esc(label)}</span>
+      <span class="v2-start-button-glow"></span>`;
 }
 
 function v2StatusHTML(character) {
@@ -1645,12 +1652,14 @@ function v2SkillButtonHTML(skill, character, disabled) {
     const effect = (skill.effects || []).map(v2EffectLabel).filter(Boolean)[0] || v2TargetLabel(skill);
     const skillName = String(skill.name || '?').toUpperCase();
     const title = skillName.length > 18 ? `${skillName.slice(0, 16)}...` : skillName;
-    const activeClass = selected
-        ? 'relative bg-charcoal-plate border border-primary/50 rounded-lg p-3 text-left overflow-hidden foil-sweep shadow-[0_0_15px_rgba(210,187,255,0.2)] hover:shadow-[0_0_20px_rgba(210,187,255,0.4)] transition-all flex flex-col justify-between h-24'
-        : 'relative bg-surface-variant border border-outline-variant/50 rounded-lg p-3 text-left flex flex-col justify-between h-24 hover:border-white/30 transition-colors';
-    const disabledClass = cooldown > 0
-        ? 'relative bg-obsidian-base border border-surface-container-high rounded-lg p-3 text-left flex flex-col justify-center items-center h-24 opacity-60 cursor-not-allowed'
-        : 'relative bg-charcoal-plate border border-error/30 rounded-lg p-3 text-left overflow-hidden h-24 cursor-not-allowed';
+    const tone = ['red', 'blue', 'green', 'white', 'black'].includes(cost[0]) ? cost[0] : 'neutral';
+    const cardClass = [
+        'v2-skill-card',
+        `v2-skill-card--${tone}`,
+        selected ? 'is-selected' : '',
+        isDisabled ? 'is-disabled' : '',
+        cooldown > 0 ? 'is-cooldown' : '',
+    ].filter(Boolean).join(' ');
     const blockedLabel = cooldown > 0
         ? `${cooldown} TURNS`
         : !fit.canFit
@@ -1659,24 +1668,15 @@ function v2SkillButtonHTML(skill, character, disabled) {
                 ? 'NO TARGET'
                 : 'LOCKED';
     return `
-      <button class="${isDisabled ? disabledClass : activeClass}" type="button" data-skill-id="${esc(slotId)}" data-effective-skill-id="${esc(skill.effective_skill_id || skill.id)}" ${reason ? `title="${esc(reason)}"` : ''} ${isDisabled ? 'disabled' : ''}>
-        ${isDisabled && cooldown <= 0 ? '<div class="absolute inset-0 pointer-events-none opacity-20" style="background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(239,68,68,0.5) 10px, rgba(239,68,68,0.5) 11px);"></div>' : ''}
-        ${isDisabled && cooldown > 0 ? `
-          <span class="material-symbols-outlined text-outline text-3xl mb-1">hourglass_empty</span>
-          <span class="font-tactical-data text-lg text-outline">${esc(blockedLabel)}</span>
-          <div class="absolute top-2 left-2 font-headline-lg-mobile text-[12px] text-outline-variant">${esc(title)}</div>
-        ` : `
-          <div class="flex justify-between items-start ${isDisabled ? 'opacity-50' : ''}">
-            <span class="font-headline-lg-mobile text-[16px] ${selected ? 'text-primary' : 'text-on-surface'}">${esc(title)}</span>
-            <div class="flex gap-1">${cost.length ? cost.map(color => v2EnergyOrbHTML(color)).join('') : '<span class="font-tactical-data text-[10px] text-on-surface-variant">FREE</span>'}</div>
-          </div>
-          <div class="flex justify-between items-end gap-2 ${isDisabled ? 'opacity-50' : ''}">
-            <span class="bg-primary/20 text-primary font-tactical-data text-[10px] px-1.5 py-0.5 rounded truncate">${esc(primaryClass)}</span>
-            <span class="font-tactical-data text-xs text-on-surface-variant truncate">${esc(effect)}</span>
-          </div>
-          ${replacementNote ? `<div class="absolute bottom-1 left-3 font-tactical-data text-[8px] text-energy-cyan">${esc(replacementNote)}</div>` : ''}
-        `}
-        ${isDisabled && cooldown <= 0 ? `<div class="absolute inset-0 flex items-center justify-center"><span class="font-tactical-data text-sm text-error bg-obsidian-base/80 px-2 py-1 rounded">${esc(blockedLabel)}</span></div>` : ''}
+      <button class="${cardClass}" type="button" data-skill-id="${esc(slotId)}" data-effective-skill-id="${esc(skill.effective_skill_id || skill.id)}" ${reason ? `title="${esc(reason)}"` : ''} ${isDisabled ? 'disabled' : ''}>
+        <div class="v2-skill-card-head">
+          <span>${esc(primaryClass)}</span>
+          <div>${cost.length ? cost.map(color => v2EnergyOrbHTML(color)).join('') : '<small>FREE</small>'}</div>
+        </div>
+        <strong>${esc(title)}</strong>
+        <p>${esc(effect)}</p>
+        ${replacementNote ? `<small class="v2-skill-replacement">${esc(replacementNote)}</small>` : ''}
+        ${isDisabled ? `<div class="v2-skill-blocked"><span class="material-symbols-outlined">${cooldown > 0 ? 'hourglass_empty' : 'block'}</span><strong>${esc(blockedLabel)}</strong></div>` : ''}
       </button>`;
 }
 
@@ -1926,15 +1926,16 @@ function v2CommandAvatarHTML(character, slot, selectedSlot) {
     const queued = v2State.actions.some(action => Number(action.caster_slot) === slot);
     const active = Number(selectedSlot) === slot;
     const dead = !character?.alive;
-    const avatarClass = active
-        ? 'w-12 h-12 rounded-full border-2 border-prestige-gold bg-surface-container shadow-[0_0_15px_rgba(245,158,11,0.4)] overflow-hidden relative'
-        : queued || dead
-            ? 'w-10 h-10 rounded-full border border-outline-variant opacity-50 grayscale bg-surface-container overflow-hidden relative'
-            : 'w-10 h-10 rounded-full border border-outline-variant bg-surface-container overflow-hidden relative';
+    const avatarClass = [
+        'v2-command-avatar',
+        active ? 'is-active' : '',
+        queued ? 'is-queued' : '',
+        dead ? 'is-dead' : '',
+    ].filter(Boolean).join(' ');
     return `
       <button class="${avatarClass}" type="button" data-v2-role="caster" data-v2-side="mine" data-slot="${slot}" ${dead ? 'disabled' : ''} title="${esc(character?.name || `Slot ${slot + 1}`)}">
-        ${queued && !active ? '<div class="absolute inset-0 bg-black/40 flex items-center justify-center font-tactical-data text-xs text-white z-10">DONE</div>' : ''}
-        ${v2ArchiveImageHTML(character, 'w-full h-full object-cover')}
+        ${v2ArchiveImageHTML(character, 'v2-command-avatar-img')}
+        <span>${queued && !active ? 'Q' : slot + 1}</span>
       </button>`;
 }
 
@@ -1998,9 +1999,10 @@ function renderClassicV2() {
         }
         if (startButton) {
             startButton.disabled = v2State.lobbyStatus?.status === 'waiting';
-            startButton.textContent = v2State.matchMode === 'pvp'
+            const startLabel = v2State.matchMode === 'pvp'
                 ? (v2State.lobbyStatus?.status === 'waiting' ? 'Waiting for Opponent' : 'Open PvP Domain')
                 : 'Ignite Battle';
+            v2SetStartButtonLabel(startButton, startLabel);
         }
         if (newMatchButton) {
             newMatchButton.disabled = false;
@@ -2062,11 +2064,11 @@ function renderClassicV2() {
         ? selected.statuses.slice(0, 2).map(status => status.name).join(', ')
         : commandHint;
     document.getElementById('v2-selected-panel').innerHTML = selected
-        ? `<div class="flex justify-center gap-4 py-3 px-margin-safe border-b border-white/5 relative">
+        ? `<div class="v2-command-avatar-row">
              ${commandAvatars}
-             <div class="absolute right-4 top-1/2 -translate-y-1/2 text-right pointer-events-none">
-               <div class="font-tactical-data text-[10px] text-prestige-gold uppercase">${selectedLocked ? 'Queued' : 'Lead'}</div>
-               <div class="font-tactical-data text-[9px] text-on-surface-variant">${v2State.actions.length}/${v2QueueLimit(me)} queue</div>
+             <div class="v2-command-queue-readout">
+               <strong>${selectedLocked ? 'Queued' : 'Lead'}</strong>
+               <span>${v2State.actions.length}/${v2QueueLimit(me)} queue</span>
              </div>
            </div>
            <div class="v2-command-focus">
@@ -2080,16 +2082,17 @@ function renderClassicV2() {
                <div><i style="width:${selectedHpPct}%"></i></div>
              </div>
            </div>
-           <div class="flex-1 p-4 grid grid-cols-2 gap-3 pb-6 v2-skill-deck">${v2SkillsFor(selected).map(skill =>
+           <div class="v2-skill-deck">${v2SkillsFor(selected).map(skill =>
             v2SkillButtonHTML(skill, selected, !isMyTurn || v2QueuedSkillIds().has(skill.original_slot_id || skill.id) || selectedLocked)
         ).join('')}</div>`
-        : `<div class="flex justify-center gap-4 py-3 px-margin-safe border-b border-white/5 relative">
+        : `<div class="v2-command-avatar-row">
              ${commandAvatars}
            </div>
-           <div class="p-4 pb-6">
-             <div class="relative bg-surface-variant border border-outline-variant/50 rounded-lg p-3 text-left flex flex-col justify-center h-24">
-               <span class="font-headline-lg-mobile text-[16px] text-on-surface">SELECT FIGHTER</span>
-               <span class="font-tactical-data text-xs text-on-surface-variant">${esc(commandHint)}</span>
+           <div class="v2-command-empty">
+             <div>
+               <span>Select Fighter</span>
+               <strong>Awaiting command</strong>
+               <small>${esc(commandHint)}</small>
              </div>
            </div>`;
     const queuePanel = document.getElementById('v2-queue-panel');

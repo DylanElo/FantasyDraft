@@ -169,13 +169,434 @@ body:has(#classic-v2.active.v2-battle-active) .btn-sfx-toggle {
   display: none;
 }
 
+.v2-draft-main {
+  gap: 12px !important;
+  margin-bottom: 190px !important;
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+  padding-bottom: 18px !important;
+}
+
+.v2-draft-header {
+  gap: 12px;
+  align-items: flex-start !important;
+}
+
+.v2-draft-header h2 {
+  font-size: 23px !important;
+  line-height: 1.05 !important;
+}
+
+.v2-draft-header p {
+  max-width: 270px;
+  font-size: 13px !important;
+  line-height: 1.35 !important;
+}
+
+.v2-mode-tabs {
+  gap: 8px !important;
+}
+
+.v2-mode-button {
+  height: 40px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  background: rgba(17,18,24,0.78);
+  color: #ccc3d8;
+  font: 800 11px/1 "JetBrains Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.v2-mode-button.is-active {
+  border-color: rgba(34,211,238,0.45);
+  background: linear-gradient(135deg, rgba(34,211,238,0.14), rgba(168,85,247,0.12));
+  color: #22d3ee;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 0 20px rgba(34,211,238,0.12);
+}
+
+.v2-draft-list {
+  gap: 14px !important;
+}
+
+.v2-draft-section-title {
+  margin-bottom: 7px !important;
+  color: #fff !important;
+  letter-spacing: 0.12em !important;
+}
+
+.v2-picker-summary {
+  min-height: 24px;
+  margin-bottom: 8px !important;
+  gap: 5px !important;
+}
+
+.v2-draft-chip {
+  max-width: 100%;
+  padding: 5px 7px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 7px;
+  background: rgba(17,18,24,0.84);
+  color: #ccc3d8;
+  font: 800 9px/1 "JetBrains Mono", monospace;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.v2-draft-chip.is-player {
+  border-color: rgba(34,211,238,0.24);
+  color: #22d3ee;
+}
+
+.v2-draft-chip.is-enemy {
+  border-color: rgba(239,68,68,0.24);
+  color: #fca5a5;
+}
+
+.v2-draft-chip.is-empty {
+  color: #8f879d;
+}
+
+.v2-roster-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.v2-roster-card {
+  position: relative;
+  min-height: 176px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  background: rgba(17,18,24,0.88);
+  color: #fff;
+  text-align: left;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 10px 26px rgba(0,0,0,0.32);
+}
+
+.v2-roster-card:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+.v2-roster-card.is-selected {
+  border-color: rgba(168,85,247,0.72);
+  box-shadow: 0 0 0 1px rgba(168,85,247,0.28), 0 0 26px rgba(168,85,247,0.20);
+}
+
+.v2-roster-card.is-leader {
+  border-color: rgba(245,158,11,0.78);
+  box-shadow: 0 0 0 1px rgba(245,158,11,0.28), 0 0 26px rgba(245,158,11,0.20);
+}
+
+.v2-roster-card.is-locked {
+  opacity: 0.58;
+}
+
+.v2-roster-art {
+  position: relative;
+  height: 112px;
+  overflow: hidden;
+  background: #07071a;
+}
+
+.v2-roster-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.02);
+}
+
+.v2-roster-card:not(.is-locked):hover .v2-roster-image {
+  transform: scale(1.06);
+}
+
+.v2-roster-vignette {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 35%, rgba(4,4,13,0.92));
+}
+
+.v2-roster-icon {
+  position: absolute;
+  right: 7px;
+  top: 7px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 7px;
+  background: rgba(4,4,13,0.72);
+  color: #ccc3d8;
+  font-size: 16px !important;
+}
+
+.v2-roster-card.is-selected .v2-roster-icon {
+  color: #d2bbff;
+  border-color: rgba(168,85,247,0.55);
+}
+
+.v2-roster-card.is-leader .v2-roster-icon {
+  color: #f59e0b;
+  border-color: rgba(245,158,11,0.55);
+}
+
+.v2-roster-lock {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  background: rgba(4,4,13,0.34);
+  color: #fca5a5;
+  font: 900 11px/1 "JetBrains Mono", monospace;
+  text-transform: uppercase;
+}
+
+.v2-roster-lock span {
+  font-size: 19px !important;
+}
+
+.v2-roster-copy {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px;
+  min-width: 0;
+}
+
+.v2-roster-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.v2-roster-name-row strong {
+  min-width: 0;
+  color: #fff;
+  font: 900 11px/1.05 "JetBrains Mono", monospace;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v2-roster-name-row span {
+  flex: 0 0 auto;
+  color: #f59e0b;
+  font: 900 9px/1 "JetBrains Mono", monospace;
+  text-transform: uppercase;
+}
+
+.v2-roster-copy small {
+  color: #ccc3d8;
+  font: 700 9px/1.15 "JetBrains Mono", monospace;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.v2-roster-energy {
+  display: flex;
+  gap: 4px;
+}
+
+.v2-draft-footer {
+  gap: 10px !important;
+  padding-bottom: 10px !important;
+}
+
+.v2-selection-dock {
+  padding: 10px !important;
+  border-radius: 8px !important;
+  background: rgba(17,18,24,0.94) !important;
+}
+
+.v2-dock-head {
+  font-size: 10px !important;
+}
+
+.v2-dock-body {
+  gap: 8px !important;
+}
+
+.v2-dock-team {
+  padding: 7px !important;
+}
+
+.v2-dock-slot {
+  height: 42px;
+  aspect-ratio: auto;
+}
+
+.v2-dock-mode {
+  font-size: 9px !important;
+}
+
+.v2-start-button {
+  height: 50px !important;
+  border-radius: 8px !important;
+}
+
+.v2-start-button-label {
+  position: absolute;
+  inset: 2px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  background: #04040d;
+  color: transparent;
+  background-clip: text;
+  -webkit-background-clip: text;
+  background-image: linear-gradient(90deg, #22d3ee, #d2bbff, #f59e0b);
+  font: 900 18px/1 "Cinzel", serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.v2-start-button-glow {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(34,211,238,0.22), rgba(168,85,247,0.28), rgba(245,158,11,0.18));
+  filter: blur(14px);
+}
+
 #v2-command-zone {
-  max-height: min(42vh, 320px);
+  height: min(31vh, 264px);
+  min-height: 252px;
+  max-height: 264px;
+  border-radius: 8px 8px 0 0 !important;
+  background: rgba(10,10,22,0.98) !important;
+  box-shadow: 0 -18px 42px rgba(0,0,0,0.82), inset 0 1px 0 rgba(255,255,255,0.05) !important;
 }
 
 #v2-selected-panel {
+  height: 100%;
   min-height: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.v2-command-actions {
+  top: -50px !important;
+  right: 12px !important;
+  gap: 8px !important;
+  padding: 0 !important;
+}
+
+.v2-command-actions button {
+  min-height: 40px;
+  border-radius: 8px !important;
+  padding: 0 12px !important;
+}
+
+#v2-battle-view main {
+  padding-top: 112px !important;
+  padding-bottom: 268px !important;
+}
+
+#v2-enemy-team {
+  height: 136px !important;
+}
+
+#v2-my-team {
+  height: 140px !important;
+}
+
+#v2-center-stage {
+  flex: 0 0 104px !important;
+  min-height: 104px !important;
+  margin-top: 8px !important;
+  margin-bottom: 8px !important;
+}
+
+#v2-center-stage .font-display-hero {
+  font-size: 64px !important;
+}
+
+.v2-command-avatar-row {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.v2-command-avatar {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 8px;
+  background: rgba(17,18,24,0.92);
+}
+
+.v2-command-avatar.is-active {
+  width: 44px;
+  height: 44px;
+  border-color: rgba(245,158,11,0.78);
+  box-shadow: 0 0 20px rgba(245,158,11,0.28);
+}
+
+.v2-command-avatar.is-queued,
+.v2-command-avatar.is-dead {
+  opacity: 0.55;
+  filter: grayscale(0.85);
+}
+
+.v2-command-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.v2-command-avatar span {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  display: grid;
+  place-items: center;
+  min-width: 15px;
+  height: 15px;
+  border-radius: 5px;
+  background: rgba(4,4,13,0.84);
+  color: #fff;
+  font: 900 8px/1 "JetBrains Mono", monospace;
+}
+
+.v2-command-queue-readout {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  pointer-events: none;
+  font-family: "JetBrains Mono", monospace;
+  text-transform: uppercase;
+}
+
+.v2-command-queue-readout strong {
+  color: #f59e0b;
+  font-size: 9px;
+}
+
+.v2-command-queue-readout span {
+  color: #ccc3d8;
+  font-size: 8px;
 }
 
 .v2-dock-head,
@@ -278,9 +699,9 @@ body:has(#classic-v2.active.v2-battle-active) .btn-sfx-toggle {
   position: absolute;
   left: 12px;
   right: 12px;
-  bottom: calc(100% + 66px);
+  bottom: calc(100% + 8px);
   z-index: 70;
-  max-height: min(30vh, 190px);
+  max-height: min(28vh, 184px);
   overflow-y: auto;
   flex-direction: column;
   gap: 8px;
@@ -395,7 +816,7 @@ body:has(#classic-v2.active.v2-battle-active) .btn-sfx-toggle {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
-  padding: 10px 16px 8px;
+  padding: 8px 14px;
   border-bottom: 1px solid rgba(255,255,255,0.06);
   background: linear-gradient(90deg, rgba(168,85,247,0.10), transparent 60%);
 }
@@ -416,13 +837,13 @@ body:has(#classic-v2.active.v2-battle-active) .btn-sfx-toggle {
 
 .v2-command-focus-copy span {
   color: #f59e0b;
-  font-size: 9px;
+  font-size: 8px;
   letter-spacing: 0.08em;
 }
 
 .v2-command-focus-copy strong {
   color: #fff;
-  font: 800 15px/1.1 "Cinzel", serif;
+  font: 800 14px/1.05 "Cinzel", serif;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -430,7 +851,7 @@ body:has(#classic-v2.active.v2-battle-active) .btn-sfx-toggle {
 
 .v2-command-focus-copy small {
   color: #ccc3d8;
-  font-size: 9px;
+  font-size: 8px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -444,7 +865,7 @@ body:has(#classic-v2.active.v2-battle-active) .btn-sfx-toggle {
   display: block;
   margin-bottom: 4px;
   color: #22c55e;
-  font-size: 10px;
+  font-size: 9px;
   text-align: right;
 }
 
@@ -460,6 +881,173 @@ body:has(#classic-v2.active.v2-battle-active) .btn-sfx-toggle {
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, #22c55e, #a855f7);
+}
+
+.v2-skill-deck {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(54px, 1fr);
+  gap: 6px;
+  padding: 7px 12px 8px;
+}
+
+.v2-skill-card {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 3px;
+  padding: 7px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-left-width: 3px;
+  border-radius: 8px;
+  background: rgba(17,18,24,0.92);
+  color: #fff;
+  text-align: left;
+}
+
+.v2-skill-card--red { border-left-color: #ef4444; }
+.v2-skill-card--blue { border-left-color: #22d3ee; }
+.v2-skill-card--green { border-left-color: #d2bbff; }
+.v2-skill-card--white { border-left-color: #fff; }
+.v2-skill-card--black { border-left-color: #6b7280; }
+.v2-skill-card--neutral { border-left-color: #f59e0b; }
+
+.v2-skill-card.is-selected {
+  border-color: rgba(210,187,255,0.65);
+  box-shadow: 0 0 22px rgba(168,85,247,0.24);
+}
+
+.v2-skill-card.is-disabled {
+  opacity: 0.54;
+  cursor: not-allowed;
+}
+
+.v2-skill-card-head {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.v2-skill-card-head > span,
+.v2-skill-card-head small,
+.v2-skill-card p,
+.v2-skill-replacement {
+  font-family: "JetBrains Mono", monospace;
+  text-transform: uppercase;
+}
+
+.v2-skill-card-head > span {
+  min-width: 0;
+  color: #d2bbff;
+  font-size: 8px;
+  font-weight: 900;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v2-skill-card-head > div {
+  display: flex;
+  gap: 3px;
+  flex: 0 0 auto;
+}
+
+.v2-skill-card-head small {
+  color: #ccc3d8;
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.v2-skill-card strong {
+  color: #fff;
+  font: 900 11px/1.02 "Cinzel", serif;
+  text-transform: uppercase;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.v2-skill-card p {
+  margin: 0;
+  color: #ccc3d8;
+  font-size: 8px;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.v2-skill-replacement {
+  color: #22d3ee;
+  font-size: 8px;
+}
+
+.v2-skill-blocked {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  gap: 3px;
+  background: rgba(4,4,13,0.78);
+  color: #fca5a5;
+  font: 900 10px/1 "JetBrains Mono", monospace;
+  text-transform: uppercase;
+}
+
+.v2-skill-blocked span {
+  font-size: 18px !important;
+}
+
+.v2-command-empty {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+}
+
+.v2-command-empty > div {
+  width: 100%;
+  min-height: 92px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  padding: 14px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(168,85,247,0.12), rgba(34,211,238,0.06));
+}
+
+.v2-command-empty span,
+.v2-command-empty small {
+  font-family: "JetBrains Mono", monospace;
+  text-transform: uppercase;
+}
+
+.v2-command-empty span {
+  color: #22d3ee;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.v2-command-empty strong {
+  color: #fff;
+  font: 900 18px/1 "Cinzel", serif;
+  text-transform: uppercase;
+}
+
+.v2-command-empty small {
+  color: #ccc3d8;
+  font-size: 10px;
+  line-height: 1.35;
 }
 
 #v2-result-view.is-defeat #v2-result-title {
@@ -669,13 +1257,14 @@ body:has(#classic-v2.active.v2-battle-active) .btn-sfx-toggle {
 
 @media (max-height: 760px) {
   #v2-command-zone {
-    height: 224px !important;
-    max-height: 224px !important;
+    height: 252px !important;
+    min-height: 252px !important;
+    max-height: 252px !important;
   }
 
   #v2-battle-view main {
     padding-top: 116px !important;
-    padding-bottom: 224px !important;
+    padding-bottom: 252px !important;
   }
 
   #v2-enemy-team {
@@ -692,14 +1281,26 @@ body:has(#classic-v2.active.v2-battle-active) .btn-sfx-toggle {
     min-height: 64px !important;
   }
 
-  #v2-selected-panel > .grid {
-    gap: 0.5rem !important;
-    padding: 0.5rem 1rem 0.75rem !important;
+  .v2-command-avatar-row {
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+  }
+
+  .v2-command-focus {
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+  }
+
+  .v2-skill-deck {
+    gap: 5px !important;
+    padding: 6px 10px 7px !important;
+    grid-auto-rows: minmax(50px, 1fr) !important;
   }
 
   #v2-selected-panel [data-skill-id] {
-    height: 3.75rem !important;
-    padding: 0.5rem !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 6px !important;
     overflow: hidden;
   }
 

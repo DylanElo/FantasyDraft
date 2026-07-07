@@ -821,10 +821,11 @@ const v2State = {
     queueSubmitting: false,
     convertSource: 'green',
     convertTarget: 'red',
-    playerTeam: ['yuji_itadori', 'nobara_kugisaki', 'megumi_fushiguro'],
-    enemyTeam: ['satoru_gojo', 'ryomen_sukuna', 'mahito'],
+    playerTeam: FIRST_CREATION?.presets?.story_tutorial || ['yuji_itadori', 'megumi_fushiguro', 'nobara_kugisaki'],
+    enemyTeam: FIRST_CREATION?.presets?.jjk0_beginner_special || ['yuta_okkotsu_jjk0', 'maki_zenin', 'toge_inumaki'],
     matchMode: 'cpu',
     lobbyStatus: null,
+    detailCharacterId: null,
 };
 
 function setV2UiScreen(screen) {
@@ -1110,8 +1111,29 @@ function v2TeamSkillHasTargets(player, skill) {
     return v2TeamTargetSlots(player, skill).length >= (rule.min_targets || 1);
 }
 
+function v2FirstCreationRoster() {
+    return FIRST_CREATION?.roster || BATTLE_V2_STARTER_ROSTER || {};
+}
+
 function v2RosterEntries() {
-    return Object.values(BATTLE_V2_STARTER_ROSTER || {});
+    return Object.values(v2FirstCreationRoster());
+}
+
+function v2ApplyPreset(presetName, teamKey = 'playerTeam') {
+    const team = FIRST_CREATION?.presets?.[presetName];
+    if (!Array.isArray(team) || team.length !== 3) return;
+    v2State[teamKey] = team.slice(0, 3);
+    renderClassicV2();
+}
+
+function v2PresetButtonsHTML(teamKey = 'playerTeam') {
+    const presets = FIRST_CREATION?.presets || {};
+    return Object.entries(presets).map(([name, team]) => {
+        const active = Array.isArray(team) && team.join('|') === (v2State[teamKey] || []).join('|');
+        const label = name.replace(/_/g, ' ');
+        const names = team.map(id => v2FirstCreationRoster()?.[id]?.name || id).join(' / ');
+        return `<button class="v2-mode-button v2-preset-card${active ? ' is-active' : ''}" type="button" data-v2-preset="${esc(name)}" data-v2-preset-team="${esc(teamKey)}"><strong>${esc(label)}</strong><span>${esc(names)}</span></button>`;
+    }).join('');
 }
 
 function v2PickerButtonHTML(character, teamKey) {
@@ -1124,6 +1146,8 @@ function v2PickerButtonHTML(character, teamKey) {
         .flatMap(skill => skill.cost || [])
         .filter(Boolean)
         .slice(0, 3);
+    const firstSkill = (character.skills || [])[0] || {};
+    const difficulty = character.difficulty || 'Medium';
     const cardClass = [
         'v2-roster-card',
         'blade-cut',
@@ -1154,9 +1178,86 @@ function v2PickerButtonHTML(character, teamKey) {
             ${selected ? `<span>${selectedIndex === 0 ? 'Lead' : `P${selectedIndex + 1}`}</span>` : ''}
           </div>
           <small>${esc(roleLabel)} / ${esc(state)}</small>
+          <div class="v2-roster-meta"><span>${esc(difficulty)}</span><span>${esc(firstSkill.name || 'Skill Kit')}</span></div>
+          <span class="v2-card-detail-hint">Tap to select · details update below</span>
+          <p class="v2-roster-skill-preview">${esc(firstSkill.text || 'Readable starter kit.')}</p>
           <div class="v2-roster-energy">${v2EnergyOrbRowHTML(costPreview)}</div>
         </div>
       </button>`;
+}
+
+
+function v2MissionRoadmapHTML() {
+    const missions = FIRST_CREATION?.missions || [];
+    if (!missions.length) return '';
+    const progress = v2State.state?.first_creation_progress;
+    const progressById = new Map((progress?.missions || []).map(mission => [mission.id, mission]));
+    return `
+      <div class="v2-mission-head">
+        <span class="stitch-label">Mission Unlocks</span>
+        <strong>The apocalypse comes later</strong>
+      </div>
+      <div class="v2-mission-list">
+        ${missions.slice(0, 4).map(mission => {
+            const tracked = progressById.get(mission.id) || {};
+            const status = tracked.status || 'available';
+            const objectives = tracked.objectives || (mission.objectives || []).map(label => ({ label, complete: false, current: 0, target: 1 }));
+            const completeCount = objectives.filter(objective => objective.complete).length;
+            return `
+          <article class="v2-mission-card is-${esc(status)}">
+            <div class="v2-mission-card-head">
+              <strong>${esc(mission.title || mission.id)}</strong>
+              <span>${status === 'complete' ? 'Complete' : `${completeCount}/${objectives.length}`}</span>
+            </div>
+            <p>${esc(mission.description || '')}</p>
+            <ul class="v2-mission-objectives">
+              ${objectives.map(objective => `
+                <li class="${objective.complete ? 'is-complete' : ''}">
+                  <span class="material-symbols-outlined">${objective.complete ? 'check_circle' : 'radio_button_unchecked'}</span>
+                  <span>${esc(objective.label)}${objective.target > 1 ? ` (${objective.current}/${objective.target})` : ''}</span>
+                </li>`).join('')}
+            </ul>
+            <small>Unlocks: ${esc((mission.unlocks || []).join(' / ') || 'Progression')}</small>
+          </article>`;
+        }).join('')}
+      </div>`;
+}
+
+function v2CharacterDetailsHTML(character) {
+    if (!character) return '<div class="v2-details-empty">Select a starter to inspect their full kit.</div>';
+    const skills = (character.skills || []).map(skill => `
+      <article class="v2-detail-skill">
+        <header>
+          <strong>${esc(skill.name)}</strong>
+          <span>CD ${esc(skill.cooldown ?? 0)}</span>
+        </header>
+        <div class="v2-detail-cost">${v2EnergyOrbRowHTML(skill.cost || [], 4)}</div>
+        <p>${esc(skill.text || '')}</p>
+        <small>${esc((skill.classes || []).join(' / '))}</small>
+      </article>`).join('');
+    return `
+      <div class="v2-details-head">
+        ${v2PortraitHTML(character, 'v2-details-portrait')}
+        <div>
+          <span class="stitch-label">${esc(character.difficulty || 'Starter')}</span>
+          <strong>${esc(character.name)}</strong>
+          <p>${esc(character.role || 'Fighter')} · ${esc(character.state || 'Cursed Energy')}</p>
+        </div>
+      </div>
+      <div class="v2-detail-skills">${skills}</div>`;
+}
+
+function renderV2MissionRoadmap() {
+    const node = document.getElementById('v2-mission-roadmap');
+    if (node) node.innerHTML = v2MissionRoadmapHTML();
+}
+
+function renderV2CharacterDetails() {
+    const node = document.getElementById('v2-character-details');
+    if (!node) return;
+    const roster = v2FirstCreationRoster();
+    const id = v2State.detailCharacterId || v2State.playerTeam[0] || Object.keys(roster)[0];
+    node.innerHTML = v2CharacterDetailsHTML(roster[id]);
 }
 
 function v2SortedRosterEntries(entries, teamKey) {
@@ -1201,6 +1302,8 @@ function renderV2Picker() {
         `<span class="v2-draft-chip is-enemy">${index + 1}. ${esc(byId[id]?.name || id)}</span>`
     ).join('') || '<span class="v2-draft-chip is-empty">Choose CPU trio</span>';
     renderV2SelectionDock();
+    renderV2MissionRoadmap();
+    renderV2CharacterDetails();
     const lobbyNote = document.getElementById('v2-lobby-note');
     if (lobbyNote) {
         if (v2State.matchMode === 'pvp') {
@@ -1218,7 +1321,7 @@ function renderV2Picker() {
 }
 
 function v2TeamSelectionStripHTML(ids, label, toneClass = 'text-primary') {
-    const byId = BATTLE_V2_STARTER_ROSTER || {};
+    const byId = v2FirstCreationRoster();
     const slots = Array.from({ length: 3 }, (_, index) => {
         const character = byId[ids[index]];
         return character
@@ -1875,6 +1978,10 @@ function v2TurnStatusHTML(state, me, foe, isMyTurn) {
         <div class="v2-queue-meter" aria-hidden="true"><span style="width:${progressPct}%"></span></div>
         <strong>${esc(secondCardTitle)}</strong>
         <span>${esc(secondCardHint)}</span>
+      </div>
+      <div class="v2-turn-card lesson">
+        <strong>Onboarding rules</strong>
+        <span>1 skill per living fighter · Normal / Piercing / Soul damage · X is paid with generated energy.</span>
       </div>`;
 }
 
@@ -1926,6 +2033,7 @@ function v2RenderResultView(state, me, foe, mine) {
     const energyEl = document.getElementById('v2-result-energy');
     const turnsEl = document.getElementById('v2-result-turns');
     const highlightsEl = document.getElementById('v2-result-highlights');
+    const missionsEl = document.getElementById('v2-result-missions');
     const resultView = document.getElementById('v2-result-view');
     resultView?.classList.toggle('is-victory', iWon);
     resultView?.classList.toggle('is-defeat', !iWon);
@@ -1952,6 +2060,19 @@ function v2RenderResultView(state, me, foe, mine) {
               </li>
             `).join('')
             : '<li class="bg-surface-container-high p-2 rounded text-on-surface-variant">No strike data recorded.</li>';
+    }
+    if (missionsEl) {
+        const progress = state.first_creation_progress;
+        const completed = progress?.last_completed?.length
+            ? progress.missions.filter(mission => progress.last_completed.includes(mission.id))
+            : [];
+        missionsEl.innerHTML = completed.length
+            ? completed.map(mission => `
+              <article class="v2-result-mission is-complete">
+                <span class="material-symbols-outlined">verified</span>
+                <div><strong>${esc(mission.title)}</strong><small>Unlocked ${esc((mission.unlocks || []).join(' / ') || 'progression')}</small></div>
+              </article>`).join('')
+            : '<article class="v2-result-mission"><span class="material-symbols-outlined">route</span><div><strong>Mission progress saved</strong><small>Try a recommended team to unlock the next route.</small></div></article>';
     }
 }
 
@@ -2042,7 +2163,11 @@ function renderClassicV2() {
             newMatchButton.textContent = v2State.lobbyStatus?.status === 'waiting' ? 'Cancel Wait' : 'New Match';
         }
         document.getElementById('v2-picker')?.classList.remove('hidden');
-        if (showTeam) renderV2Picker();
+        if (showTeam) {
+            const presetRail = document.getElementById('v2-preset-rail');
+            if (presetRail) presetRail.innerHTML = v2PresetButtonsHTML('playerTeam');
+            renderV2Picker();
+        }
         return;
     }
     classicScreen?.classList.add('v2-battle-active');
@@ -2181,6 +2306,7 @@ function v2StartMatch() {
             room_id: roomInput,
             player_name: nameInput,
             player_team: v2State.playerTeam,
+            roster_mode: 'first_creation',
         });
     } else {
         socket.emit('battle_v2_start_classic', {
@@ -2188,6 +2314,7 @@ function v2StartMatch() {
             player_name: nameInput,
             player_team: v2State.playerTeam,
             enemy_team: v2State.enemyTeam,
+            roster_mode: 'first_creation',
         });
     }
     showScreen('classic-v2');
@@ -2281,6 +2408,11 @@ document.getElementById('btn-v2-back').addEventListener('click', () => {
 });
 
 document.getElementById('btn-v2-start').addEventListener('click', v2StartMatch);
+document.addEventListener('click', (event) => {
+    const preset = event.target.closest('[data-v2-preset]');
+    if (!preset) return;
+    v2ApplyPreset(preset.dataset.v2Preset, preset.dataset.v2PresetTeam || 'playerTeam');
+});
 document.getElementById('btn-v2-new-match').addEventListener('click', resetClassicV2Match);
 document.getElementById('btn-v2-cancel').addEventListener('click', () => {
     v2State.queueSubmitting = false;
@@ -2356,6 +2488,7 @@ document.getElementById('classic-v2').addEventListener('click', (event) => {
         const characterId = picker.dataset.characterId;
         const team = v2State[teamKey];
         if (!Array.isArray(team)) return;
+        v2State.detailCharacterId = characterId;
         if (team.includes(characterId)) {
             v2State[teamKey] = team.filter(id => id !== characterId);
         } else if (team.length < 3) {

@@ -62,7 +62,7 @@ def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
     assert 'id="btn-classic-v2" class="btn-ghost roster-lab-entry"' in html
     assert 'id="btn-classic-v2" class="btn-ghost roster-lab-entry" type="button" disabled' in html
     assert 'id="setup" class="screen"' in html
-    assert 'id="classic-v2" class="screen active' in html
+    assert 'id="classic-v2" class="screen stitch-screen active' in html
     assert '"aoi_todo"' in html
     assert '"hiromi_higuruma"' in html
     assert 'id="btn-v2-new-match"' in html
@@ -80,12 +80,18 @@ def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
     assert 'data-v2-mode="cpu"' in html
     assert 'data-v2-mode="pvp"' in html
     assert 'id="v2-lobby-note"' in html
+    assert 'v2-first-creation-guide stitch-panel stitch-cut' in html
+    assert 'Welcome to Jujutsu High' in html
+    assert 'aria-label="Energy legend"' in html
+    assert 'id="v2-mission-roadmap"' in html
+    assert 'id="v2-character-details"' in html
     assert 'characters_data.js?v=19' in html
     assert 'vendor/phaser.min.js?v=3.90.0' in html
     assert 'phaser-battle.js?v=4' in html
-    assert 'app.js?v=78' in html
-    assert 'style.css?v=51' in html
-    assert 'stitch-archive.css?v=11' in html
+    assert 'app.js?v=81' in html
+    assert 'stitch-tokens.css?v=1' in html
+    assert 'style.css?v=55' in html
+    assert 'stitch-archive.css?v=12' in html
     assert 'stitch/generated/lobby-hero.jpg' in html
     assert 'stitch/generated/victory-trophy.jpg' in html
     assert 'Open Cursed Clash' in html
@@ -122,3 +128,50 @@ def test_v2_character_id_for_v1_names():
 if __name__ == '__main__':
     unittest.main()
 
+
+
+def test_index_exposes_first_creation_payload_when_battle_v2_enabled(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    client = web_app.app.test_client()
+
+    html = client.get("/").get_data(as_text=True)
+
+    assert "const FIRST_CREATION =" in html
+    assert '"availability": "starter"' in html
+    assert '"era": "student_era"' in html
+    assert '"satoru_gojo_young"' in html
+    assert '"yuta_okkotsu_jjk0"' in html
+    assert '"mahito"' in html  # locked variant list, not the starter roster
+    app_js = Path(web_app.app.static_folder, "app.js").read_text(encoding="utf-8")
+    assert "FIRST_CREATION?.roster" in app_js
+    assert "roster_mode: 'first_creation'" in app_js
+    assert "v2-preset-card" in app_js
+    assert "v2-roster-skill-preview" in app_js
+    assert "v2MissionRoadmapHTML" in app_js
+    assert "v2CharacterDetailsHTML" in app_js
+    assert "Onboarding rules" in app_js
+
+
+def test_stitch_design_system_bridge_is_loaded_after_tokens(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    client = web_app.app.test_client()
+
+    html = client.get("/").get_data(as_text=True)
+    tokens_index = html.index("jjk-tokens.css")
+    stitch_index = html.index("stitch-tokens.css")
+    style_index = html.index("style.css")
+
+    assert tokens_index < stitch_index < style_index
+
+    stitch_tokens = Path(web_app.app.static_folder, "stitch-tokens.css").read_text(encoding="utf-8")
+    style_css = Path(web_app.app.static_folder, "style.css").read_text(encoding="utf-8")
+
+    assert "--stitch-void: var(--jjk-bg-void)" in stitch_tokens
+    stitch_archive = Path(web_app.app.static_folder, "stitch-archive.css").read_text(encoding="utf-8")
+
+    assert ".stitch-screen" in stitch_tokens
+    assert "--stitch-void: #04040d" not in style_css
+    assert ".v2-first-creation-guide" in stitch_archive
+    assert "var(--stitch-panel" in stitch_archive
+    assert ".v2-mission-roadmap" in stitch_archive
+    assert ".v2-character-details" in stitch_archive

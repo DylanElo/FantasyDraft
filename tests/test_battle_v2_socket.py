@@ -556,3 +556,41 @@ def test_battle_v2_human_confirm_does_not_run_cpu_turn(monkeypatch):
     assert update["turn_player_id"] == "p2"
     assert update["players"]["p2"]["team"][0]["hp"] == 80
     assert update["phase"] == "planning"
+
+
+def test_battle_v2_socket_start_first_creation_mode_rejects_locked_variants(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    client = socket_client()
+
+    client.emit(
+        "battle_v2_start_classic",
+        {
+            "room_id": "first-v2",
+            "roster_mode": "first_creation",
+            "player_team": ["yuji_itadori", "megumi_fushiguro", "mahito"],
+            "enemy_team": ["yuta_okkotsu_jjk0", "maki_zenin", "toge_inumaki"],
+        },
+    )
+
+    payload = received_payload(client, "battle_v2_error")
+    assert "Locked or unknown" in payload["message"]
+
+
+def test_battle_v2_socket_start_first_creation_mode_uses_first_creation_catalog(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    client = socket_client()
+
+    client.emit(
+        "battle_v2_start_classic",
+        {
+            "room_id": "first-v2",
+            "roster_mode": "first_creation",
+            "player_team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"],
+            "enemy_team": ["yuta_okkotsu_jjk0", "maki_zenin", "toge_inumaki"],
+        },
+    )
+
+    state = received_payload(client, "battle_v2_update")
+    assert "satoru_gojo_young" in state["skill_catalog"]
+    assert "mahito" not in state["skill_catalog"]
+    assert state["players"]["__cpu_v2__"]["team"][0]["character_id"] == "yuta_okkotsu_jjk0"

@@ -5324,20 +5324,9 @@ html, body {
   }
 }
 
-/* Stitch Cursed Clash integration */
-:root {
-  --stitch-void: #04040d;
-  --stitch-surface: #07071a;
-  --stitch-plate: #161630;
-  --stitch-plate-hi: #24243a;
-  --stitch-text: #e4e0f1;
-  --stitch-muted: #ccc3d8;
-  --stitch-purple: #a855f7;
-  --stitch-cyan: #22d3ee;
-  --stitch-crimson: #ef4444;
-  --stitch-gold: #f59e0b;
-  --stitch-emerald: #22c55e;
-}
+/* Stitch Cursed Clash integration
+   Token values are canonicalized in stitch-tokens.css. This section now only
+   consumes --stitch-* aliases for legacy Battle v2 selectors. */
 
 .orb {
   box-shadow:

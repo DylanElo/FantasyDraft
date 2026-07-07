@@ -24,6 +24,7 @@ from jjk_bot.characters import CHARACTERS, Character, Skill, character_identity
 from jjk_bot.portrait_assets import local_portrait_path
 from jjk_bot.battle_v2.models import BattleEvent, BattlePhase
 from jjk_bot.battle_v2.manager import BattleV2Manager, BattleV2Error, battle_v2_enabled, skill_catalog
+from jjk_bot.battle_v2.starter_roster import FIRST_CREATION_PRESETS, first_creation_payload
 
 def env_flag(name: str, default: bool = False) -> bool:
     value = os.getenv(name)
@@ -195,6 +196,30 @@ def clean_v2_team(value, fallback: list[str]) -> list[str]:
     team = [CONTROL_RE.sub("", str(name).strip())[:80] for name in value[:3] if str(name).strip()]
     return team if len(team) == 3 else list(fallback)
 
+
+
+def battle_v2_roster_mode(data: dict) -> str:
+    mode = CONTROL_RE.sub("", str(data.get("roster_mode", "classic")).strip().lower())[:32]
+    return "first_creation" if mode == "first_creation" else "classic"
+
+
+def battle_v2_default_team(mode: str, preset: str = "story_tutorial") -> list[str]:
+    if mode == "first_creation":
+        team = FIRST_CREATION_PRESETS.get(preset) or FIRST_CREATION_PRESETS["story_tutorial"]
+        return list(team)
+    return ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]
+
+
+def battle_v2_default_enemy_team(mode: str) -> list[str]:
+    if mode == "first_creation":
+        return list(FIRST_CREATION_PRESETS["jjk0_beginner_special"])
+    return ["satoru_gojo", "ryomen_sukuna", "mahito"]
+
+
+def start_battle_v2_match_for_mode(room_id: str, players: list[dict], mode: str) -> dict:
+    if mode == "first_creation":
+        return battle_v2_manager.start_first_creation_match(room_id, players)
+    return battle_v2_manager.start_classic_match(room_id, players)
 
 def clean_v2_actions(value) -> list[dict]:
     if not isinstance(value, list):
@@ -587,6 +612,7 @@ def index():
         player_id=session['player_id'],
         battle_v2_enabled=battle_v2_enabled(),
         battle_v2_catalog=skill_catalog() if battle_v2_enabled() else {},
+        first_creation=first_creation_payload() if battle_v2_enabled() else {},
     )
 
 @app.route('/reset/<room_id>')
@@ -876,21 +902,23 @@ def on_battle_v2_start_classic(data=None):
         return
     room_id, player_session = context
     player_name = clean_player_name(data.get("player_name", ""), f"Player_{player_session[:4]}")
+    roster_mode = battle_v2_roster_mode(data)
     player_team = clean_v2_team(
         data.get("player_team") or data.get("team"),
-        ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"],
+        battle_v2_default_team(roster_mode),
     )
     enemy_team = clean_v2_team(
         data.get("enemy_team"),
-        ["satoru_gojo", "ryomen_sukuna", "mahito"],
+        battle_v2_default_enemy_team(roster_mode),
     )
     try:
-        battle_v2_manager.start_classic_match(
+        start_battle_v2_match_for_mode(
             room_id,
             [
                 {"id": player_session, "name": player_name, "team": player_team},
                 {"id": CPU_V2_PLAYER_ID, "name": "CPU V2", "team": enemy_team},
             ],
+            roster_mode,
         )
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
@@ -907,9 +935,10 @@ def on_battle_v2_join_pvp(data=None):
         return
     room_id, player_session = context
     player_name = clean_player_name(data.get("player_name", ""), f"Player_{player_session[:4]}")
+    roster_mode = battle_v2_roster_mode(data)
     player_team = clean_v2_team(
         data.get("player_team") or data.get("team"),
-        ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"],
+        battle_v2_default_team(roster_mode),
     )
     try:
         existing_state = battle_v2_manager.rooms.get(room_id)
@@ -921,7 +950,7 @@ def on_battle_v2_join_pvp(data=None):
 
         lobby = v2_pvp_lobbies.setdefault(room_id, [])
         lobby = [entry for entry in lobby if entry["id"] != player_session]
-        lobby.append({"id": player_session, "name": player_name, "team": player_team})
+        lobby.append({"id": player_session, "name": player_name, "team": player_team, "roster_mode": roster_mode})
         v2_pvp_lobbies[room_id] = lobby[:2]
 
         if len(v2_pvp_lobbies[room_id]) < 2:
@@ -936,7 +965,11 @@ def on_battle_v2_join_pvp(data=None):
             )
             return
 
-        battle_v2_manager.start_classic_match(room_id, v2_pvp_lobbies.pop(room_id))
+        players = v2_pvp_lobbies.pop(room_id)
+        modes = {entry.get("roster_mode", "classic") for entry in players}
+        if len(modes) != 1:
+            raise BattleV2Error("Both PvP players must use the same roster mode.")
+        start_battle_v2_match_for_mode(room_id, players, modes.pop())
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
         emit_battle_v2_error(exc)

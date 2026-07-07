@@ -1,0 +1,56 @@
+"""Mission-unlock roadmap data for the first-character-creation era."""
+
+from __future__ import annotations
+
+FIRST_CREATION_MISSIONS: tuple[dict[str, object], ...] = (
+    {
+        "id": "welcome_to_jujutsu_high",
+        "title": "Welcome to Jujutsu High",
+        "description": "Win a match with the Story Tutorial trio to prove the starter fundamentals.",
+        "recommended_team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"],
+        "objectives": ["Win one first-creation match", "Resolve at least three queued skills"],
+        "unlocks": ["mission_board"],
+        "tier": "starter",
+    },
+    {
+        "id": "hidden_inventory_echoes",
+        "title": "Hidden Inventory Echoes",
+        "description": "Clear a match with Young Gojo, Young Geto, and Young Shoko to begin mentor-era unlocks.",
+        "recommended_team": ["satoru_gojo_young", "suguru_geto_young", "shoko_ieiri_young"],
+        "objectives": ["Trigger a read or stock payoff", "Keep one ally alive below 50 HP"],
+        "unlocks": ["gojo_adult", "geto_jjk0"],
+        "tier": "mission_unlock",
+    },
+    {
+        "id": "cursed_child_bond",
+        "title": "Cursed Child Bond",
+        "description": "Use JJK0 Yuta's Rika state to unlock the first JJK0 mission branch.",
+        "recommended_team": ["yuta_okkotsu_jjk0", "maki_zenin", "toge_inumaki"],
+        "objectives": ["Activate Rika's Curse", "Use a replacement skill"],
+        "unlocks": ["jjk0_geto_route", "rika_mastery_badge"],
+        "tier": "mission_unlock",
+    },
+    {
+        "id": "outsider_poison_path",
+        "title": "Outsider Poison Path",
+        "description": "Win through Junpei's poison and protection route to begin curse-affliction unlocks.",
+        "recommended_team": ["junpei_yoshino", "nobara_kugisaki", "megumi_fushiguro"],
+        "objectives": ["Apply poison twice", "Win with Junpei alive"],
+        "unlocks": ["mahito_intro_mission"],
+        "tier": "mission_unlock",
+    },
+)
+
+
+def first_creation_missions_payload() -> list[dict[str, object]]:
+    """Return JSON-serializable first-creation mission roadmap entries."""
+
+    return [
+        {
+            **mission,
+            "recommended_team": list(mission["recommended_team"]),
+            "objectives": list(mission["objectives"]),
+            "unlocks": list(mission["unlocks"]),
+        }
+        for mission in FIRST_CREATION_MISSIONS
+    ]

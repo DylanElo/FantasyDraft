@@ -70,13 +70,19 @@ def _damage_bonus(target: CharacterState, effect: EffectSpec) -> int:
     return bonus
 
 
-def _payload_condition_met(target: CharacterState, effect: EffectSpec) -> bool:
-    bonus_status = effect.payload.get("bonus_status")
-    if bonus_status:
-        return has_status(target, str(bonus_status))
-    bonus_statuses = effect.payload.get("bonus_statuses") or []
-    if bonus_statuses:
-        return any(has_status(target, str(status_id)) for status_id in bonus_statuses)
+def _payload_condition_met(target: CharacterState, effect: EffectSpec, caster: CharacterState | None = None) -> bool:
+    condition_status = effect.payload.get("condition_status")
+    if condition_status and not has_status(target, str(condition_status)):
+        return False
+    missing_status = effect.payload.get("condition_missing_status")
+    if missing_status and has_status(target, str(missing_status)):
+        return False
+    user_status = effect.payload.get("condition_user_status")
+    if user_status and (caster is None or not has_status(caster, str(user_status))):
+        return False
+    user_missing_status = effect.payload.get("condition_user_missing_status")
+    if user_missing_status and caster is not None and has_status(caster, str(user_missing_status)):
+        return False
     return True
 
 
@@ -177,6 +183,9 @@ def _status_replacements(status: StatusEffect) -> dict[str, str]:
 
 
 def _apply_status_side_effects(character: CharacterState, status: StatusEffect) -> None:
+    unlock_at = int(status.payload.get("unlock_replacements_at_stacks", 0))
+    if unlock_at and status.stacks < unlock_at:
+        return
     character.skill_replacements.update(_status_replacements(status))
 
 
@@ -197,6 +206,9 @@ def apply_status(
 
     if not effect.status:
         raise EffectError("status effect requires a status id")
+    payload = dict(effect.payload)
+    if payload.get("watch_target_player_id") == "target":
+        payload["watch_target_player_id"] = target_player_id
     status = StatusEffect(
         id=effect.status,
         name=str(effect.payload.get("name", effect.status)),
@@ -209,9 +221,18 @@ def apply_status(
         invisible=SkillClass.INVISIBLE in effect.classes or bool(effect.payload.get("invisible", False)),
         soulbound=SkillClass.SOULBOUND in effect.classes or bool(effect.payload.get("soulbound", False)),
         stacks=effect.stacks,
-        payload=dict(effect.payload),
+        payload=payload,
     )
     target = state.players[target_player_id].team[target_slot]
+    max_stacks = int(payload.get("max_stacks", 0))
+    if max_stacks > 0:
+        for active in target.statuses:
+            if active.duration != 0 and active.id == status.id:
+                active.stacks = min(max_stacks, active.stacks + status.stacks)
+                active.duration = max(active.duration, status.duration)
+                active.payload.update(payload)
+                _apply_status_side_effects(target, active)
+                return active
     target.statuses.append(status)
     _apply_status_side_effects(target, status)
     return status
@@ -234,6 +255,13 @@ def apply_effect(
             raise EffectError("damage effect requires a target slot")
         target = state.players[target_player_id].team[target_slot]
         caster = state.players[action.player_id].team[action.caster_slot]
+        if not _payload_condition_met(target, effect, caster):
+            return BattleEvent(
+                type="damage_skipped",
+                message=f"{display_name} condition was not met",
+                turn_number=state.turn_number,
+                payload={"action_id": action.id, "target_player_id": target_player_id, "target_slot": target_slot},
+            )
         damage_type = effect.damage_type or DamageType.NORMAL
         amount = (effect.amount or 0) + _damage_bonus(target, effect)
         if effect.target != "self":
@@ -305,7 +333,8 @@ def apply_effect(
             raise EffectError("status effect requires a target slot")
         target = state.players[target_player_id].team[target_slot]
         condition_status = effect.payload.get("condition_status")
-        if condition_status and not has_status(target, str(condition_status)):
+        missing_status = effect.payload.get("condition_missing_status")
+        if (condition_status and not has_status(target, str(condition_status))) or (missing_status and has_status(target, str(missing_status))):
             return BattleEvent(
                 type="status_skipped",
                 message=f"{display_name} did not meet the {_label_identifier(effect.status)} condition",
@@ -325,6 +354,81 @@ def apply_effect(
                 "target_player_id": target_player_id,
                 "target_slot": target_slot,
             },
+        )
+    if effect.type == "drain_energy":
+        if target_slot is not None:
+            target = state.players[target_player_id].team[target_slot]
+            if not _payload_condition_met(target, effect):
+                return BattleEvent(
+                    type="energy_drain_skipped",
+                    message=f"{display_name} condition was not met",
+                    turn_number=state.turn_number,
+                    payload={"action_id": action.id, "target_player_id": target_player_id, "target_slot": target_slot},
+                )
+        target_player = state.players[target_player_id]
+        removed = None
+        for energy, amount in target_player.energy.items():
+            if amount > 0:
+                target_player.energy[energy] -= 1
+                removed = energy.value
+                break
+        return BattleEvent(
+            type="energy_drained",
+            message=f"{display_name} drained energy" if removed else f"{display_name} found no energy to drain",
+            turn_number=state.turn_number,
+            payload={"action_id": action.id, "target_player_id": target_player_id, "energy": removed, "amount": 1 if removed else 0},
+        )
+    if effect.type == "gain_energy":
+        target_player = state.players[target_player_id]
+        preferred = str(effect.payload.get("energy", "green"))
+        energy = next((item for item in target_player.energy if item.value == preferred), next(iter(target_player.energy)))
+        target_player.energy[energy] += effect.amount or 1
+        return BattleEvent(
+            type="energy_gained",
+            message=f"{display_name} generated energy",
+            turn_number=state.turn_number,
+            payload={"action_id": action.id, "target_player_id": target_player_id, "energy": energy.value, "amount": effect.amount or 1},
+        )
+    if effect.type == "extend_status":
+        if target_slot is None:
+            raise EffectError("extend status effect requires a target slot")
+        target = state.players[target_player_id].team[target_slot]
+        status_filter = effect.status
+        amount = effect.amount or 1
+        extended = 0
+        for status in target.statuses:
+            if status.duration != 0 and (status_filter is None or status.id == status_filter or status.name == status_filter):
+                status.duration += amount
+                extended += 1
+        return BattleEvent(
+            type="status_extended",
+            message=f"{display_name} extended statuses",
+            turn_number=state.turn_number,
+            payload={"action_id": action.id, "target_player_id": target_player_id, "target_slot": target_slot, "status": status_filter, "extended": extended},
+        )
+    if effect.type == "apply_team_status":
+        target_player = state.players[target_player_id]
+        status_id = str(effect.status or effect.payload.get("status") or "team_status")
+        status_name = str(effect.payload.get("name", status_id))
+        applied = 0
+        for slot in target_player.active_slots:
+            if slot < 0 or slot >= len(target_player.team) or not target_player.team[slot].alive:
+                continue
+            team_effect = EffectSpec(
+                type="apply_status",
+                status=status_id,
+                duration=effect.duration,
+                stacks=effect.stacks,
+                classes=list(effect.classes),
+                payload={**effect.payload, "name": status_name},
+            )
+            apply_status(state, action, target_player_id, slot, team_effect)
+            applied += 1
+        return BattleEvent(
+            type="team_status_applied",
+            message=f"{display_name} empowered the team",
+            turn_number=state.turn_number,
+            payload={"action_id": action.id, "target_player_id": target_player_id, "status": status_id, "applied": applied},
         )
     if effect.type == "remove_status":
         if target_slot is None:

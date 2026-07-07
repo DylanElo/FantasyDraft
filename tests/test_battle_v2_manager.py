@@ -394,3 +394,197 @@ def test_cpu_turn_can_choose_ally_heal_for_wounded_teammate():
 
     assert serialized["players"]["p2"]["team"][1]["hp"] == 65
     assert any(event["message"] == "Yuta Okkotsu used Reverse Cursed Technique" for event in serialized["event_log"])
+
+
+def test_start_first_creation_match_uses_student_era_catalog_and_rejects_locked_variants():
+    manager = BattleV2Manager(rng_seed=1)
+    serialized = manager.start_first_creation_match(
+        "first-room",
+        [
+            {
+                "id": "p1",
+                "name": "Player One",
+                "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"],
+            },
+            {
+                "id": "p2",
+                "name": "Player Two",
+                "team": ["yuta_okkotsu_jjk0", "maki_zenin", "toge_inumaki"],
+            },
+        ],
+    )
+
+    assert "satoru_gojo_young" in serialized["skill_catalog"]
+    assert "mahito" not in serialized["skill_catalog"]
+    assert serialized["skill_catalog"]["yuji_itadori"]["skills"][0]["id"] == "fc_yuji_itadori_divergent_fist"
+    assert manager.get_state("first-room").players["p2"].team[0].character_id == "yuta_okkotsu_jjk0"
+
+    with pytest.raises(BattleV2Error, match="Locked or unknown"):
+        manager.start_first_creation_match(
+            "bad-first-room",
+            [
+                {"id": "p1", "name": "Player One", "team": ["yuji_itadori", "megumi_fushiguro", "mahito"]},
+                {"id": "p2", "name": "Player Two", "team": ["yuta_okkotsu_jjk0", "maki_zenin", "toge_inumaki"]},
+            ],
+        )
+
+
+def first_creation_players():
+    return [
+        {"id": "p1", "name": "Player One", "team": ["aoi_todo", "noritoshi_kamo", "nobara_kugisaki"]},
+        {"id": "p2", "name": "Player Two", "team": ["yuji_itadori", "megumi_fushiguro", "yuta_okkotsu_jjk0"]},
+    ]
+
+
+def start_first_creation_manager():
+    manager = BattleV2Manager(rng_seed=1)
+    manager.start_first_creation_match("first", first_creation_players())
+    state = manager.get_state("first")
+    for player in state.players.values():
+        for energy in player.energy:
+            player.energy[energy] = 5
+    return manager, state
+
+
+def test_first_creation_nobara_resonance_uses_nail_conditional_damage():
+    manager, state = start_first_creation_manager()
+    state.players["p2"].team[0].statuses.append(StatusEffect("nail", "Nail", "p1", 2, "p2", 0, duration=2))
+
+    manager.submit_plan(
+        "first",
+        "p1",
+        [{"id": "nobara", "caster_slot": 2, "skill_id": "fc_nobara_kugisaki_straw_doll_resonance", "target_player_id": "p2", "target_slot": 0}],
+    )
+    serialized = manager.confirm_queue("first", "p1")
+
+    assert serialized["players"]["p2"]["team"][0]["hp"] == 75
+    assert any(event["type"] == "damage_skipped" for event in serialized["event_log"])
+
+
+def test_first_creation_kamo_drains_energy_only_from_blood_marked_target():
+    manager, state = start_first_creation_manager()
+    state.players["p2"].energy = {energy: 0 for energy in EnergyType}
+    state.players["p2"].energy[EnergyType.GREEN] = 1
+    state.players["p2"].team[0].statuses.append(StatusEffect("blood_mark", "Blood Mark", "p1", 1, "p2", 0, duration=2))
+
+    manager.submit_plan(
+        "first",
+        "p1",
+        [{"id": "kamo", "caster_slot": 1, "skill_id": "fc_noritoshi_kamo_crimson_binding", "target_player_id": "p2", "target_slot": 0, "wildcard_pays": ["green"]}],
+    )
+    serialized = manager.confirm_queue("first", "p1")
+
+    assert any(event["type"] == "energy_drained" and event["payload"].get("energy") == "green" for event in serialized["event_log"])
+
+
+def test_first_creation_todo_redirects_next_harmful_direct_skill():
+    manager, state = start_first_creation_manager()
+
+    manager.submit_plan(
+        "first",
+        "p1",
+        [{"id": "todo", "caster_slot": 0, "skill_id": "fc_aoi_todo_boogie_woogie", "target_player_id": "p2", "target_slot": 0}],
+    )
+    manager.confirm_queue("first", "p1")
+    state = manager.get_state("first")
+    for energy in state.players["p2"].energy:
+        state.players["p2"].energy[energy] = 5
+
+    manager.submit_plan(
+        "first",
+        "p2",
+        [{"id": "yuji", "caster_slot": 0, "skill_id": "fc_yuji_itadori_divergent_fist", "target_player_id": "p1", "target_slot": 1}],
+    )
+    serialized = manager.confirm_queue("first", "p2")
+
+    assert serialized["players"]["p1"]["team"][0]["hp"] == 80
+    assert serialized["players"]["p1"]["team"][1]["hp"] == 100
+    assert any(event["type"] == "skill_redirected" for event in serialized["event_log"])
+
+
+def test_first_creation_yuta_rika_replaces_skill_with_megaphone():
+    manager = BattleV2Manager(rng_seed=1)
+    manager.start_first_creation_match(
+        "rika",
+        [
+            {"id": "p1", "name": "Player One", "team": ["yuta_okkotsu_jjk0", "maki_zenin", "toge_inumaki"]},
+            {"id": "p2", "name": "Player Two", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
+        ],
+    )
+    state = manager.get_state("rika")
+    for player in state.players.values():
+        for energy in player.energy:
+            player.energy[energy] = 5
+
+    manager.submit_plan(
+        "rika",
+        "p1",
+        [{"id": "rika", "caster_slot": 0, "skill_id": "fc_yuta_okkotsu_jjk0_rikas_curse", "target_player_id": "p1", "target_slot": 0, "wildcard_pays": ["green"]}],
+    )
+    manager.confirm_queue("rika", "p1")
+
+    yuta = manager.get_state("rika").players["p1"].team[0]
+    assert yuta.skill_replacements["fc_yuta_okkotsu_jjk0_rikas_curse"] == "fc_yuta_okkotsu_jjk0_cursed_speech_megaphone"
+
+
+def test_first_creation_geto_curse_stock_unlocks_compressed_uzumaki():
+    manager = BattleV2Manager(rng_seed=1)
+    manager.start_first_creation_match(
+        "geto-stock",
+        [
+            {"id": "p1", "name": "Player One", "team": ["suguru_geto_young", "satoru_gojo_young", "shoko_ieiri_young"]},
+            {"id": "p2", "name": "Player Two", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
+        ],
+    )
+    state = manager.get_state("geto-stock")
+    geto = state.players["p1"].team[0]
+    swarm = "fc_suguru_geto_young_swarm_curse"
+    compressed = "fc_suguru_geto_young_compressed_uzumaki"
+
+    # Directly exercise the stack merge path through three actual skill applications.
+    for player in state.players.values():
+        for energy in player.energy:
+            player.energy[energy] = 9
+    for turn in range(3):
+        state.turn_player_id = "p1"
+        manager.submit_plan("geto-stock", "p1", [{"id": f"swarm-{turn}", "caster_slot": 0, "skill_id": swarm, "target_player_id": "p2", "target_slot": 0}])
+        manager.confirm_queue("geto-stock", "p1")
+        state = manager.get_state("geto-stock")
+        geto = state.players["p1"].team[0]
+        geto.acted_this_turn = False
+        for player in state.players.values():
+            player.queue_confirmed = False
+            for energy in player.energy:
+                player.energy[energy] = 9
+
+    stock = next(status for status in geto.statuses if status.id == "curse_stock")
+    assert stock.stacks == 3
+    assert geto.skill_replacements[swarm] == compressed
+
+
+def test_first_creation_utahime_ritual_rhythm_applies_to_team():
+    manager = BattleV2Manager(rng_seed=1)
+    manager.start_first_creation_match(
+        "utahime-team",
+        [
+            {"id": "p1", "name": "Player One", "team": ["utahime_iori_young", "mei_mei_young", "shoko_ieiri_young"]},
+            {"id": "p2", "name": "Player Two", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
+        ],
+    )
+    state = manager.get_state("utahime-team")
+    for player in state.players.values():
+        for energy in player.energy:
+            player.energy[energy] = 5
+
+    manager.submit_plan(
+        "utahime-team",
+        "p1",
+        [{"id": "ritual", "caster_slot": 0, "skill_id": "fc_utahime_iori_young_ritual_rhythm", "target_player_id": "p1", "target_slots": [0, 1, 2]}],
+    )
+    serialized = manager.confirm_queue("utahime-team", "p1")
+
+    assert all(
+        any(status["id"] == "ritual_rhythm" for status in character["statuses"])
+        for character in serialized["players"]["p1"]["team"]
+    )
+    assert any(event["type"] == "team_status_applied" for event in serialized["event_log"])

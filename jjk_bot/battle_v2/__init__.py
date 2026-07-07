@@ -4,7 +4,32 @@ The v2 engine is intentionally isolated from the current battle flow until it is
 wired behind the ``JJK_BATTLE_SYSTEM`` feature flag.
 """
 
-from .starter_roster import CharacterSpec, SKILLS_BY_ID, STARTER_ROSTER, get_character_spec, get_skill_spec
+from .first_creation_missions import FIRST_CREATION_MISSIONS, first_creation_missions_payload
+from .first_creation_progression import evaluate_first_creation_progress, initial_first_creation_progress
+from .first_creation_profile import first_creation_profile_payload, load_first_creation_profile, merge_first_creation_progress, save_first_creation_profile
+from .first_creation_unlocks import FIRST_CREATION_UNLOCKS, first_creation_unlocks_payload
+from .starter_roster import (
+    FIRST_CREATION_AVAILABILITY,
+    FIRST_CREATION_CHARACTER_IDS,
+    FIRST_CREATION_CHARACTER_NAMES,
+    FIRST_CREATION_ERA,
+    FIRST_CREATION_LOCKED_VARIANTS,
+    FIRST_CREATION_PRESETS,
+    validate_first_creation_team,
+    first_creation_payload,
+    first_creation_catalog,
+    FIRST_CREATION_SKILLS_BY_ID,
+    FIRST_CREATION_ROSTER,
+    FIRST_CREATION_TAGS,
+    GENERATED_ENERGY_TYPES,
+    SKILLS_BY_ID,
+    STARTER_ROSTER,
+    WILDCARD_COST_TYPE,
+    CharacterSpec,
+    first_creation_metadata,
+    get_character_spec,
+    get_skill_spec,
+)
 from .serialization import serialize_status
 from .manager import BattleV2Manager, BattleV2Error, BattlePlayerConfig, battle_state_to_dict, battle_v2_enabled, payload_to_action
 from .models import (
@@ -27,6 +52,31 @@ from .models import (
 
 __all__ = [
     "CharacterSpec",
+    "FIRST_CREATION_AVAILABILITY",
+    "FIRST_CREATION_CHARACTER_IDS",
+    "FIRST_CREATION_CHARACTER_NAMES",
+    "FIRST_CREATION_ERA",
+    "FIRST_CREATION_LOCKED_VARIANTS",
+    "FIRST_CREATION_PRESETS",
+    "FIRST_CREATION_MISSIONS",
+    "first_creation_missions_payload",
+    "evaluate_first_creation_progress",
+    "initial_first_creation_progress",
+    "FIRST_CREATION_UNLOCKS",
+    "first_creation_unlocks_payload",
+    "first_creation_profile_payload",
+    "load_first_creation_profile",
+    "merge_first_creation_progress",
+    "save_first_creation_profile",
+    "validate_first_creation_team",
+    "first_creation_payload",
+    "first_creation_catalog",
+    "FIRST_CREATION_SKILLS_BY_ID",
+    "FIRST_CREATION_ROSTER",
+    "FIRST_CREATION_TAGS",
+    "GENERATED_ENERGY_TYPES",
+    "WILDCARD_COST_TYPE",
+    "first_creation_metadata",
     "SKILLS_BY_ID",
     "STARTER_ROSTER",
     "get_character_spec",

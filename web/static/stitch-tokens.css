@@ -1,0 +1,122 @@
+/* ──────────────────────────────────────────────────────────────────────
+   Stitch / Cursed Clash design-system bridge
+   Canonicalizes the Stitch handoff onto the repo's JJK token sheet.
+
+   Rule: product UI should consume --stitch-* aliases or .stitch-* component
+   primitives, while raw values continue to live in jjk-tokens.css.
+   ────────────────────────────────────────────────────────────────────── */
+
+:root {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --stitch-void: var(--jjk-bg-void);
+  --stitch-surface: var(--jjk-bg);
+  --stitch-surface-2: var(--jjk-bg-2);
+  --stitch-panel: var(--jjk-surf);
+  --stitch-panel-2: var(--jjk-surf-2);
+  --stitch-panel-hi: var(--jjk-surf-3);
+  --stitch-plate: var(--jjk-surf-2);
+  --stitch-plate-hi: var(--jjk-steel);
+
+  /* Text */
+  --stitch-text: var(--jjk-text);
+  --stitch-muted: var(--jjk-text-dim);
+  --stitch-dim: var(--jjk-muted);
+
+  /* Brand / status */
+  --stitch-purple: var(--jjk-curse-hi);
+  --stitch-purple-deep: var(--jjk-curse-lo);
+  --stitch-cyan: var(--jjk-e-blue);
+  --stitch-crimson: var(--jjk-crimson-hi);
+  --stitch-gold: var(--jjk-gold);
+  --stitch-emerald: var(--jjk-success);
+
+  /* Borders / effects */
+  --stitch-border: var(--jjk-border-hi);
+  --stitch-border-soft: var(--jjk-border);
+  --stitch-glow-purple: var(--jjk-curse-glow);
+  --stitch-glow-purple-sm: var(--jjk-curse-glow-sm);
+  --stitch-glow-gold: var(--jjk-gold-glow);
+  --stitch-glow-crimson: var(--jjk-crimson-glow);
+
+  /* Type */
+  --stitch-font-display: var(--jjk-font-display);
+  --stitch-font-title: var(--jjk-font-banner);
+  --stitch-font-ui: var(--jjk-font-ui);
+  --stitch-font-mono: var(--jjk-font-mono);
+  --stitch-font-kanji: var(--jjk-font-kanji);
+
+  /* Motion */
+  --stitch-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --stitch-ease-overshoot: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --stitch-ease-domain: cubic-bezier(0.65, 0, 0.35, 1);
+  --stitch-duration-fast: 160ms;
+  --stitch-duration-base: 280ms;
+  --stitch-duration-reveal: 650ms;
+
+  /* Shape */
+  --stitch-cut-sm: 10px;
+  --stitch-cut-md: 14px;
+  --stitch-cut-lg: 18px;
+  --stitch-radius-panel: var(--jjk-radius-lg, 16px);
+}
+
+.stitch-screen {
+  background:
+    radial-gradient(circle at 18% 0%, color-mix(in srgb, var(--stitch-purple) 22%, transparent), transparent 34%),
+    radial-gradient(circle at 82% 70%, color-mix(in srgb, var(--stitch-cyan) 14%, transparent), transparent 32%),
+    linear-gradient(180deg, var(--stitch-surface), var(--stitch-void));
+  color: var(--stitch-text);
+  font-family: var(--stitch-font-ui);
+}
+
+.stitch-panel {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--stitch-panel-hi) 72%, transparent), var(--stitch-panel)),
+    var(--stitch-panel);
+  border: 1px solid var(--stitch-border-soft);
+  box-shadow: 0 18px 50px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.06);
+}
+
+.stitch-cut {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--stitch-cut-md)), calc(100% - var(--stitch-cut-md)) 100%, 0 100%);
+}
+
+.stitch-title {
+  font-family: var(--stitch-font-display);
+  color: var(--stitch-text);
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 22px var(--stitch-glow-purple-sm);
+}
+
+.stitch-label {
+  font-family: var(--stitch-font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--stitch-muted);
+}
+
+.stitch-action {
+  background: linear-gradient(135deg, var(--stitch-purple), var(--stitch-cyan) 54%, var(--stitch-crimson));
+  color: white;
+  box-shadow: 0 0 30px var(--stitch-glow-purple-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --stitch-duration-fast: 10ms;
+    --stitch-duration-base: 10ms;
+    --stitch-duration-reveal: 10ms;
+  }
+
+  .holo-shimmer::after,
+  .foil-sweep::before,
+  .animate-float,
+  .intent-glow {
+    animation-duration: 10ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

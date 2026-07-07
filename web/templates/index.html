@@ -113,7 +113,8 @@
   </script>
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link rel="stylesheet" href="{{ url_for('static', filename='jjk-tokens.css') }}?v=1">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=51">
+  <link rel="stylesheet" href="{{ url_for('static', filename='stitch-tokens.css') }}?v=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=54">
   <link rel="stylesheet" href="{{ url_for('static', filename='jjk-theme.css') }}?v=1">
   <link rel="stylesheet" href="{{ url_for('static', filename='arena-redesign.css') }}?v=1">
   <link rel="stylesheet" href="{{ url_for('static', filename='stitch-archive.css') }}?v=11">
@@ -402,7 +403,7 @@
 
     </section>
 
-    <section id="classic-v2" class="screen{% if battle_v2_enabled %} active{% endif %} bg-obsidian-base text-on-surface font-body-standard text-body-standard h-screen w-screen overflow-hidden flex flex-col relative selection:bg-energy-purple selection:text-white">
+    <section id="classic-v2" class="screen stitch-screen{% if battle_v2_enabled %} active{% endif %} bg-obsidian-base text-on-surface font-body-standard text-body-standard h-screen w-screen overflow-hidden flex flex-col relative selection:bg-energy-purple selection:text-white">
       <div class="absolute inset-0 z-0 bg-obsidian-base pointer-events-none">
         <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-energy-purple/5 rounded-full blur-3xl"></div>
         <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-energy-cyan/5 rounded-full blur-3xl"></div>
@@ -530,11 +531,30 @@
 
           <div class="v2-lobby-note hidden bg-surface-container/80 backdrop-blur-xl border border-primary/20 rounded-lg p-3 font-tactical-data text-[11px] text-energy-cyan" id="v2-lobby-note"></div>
 
+          <section class="v2-first-creation-guide stitch-panel stitch-cut" aria-label="First creation guide">
+            <div>
+              <span class="stitch-label">First Creation</span>
+              <h3 class="stitch-title">Welcome to Jujutsu High</h3>
+              <p>Student-era teams teach Body, Technique, Focus, Curse, and wildcard queue costs before mission unlocks.</p>
+            </div>
+            <div class="v2-energy-legend" aria-label="Energy legend">
+              <span><i class="orb orb-green"></i>Body</span>
+              <span><i class="orb orb-blue"></i>Technique</span>
+              <span><i class="orb orb-white"></i>Focus</span>
+              <span><i class="orb orb-red"></i>Curse</span>
+              <span><i class="orb orb-black"></i>Wild X</span>
+            </div>
+          </section>
+
+          <div class="v2-preset-rail grid grid-cols-2 gap-stack-sm" id="v2-preset-rail" aria-label="First creation presets"></div>
+          <section class="v2-mission-roadmap stitch-panel stitch-cut" id="v2-mission-roadmap" aria-label="Mission unlock roadmap"></section>
+
           <div id="v2-picker" class="v2-draft-list flex flex-col gap-stack-lg">
             <div class="v2-draft-section">
               <div class="v2-draft-section-title font-tactical-data text-[12px] text-inverse-surface tracking-wide uppercase mb-2">My Starters</div>
               <div class="v2-picker-summary flex flex-wrap gap-2 mb-3" id="v2-player-summary"></div>
               <div class="v2-roster-grid grid grid-cols-2 gap-stack-md" id="v2-player-picker"></div>
+              <section id="v2-character-details" class="v2-character-details stitch-panel stitch-cut" aria-live="polite"></section>
             </div>
             <div class="v2-draft-section" id="v2-enemy-picker-column">
               <div class="v2-draft-section-title font-tactical-data text-[12px] text-inverse-surface tracking-wide uppercase mb-2" id="v2-enemy-picker-label">CPU Starters</div>
@@ -728,11 +748,12 @@
     const PLAYER_SESSION_ID = "{{ player_id }}";
     const BATTLE_V2_ENABLED = {{ 'true' if battle_v2_enabled else 'false' }};
     const BATTLE_V2_STARTER_ROSTER = {{ battle_v2_catalog | tojson }};
+    const FIRST_CREATION = {{ first_creation | tojson }};
   </script>
   <script src="{{ url_for('static', filename='characters_data.js') }}?v=19"></script>
   <script src="{{ url_for('static', filename='effects.js') }}?v=16"></script>
   <script src="{{ url_for('static', filename='vendor/phaser.min.js') }}?v=3.90.0"></script>
   <script src="{{ url_for('static', filename='phaser-battle.js') }}?v=4"></script>
-  <script src="{{ url_for('static', filename='app.js') }}?v=78"></script>
+  <script src="{{ url_for('static', filename='app.js') }}?v=80"></script>
 </body>
 </html>

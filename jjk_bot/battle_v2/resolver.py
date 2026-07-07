@@ -274,6 +274,77 @@ def _apply_post_skill_punish(
         return
 
 
+
+
+def _first_available_energy(player) -> EnergyType | None:
+    for energy in player.energy:
+        if energy != EnergyType.BLACK:
+            return energy
+    return None
+
+
+def _append_energy_gain(state: BattleState, events: list[BattleEvent], player_id: str, amount: int, reason: str, source_status: StatusEffect | None = None) -> None:
+    energy = _first_available_energy(state.players[player_id])
+    if energy is None or amount <= 0:
+        return
+    state.players[player_id].energy[energy] += amount
+    _append_event(events, state, BattleEvent(
+        type="energy_gained",
+        message=f"{reason} generated {amount} energy",
+        turn_number=state.turn_number,
+        payload={"player_id": player_id, "energy": energy.value, "amount": amount, "status": source_status.id if source_status else None},
+    ))
+
+
+def _trigger_watch_statuses(state: BattleState, events: list[BattleEvent], action: PendingAction, skill: SkillSpec) -> None:
+    """Resolve simple first-creation read/scout statuses after a skill is declared."""
+
+    for watcher_player in state.players.values():
+        for watcher in watcher_player.team:
+            for status in list(watcher.statuses):
+                payload = status.payload
+                if status.duration == 0 or payload.get("watch_target_player_id") != action.player_id:
+                    continue
+                watched_classes = payload.get("watch_skill_classes") or []
+                if watched_classes and not any(skill_class.value in watched_classes or skill_class in watched_classes for skill_class in skill.classes):
+                    continue
+                _append_energy_gain(state, events, watcher_player.id, int(payload.get("reward_energy", 1)), status.name, status)
+                if payload.get("consume_on_trigger", True):
+                    _consume_status(watcher, status)
+
+
+def _maybe_redirect_action(state: BattleState, events: list[BattleEvent], action: PendingAction, skill: SkillSpec, target_player_id: str, target_slots: list[int]) -> tuple[str, list[int]]:
+    if not _is_harmful_skill(skill) or skill.target_rule.kind not in {"enemy", "ally"}:
+        return target_player_id, target_slots
+    caster = state.players[action.player_id].team[action.caster_slot]
+    for status in list(caster.statuses):
+        if status.duration == 0 or not status.payload.get("redirect_next_harmful_direct"):
+            continue
+        redirect_player_id = str(status.payload.get("redirect_to_player_id") or status.source_player_id)
+        redirect_slot = int(status.payload.get("redirect_to_slot", status.source_slot))
+        if redirect_player_id in state.players and 0 <= redirect_slot < len(state.players[redirect_player_id].team):
+            _consume_status(caster, status)
+            _append_event(events, state, BattleEvent(
+                type="skill_redirected",
+                message=f"{status.name} redirected {skill.name}",
+                turn_number=state.turn_number,
+                payload={
+                    "action_id": action.id,
+                    "skill_id": skill.id,
+                    "status": status.id,
+                    "from_player_id": target_player_id,
+                    "from_slots": list(target_slots),
+                    "target_player_id": redirect_player_id,
+                    "target_slot": redirect_slot,
+                },
+            ))
+            return redirect_player_id, [redirect_slot]
+    return target_player_id, target_slots
+
+
+def _consume_statuses_by_payload(character: CharacterState, key: str) -> None:
+    character.statuses = [status for status in character.statuses if status.duration == 0 or not status.payload.get(key)]
+
 def resolve_queue(
     state: BattleState,
     player_id: str,
@@ -304,6 +375,12 @@ def resolve_queue(
             state.event_log.append(event)
             continue
 
+        _trigger_watch_statuses(state, events, action, skill)
+        target_slots = action.target_slots or ([action.target_slot] if action.target_slot is not None else [])
+        if not target_slots and targets:
+            target_slots = list(state.players[target_player_id].active_slots)
+        target_player_id, target_slots = _maybe_redirect_action(state, events, action, skill, target_player_id, target_slots)
+
         caster.acted_this_turn = True
         if skill.cooldown > 0:
             caster.cooldowns[skill.id] = skill.cooldown + 1
@@ -321,10 +398,6 @@ def resolve_queue(
             },
         )
         _append_event(events, state, resolved)
-
-        target_slots = action.target_slots or ([action.target_slot] if action.target_slot is not None else [])
-        if not target_slots and targets:
-            target_slots = list(state.players[target_player_id].active_slots)
 
         countered = False
         for slot in target_slots:
@@ -392,6 +465,8 @@ def resolve_queue(
                     effect_target_slot = action.caster_slot
                 event = apply_effect(state, action, effect, effect_target_player_id, effect_target_slot, skill.name)
                 _append_event(events, state, event)
+        if any(effect.type == "damage" and effect.target != "self" for effect in skill.effects):
+            _consume_statuses_by_payload(caster, "consume_after_damage")
         _apply_post_skill_punish(state, events, action, caster, skill)
 
     events.extend(finish_turn(state, player_id))

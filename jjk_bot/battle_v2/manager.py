@@ -13,7 +13,15 @@ from .energy import CORE_ENERGY, gain_turn_energy, normalize_energy, split_cost
 from .models import BattleEvent, BattlePhase, BattleState, CharacterState, DamageType, PendingAction, PlayerState, SkillSpec, use_battle_v2
 from .resolver import ResolverError, check_winner, finish_turn, resolve_queue, validate_queue
 from .serialization import serialize_battle_state
-from .starter_roster import SKILLS_BY_ID, STARTER_ROSTER, CharacterSpec
+from .starter_roster import (
+    FIRST_CREATION_ROSTER,
+    FIRST_CREATION_SKILLS_BY_ID,
+    SKILLS_BY_ID,
+    STARTER_ROSTER,
+    CharacterSpec,
+    first_creation_catalog,
+    validate_first_creation_team,
+)
 
 
 class BattleV2Error(ValueError):
@@ -75,7 +83,7 @@ def payload_to_action(player_id: str, index: int, payload: dict[str, Any]) -> Pe
     )
 
 
-def skill_catalog() -> dict[str, dict[str, Any]]:
+def _serialize_roster_catalog(roster: dict[str, CharacterSpec]) -> dict[str, dict[str, Any]]:
     return {
         character_id: {
             "id": spec.id,
@@ -126,12 +134,20 @@ def skill_catalog() -> dict[str, dict[str, Any]]:
                 for skill in spec.skills
             ],
         }
-        for character_id, spec in STARTER_ROSTER.items()
+        for character_id, spec in roster.items()
     }
 
 
-def _wildcard_payment_options(player: PlayerState, skill_id: str) -> list[list[EnergyType]]:
-    skill = SKILLS_BY_ID[skill_id]
+def skill_catalog() -> dict[str, dict[str, Any]]:
+    return _serialize_roster_catalog(STARTER_ROSTER)
+
+
+def _wildcard_payment_options(
+    player: PlayerState,
+    skill_id: str,
+    skills: dict[str, SkillSpec] | None = None,
+) -> list[list[EnergyType]]:
+    skill = (skills or SKILLS_BY_ID)[skill_id]
     specific, wildcard_count = split_cost(skill.cost)
     if wildcard_count == 0:
         return [[]]
@@ -147,8 +163,14 @@ def _wildcard_payment_options(player: PlayerState, skill_id: str) -> list[list[E
     return options
 
 
-def _cpu_target_payloads(state: BattleState, player_id: str, skill_id: str, caster_slot: int) -> list[dict[str, Any]]:
-    skill = SKILLS_BY_ID[skill_id]
+def _cpu_target_payloads(
+    state: BattleState,
+    player_id: str,
+    skill_id: str,
+    caster_slot: int,
+    skills: dict[str, SkillSpec] | None = None,
+) -> list[dict[str, Any]]:
+    skill = (skills or SKILLS_BY_ID)[skill_id]
     opponent_ids = [pid for pid in state.players if pid != player_id]
     if not opponent_ids:
         return []
@@ -256,14 +278,24 @@ class BattleV2Manager:
         self.rooms: dict[str, BattleState] = {}
         self.rngs: dict[str, random.Random] = {}
         self.rng_seed = rng_seed
+        self.room_rosters: dict[str, dict[str, CharacterSpec]] = {}
+        self.room_skill_maps: dict[str, dict[str, SkillSpec]] = {}
+        self.room_catalogs: dict[str, dict[str, Any]] = {}
 
     def start_classic_match(
         self,
         room_id: str,
         players: list[BattlePlayerConfig | dict[str, Any]],
+        *,
+        roster: dict[str, CharacterSpec] | None = None,
+        skills: dict[str, SkillSpec] | None = None,
+        catalog: dict[str, Any] | None = None,
     ) -> dict:
         """Start a Classic Arena match and return serialized state for player one."""
 
+        roster = roster or STARTER_ROSTER
+        skills = skills or SKILLS_BY_ID
+        catalog = catalog or _serialize_roster_catalog(roster)
         configs = [_coerce_player_config(player) for player in players]
         if len(configs) != 2:
             raise BattleV2Error("classic match requires exactly two players")
@@ -275,9 +307,9 @@ class BattleV2Manager:
                 raise BattleV2Error(f"duplicate player id: {config.id}")
             team = []
             for character_id in config.team:
-                if character_id not in STARTER_ROSTER:
+                if character_id not in roster:
                     raise BattleV2Error(f"unknown starter character: {character_id}")
-                team.append(_character_state(STARTER_ROSTER[character_id]))
+                team.append(_character_state(roster[character_id]))
             player_states[config.id] = PlayerState(id=config.id, name=config.name, team=team)
 
         turn_player_id = configs[0].id
@@ -290,7 +322,36 @@ class BattleV2Manager:
         self.rngs[room_id] = rng
         gain_turn_energy(state.players[turn_player_id], state.turn_number, True, rng)
         self.rooms[room_id] = state
+        self.room_rosters[room_id] = roster
+        self.room_skill_maps[room_id] = skills
+        self.room_catalogs[room_id] = catalog
         return self.serialize_for_player(room_id, turn_player_id)
+
+    def start_first_creation_match(
+        self,
+        room_id: str,
+        players: list[BattlePlayerConfig | dict[str, Any]],
+    ) -> dict:
+        """Start a match restricted to the first-character-creation roster."""
+
+        configs = [_coerce_player_config(player) for player in players]
+        for config in configs:
+            valid, reason = validate_first_creation_team(config.team)
+            if not valid:
+                raise BattleV2Error(reason)
+        return self.start_classic_match(
+            room_id,
+            configs,
+            roster=FIRST_CREATION_ROSTER,
+            skills=FIRST_CREATION_SKILLS_BY_ID,
+            catalog=first_creation_catalog(),
+        )
+
+    def _skills_for_room(self, room_id: str) -> dict[str, SkillSpec]:
+        return self.room_skill_maps.get(room_id, SKILLS_BY_ID)
+
+    def _roster_for_room(self, room_id: str) -> dict[str, CharacterSpec]:
+        return self.room_rosters.get(room_id, STARTER_ROSTER)
 
     def get_state(self, room_id: str) -> BattleState:
         try:
@@ -311,9 +372,9 @@ class BattleV2Manager:
         state.phase = BattlePhase.QUEUE_REVIEW
         try:
             if all(not action.wildcard_pays for action in parsed):
-                self._validate_non_wildcard_plan(state, player_id)
+                self._validate_non_wildcard_plan(room_id, state, player_id)
             else:
-                validate_queue(state, player_id, SKILLS_BY_ID)
+                validate_queue(state, player_id, self._skills_for_room(room_id))
         except ResolverError as exc:
             state.pending_actions[player_id] = previous_actions
             state.queue_order[player_id] = previous_order
@@ -344,7 +405,7 @@ class BattleV2Manager:
             action_by_id[action_id].wildcard_pays = [normalize_energy(energy) for energy in pays]
         state.queue_order[player_id] = list(queue_order)
         try:
-            validate_queue(state, player_id, SKILLS_BY_ID)
+            validate_queue(state, player_id, self._skills_for_room(room_id))
         except ResolverError as exc:
             state.pending_actions[player_id] = previous_actions
             state.queue_order[player_id] = previous_order
@@ -356,7 +417,7 @@ class BattleV2Manager:
 
         state = self.get_state(room_id)
         self._ensure_turn_player(state, player_id)
-        resolve_queue(state, player_id, SKILLS_BY_ID)
+        resolve_queue(state, player_id, self._skills_for_room(room_id))
         self._grant_next_turn_energy(room_id, player_id)
         return self.serialize_for_player(room_id, player_id)
 
@@ -443,13 +504,15 @@ class BattleV2Manager:
             caster = player.team[slot]
             if not caster.alive:
                 continue
-            character_spec = STARTER_ROSTER.get(caster.character_id)
+            character_spec = self._roster_for_room(room_id).get(caster.character_id)
             if character_spec is None:
                 continue
             best: tuple[int, PendingAction] | None = None
             for skill in character_spec.skills:
-                for target_payload in _cpu_target_payloads(state, player_id, skill.id, slot):
-                    for wildcard_pays in _wildcard_payment_options(player, skill.id):
+                for target_payload in _cpu_target_payloads(
+                    state, player_id, skill.id, slot, self._skills_for_room(room_id)
+                ):
+                    for wildcard_pays in _wildcard_payment_options(player, skill.id, self._skills_for_room(room_id)):
                         candidate = PendingAction(
                             id=f"{player_id}:cpu:{slot}:{skill.id}",
                             player_id=player_id,
@@ -467,7 +530,7 @@ class BattleV2Manager:
                             action.id for action in trial_state.pending_actions[player_id]
                         ]
                         try:
-                            validate_queue(trial_state, player_id, SKILLS_BY_ID)
+                            validate_queue(trial_state, player_id, self._skills_for_room(room_id))
                         except ResolverError:
                             continue
                         score = _cpu_action_score(state, player_id, candidate, skill)
@@ -480,7 +543,7 @@ class BattleV2Manager:
         state.pending_actions[player_id] = actions
         state.queue_order[player_id] = [action.id for action in actions]
         state.phase = BattlePhase.QUEUE_REVIEW
-        resolve_queue(state, player_id, SKILLS_BY_ID)
+        resolve_queue(state, player_id, self._skills_for_room(room_id))
         self._grant_next_turn_energy(room_id, player_id)
         return self.serialize_for_player(room_id, player_id)
 
@@ -489,7 +552,7 @@ class BattleV2Manager:
         if viewer_id not in state.players:
             raise BattleV2Error(f"unknown viewer: {viewer_id}")
         payload = battle_state_to_dict(state, viewer_id)
-        payload["skill_catalog"] = skill_catalog()
+        payload["skill_catalog"] = self.room_catalogs.get(room_id, skill_catalog())
         return payload
 
     def _ensure_turn_player(self, state: BattleState, player_id: str) -> None:
@@ -526,11 +589,12 @@ class BattleV2Manager:
             rng,
         )
 
-    def _validate_non_wildcard_plan(self, state: BattleState, player_id: str) -> None:
+    def _validate_non_wildcard_plan(self, room_id: str, state: BattleState, player_id: str) -> None:
+        skills = self._skills_for_room(room_id)
         for action in state.pending_actions.get(player_id, []):
-            skill = SKILLS_BY_ID.get(action.skill_id)
+            skill = skills.get(action.skill_id)
             if skill is None:
                 raise BattleV2Error(f"unknown skill: {action.skill_id}")
             if any(energy.value == "black" for energy in skill.cost):
                 return
-        validate_queue(state, player_id, SKILLS_BY_ID)
+        validate_queue(state, player_id, skills)

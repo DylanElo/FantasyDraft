@@ -88,10 +88,10 @@ def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
     assert 'characters_data.js?v=19' in html
     assert 'vendor/phaser.min.js?v=3.90.0' in html
     assert 'phaser-battle.js?v=4' in html
-    assert 'app.js?v=80' in html
+    assert 'app.js?v=81' in html
     assert 'stitch-tokens.css?v=1' in html
-    assert 'style.css?v=54' in html
-    assert 'stitch-archive.css?v=11' in html
+    assert 'style.css?v=55' in html
+    assert 'stitch-archive.css?v=12' in html
     assert 'stitch/generated/lobby-hero.jpg' in html
     assert 'stitch/generated/victory-trophy.jpg' in html
     assert 'Open Cursed Clash' in html

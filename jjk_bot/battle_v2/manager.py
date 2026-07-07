@@ -11,6 +11,7 @@ from typing import Any
 
 from .energy import CORE_ENERGY, gain_turn_energy, normalize_energy, split_cost
 from .models import BattleEvent, BattlePhase, BattleState, CharacterState, DamageType, PendingAction, PlayerState, SkillSpec, use_battle_v2
+from .first_creation_progression import evaluate_first_creation_progress, initial_first_creation_progress
 from .resolver import ResolverError, check_winner, finish_turn, resolve_queue, validate_queue
 from .serialization import serialize_battle_state
 from .starter_roster import (
@@ -281,6 +282,8 @@ class BattleV2Manager:
         self.room_rosters: dict[str, dict[str, CharacterSpec]] = {}
         self.room_skill_maps: dict[str, dict[str, SkillSpec]] = {}
         self.room_catalogs: dict[str, dict[str, Any]] = {}
+        self.room_roster_modes: dict[str, str] = {}
+        self.room_first_creation_progress: dict[str, dict[str, dict[str, Any]]] = {}
 
     def start_classic_match(
         self,
@@ -325,6 +328,8 @@ class BattleV2Manager:
         self.room_rosters[room_id] = roster
         self.room_skill_maps[room_id] = skills
         self.room_catalogs[room_id] = catalog
+        self.room_roster_modes[room_id] = "classic"
+        self.room_first_creation_progress.pop(room_id, None)
         return self.serialize_for_player(room_id, turn_player_id)
 
     def start_first_creation_match(
@@ -339,13 +344,16 @@ class BattleV2Manager:
             valid, reason = validate_first_creation_team(config.team)
             if not valid:
                 raise BattleV2Error(reason)
-        return self.start_classic_match(
+        self.start_classic_match(
             room_id,
             configs,
             roster=FIRST_CREATION_ROSTER,
             skills=FIRST_CREATION_SKILLS_BY_ID,
             catalog=first_creation_catalog(),
         )
+        self.room_roster_modes[room_id] = "first_creation"
+        self.room_first_creation_progress[room_id] = initial_first_creation_progress(self.get_state(room_id))
+        return self.serialize_for_player(room_id, configs[0].id)
 
     def _skills_for_room(self, room_id: str) -> dict[str, SkillSpec]:
         return self.room_skill_maps.get(room_id, SKILLS_BY_ID)
@@ -418,6 +426,7 @@ class BattleV2Manager:
         state = self.get_state(room_id)
         self._ensure_turn_player(state, player_id)
         resolve_queue(state, player_id, self._skills_for_room(room_id))
+        self._refresh_first_creation_progress(room_id)
         self._grant_next_turn_energy(room_id, player_id)
         return self.serialize_for_player(room_id, player_id)
 
@@ -488,6 +497,7 @@ class BattleV2Manager:
         )
         finish_turn(state, player_id)
         check_winner(state)
+        self._refresh_first_creation_progress(room_id)
         self._grant_next_turn_energy(room_id, player_id)
         return self.serialize_for_player(room_id, player_id)
 
@@ -544,6 +554,7 @@ class BattleV2Manager:
         state.queue_order[player_id] = [action.id for action in actions]
         state.phase = BattlePhase.QUEUE_REVIEW
         resolve_queue(state, player_id, self._skills_for_room(room_id))
+        self._refresh_first_creation_progress(room_id)
         self._grant_next_turn_energy(room_id, player_id)
         return self.serialize_for_player(room_id, player_id)
 
@@ -553,7 +564,20 @@ class BattleV2Manager:
             raise BattleV2Error(f"unknown viewer: {viewer_id}")
         payload = battle_state_to_dict(state, viewer_id)
         payload["skill_catalog"] = self.room_catalogs.get(room_id, skill_catalog())
+        payload["roster_mode"] = self.room_roster_modes.get(room_id, "classic")
+        if self.room_roster_modes.get(room_id) == "first_creation":
+            self._refresh_first_creation_progress(room_id)
+            payload["first_creation_progress"] = self.room_first_creation_progress.get(room_id, {}).get(viewer_id)
         return payload
+
+
+    def _refresh_first_creation_progress(self, room_id: str) -> None:
+        if self.room_roster_modes.get(room_id) != "first_creation":
+            return
+        state = self.get_state(room_id)
+        existing = self.room_first_creation_progress.setdefault(room_id, {})
+        for player_id in state.players:
+            existing[player_id] = evaluate_first_creation_progress(state, player_id, existing.get(player_id))
 
     def _ensure_turn_player(self, state: BattleState, player_id: str) -> None:
         if player_id not in state.players:

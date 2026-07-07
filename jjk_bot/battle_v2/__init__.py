@@ -5,6 +5,7 @@ wired behind the ``JJK_BATTLE_SYSTEM`` feature flag.
 """
 
 from .first_creation_missions import FIRST_CREATION_MISSIONS, first_creation_missions_payload
+from .first_creation_progression import evaluate_first_creation_progress, initial_first_creation_progress
 from .starter_roster import (
     FIRST_CREATION_AVAILABILITY,
     FIRST_CREATION_CHARACTER_IDS,
@@ -57,6 +58,8 @@ __all__ = [
     "FIRST_CREATION_PRESETS",
     "FIRST_CREATION_MISSIONS",
     "first_creation_missions_payload",
+    "evaluate_first_creation_progress",
+    "initial_first_creation_progress",
     "validate_first_creation_team",
     "first_creation_payload",
     "first_creation_catalog",

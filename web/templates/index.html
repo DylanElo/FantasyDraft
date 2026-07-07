@@ -114,10 +114,10 @@
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link rel="stylesheet" href="{{ url_for('static', filename='jjk-tokens.css') }}?v=1">
   <link rel="stylesheet" href="{{ url_for('static', filename='stitch-tokens.css') }}?v=1">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=54">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=55">
   <link rel="stylesheet" href="{{ url_for('static', filename='jjk-theme.css') }}?v=1">
   <link rel="stylesheet" href="{{ url_for('static', filename='arena-redesign.css') }}?v=1">
-  <link rel="stylesheet" href="{{ url_for('static', filename='stitch-archive.css') }}?v=11">
+  <link rel="stylesheet" href="{{ url_for('static', filename='stitch-archive.css') }}?v=12">
   <script src="{{ url_for('static', filename='socket.io.min.js') }}?v=4.7.2"></script>
 </head>
 <body>
@@ -651,6 +651,11 @@
           </div>
 
           <div class="w-full bg-surface-container rounded-xl border border-outline-variant p-4 mb-stack-lg shadow-lg">
+            <h3 class="font-headline-lg-mobile text-[18px] text-on-surface mb-4 border-b border-outline-variant pb-2">Mission Route</h3>
+            <div id="v2-result-missions" class="v2-result-missions"></div>
+          </div>
+
+          <div class="w-full bg-surface-container rounded-xl border border-outline-variant p-4 mb-stack-lg shadow-lg">
             <h3 class="font-headline-lg-mobile text-[18px] text-on-surface mb-4 border-b border-outline-variant pb-2">Biggest Strikes</h3>
             <ul id="v2-result-highlights" class="space-y-3 font-tactical-data text-body-standard"></ul>
           </div>
@@ -754,6 +759,6 @@
   <script src="{{ url_for('static', filename='effects.js') }}?v=16"></script>
   <script src="{{ url_for('static', filename='vendor/phaser.min.js') }}?v=3.90.0"></script>
   <script src="{{ url_for('static', filename='phaser-battle.js') }}?v=4"></script>
-  <script src="{{ url_for('static', filename='app.js') }}?v=80"></script>
+  <script src="{{ url_for('static', filename='app.js') }}?v=81"></script>
 </body>
 </html>

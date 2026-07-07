@@ -1190,17 +1190,36 @@ function v2PickerButtonHTML(character, teamKey) {
 function v2MissionRoadmapHTML() {
     const missions = FIRST_CREATION?.missions || [];
     if (!missions.length) return '';
+    const progress = v2State.state?.first_creation_progress;
+    const progressById = new Map((progress?.missions || []).map(mission => [mission.id, mission]));
     return `
       <div class="v2-mission-head">
         <span class="stitch-label">Mission Unlocks</span>
         <strong>The apocalypse comes later</strong>
       </div>
       <div class="v2-mission-list">
-        ${missions.slice(0, 4).map(mission => `
-          <article class="v2-mission-card">
-            <strong>${esc(mission.title || mission.id)}</strong>
-            <span>${esc((mission.unlocks || []).join(' / ') || 'Progression')}</span>
-          </article>`).join('')}
+        ${missions.slice(0, 4).map(mission => {
+            const tracked = progressById.get(mission.id) || {};
+            const status = tracked.status || 'available';
+            const objectives = tracked.objectives || (mission.objectives || []).map(label => ({ label, complete: false, current: 0, target: 1 }));
+            const completeCount = objectives.filter(objective => objective.complete).length;
+            return `
+          <article class="v2-mission-card is-${esc(status)}">
+            <div class="v2-mission-card-head">
+              <strong>${esc(mission.title || mission.id)}</strong>
+              <span>${status === 'complete' ? 'Complete' : `${completeCount}/${objectives.length}`}</span>
+            </div>
+            <p>${esc(mission.description || '')}</p>
+            <ul class="v2-mission-objectives">
+              ${objectives.map(objective => `
+                <li class="${objective.complete ? 'is-complete' : ''}">
+                  <span class="material-symbols-outlined">${objective.complete ? 'check_circle' : 'radio_button_unchecked'}</span>
+                  <span>${esc(objective.label)}${objective.target > 1 ? ` (${objective.current}/${objective.target})` : ''}</span>
+                </li>`).join('')}
+            </ul>
+            <small>Unlocks: ${esc((mission.unlocks || []).join(' / ') || 'Progression')}</small>
+          </article>`;
+        }).join('')}
       </div>`;
 }
 
@@ -2014,6 +2033,7 @@ function v2RenderResultView(state, me, foe, mine) {
     const energyEl = document.getElementById('v2-result-energy');
     const turnsEl = document.getElementById('v2-result-turns');
     const highlightsEl = document.getElementById('v2-result-highlights');
+    const missionsEl = document.getElementById('v2-result-missions');
     const resultView = document.getElementById('v2-result-view');
     resultView?.classList.toggle('is-victory', iWon);
     resultView?.classList.toggle('is-defeat', !iWon);
@@ -2040,6 +2060,19 @@ function v2RenderResultView(state, me, foe, mine) {
               </li>
             `).join('')
             : '<li class="bg-surface-container-high p-2 rounded text-on-surface-variant">No strike data recorded.</li>';
+    }
+    if (missionsEl) {
+        const progress = state.first_creation_progress;
+        const completed = progress?.last_completed?.length
+            ? progress.missions.filter(mission => progress.last_completed.includes(mission.id))
+            : [];
+        missionsEl.innerHTML = completed.length
+            ? completed.map(mission => `
+              <article class="v2-result-mission is-complete">
+                <span class="material-symbols-outlined">verified</span>
+                <div><strong>${esc(mission.title)}</strong><small>Unlocked ${esc((mission.unlocks || []).join(' / ') || 'progression')}</small></div>
+              </article>`).join('')
+            : '<article class="v2-result-mission"><span class="material-symbols-outlined">route</span><div><strong>Mission progress saved</strong><small>Try a recommended team to unlock the next route.</small></div></article>';
     }
 }
 

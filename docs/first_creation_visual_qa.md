@@ -13,7 +13,16 @@ The first-creation onboarding flow is now ready for browser-based screenshot QA 
 ## Suggested command
 
 ```bash
-JJK_BATTLE_SYSTEM=v2 pytest tests/test_first_creation_visual.py --headed
+JJK_RUN_VISUAL_TESTS=1 JJK_BATTLE_SYSTEM=v2 pytest tests/test_first_creation_visual.py -q
 ```
 
-The current container does not include Playwright, so this document records the required visual regression targets rather than enabling screenshot assertions yet.
+Optional output location:
+
+```bash
+JJK_VISUAL_OUTPUT_DIR=artifacts/first_creation_visual \
+JJK_RUN_VISUAL_TESTS=1 \
+JJK_BATTLE_SYSTEM=v2 \
+pytest tests/test_first_creation_visual.py -q
+```
+
+The default unit-test environment may not include Playwright or browser binaries, so this test is opt-in and skips unless `JJK_RUN_VISUAL_TESTS=1` is set.

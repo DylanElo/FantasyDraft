@@ -17,7 +17,7 @@ from typing import Any
 def use_battle_v2() -> bool:
     """Return whether the v2 battle system is enabled for integration code."""
 
-    return os.getenv("JJK_BATTLE_SYSTEM", "v1").lower() == "v2"
+    return os.getenv("JJK_BATTLE_SYSTEM", "v2").lower() == "v2"
 
 
 class BattlePhase(StrEnum):

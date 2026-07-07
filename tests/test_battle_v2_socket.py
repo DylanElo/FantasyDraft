@@ -45,7 +45,7 @@ def character(name):
 
 
 def test_battle_v2_socket_events_are_feature_flagged(monkeypatch):
-    monkeypatch.delenv("JJK_BATTLE_SYSTEM", raising=False)
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v1")
     client = socket_client()
 
     client.emit("battle_v2_start_classic", {"room_id": "socket-v2"})

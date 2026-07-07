@@ -17,8 +17,14 @@ from jjk_bot.battle_v2 import (
 )
 
 
-def test_battle_v2_default_flag_is_off(monkeypatch):
+def test_battle_v2_default_flag_is_on(monkeypatch):
     monkeypatch.delenv("JJK_BATTLE_SYSTEM", raising=False)
+
+    assert battle_v2_enabled() is True
+
+
+def test_battle_v2_flag_can_be_explicitly_disabled(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v1")
 
     assert battle_v2_enabled() is False
 

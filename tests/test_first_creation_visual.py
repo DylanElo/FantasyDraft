@@ -48,16 +48,20 @@ def test_first_creation_onboarding_visual_snapshots(live_first_creation_server, 
         page = browser.new_page(viewport={"width": 430, "height": 932}, device_scale_factor=1)
         page.goto(live_first_creation_server, wait_until="networkidle")
 
-        page.locator("#classic-v2").screenshot(path=output_dir / "first_creation_lobby.png")
+        canvas = page.locator("#v2-phaser-shell canvas")
+        canvas.wait_for(state="visible", timeout=10000)
+        canvas.screenshot(path=output_dir / "first_creation_lobby.png")
 
-        page.locator('[data-v2-enter-mode="cpu"]').click()
-        page.locator("#v2-setup-view").screenshot(path=output_dir / "first_creation_setup.png")
+        page.mouse.click(215, 290)
+        page.wait_for_timeout(300)
+        canvas.screenshot(path=output_dir / "first_creation_draft.png")
 
-        page.locator('[data-v2-pick-team="playerTeam"]').first.click()
-        page.locator("#v2-character-details").screenshot(path=output_dir / "first_creation_character_details.png")
+        page.mouse.click(215, 908)
+        page.wait_for_timeout(1200)
+        canvas.screenshot(path=output_dir / "first_creation_combat.png")
 
         browser.close()
 
     assert (output_dir / "first_creation_lobby.png").exists()
-    assert (output_dir / "first_creation_setup.png").exists()
-    assert (output_dir / "first_creation_character_details.png").exists()
+    assert (output_dir / "first_creation_draft.png").exists()
+    assert (output_dir / "first_creation_combat.png").exists()

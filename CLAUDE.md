@@ -14,8 +14,8 @@ web/
   templates/
     index.html        # Single-page app, all screens
   static/
-    style.css         # Design system CSS
-    app.js            # Client-side game logic (rendering + sockets)
+    phaser-shell.css  # Canvas/container reset for the Phaser v2 client
+    phaser-shell.js   # Phaser scene stack, rendering, SocketIO bridge
     effects.js        # Visual/audio juice (shake, flash, domainExpansion, hitChar, etc.)
     characters_data.js # Static JS: exports window.CHARACTERS_DATA (30 characters)
 
@@ -144,7 +144,7 @@ All characters: 100 HP. Energy economy should be consistent:
 ## File Size Limits
 
 - `characters.py` is large (~700 lines). Do not add more characters without removing others.
-- `app.js` is ~1300 lines. Keep it organized by section (draft, battle, UI).
+- `phaser-shell.js` owns the v2 client shell. Keep scenes and shared services organized by responsibility.
 - `game.py` is ~1000 lines. BattleEngine is at the bottom.
 
 ---

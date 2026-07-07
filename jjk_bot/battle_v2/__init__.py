@@ -6,6 +6,8 @@ wired behind the ``JJK_BATTLE_SYSTEM`` feature flag.
 
 from .first_creation_missions import FIRST_CREATION_MISSIONS, first_creation_missions_payload
 from .first_creation_progression import evaluate_first_creation_progress, initial_first_creation_progress
+from .first_creation_profile import first_creation_profile_payload, load_first_creation_profile, merge_first_creation_progress, save_first_creation_profile
+from .first_creation_unlocks import FIRST_CREATION_UNLOCKS, first_creation_unlocks_payload
 from .starter_roster import (
     FIRST_CREATION_AVAILABILITY,
     FIRST_CREATION_CHARACTER_IDS,
@@ -60,6 +62,12 @@ __all__ = [
     "first_creation_missions_payload",
     "evaluate_first_creation_progress",
     "initial_first_creation_progress",
+    "FIRST_CREATION_UNLOCKS",
+    "first_creation_unlocks_payload",
+    "first_creation_profile_payload",
+    "load_first_creation_profile",
+    "merge_first_creation_progress",
+    "save_first_creation_profile",
     "validate_first_creation_team",
     "first_creation_payload",
     "first_creation_catalog",

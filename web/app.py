@@ -25,6 +25,12 @@ from jjk_bot.portrait_assets import local_portrait_path
 from jjk_bot.battle_v2.models import BattleEvent, BattlePhase
 from jjk_bot.battle_v2.manager import BattleV2Manager, BattleV2Error, battle_v2_enabled, skill_catalog
 from jjk_bot.battle_v2.starter_roster import FIRST_CREATION_PRESETS, first_creation_payload
+from jjk_bot.battle_v2.first_creation_profile import (
+    first_creation_profile_payload,
+    load_first_creation_profile,
+    merge_first_creation_progress,
+    save_first_creation_profile,
+)
 
 def env_flag(name: str, default: bool = False) -> bool:
     value = os.getenv(name)
@@ -216,6 +222,22 @@ def battle_v2_default_enemy_team(mode: str) -> list[str]:
     return ["satoru_gojo", "ryomen_sukuna", "mahito"]
 
 
+def first_creation_payload_for_player(player_id: str | None) -> dict:
+    payload = first_creation_payload()
+    if player_id:
+        profile = load_first_creation_profile(player_id)
+        payload["profile"] = first_creation_profile_payload(profile)
+    else:
+        payload["profile"] = first_creation_profile_payload({})
+    return payload
+
+
+def remember_first_creation_team(player_id: str, team: list[str]) -> None:
+    profile = load_first_creation_profile(player_id)
+    profile["selected_starter_team"] = list(team[:3])
+    save_first_creation_profile(player_id, profile)
+
+
 def start_battle_v2_match_for_mode(room_id: str, players: list[dict], mode: str) -> dict:
     if mode == "first_creation":
         return battle_v2_manager.start_first_creation_match(room_id, players)
@@ -321,6 +343,13 @@ def emit_battle_v2_update(room_id: str, viewer_id: str | None = None):
         viewer_ids = [viewer_id]
     for target_viewer_id in viewer_ids:
         payload = battle_v2_manager.serialize_for_player(room_id, target_viewer_id)
+        if payload.get("roster_mode") == "first_creation":
+            profile = (
+                merge_first_creation_progress(target_viewer_id, payload.get("first_creation_progress"))
+                if payload.get("winner_id")
+                else load_first_creation_profile(target_viewer_id)
+            )
+            payload["first_creation_account"] = first_creation_profile_payload(profile)
         emit("battle_v2_update", payload, room=target_viewer_id)
         if payload.get("winner_id"):
             emit("battle_v2_finished", {"winner_id": payload["winner_id"]}, room=target_viewer_id)
@@ -612,7 +641,7 @@ def index():
         player_id=session['player_id'],
         battle_v2_enabled=battle_v2_enabled(),
         battle_v2_catalog=skill_catalog() if battle_v2_enabled() else {},
-        first_creation=first_creation_payload() if battle_v2_enabled() else {},
+        first_creation=first_creation_payload_for_player(session['player_id']) if battle_v2_enabled() else {},
     )
 
 @app.route('/reset/<room_id>')
@@ -920,6 +949,8 @@ def on_battle_v2_start_classic(data=None):
             ],
             roster_mode,
         )
+        if roster_mode == "first_creation":
+            remember_first_creation_team(player_session, player_team)
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
         emit_battle_v2_error(exc)
@@ -951,6 +982,8 @@ def on_battle_v2_join_pvp(data=None):
         lobby = v2_pvp_lobbies.setdefault(room_id, [])
         lobby = [entry for entry in lobby if entry["id"] != player_session]
         lobby.append({"id": player_session, "name": player_name, "team": player_team, "roster_mode": roster_mode})
+        if roster_mode == "first_creation":
+            remember_first_creation_team(player_session, player_team)
         v2_pvp_lobbies[room_id] = lobby[:2]
 
         if len(v2_pvp_lobbies[room_id]) < 2:

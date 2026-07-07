@@ -24,7 +24,7 @@ python scripts/export_characters_data.py
 ## Runtime Notes
 
 - `web/app.py` is the Flask-SocketIO bridge.
-- `web/static/app.js` owns the main browser client.
-- `web/static/arena-redesign.css`, `web/static/jjk-theme.css`, and `web/static/style.css` own the active visual layers.
+- `web/static/phaser-shell.js` owns the v2 browser client, scene stack, SocketIO bridge, and Phaser UI.
+- `web/static/phaser-shell.css` is only the canvas/container reset. Phaser draws the v2 screens.
 - `jjk_bot/battle_v2/` contains the newer Battle v2 rules engine behind the `JJK_BATTLE_SYSTEM=v2` feature flag.
 - Battle v2 currently supports CPU Practice and Private PvP room lobbies. PvP waiting rooms clean up when a player cancels, resets, or disconnects.

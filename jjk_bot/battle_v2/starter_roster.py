@@ -11,6 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from .first_creation_missions import first_creation_missions_payload
+from .first_creation_unlocks import first_creation_unlocks_payload
 
 from .models import (
     ConditionSpec,
@@ -1108,6 +1109,7 @@ def first_creation_payload() -> dict[str, object]:
         "generated_energy_types": [energy.value for energy in GENERATED_ENERGY_TYPES],
         "wildcard_cost_type": WILDCARD_COST_TYPE.value,
         "missions": first_creation_missions_payload(),
+        "unlock_registry": first_creation_unlocks_payload(),
     }
 
 

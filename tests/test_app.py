@@ -42,14 +42,32 @@ class TestApp(unittest.TestCase):
         self.assertEqual(s_dict['classes'], "Physical, Instant")
 
 
-def test_index_hides_battle_v2_entry_by_default(monkeypatch):
+def test_index_defaults_to_phaser_cursed_clash(monkeypatch):
     monkeypatch.delenv("JJK_BATTLE_SYSTEM", raising=False)
     client = web_app.app.test_client()
 
     html = client.get("/").get_data(as_text=True)
 
-    assert 'const BATTLE_V2_ENABLED = false;' in html
-    assert 'id="btn-classic-v2" class="btn-ghost roster-lab-entry hidden"' in html
+    assert 'const BATTLE_V2_ENABLED = true;' in html
+    assert 'id="classic-v2" class="phaser-shell-screen"' in html
+    assert 'id="v2-phaser-shell"' in html
+    assert 'id="setup"' not in html
+    assert 'id="game-arena"' not in html
+    assert 'id="team-selection"' not in html
+    assert 'id="battle-arena"' not in html
+    assert 'id="results"' not in html
+    assert 'id="v2-lobby-view"' not in html
+    assert 'id="v2-setup-view"' not in html
+    assert 'id="v2-battle-view"' not in html
+    assert 'id="v2-result-view"' not in html
+    assert 'id="v2-bottom-nav"' not in html
+    assert "cdn.tailwindcss.com" not in html
+    assert "style.css" not in html
+    assert "jjk-theme.css" not in html
+    assert "arena-redesign.css" not in html
+    assert "jjk-tokens.css" not in html
+    assert "stitch-tokens.css" not in html
+    assert "stitch-archive.css" not in html
 
 
 def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
@@ -59,42 +77,29 @@ def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
     html = client.get("/").get_data(as_text=True)
 
     assert 'const BATTLE_V2_ENABLED = true;' in html
-    assert 'id="btn-classic-v2" class="btn-ghost roster-lab-entry"' in html
-    assert 'id="btn-classic-v2" class="btn-ghost roster-lab-entry" type="button" disabled' in html
-    assert 'id="setup" class="screen"' in html
-    assert 'id="classic-v2" class="screen stitch-screen active' in html
+    assert 'id="classic-v2" class="phaser-shell-screen"' in html
+    assert 'id="v2-phaser-shell"' in html
     assert '"aoi_todo"' in html
     assert '"hiromi_higuruma"' in html
-    assert 'id="btn-v2-new-match"' in html
-    assert 'id="v2-lobby-view"' in html
-    assert 'id="v2-history-view"' in html
-    assert 'id="v2-history-view-content"' in html
-    assert 'id="v2-player-name"' in html
-    assert 'id="v2-room-id"' in html
-    assert 'id="v2-lobby-activity"' in html
-    assert 'id="v2-selection-dock"' in html
-    assert 'id="v2-result-rank"' in html
-    assert 'data-v2-enter-mode="cpu"' in html
-    assert 'data-v2-result-action="lobby"' in html
-    assert 'id="v2-player-summary"' in html
-    assert 'data-v2-mode="cpu"' in html
-    assert 'data-v2-mode="pvp"' in html
-    assert 'id="v2-lobby-note"' in html
-    assert 'v2-first-creation-guide stitch-panel stitch-cut' in html
-    assert 'Welcome to Jujutsu High' in html
-    assert 'aria-label="Energy legend"' in html
-    assert 'id="v2-mission-roadmap"' in html
-    assert 'id="v2-character-details"' in html
-    assert 'characters_data.js?v=19' in html
+    assert 'id="btn-v2-new-match"' not in html
+    assert 'id="v2-lobby-view"' not in html
+    assert 'id="v2-history-view"' not in html
+    assert 'id="v2-setup-view"' not in html
+    assert 'id="v2-battle-view"' not in html
+    assert 'id="v2-result-view"' not in html
+    assert 'id="v2-bottom-nav"' not in html
+    assert 'v2-fighter-card' not in html
+    assert 'v2-enemy-team' not in html
+    assert 'v2-my-team' not in html
     assert 'vendor/phaser.min.js?v=3.90.0' in html
-    assert 'phaser-battle.js?v=4' in html
-    assert 'app.js?v=81' in html
-    assert 'stitch-tokens.css?v=1' in html
-    assert 'style.css?v=55' in html
-    assert 'stitch-archive.css?v=12' in html
-    assert 'stitch/generated/lobby-hero.jpg' in html
-    assert 'stitch/generated/victory-trophy.jpg' in html
-    assert 'Open Cursed Clash' in html
+    assert 'phaser-shell.js?v=1' in html
+    assert 'phaser-shell.css?v=1' in html
+    assert 'phaser-battle.js' not in html
+    assert 'app.js' not in html
+    assert 'stitch-tokens.css' not in html
+    assert 'stitch-archive.css' not in html
+    assert 'stitch/generated/lobby-hero.jpg' not in html
+    assert 'stitch/generated/victory-trophy.jpg' not in html
     assert 'Classic Queue Test' not in html
 
 
@@ -103,18 +108,35 @@ def test_battle_v2_public_surface_uses_production_copy(monkeypatch):
     client = web_app.app.test_client()
 
     html = client.get("/").get_data(as_text=True)
-    app_js = Path(web_app.app.static_folder, "app.js").read_text(encoding="utf-8")
-    style_css = Path(web_app.app.static_folder, "style.css").read_text(encoding="utf-8")
+    shell_js = Path(web_app.app.static_folder, "phaser-shell.js").read_text(encoding="utf-8")
 
-    assert "Open Cursed Clash" in html
-    assert "Assemble Your Trio" in app_js
+    assert "class BootScene" in shell_js
+    assert "class LobbyScene" in shell_js
+    assert "class DraftScene" in shell_js
+    assert "class CombatScene" in shell_js
+    assert "class ResultScene" in shell_js
+    assert "class RecordsScene" in shell_js
+    assert "battle_v2_start_classic" in shell_js
+    assert "battle_v2_submit_plan" in shell_js
+    assert "battle_v2_update_queue" in shell_js
+    assert "battle_v2_confirm_queue" in shell_js
+    assert "battle_v2_convert_energy" in shell_js
+    assert "playEvent(event, frame)" in shell_js
+    assert "consumePlaybackEvents" in shell_js
+    assert "REPLAY" in shell_js
+    assert "BIGGEST STRIKES" in shell_js
+    assert "MISSION ROUTE" in shell_js
+    assert "setDraftTarget" in shell_js
+    assert "jjk:ui-tap" in shell_js
     assert "Classic Queue Test" not in html
-    assert "Classic Queue Test" not in app_js
+    assert "Classic Queue Test" not in shell_js
     assert "Classic Arena v2" not in html
     assert "Battle v2 Arena" not in html
-    assert "Classic Arena v2" not in style_css
-    assert "dev surface" not in app_js.lower()
-    assert "dev surface" not in style_css.lower()
+    assert "dev surface" not in shell_js.lower()
+    assert "document.getElementById('btn-join')" not in shell_js
+    assert "showScreen('game-arena')" not in shell_js
+    assert "showScreen('battle-arena')" not in shell_js
+    assert "showScreen('team-selection')" not in shell_js
 
 
 def test_v2_character_id_for_v1_names():
@@ -142,36 +164,43 @@ def test_index_exposes_first_creation_payload_when_battle_v2_enabled(monkeypatch
     assert '"satoru_gojo_young"' in html
     assert '"yuta_okkotsu_jjk0"' in html
     assert '"mahito"' in html  # locked variant list, not the starter roster
-    app_js = Path(web_app.app.static_folder, "app.js").read_text(encoding="utf-8")
-    assert "FIRST_CREATION?.roster" in app_js
-    assert "roster_mode: 'first_creation'" in app_js
-    assert "v2-preset-card" in app_js
-    assert "v2-roster-skill-preview" in app_js
-    assert "v2MissionRoadmapHTML" in app_js
-    assert "v2CharacterDetailsHTML" in app_js
-    assert "Onboarding rules" in app_js
+    shell_js = Path(web_app.app.static_folder, "phaser-shell.js").read_text(encoding="utf-8")
+    assert "BOOT.firstCreation && BOOT.firstCreation.roster" in shell_js
+    assert "roster_mode: 'first_creation'" in shell_js
+    assert "applyPreset" in shell_js
+    assert "renderRosterCard" in shell_js
+    assert "MISSION OBJECTIVE" in shell_js
+    assert "Skill cards show cost / cooldown / target / effect." in shell_js
+    assert "completed_missions" in html
+    assert "unlock_registry" in html
+    assert "first_creation_account" not in shell_js
 
 
-def test_stitch_design_system_bridge_is_loaded_after_tokens(monkeypatch):
+def test_v2_page_uses_phaser_container_css_not_stitch_bridge(monkeypatch):
     monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
     client = web_app.app.test_client()
 
     html = client.get("/").get_data(as_text=True)
-    tokens_index = html.index("jjk-tokens.css")
-    stitch_index = html.index("stitch-tokens.css")
-    style_index = html.index("style.css")
+    shell_css = Path(web_app.app.static_folder, "phaser-shell.css").read_text(encoding="utf-8")
 
-    assert tokens_index < stitch_index < style_index
+    assert "phaser-shell.css" in html
+    assert not Path(web_app.app.static_folder, "stitch").exists()
+    assert "stitch-tokens.css" not in html
+    assert "stitch-archive.css" not in html
+    assert "#v2-phaser-shell canvas" in shell_css
+    assert ".stitch-screen" not in shell_css
+    assert ".v2-first-creation-guide" not in shell_css
 
-    stitch_tokens = Path(web_app.app.static_folder, "stitch-tokens.css").read_text(encoding="utf-8")
-    style_css = Path(web_app.app.static_folder, "style.css").read_text(encoding="utf-8")
+def test_index_embeds_persisted_first_creation_profile(monkeypatch, tmp_path):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    monkeypatch.setenv("JJK_FIRST_CREATION_PROFILE_STORE", str(tmp_path / "profiles.json"))
+    web_app.save_first_creation_profile("player-profile", {"completed_missions": ["welcome_to_jujutsu_high"], "unlocked": ["mission_board"]})
+    client = web_app.app.test_client()
+    with client.session_transaction() as flask_session:
+        flask_session["player_id"] = "player-profile"
 
-    assert "--stitch-void: var(--jjk-bg-void)" in stitch_tokens
-    stitch_archive = Path(web_app.app.static_folder, "stitch-archive.css").read_text(encoding="utf-8")
+    html = client.get("/").get_data(as_text=True)
 
-    assert ".stitch-screen" in stitch_tokens
-    assert "--stitch-void: #04040d" not in style_css
-    assert ".v2-first-creation-guide" in stitch_archive
-    assert "var(--stitch-panel" in stitch_archive
-    assert ".v2-mission-roadmap" in stitch_archive
-    assert ".v2-character-details" in stitch_archive
+    assert '"completed_missions": ["welcome_to_jujutsu_high"]' in html
+    assert '"unlocked": ["mission_board"]' in html
+    assert '"owned": true' in html

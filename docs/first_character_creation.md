@@ -160,3 +160,7 @@ The apocalypse comes later.
 ```
 
 The first roster should feel like "Welcome to Jujutsu High," not "Congratulations, here is the end of the manga."
+
+## Runtime progression layer
+
+First-creation mission progress is evaluated from Battle v2 room state and then merged into a lightweight player profile. The profile tracks completed mission ids, owned unlock ids, the first completion timestamp for each mission, and the player's most recent starter team. Unlock rewards are registry-driven so UI can distinguish implemented systems/routes/badges from planned character variants before those later kits exist.

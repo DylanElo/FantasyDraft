@@ -116,5 +116,6 @@ def test_first_creation_metadata_catalog_payload_and_energy_contract():
     assert payload["wildcard_cost_type"] == EnergyType.BLACK.value
     assert payload["missions"][0]["id"] == "welcome_to_jujutsu_high"
     assert "mahito_intro_mission" in payload["missions"][-1]["unlocks"]
+    assert any(unlock["id"] == "mission_board" for unlock in payload["unlock_registry"])
     assert WILDCARD_COST_TYPE == EnergyType.BLACK
     assert EnergyType.BLACK not in GENERATED_ENERGY_TYPES

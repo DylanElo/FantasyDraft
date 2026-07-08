@@ -9,6 +9,39 @@ After every meaningful pass, add a short dated entry with:
 - What remains or needs caution
 - Relevant commits or pushed state
 
+## 2026-07-09 - Line-ending policy and local verification
+
+Source: local repo check after external zip inspection summary.
+
+What changed:
+
+- Added `.gitattributes` to set a repository line-ending policy.
+- Kept normal text files normalized to LF in Git.
+- Kept Windows script files (`*.bat`, `*.ps1`) as CRLF on checkout.
+- Marked common image formats as binary.
+
+Verification:
+
+- Current working tree started clean on `main`.
+- `git diff --stat` and `git diff --ignore-space-at-eol --stat` were empty before the policy change.
+- `git ls-files --eol` showed mixed working-tree line endings, confirming the need for an explicit policy.
+- `git add --renormalize .` did not produce a mass content rewrite.
+- `python -m pytest -q` -> `110 passed, 1 skipped`.
+- `node --check web/static/phaser-shell.js`.
+
+Caution / next work:
+
+- This prevents future line-ending churn, but it does not redesign remaining mobile surfaces.
+- Next UI work should continue with lobby/draft mobile redesign, stronger battlefield art, attack animation language, and clearer target/queue motion.
+
+Commit:
+
+- `Add repository line ending policy`
+
+Pushed state:
+
+- `main` was pushed to `origin/main` after the pass.
+
 ## 2026-07-08 - Mobile combat HUD rebuild
 
 Source: live browser/code pass.

@@ -83,7 +83,8 @@ def test_battle_v2_public_surface_uses_production_copy(monkeypatch):
     assert "battle_v2_convert_energy" in shell_js
     assert "playEvent(event, frame)" in shell_js
     assert "consumePlaybackEvents" in shell_js
-    assert "REPLAY" in shell_js
+    assert "renderReplayLine" in shell_js
+    assert "YOUR FIELD" in shell_js
     assert "BIGGEST STRIKES" in shell_js
     assert "MISSION ROUTE" in shell_js
     assert "setDraftTarget" in shell_js
@@ -117,7 +118,8 @@ def test_index_exposes_first_creation_payload_when_battle_v2_enabled(monkeypatch
     assert "applyPreset" in shell_js
     assert "renderRosterCard" in shell_js
     assert "MISSION OBJECTIVE" in shell_js
-    assert "Skill cards show cost / cooldown / target / effect." in shell_js
+    assert "renderSkillButton" in shell_js
+    assert "Choose technique" in shell_js
     assert "completed_missions" in html
     assert "unlock_registry" in html
     assert "first_creation_account" not in shell_js

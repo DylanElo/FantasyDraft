@@ -57,6 +57,11 @@
     return String(value === undefined || value === null || value === '' ? fallback : value);
   }
 
+  function shortText(value, limit) {
+    const text = safeText(value);
+    return text.length > limit ? `${text.slice(0, Math.max(0, limit - 3))}...` : text;
+  }
+
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
   }
@@ -870,22 +875,18 @@
 
     drawAppBg(frame) {
       const g = this.graphics;
-      g.fillGradientStyle(0x020617, 0x06142d, 0x16081f, 0x030712, 1);
+      g.fillGradientStyle(0x020617, 0x061120, 0x120917, 0x030712, 1);
       g.fillRect(0, 0, frame.fullWidth, frame.fullHeight);
-      g.fillStyle(0x22d3ee, 0.08);
-      g.fillCircle(frame.x + frame.width * 0.18, frame.height * 0.18, frame.width * 0.45);
-      g.fillStyle(0xa855f7, 0.08);
-      g.fillCircle(frame.x + frame.width * 0.82, frame.height * 0.70, frame.width * 0.56);
       g.fillStyle(COLORS.bg, 0.84);
       g.fillRoundedRect(frame.x, frame.y, frame.width, frame.height, frame.desktop ? 22 : 0);
       g.lineStyle(1, 0xffffff, frame.desktop ? 0.14 : 0);
       g.strokeRoundedRect(frame.x + 0.5, frame.y + 0.5, frame.width - 1, frame.height - 1, frame.desktop ? 22 : 0);
-      for (let i = 0; i < 14; i += 1) {
-        const y = frame.y + 78 + i * 44;
-        g.lineStyle(1, 0xffffff, 0.035);
+      for (let i = 0; i < 15; i += 1) {
+        const y = frame.y + 42 + i * 48;
+        g.lineStyle(1, i % 3 === 0 ? COLORS.gold : 0xffffff, i % 3 === 0 ? 0.05 : 0.03);
         g.beginPath();
-        g.moveTo(frame.x + 18, y);
-        g.lineTo(frame.x + frame.width - 18, y + (i % 2 ? -12 : 12));
+        g.moveTo(frame.x, y);
+        g.lineTo(frame.x + frame.width, y + (i % 2 ? -18 : 18));
         g.strokePath();
       }
     }
@@ -1269,110 +1270,217 @@
       super('CombatScene');
     }
 
-    renderFighter(character, side, slot, x, y, w, h) {
+    renderTopHud(frame, state, me) {
+      const x = frame.x + frame.gutter;
+      const g = this.graphics;
+      g.fillStyle(0x020617, 0.78);
+      g.fillRoundedRect(frame.x + 10, 12, frame.width - 20, 58, 16);
+      g.lineStyle(1.5, COLORS.line, 0.65);
+      g.strokeRoundedRect(frame.x + 10, 12, frame.width - 20, 58, 16);
+      this.mono(x, 23, `TURN ${state.turn_number || 1}`, { color: '#fde68a', fontSize: '10px' });
+      this.text(x, 38, this.store.isMyTurn() ? 'Your Domain' : 'Enemy Domain', {
+        fontFamily: 'Cinzel, Inter, serif',
+        fontSize: '19px',
+        fontStyle: '900',
+      });
+      this.renderEnergyMeter(frame.x + frame.width - 158, 25, me && me.energy);
+      this.iconButton(frame.x + frame.width - frame.gutter - 38, 26, 38, 32, '<', () => this.store.resetToLobby(), {
+        fontSize: '15px',
+      });
+    }
+
+    renderEnergyMeter(x, y, energy) {
+      const colors = ['green', 'red', 'blue', 'white'];
+      colors.forEach((color, index) => {
+        const count = Number((energy && energy[color]) || 0);
+        const cx = x + index * 27;
+        this.graphics.fillStyle(ENERGY_COLORS[color], count ? 0.95 : 0.14);
+        this.graphics.fillCircle(cx, y, 8);
+        this.graphics.lineStyle(1.5, ENERGY_COLORS[color], 0.85);
+        this.graphics.strokeCircle(cx, y, 8);
+        this.mono(cx, y + 12, String(count), { color: '#e2e8f0', fontSize: '9px' }).setOrigin(0.5, 0);
+      });
+    }
+
+    fighterLayout(frame, dockY) {
+      const compact = frame.height < 730;
+      const token = compact ? 58 : 66;
+      const enemyY = compact ? 86 : 92;
+      const allyY = Math.max(enemyY + token + 128, dockY - token - (compact ? 44 : 54));
+      const centerY = enemyY + token + 42;
+      return {
+        token,
+        enemyY,
+        allyY,
+        centerY,
+        centerH: Math.max(88, allyY - centerY - 28),
+      };
+    }
+
+    renderCombatantToken(character, side, slot, x, y, size) {
       const store = this.store;
       const selected = side === 'mine' && store.selectedCasterSlot === slot;
-      const queuedIndex = store.actions.findIndex((action) => Number(action.caster_slot) === slot);
+      const queuedIndex = side === 'mine' ? store.actions.findIndex((action) => Number(action.caster_slot) === slot) : -1;
       const targetable = store.canTarget(character, slot, side);
       const dead = !character || !character.alive;
       const tone = targetable ? COLORS.gold : selected ? COLORS.purple : queuedIndex >= 0 ? COLORS.green : side === 'enemy' ? COLORS.red : COLORS.cyan;
-      this.cardPanel(x, y, w, h, tone, dead ? 0.38 : 0.82);
-      this.portrait(character, x + w / 2 - 30, y + 8, 60, { tone, dead, selected, targetable });
-      const hpPct = clamp(Number(character.hp || 0) / Math.max(1, Number(character.max_hp || 1)), 0, 1);
-      this.graphics.fillStyle(0x020617, 0.85);
-      this.graphics.fillRoundedRect(x + 10, y + 70, w - 20, 8, 4);
-      this.graphics.fillStyle(hpPct <= 0.3 ? COLORS.red : hpPct <= 0.6 ? COLORS.gold : COLORS.green, 1);
-      this.graphics.fillRoundedRect(x + 10, y + 70, (w - 20) * hpPct, 8, 4);
-      this.text(x + w / 2, y + 84, character.name, {
-        fontSize: '11px',
-        fontStyle: '800',
+      const cx = x + size / 2;
+      const cy = y + size / 2;
+      this.graphics.fillStyle(0x020617, 0.86);
+      this.graphics.fillCircle(cx, cy, size / 2 + 7);
+      this.graphics.lineStyle(targetable || selected ? 4 : 2, tone, dead ? 0.34 : 0.9);
+      this.graphics.strokeCircle(cx, cy, size / 2 + (targetable ? 8 : 5));
+      if (targetable) {
+        this.graphics.lineStyle(1.5, COLORS.gold, 0.8);
+        this.graphics.strokeCircle(cx, cy, size / 2 + 14);
+      }
+      this.portrait(character || { name: 'Down' }, x + 4, y + 4, size - 8, { tone, dead, selected, targetable });
+      const hp = Number(character && character.hp ? character.hp : 0);
+      const maxHp = Math.max(1, Number(character && character.max_hp ? character.max_hp : 1));
+      const hpPct = clamp(hp / maxHp, 0, 1);
+      const barY = y + size + 10;
+      const barW = size + 20;
+      this.graphics.fillStyle(0x020617, 0.92);
+      this.graphics.fillRoundedRect(cx - barW / 2, barY, barW, 7, 4);
+      this.graphics.fillStyle(hpPct <= 0.3 ? COLORS.red : hpPct <= 0.6 ? COLORS.gold : COLORS.green, dead ? 0.35 : 1);
+      this.graphics.fillRoundedRect(cx - barW / 2, barY, barW * hpPct, 7, 4);
+      this.text(cx, barY + 10, shortText(character && character.name, 13), {
+        fontSize: '10px',
+        fontStyle: '900',
         align: 'center',
-        wordWrap: { width: w - 12 },
       }).setOrigin(0.5, 0);
-      this.mono(x + w / 2, y + h - 20, dead ? 'DOWN' : queuedIndex >= 0 ? `Q${queuedIndex + 1}` : `${character.hp}/${character.max_hp}`, {
-        color: targetable ? '#fde68a' : dead ? '#64748b' : '#cbd5e1',
-        fontSize: '9px',
+      this.mono(cx, barY + 25, dead ? 'DOWN' : `${hp}/${maxHp}`, {
+        color: dead ? '#64748b' : targetable ? '#fde68a' : '#cbd5e1',
+        fontSize: '8px',
       }).setOrigin(0.5, 0);
-      (character.statuses || []).slice(0, 2).forEach((status, index) => {
-        this.graphics.fillStyle(0x020617, 0.82);
-        this.graphics.fillRoundedRect(x + 8, y + 8 + index * 17, w - 16, 14, 7);
-        this.graphics.lineStyle(1, COLORS.purple, 0.52);
-        this.graphics.strokeRoundedRect(x + 8, y + 8 + index * 17, w - 16, 14, 7);
-        this.mono(x + 14, y + 10 + index * 17, safeText(status.name || status.id, 'status').slice(0, 12), {
-          color: '#ddd6fe',
-          fontSize: '8px',
-        });
+      if (queuedIndex >= 0 || targetable || selected) {
+        const chip = queuedIndex >= 0 ? `Q${queuedIndex + 1}` : targetable ? 'TARGET' : 'READY';
+        const chipW = targetable ? 52 : 36;
+        this.graphics.fillStyle(queuedIndex >= 0 ? COLORS.green : targetable ? COLORS.gold : COLORS.purple, 0.95);
+        this.graphics.fillRoundedRect(cx - chipW / 2, y - 10, chipW, 18, 9);
+        this.mono(cx, y - 5, chip, { color: '#020617', fontSize: '8px' }).setOrigin(0.5, 0);
+      }
+      (character && character.statuses ? character.statuses : []).slice(0, 2).forEach((status, index) => {
+        this.graphics.fillStyle(COLORS.purple, 0.9);
+        this.graphics.fillCircle(x + size - 3 - index * 14, y + 6, 6);
+        this.mono(x + size - 3 - index * 14, y + 1, shortText(status.name || status.id, 1).toUpperCase(), {
+          color: '#ffffff',
+          fontSize: '7px',
+        }).setOrigin(0.5, 0);
       });
-      this.buttons.push({ x, y, w, h, label: `${side} ${slot}`, onClick: () => store.target(side, slot), disabled: false });
+      this.buttons.push({ x: x - 10, y: y - 12, w: size + 20, h: size + 58, label: `${side} ${slot}`, onClick: () => store.target(side, slot), disabled: false });
     }
 
-    renderTeam(team, side, frame, y) {
+    renderTokenRow(team, side, frame, y, size) {
       const x = frame.x + frame.gutter;
-      const gap = 8;
-      const w = (frame.width - 32 - gap * 2) / 3;
-      this.mono(x, y - 18, side === 'enemy' ? 'ENEMY TEAM' : 'PLAYER TEAM', {
+      const laneW = frame.width - 32;
+      const gap = (laneW - size * 3) / 2;
+      this.mono(x, y - 20, side === 'enemy' ? 'ENEMY FIELD' : 'YOUR FIELD', {
         color: side === 'enemy' ? '#fca5a5' : '#bfdbfe',
+        fontSize: '9px',
       });
       (team || []).forEach((character, slot) => {
-        this.renderFighter(character, side, slot, x + slot * (w + gap), y, w, 124);
+        this.renderCombatantToken(character, side, slot, x + slot * (size + gap), y, size);
       });
     }
 
-    renderSkillCard(skill, caster, x, y, w, h) {
+    renderBattlefield(frame, layout, prompt) {
+      const x = frame.x + frame.gutter;
+      const y = layout.centerY;
+      const w = frame.width - 32;
+      const h = layout.centerH;
+      this.graphics.fillStyle(0x050816, 0.6);
+      this.graphics.fillRoundedRect(x, y, w, h, 18);
+      this.graphics.lineStyle(1.5, COLORS.line, 0.65);
+      this.graphics.strokeRoundedRect(x, y, w, h, 18);
+      for (let i = 0; i < 5; i += 1) {
+        const laneY = y + 18 + i * Math.max(14, h / 5);
+        this.graphics.lineStyle(1, i === 2 ? COLORS.gold : 0xffffff, i === 2 ? 0.22 : 0.045);
+        this.graphics.beginPath();
+        this.graphics.moveTo(x + 16, laneY);
+        this.graphics.lineTo(x + w - 16, laneY + (i % 2 ? -12 : 12));
+        this.graphics.strokePath();
+      }
+      this.text(x + w / 2, y + 16, prompt, {
+        fontSize: frame.height < 730 ? '15px' : '17px',
+        fontStyle: '900',
+        align: 'center',
+        wordWrap: { width: w - 52 },
+      }).setOrigin(0.5, 0);
+      this.renderQueueChips(frame, y + h - 38);
+      this.renderReplayLine(frame, y + h - 66);
+    }
+
+    renderSkillButton(skill, caster, x, y, w, h) {
       const cooldown = (caster.cooldowns && caster.cooldowns[skill.id]) || 0;
       const fit = this.store.skillFit(skill);
       const disabled = cooldown > 0 || !fit.ok || this.store.queuedSlots().has(Number(this.store.selectedCasterSlot)) || this.store.controlsLocked();
       const selected = this.store.selectedSkillId === skill.id;
       const tone = selected ? COLORS.gold : (ENERGY_COLORS[(skill.cost || [])[0]] || COLORS.purple);
-      this.cardPanel(x, y, w, h, tone, disabled ? 0.38 : 0.86);
-      this.mono(x + 10, y + 9, this.store.targetLabel(skill).toUpperCase(), { color: '#cbd5e1', fontSize: '9px' });
-      this.text(x + 10, y + 24, skill.name, {
-        fontSize: '12px',
-        fontStyle: '900',
-        wordWrap: { width: w - 20 },
-      });
+      this.graphics.fillStyle(selected ? 0x2a1e09 : 0x08111f, disabled ? 0.42 : 0.96);
+      this.graphics.fillRoundedRect(x, y, w, h, 14);
+      this.graphics.lineStyle(selected ? 3 : 1.5, tone, disabled ? 0.38 : 0.88);
+      this.graphics.strokeRoundedRect(x, y, w, h, 14);
+      this.graphics.fillStyle(tone, disabled ? 0.16 : 0.28);
+      this.graphics.fillRoundedRect(x + 8, y + 8, 34, h - 16, 10);
+      this.mono(x + 25, y + 15, this.store.targetLabel(skill).slice(0, 3).toUpperCase(), {
+        color: selected ? '#fde68a' : '#e2e8f0',
+        fontSize: '8px',
+      }).setOrigin(0.5, 0);
       (skill.cost || []).slice(0, 4).forEach((color, index) => {
-        this.graphics.fillStyle(ENERGY_COLORS[color] || COLORS.gold, 0.95);
-        this.graphics.fillCircle(x + 14 + index * 14, y + h - 16, 5);
+        this.graphics.fillStyle(ENERGY_COLORS[color] || COLORS.gold, 0.98);
+        this.graphics.fillCircle(x + 16 + index * 8, y + h - 16, 3.2);
       });
-      this.mono(x + 10, y + h - 22, cooldown > 0 ? `CD ${cooldown}` : fit.ok ? this.store.effectLine(skill).slice(0, 36) : fit.reason, {
+      this.text(x + 50, y + 10, shortText(skill.name, 22), {
+        fontSize: '11px',
+        fontStyle: '900',
+        wordWrap: { width: w - 58 },
+      });
+      this.mono(x + 50, y + h - 20, cooldown > 0 ? `CD ${cooldown}` : fit.ok ? shortText(this.store.effectLine(skill), 24) : shortText(fit.reason, 24), {
         color: disabled ? '#94a3b8' : '#fde68a',
         fontSize: '8px',
       });
       this.buttons.push({ x, y, w, h, label: `Skill ${skill.name}`, disabled, onClick: () => this.store.selectSkill(skill.id) });
     }
 
-    renderQueue(frame, y) {
+    renderQueueChips(frame, y) {
       const x = frame.x + frame.gutter;
-      this.mono(x, y, `QUEUE ${this.store.actions.length}/3`, { color: '#86efac' });
+      const chipW = (frame.width - 44) / 3;
       if (!this.store.actions.length) {
-        this.mono(x + 82, y, 'Tap ally -> skill -> target.', { color: '#94a3b8' });
+        this.mono(x + 10, y + 8, 'Queue empty: pick a fighter, technique, then target.', { color: '#94a3b8', fontSize: '9px' });
         return;
       }
       const me = this.store.me();
-      this.store.actions.forEach((action, index) => {
+      [0, 1, 2].forEach((index) => {
+        const action = this.store.actions[index];
+        const chipX = x + index * (chipW + 6);
+        this.graphics.fillStyle(action ? COLORS.green : 0x020617, action ? 0.84 : 0.48);
+        this.graphics.fillRoundedRect(chipX, y, chipW, 30, 10);
+        this.graphics.lineStyle(1, action ? COLORS.green : COLORS.line, action ? 0.72 : 0.4);
+        this.graphics.strokeRoundedRect(chipX, y, chipW, 30, 10);
+        if (!action) {
+          this.mono(chipX + chipW / 2, y + 9, `Q${index + 1}`, { color: '#64748b', fontSize: '8px' }).setOrigin(0.5, 0);
+          return;
+        }
         const caster = me && me.team ? me.team[action.caster_slot] : null;
         const skill = caster ? this.store.skillFor(caster, action.skill_id) : null;
-        this.mono(x, y + 18 + index * 18, `${index + 1}. ${caster ? caster.name : 'Fighter'} / ${skill ? skill.name : action.skill_id}`, {
-          color: '#e2e8f0',
-          fontSize: '9px',
-        });
+        this.mono(chipX + 8, y + 5, `Q${index + 1}`, { color: '#dcfce7', fontSize: '8px' });
+        this.mono(chipX + 28, y + 5, shortText(skill ? skill.name : action.skill_id, 12), { color: '#f8fafc', fontSize: '8px' });
       });
     }
 
-    renderReplay(frame, y) {
-      const events = this.store.recentEvents.slice(0, 3);
+    renderReplayLine(frame, y) {
+      const events = this.store.recentEvents.slice(0, 1);
       if (!events.length) return;
       const x = frame.x + frame.gutter;
-      this.cardPanel(x, y, frame.width - 32, 54, COLORS.line, 0.55);
-      this.mono(x + 12, y + 8, 'REPLAY', { color: '#fde68a', fontSize: '8px' });
-      events.forEach((event, index) => {
-        const tone = eventTone(event);
-        const color = tone === 'damage' ? '#fca5a5' : tone === 'heal' ? '#86efac' : tone === 'status' ? '#c4b5fd' : '#cbd5e1';
-        this.mono(x + 70, y + 8 + index * 14, safeText(event.message || event.type).slice(0, 42), {
-          color,
-          fontSize: '8px',
-        });
+      const event = events[0];
+      const tone = eventTone(event);
+      const color = tone === 'damage' ? '#fca5a5' : tone === 'heal' ? '#86efac' : tone === 'status' ? '#c4b5fd' : '#cbd5e1';
+      this.graphics.fillStyle(0x020617, 0.72);
+      this.graphics.fillRoundedRect(x + 14, y, frame.width - 60, 22, 11);
+      this.mono(x + 28, y + 6, shortText(event.message || event.type, 42), {
+        color,
+        fontSize: '8px',
       });
     }
 
@@ -1427,6 +1535,61 @@
       });
     }
 
+    renderCommandDeck(frame, dockY, selected) {
+      const x = frame.x + frame.gutter;
+      const h = frame.height - dockY;
+      this.graphics.fillStyle(0x07101d, 0.98);
+      this.graphics.fillRoundedRect(frame.x, dockY, frame.width, h + 18, 26);
+      this.graphics.lineStyle(2, selected ? COLORS.gold : COLORS.line, 0.72);
+      this.graphics.strokeRoundedRect(frame.x + 1, dockY + 1, frame.width - 2, h + 16, 26);
+      if (selected) {
+        const tone = this.store.assets.toneFor(selected.character_id);
+        const skills = this.store.skillsFor(selected).slice(0, 4);
+        const readyCount = skills.filter((skill) => {
+          const cooldown = (selected.cooldowns && selected.cooldowns[skill.id]) || 0;
+          return cooldown <= 0 && this.store.skillFit(skill).ok && !this.store.queuedSlots().has(Number(this.store.selectedCasterSlot)) && !this.store.controlsLocked();
+        }).length;
+        this.portrait(selected, x, dockY + 16, 54, { tone, selected: true });
+        this.text(x + 66, dockY + 16, shortText(selected.name, 24), { fontSize: '16px', fontStyle: '900' });
+        const instruction = readyCount
+          ? (this.store.selectedSkillId ? 'Pick a glowing target' : 'Choose technique')
+          : 'No technique online';
+        this.mono(x + 66, dockY + 38, instruction.toUpperCase(), { color: '#fde68a', fontSize: '9px' });
+        const cardW = (frame.width - 44) / 2;
+        const cardH = frame.height < 730 ? 50 : 56;
+        skills.forEach((skill, index) => {
+          const col = index % 2;
+          const row = Math.floor(index / 2);
+          this.renderSkillButton(skill, selected, x + col * (cardW + 12), dockY + 82 + row * (cardH + 8), cardW, cardH);
+        });
+      } else {
+        this.text(x, dockY + 22, 'Tap a Ready Fighter', { fontSize: '18px', fontStyle: '900' });
+        this.mono(x, dockY + 50, 'Your living fighters are touch targets. Build up to three queued actions.', { color: '#94a3b8', fontSize: '9px' });
+      }
+      const buttonY = frame.height - 48;
+      this.button(x, buttonY, 76, 34, 'Cancel', () => this.store.cancelQueue(), {
+        fill: 0x111827,
+        stroke: COLORS.line,
+        mono: true,
+        fontSize: '10px',
+        disabled: !this.store.actions.length || this.store.controlsLocked(),
+      });
+      this.button(x + 84, buttonY, 64, 34, 'End', () => this.store.endTurn(), {
+        fill: 0x111827,
+        stroke: COLORS.line,
+        mono: true,
+        fontSize: '10px',
+        disabled: this.store.controlsLocked(),
+      });
+      this.button(frame.x + frame.width - frame.gutter - 106, buttonY, 106, 34, this.store.queueSubmitting ? 'Resolving' : 'Confirm', () => this.store.confirmQueue(), {
+        fill: this.store.actions.length ? COLORS.purple : 0x1f2937,
+        stroke: this.store.actions.length ? COLORS.gold : COLORS.line,
+        mono: true,
+        fontSize: '10px',
+        disabled: !this.store.actions.length || this.store.controlsLocked(),
+      });
+    }
+
     render() {
       const frame = this.layout.frame();
       this.clearSurface();
@@ -1440,65 +1603,31 @@
       }
       const me = this.store.me();
       const foe = this.store.foe();
-      this.topBar(frame, `Turn ${state.turn_number || 1}`, () => this.store.resetToLobby());
-      this.energyOrbs(frame.x + frame.gutter + 152, 50, me && me.energy, 13);
-      this.button(frame.x + frame.width - frame.gutter - 82, 42, 82, 28, 'Convert', () => this.store.convertEnergy(), {
+      const selected = me && me.team ? me.team[this.store.selectedCasterSlot] : null;
+      const dockH = frame.height < 730 ? 248 : 268;
+      const dockY = frame.height - dockH;
+      const layout = this.fighterLayout(frame, dockY);
+      this.renderTopHud(frame, state, me);
+      this.button(frame.x + frame.width - frame.gutter - 88, 72, 88, 28, 'Convert', () => this.store.convertEnergy(), {
         fill: 0x111827,
         stroke: COLORS.cyan,
         fontSize: '10px',
         mono: true,
         disabled: this.store.controlsLocked() || !!this.store.actions.length || !!(me && me.energy_converted_this_turn),
       });
-      this.renderTeam(foe && foe.team, 'enemy', frame, 92);
       const prompt = state.winner_id
         ? 'Battle finished'
         : this.store.controlsLocked()
           ? 'Waiting for resolution'
           : this.store.selectedSkillId
             ? 'Tap a glowing target'
-            : this.store.selectedCasterSlot !== null
-              ? 'Choose a skill'
+          : this.store.selectedCasterSlot !== null
+              ? 'Choose technique'
               : 'Tap an ally fighter';
-      this.cardPanel(frame.x + frame.gutter, 234, frame.width - 32, 42, COLORS.gold, 0.68);
-      this.mono(frame.x + frame.gutter + 14, 248, prompt.toUpperCase(), { color: '#fde68a', fontSize: '11px' });
-      this.renderReplay(frame, 280);
-      this.renderTeam(me && me.team, 'mine', frame, 350);
-      const selected = me && me.team ? me.team[this.store.selectedCasterSlot] : null;
-      const dockY = Math.max(456, frame.height - 294);
-      this.cardPanel(frame.x, dockY, frame.width, frame.height - dockY, COLORS.line, 0.94);
-      if (selected) {
-        this.text(frame.x + frame.gutter, dockY + 16, selected.name, { fontSize: '18px', fontStyle: '900' });
-        this.mono(frame.x + frame.gutter, dockY + 40, 'Skill cards show cost / cooldown / target / effect.', { color: '#94a3b8' });
-        const skills = this.store.skillsFor(selected).slice(0, 4);
-        const cardW = (frame.width - 44) / 2;
-        skills.forEach((skill, index) => {
-          const col = index % 2;
-          const row = Math.floor(index / 2);
-          this.renderSkillCard(skill, selected, frame.x + frame.gutter + col * (cardW + 12), dockY + 62 + row * 72, cardW, 64);
-        });
-      } else {
-        this.text(frame.x + frame.gutter, dockY + 22, 'Awaiting Command', { fontSize: '18px', fontStyle: '900' });
-        this.mono(frame.x + frame.gutter, dockY + 50, 'Start by tapping one of your living fighters.', { color: '#94a3b8' });
-      }
-      this.renderQueue(frame, frame.height - 92);
-      this.button(frame.x + frame.gutter, frame.height - 48, 86, 34, 'Cancel', () => this.store.cancelQueue(), {
-        fill: 0x111827,
-        stroke: COLORS.line,
-        mono: true,
-        disabled: !this.store.actions.length || this.store.controlsLocked(),
-      });
-      this.button(frame.x + frame.width - frame.gutter - 190, frame.height - 48, 82, 34, 'End', () => this.store.endTurn(), {
-        fill: 0x111827,
-        stroke: COLORS.line,
-        mono: true,
-        disabled: this.store.controlsLocked(),
-      });
-      this.button(frame.x + frame.width - frame.gutter - 96, frame.height - 48, 96, 34, this.store.queueSubmitting ? 'Resolving' : 'Confirm', () => this.store.confirmQueue(), {
-        fill: COLORS.purple,
-        stroke: COLORS.gold,
-        mono: true,
-        disabled: !this.store.actions.length || this.store.controlsLocked(),
-      });
+      this.renderTokenRow(foe && foe.team, 'enemy', frame, layout.enemyY, layout.token);
+      this.renderBattlefield(frame, layout, prompt);
+      this.renderTokenRow(me && me.team, 'mine', frame, layout.allyY, layout.token);
+      this.renderCommandDeck(frame, dockY, selected);
       this.toast(frame);
       this.playEvents(frame);
     }

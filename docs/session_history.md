@@ -9,6 +9,41 @@ After every meaningful pass, add a short dated entry with:
 - What remains or needs caution
 - Relevant commits or pushed state
 
+## 2026-07-08 - Mobile combat HUD rebuild
+
+Source: live browser/code pass.
+
+What changed:
+
+- Rebuilt the Phaser combat scene from dense stacked cards into a mobile-first battle HUD.
+- Added a compact top domain/turn/energy bar.
+- Reworked fighters into large circular touch tokens with portraits, HP bars, status pips, ready/target/queue rings, and larger hit areas.
+- Added a central battlefield lane for prompts, replay snippets, and queue chips.
+- Rebuilt the bottom command deck with selected-fighter portrait, technique buttons, cost pips, confirm/cancel/end controls, and clearer disabled-state copy.
+- Removed generic decorative background circles from the Phaser shell background.
+- Fixed a live queue-badge bug where a queued ally action could show `Q1` on the enemy token with the same slot number.
+- Updated public-surface tests to assert the new Phaser HUD markers instead of old prototype copy.
+
+Verification:
+
+- `node --check web/static/phaser-shell.js`.
+- `python -m pytest -q` -> `110 passed, 1 skipped`.
+- `git diff --check`.
+- Live browser mobile viewport smoke at `390x844` loaded lobby, draft, combat, and queued-action states with no browser console errors.
+
+Caution / next work:
+
+- Combat now has a real mobile game HUD baseline, but it still needs deeper art direction, stronger attack animation language, better draft/lobby mobile treatment, and richer target/queue motion.
+- The current central battlefield intentionally leaves space for future animation and event playback; it should not stay visually empty in the final game pass.
+
+Commit:
+
+- `Rebuild Phaser combat as mobile HUD`
+
+Pushed state:
+
+- `main` was pushed to `origin/main` after the pass.
+
 ## 2026-07-08 - V2-only cleanup and compact Phaser UI pass
 
 Source: current repo state and live work session.

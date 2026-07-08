@@ -1,7 +1,7 @@
 import pytest
 
-from jjk_bot.battle_v2.effects import apply_damage
-from jjk_bot.battle_v2.models import (
+from jjk_arena.battle_v2.effects import apply_damage
+from jjk_arena.battle_v2.models import (
     BattleState,
     CharacterState,
     DamageType,
@@ -11,8 +11,8 @@ from jjk_bot.battle_v2.models import (
     SkillClass,
     StatusEffect,
 )
-from jjk_bot.battle_v2.resolver import ResolverError, resolve_queue, validate_action
-from jjk_bot.battle_v2.starter_roster import SKILLS_BY_ID, STARTER_ROSTER
+from jjk_arena.battle_v2.resolver import ResolverError, resolve_queue, validate_action
+from jjk_arena.battle_v2.starter_roster import SKILLS_BY_ID, STARTER_ROSTER
 
 
 def make_player(player_id, character_ids):

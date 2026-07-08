@@ -2,9 +2,9 @@ import random
 
 import pytest
 
-from jjk_bot.battle_v2.effects import apply_damage
-from jjk_bot.battle_v2.energy import EnergyValidationError, gain_energy_for_living, spend_skill_energy
-from jjk_bot.battle_v2.models import (
+from jjk_arena.battle_v2.effects import apply_damage
+from jjk_arena.battle_v2.energy import EnergyValidationError, gain_energy_for_living, spend_skill_energy
+from jjk_arena.battle_v2.models import (
     BattlePhase,
     BattleState,
     CharacterState,
@@ -19,7 +19,7 @@ from jjk_bot.battle_v2.models import (
     StatusEffect,
     TargetRule,
 )
-from jjk_bot.battle_v2.resolver import ResolverError, confirm_queue, finish_turn, resolve_queue, validate_action, validate_queue
+from jjk_arena.battle_v2.resolver import ResolverError, confirm_queue, finish_turn, resolve_queue, validate_action, validate_queue
 
 
 def make_player(player_id, names):

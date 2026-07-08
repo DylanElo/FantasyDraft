@@ -1,8 +1,6 @@
 import pytest
 
-from jjk_bot.battle_v2.models import EnergyType, SkillClass, StatusEffect
-from jjk_bot.characters import CHARACTERS
-from jjk_bot.game import CPU_PLAYER_ID, GameState
+from jjk_arena.battle_v2.models import EnergyType, SkillClass, StatusEffect
 from web import app as web_app
 
 
@@ -38,10 +36,6 @@ def received_payload(client, event_name):
         if message["name"] == event_name:
             return message["args"][0]
     return None
-
-
-def character(name):
-    return next(char for char in CHARACTERS if char.name == name)
 
 
 def test_battle_v2_socket_events_are_feature_flagged(monkeypatch):
@@ -220,143 +214,10 @@ def test_battle_v2_socket_resolves_ally_target_skill(monkeypatch):
     assert heal_events[0]["payload"]["amount"] == 30
 
 
-def test_submit_team_launches_battle_v2_from_solo_draft_when_convertible(monkeypatch):
-    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
-    flask_client = web_app.app.test_client()
-    with flask_client.session_transaction() as flask_session:
-        flask_session["player_id"] = "player-v2-draft"
-    client = web_app.socketio.test_client(web_app.app, flask_test_client=flask_client)
-    client.emit("join_room", {"room_id": "draft-v2", "player_name": "Tester"})
-    client.get_received()
-
-    player_session = "player-v2-draft"
-    int_id = web_app.str_to_int_id(player_session)
-    game = web_app.game_manager.get_game(web_app.str_to_int_id("draft-v2"))
-    game.players = [int_id, CPU_PLAYER_ID]
-    game.player_names = {int_id: "Tester", CPU_PLAYER_ID: "CPU"}
-    game.cpu_player_id = CPU_PLAYER_ID
-    game.state = GameState.TEAM_SELECTION
-    game.teams[int_id] = [
-        character("Yuji Itadori"),
-        character("Nobara Kugisaki"),
-        character("Megumi Fushiguro"),
-        character("Aoi Todo"),
-        character("Maki Zenin"),
-    ]
-    game.teams[CPU_PLAYER_ID] = [
-        character("Satoru Gojo"),
-        character("Sukuna (Incarnation)"),
-        character("Yuta Okkotsu"),
-        character("Hiromi Higuruma"),
-        character("Aoi Todo"),
-    ]
-    game.active_teams[CPU_PLAYER_ID] = [
-        character("Satoru Gojo"),
-        character("Sukuna (Incarnation)"),
-        character("Yuta Okkotsu"),
-    ]
-    game.bench_teams[CPU_PLAYER_ID] = []
-
-    client.emit(
-        "submit_team",
-        {"selected_names": ["Yuji Itadori", "Nobara Kugisaki", "Megumi Fushiguro"]},
-    )
-
-    update = received_payload(client, "battle_v2_update")
-    assert update is not None
-    assert [char["character_id"] for char in update["players"][player_session]["team"]] == [
-        "yuji_itadori",
-        "nobara_kugisaki",
-        "megumi_fushiguro",
-    ]
-    assert [char["character_id"] for char in update["players"]["__cpu_v2__"]["team"]] == [
-        "satoru_gojo",
-        "ryomen_sukuna",
-        "yuta_okkotsu",
-    ]
-
-    state = web_app.battle_v2_manager.get_state("draft-v2")
-    state.players[player_session].energy[EnergyType.GREEN] = 2
-    state.players["__cpu_v2__"].energy[EnergyType.GREEN] = 2
-    client.get_received()
-
-    client.emit(
-        "battle_v2_submit_plan",
-        {
-            "actions": [
-                {
-                    "id": "draft-a1",
-                    "caster_slot": 0,
-                    "skill_id": "divergent_fist",
-                    "target_player_id": "__cpu_v2__",
-                    "target_slot": 1,
-                }
-            ]
-        },
-    )
-    queued = received_payload(client, "battle_v2_update")
-    assert queued["phase"] == "queue_review"
-    assert len(queued["pending_actions"][player_session]) == 1
-
-    client.emit("battle_v2_confirm_queue", {})
-    resolved = received_payload(client, "battle_v2_update")
-
-    assert resolved["turn_player_id"] == player_session
-    assert resolved["phase"] == "planning"
-    assert resolved["pending_actions"][player_session] == []
-    assert any(
-        event["type"] == "skill_resolved"
-        and event["payload"].get("player_id") == player_session
-        for event in resolved["event_log"]
-    )
-    assert any(
-        event["type"] == "damage"
-        and event["payload"].get("target_player_id") == "__cpu_v2__"
-        and event["payload"].get("target_slot") == 1
-        and event["payload"].get("amount") == 20
-        for event in resolved["event_log"]
-    )
-    assert any(
-        event["type"] == "skill_resolved"
-        and event["payload"].get("player_id") == "__cpu_v2__"
-        for event in resolved["event_log"]
-    )
-
-
-def test_vs_cpu_v2_uses_convertible_cpu_and_draw_pool(monkeypatch):
-    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
-    flask_client = web_app.app.test_client()
-    with flask_client.session_transaction() as flask_session:
-        flask_session["player_id"] = "player-v2-pool"
-    client = web_app.socketio.test_client(web_app.app, flask_test_client=flask_client)
-    client.emit("join_room", {"room_id": "pool-v2", "player_name": "Tester"})
-    client.get_received()
-
-    client.emit("start_vs_cpu", {"difficulty": "normal"})
-    client.get_received()
-
-    game = web_app.game_manager.get_game(web_app.str_to_int_id("pool-v2"))
-    assert web_app.v2_team_ids_from_characters(game.active_teams[CPU_PLAYER_ID]) == [
-        "satoru_gojo",
-        "ryomen_sukuna",
-        "yuta_okkotsu",
-    ]
-
-    client.emit("draw_card")
-    update = received_payload(client, "game_update")
-    drawn = update["last_drawn_choices"]
-    assert len(drawn) == 3
-    assert all(web_app.v2_character_id_for_name(char["name"]) for char in drawn)
-
-
 def test_battle_v2_socket_broadcasts_viewer_specific_private_state(monkeypatch):
     monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
     p1_client = socket_client_with_player("p1")
     p2_client = socket_client_with_player("p2")
-    p1_client.emit("join_room", {"room_id": "human-v2", "player_name": "P1"})
-    p2_client.emit("join_room", {"room_id": "human-v2", "player_name": "P2"})
-    p1_client.get_received()
-    p2_client.get_received()
 
     web_app.battle_v2_manager.start_classic_match(
         "human-v2",
@@ -379,8 +240,10 @@ def test_battle_v2_socket_broadcasts_viewer_specific_private_state(monkeypatch):
             invisible=True,
         )
     )
+    p2_client.emit("battle_v2_cancel_queue", {"room_id": "human-v2"})
+    p2_client.get_received()
 
-    p1_client.emit("battle_v2_cancel_queue", {})
+    p1_client.emit("battle_v2_cancel_queue", {"room_id": "human-v2"})
     p1_update = received_payload(p1_client, "battle_v2_update")
     p2_update = received_payload(p2_client, "battle_v2_update")
 
@@ -495,8 +358,6 @@ def test_battle_v2_pvp_disconnect_cleans_waiting_lobby(monkeypatch):
 def test_reset_room_clears_waiting_v2_pvp_lobby(monkeypatch):
     monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
     client = socket_client_with_player("p1")
-    client.emit("join_room", {"room_id": "human-reset", "player_name": "P1"})
-    client.get_received()
     client.emit(
         "battle_v2_join_pvp",
         {

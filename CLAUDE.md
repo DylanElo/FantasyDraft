@@ -1,172 +1,120 @@
-# JJK Fantasy Draft — Project Context for Claude
+# JJK Fantasy Draft - Project Context
 
 ## What This Project Is
 
-A Jujutsu Kaisen-themed tactical card battle game, modeled after **Naruto Arena** (naruto-arena.com). Two players draft teams of 5 characters, pick 3 fighters, then battle in turns using character skills. The game is a web app with Flask-SocketIO backend.
+JJK Fantasy Draft is a browser-based Jujutsu Kaisen draft and tactical battle arena inspired by Naruto Arena.
 
----
+Players choose a three-fighter Battle v2 team, then resolve server-authoritative turns through the live Flask-SocketIO web app. The browser renders the current Phaser-based Battle v2 experience; Python owns legality, state, queue resolution, energy, cooldowns, hidden information, CPU practice, and PvP room orchestration.
 
 ## Current Architecture
 
-```
+```text
+run_server.py                    # Local entrypoint for the Flask-SocketIO app
 web/
-  app.py              # Flask-SocketIO server, all HTTP + WS routes
-  templates/
-    index.html        # Single-page app, all screens
+  app.py                         # HTTP routes and SocketIO event bridge
+  templates/index.html           # Single-page shell
   static/
-    phaser-shell.css  # Canvas/container reset for the Phaser v2 client
-    phaser-shell.js   # Phaser scene stack, rendering, SocketIO bridge
-    effects.js        # Visual/audio juice (shake, flash, domainExpansion, hitChar, etc.)
-    characters_data.js # Static JS: exports window.CHARACTERS_DATA (30 characters)
-
-jjk_bot/
-  characters.py       # Character + Skill dataclasses; all 30 character definitions
-  effects.py          # Effect + EffectKind enums; convenience constructors
-  game.py             # Game + BattleEngine classes; all core logic
+    phaser-shell.js              # Battle v2 client, scenes, state store, SocketIO bridge
+    phaser-shell.css             # Phaser shell/canvas reset
+    jjk-tokens.css               # Theme tokens
+    jjk-theme.css                # Shared app theme
+    arena-redesign.css           # Arena-specific styling
+    effects.js                   # Visual/audio helpers
+    socket.io.min.js             # Vendored SocketIO client
+    vendor/phaser.min.js         # Vendored Phaser runtime
+jjk_arena/
+  battle_v2/                     # Default rules engine and room manager
+docs/
+  *.md                           # Design notes and contracts
+tests/                           # Pytest coverage for v2, sockets, and progression
 ```
 
----
+## Runtime Truths
 
-## Game Design Reference: Naruto Arena
-
-**Naruto Arena is the gold standard for this game's design.** These are its canonical mechanics:
-
-### Turn Structure (CRITICAL — we differ from this)
-- Turns are **SIMULTANEOUS**: both players pick skills, then press "Press When Ready" at the same time
-- **ALL 3 characters act each turn** — each character uses at most 1 skill per turn
-- A player queues up to 3 skills (one per char), can reorder them, then confirms
-- Both players' 3 actions then resolve simultaneously
-- Our current implementation: alternating 1-skill-per-turn (WRONG, but functional — fix this later)
-
-### Energy System (Naruto Arena spec)
-- Each turn you gain energy based on **living characters**
-- Turn 1 first player: **1 energy only** (not 3!)
-- Subsequent turns: 1 **Generic (black)** + 1 random per living character
-  - 3 alive chars → 1 black + 2 random = 3 total
-  - 2 alive chars → 1 black + 1 random = 2 total
-  - 1 alive char → 1 black + 0 random = 1 total
-- 5 energy types: Green (Physical/Taijutsu), Red (Bloodline/Cursed Blood), Blue (Curse Energy/Ninjutsu), White (Strategic/Genjutsu), Black (Generic/any)
-- Energy carries over between turns (it's a pool, not reset each turn)
-- Skills show their exact energy cost as colored pips
-
-### Skill Types
-- **Instant** — resolves immediately this turn (most skills)
-- **Action** — takes the character's action for the turn; can be stun-interrupted
-- Cooldowns: turn after use = 0 remaining, counts down each turn you act
-
-### Damage Tiers
-1. **Normal** — reduced by Damage Reduction, then blocked by Destructible Defense (Shield), then HP
-2. **Piercing** — ignores Damage Reduction, but blocked by Shield, then HP
-3. **Affliction** — ignores ALL defenses; bypasses Invulnerability too
-
-### Status Effects
-- **Stun** — character cannot act; debuffs still apply
-- **Invulnerable** — immune to non-affliction damage and most effects
-- **Damage Reduction** — flat reduction per hit (not per turn)
-- **Destructible Defense (Shield)** — absorbs damage, depletes when hit
-- **Strengthen/Weaken** — modifies damage output
-- **DoT (Burn/Curse)** — affliction damage per turn; ticks at start of that char's turn
-- **Trap (Counter)** — triggers when the protected char is harmed
-
-### Draft Phase (Naruto Arena)
-- All characters visible simultaneously; players pick directly from the list
-- Alternating picks (not draw/pass). No random element — it's a pure draft
-- Our current: random draw → keep/pass (different but intentional, keeps surprise element)
-
----
-
-## Known Issues (Priority Order)
-
-### P0 — Breaks gameplay entirely
-
-1. ~~**No CPU AI**~~ **FIXED** — CPU implemented as `CPU_PLAYER_ID = -1` in game.py
-
-2. **All 3 chars should act each turn** — Currently only 1 char acts per turn. Naruto Arena has ALL 3 act simultaneously. This makes battles 9x longer than intended and reduces strategic depth significantly. Each turn should allow the current player to use 1 skill per living active character.
-
-### P1 — Core gameplay broken/opaque
-
-3. **Energy generation: first turn gives 3 energy** — Naruto Arena spec: first player's first turn = 1 energy only. Our `BattleEngine.__init__` calls `gain_energy_for_living(3)`. Should be `gain_energy_for_living(1)`.
-
-4. **Draft pool imbalance** — 60+ characters in the pool, only 5 drawn per player. Many characters may never appear. Should weight toward a curated pool of ~20 "core" characters.
-
-5. **Turn flow is unclear** — After using a skill, nothing explicitly says "turn passed to X". The turn bar updates but there's no clear transition animation or indicator.
-
-### P2 — Polish and feel
-
-6. **No character HP values shown on team** — Characters are 100HP each. Should be visible as a number prominently.
-
-7. **Skill descriptions don't show numbers** — "Deals damage" instead of "Deals 25 damage. Reduces target's damage by 15 for 2 turns."
-
-8. **Action log is reactive-only** — The log shows what happened but doesn't anticipate. Naruto Arena showed tooltips on hover for "what this skill does to them".
-
----
-
-## How 3-Skills-Per-Turn Should Work (Design Spec)
-
-When it's a player's turn:
-1. They queue up skills for each of their 3 active characters (can skip a char if stunned/no energy)
-2. They can use 0–3 skills per turn (one per char, up to 3 total)
-3. Energy is spent and effects resolve left-to-right (slot 0 → 1 → 2)
-4. After all queued actions resolve, turn advances to opponent
-
-**Implementation path (simplest approach — keep alternating turns):**
-- Backend: `apply_action()` already handles one skill. Add a "queued actions" list per player.
-- When all 3 chars have either acted or are unable (stun/dead), auto-advance turn.
-- Alternative (simpler): client sends 3 actions at once; server processes all 3.
-
-**Current P0 fix approach:**
-Add `actions_this_turn` counter to `BattleEngine`. A player's turn only ends (`_advance_turn()`) when they've submitted `min(3, living_count)` actions or clicked "End Turn". Until then, they can keep selecting chars/skills.
-
----
-
-## CPU AI Design (Implemented)
-
-CPU is `CPU_PLAYER_ID = -1`, managed entirely server-side. After each human action, `battle_action()` loops `cpu_take_turn()` until it's the human's turn again.
-
-Priority scoring: afflict×3 > pierce×2 > damage×1, +DoT turns, +30/stun turn, +heal bonus for low HP, +500 for killing blows.
-
-With 3-skills-per-turn: CPU should submit 3 actions at once (one per char) before returning.
-
----
-
-## Character Balance Targets
-
-All characters: 100 HP. Energy economy should be consistent:
-- Free skills (0 cost): basic attacks, 15-20 dmg
-- 1-pip: 20-30 dmg, or meaningful utility
-- 2-pip: 35-50 dmg, or strong utility + minor dmg
-- 3-pip: 50-70 dmg, or ultimate effect (AoE/CC)
-- Affliction: 10-15 less than equivalent normal damage (penalty for bypassing defense)
-- AoE: 10-20 less per target than single-target equivalent
-
----
-
-## File Size Limits
-
-- `characters.py` is large (~700 lines). Do not add more characters without removing others.
-- `phaser-shell.js` owns the v2 client shell. Keep scenes and shared services organized by responsibility.
-- `game.py` is ~1000 lines. BattleEngine is at the bottom.
-
----
-
-## Do NOT Do
-
-- Do not add more characters beyond the current 30 without user approval
-- Do not change the design system colors/fonts without user approval
-- Do not add NPM/webpack/build steps — this is a single-file vanilla JS project
-- Do not add a database — session state only (in-memory, per-room)
-- Do not refactor the working effect pipeline (effects.py + Skill properties)
-- Do not make the draft simultaneous pick (the random draw/keep/pass is intentional flavor)
-
----
+- Battle v2 is the only maintained gameplay engine.
+- The live game is `web/` plus `run_server.py` on a Python host.
+- `docs/` contains markdown design notes and contracts only.
+- The server should stay authoritative. Browser code submits player intent and renders state; it must not decide legality or mutate battle truth.
+- Eventlet may warn that it is deprecated. That warning is known, but do not hide new runtime failures behind it.
 
 ## How to Run
 
 ```bash
-cd C:\Users\dylan\OneDrive\Documents\Game
-python web/app.py
-# Opens on http://localhost:5000
+python -m pip install -r requirements.txt
+python run_server.py
 ```
 
-The server uses Flask-SocketIO with eventlet (ignore the deprecation warning — it still works).
-Cache-bust static files: change `?v=N` in `index.html` when updating CSS/JS.
+Open `http://127.0.0.1:5000`.
+
+## Useful Commands
+
+```bash
+python -m pip install -r requirements-dev.txt
+python -m pytest -q
+```
+
+## Battle v2 Model Boundaries
+
+- `jjk_arena/battle_v2/models.py` defines battle phases, entities, skills, statuses, actions, and `use_battle_v2()`.
+- `energy.py` handles deterministic energy gain and wildcard payment validation.
+- `conditions.py` evaluates structured kit conditions.
+- `targeting.py` validates legal targets.
+- `effects.py` applies effect helpers.
+- `resolver.py` resolves queued actions.
+- `starter_roster.py` contains the implemented starter kits.
+- `serialization.py` builds public/private viewer-specific state.
+- `manager.py` owns room lifecycle, CPU choices, PvP lobbies, and match orchestration.
+- `web/app.py` exposes the SocketIO surface for CPU practice, classic v2 rooms, private PvP, queue review, confirm, cancel, end turn, and surrender.
+
+## Current Battle v2 Loop
+
+1. Player selects one skill per living active character.
+2. Player chooses legal targets for each selected skill.
+3. Player enters queue review.
+4. Wildcard costs are assigned from available core energy.
+5. Player orders queued skills.
+6. Server validates and spends energy on confirm.
+7. Resolver applies queued actions left-to-right.
+8. Statuses, cooldowns, deaths, domains, and energy update at turn end.
+9. Next player acts unless the match is finished.
+
+## Naruto Arena Design Reference
+
+Naruto Arena is the design reference for tactical readability, not a mandate to copy every legacy implementation detail.
+
+Keep these principles:
+
+- Three active characters matter every turn.
+- Skills should show cost, target rule, classes, cooldown, duration, effect, condition, and counterplay.
+- Energy should be visible as colored pips and validated server-side.
+- Damage families must stay distinct: normal, piercing, soul, sure-hit, affliction-style bypass effects, shields, reduction, invulnerability, and health steal all have different rules.
+- Hidden statuses must serialize privately to the owner and never leak protected targets to opponents.
+
+## Character And Progression Notes
+
+- Battle v2 starter content currently lives in `jjk_arena/battle_v2/starter_roster.py`.
+- First character creation/progression is documented in `docs/first_character_creation.md`.
+- Unlocks and profile progress are implemented under `jjk_arena/battle_v2/first_creation_*.py`.
+- Do not add large batches of characters casually. Prefer a small, fully tested kit over broad roster churn.
+- Use `docs/jjk_kit_grammar.md` when adding or changing skill grammar.
+
+## Deployment Surfaces
+
+- Live multiplayer app: deploy `run_server.py` / `web/app.py` to a Python web host such as Render, Railway, or Fly.io.
+
+## Do Not Do
+
+- Do not reintroduce Telegram bot identity or old bot runtime assumptions.
+- Do not add Node, npm, webpack, or a JS build pipeline unless the user explicitly approves it.
+- Do not move rules authority into the browser.
+- Do not replace the current random draw/keep/pass draft flavor with simultaneous direct pick unless explicitly requested.
+- Do not reintroduce the removed v1 engine, old character module, or static Pages demo.
+- Do not change the visual language casually; the current shell uses the JJK theme/token files and Phaser presentation.
+
+## Before Finishing Work
+
+- Run `python -m pytest -q` for code changes unless there is a clear reason it cannot run.
+- For frontend changes, start the local server and check the live page in a browser when feasible.
+- For Battle v2 contract changes, update `docs/battle_v2_socket_contract.md`.
+- For engine or loop changes, update `docs/battle_system_v2_design.md` and add focused tests.
+- Be explicit about what was actually verified. Do not describe unrun checks as passing.

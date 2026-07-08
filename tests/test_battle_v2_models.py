@@ -1,4 +1,4 @@
-from jjk_bot.battle_v2 import (
+from jjk_arena.battle_v2 import (
     BattlePlayerConfig,
     BattlePhase,
     BattleState,

@@ -2,9 +2,9 @@
 
 ## Objective
 
-Battle System v2 is a server-authoritative combat engine for a Naruto Arena-style JJK mode. It is isolated from the current v1 battle flow and powers the feature-flagged Battle v2 Arena, including CPU practice and private two-human PvP rooms.
+Battle System v2 is a server-authoritative combat engine for a Naruto Arena-style JJK mode. It powers the Battle v2 Arena, including CPU practice and private two-human PvP rooms.
 
-The production default remains v1. Integration code should only use v2 when `JJK_BATTLE_SYSTEM=v2`.
+Battle v2 is the only maintained battle engine in this repository.
 
 ## Core Loop
 
@@ -39,23 +39,13 @@ Resolver-only character exceptions should be avoided. If a mechanic cannot be de
 
 Character kits should be declared as `SkillSpec` data with `EffectSpec`, `ConditionSpec`, and `TransformationSpec` entries. Character-specific behavior should not be scattered through Python conditionals that check display names.
 
-### Preserve v1
-
-The existing game states and v1 battle behavior remain intact. V2 lives under `jjk_bot/battle_v2/` and is wired into the web app only when `JJK_BATTLE_SYSTEM=v2`.
-
 ### Server authoritative
 
 The client submits intent only. The server owns legality, damage, cooldowns, targeting, hidden effects, queue resolution, and winner detection.
 
-## Feature Flag
+## Runtime Flag
 
-Use the helper exported by `jjk_bot.battle_v2.models`:
-
-```python
-use_battle_v2()
-```
-
-It returns `True` only when `JJK_BATTLE_SYSTEM` is set to `v2`. The default is `v1`.
+The `use_battle_v2()` helper remains as an operational guard for socket handlers. It defaults to enabled and should not be used to route to a legacy engine.
 
 ## Model Boundaries
 
@@ -93,8 +83,7 @@ Invisible statuses must be visible to their owner, hidden from opponents, reveal
 
 ## Acceptance Criteria
 
-- V1 behavior is unchanged.
-- `jjk_bot.battle_v2.models` imports cleanly.
+- `jjk_arena.battle_v2.models` imports cleanly.
 - Data models cover battle phases, energy, damage, skill classes, skill specs, effects, conditions, transformations, statuses, pending actions, players, events, and battle state.
 - CPU practice can start from the browser and run CPU responses.
 - Private PvP lobbies wait for a second player, emit viewer-specific state, and clean up on cancel, reset, or disconnect.

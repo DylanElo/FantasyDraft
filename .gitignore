@@ -8,6 +8,11 @@ venv/
 env/
 .vscode/
 .idea/
+.agents/
+.codex/
+.venv/
+data/
+*.log
 
 # Local model system files and logs
 .claude/
@@ -24,3 +29,15 @@ naruto_analysis.txt
 naruto_kit_patterns.txt
 analyze_naruto.py
 write_script.py
+
+# Imported design/reference bundles that should not live in the app repo
+design_system_extracted/
+stitch-handoff/
+stitch-import/
+*.zip
+*.pdf
+arena_manual_extracted.txt
+research_*.txt
+check_api.py
+check_images.py
+search_geto.py

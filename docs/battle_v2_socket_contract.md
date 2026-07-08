@@ -1,7 +1,6 @@
 # Battle v2 Socket Contract
 
-Battle v2 SocketIO events are gated by `JJK_BATTLE_SYSTEM=v2`. The default app
-path remains v1, and these events must not mutate the v1 `Game` object.
+Battle v2 SocketIO events are the maintained gameplay surface. The server owns match state, validation, queue resolution, private serialization, and CPU responses.
 
 ## Client Events
 

@@ -1,6 +1,6 @@
-from jjk_bot.battle_v2.first_creation_progression import evaluate_first_creation_progress
-from jjk_bot.battle_v2.manager import BattleV2Manager
-from jjk_bot.battle_v2.models import BattleEvent
+from jjk_arena.battle_v2.first_creation_progression import evaluate_first_creation_progress
+from jjk_arena.battle_v2.manager import BattleV2Manager
+from jjk_arena.battle_v2.models import BattleEvent
 
 
 def _players():

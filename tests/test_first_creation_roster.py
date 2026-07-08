@@ -1,5 +1,5 @@
-from jjk_bot.battle_v2.models import EnergyType, SkillClass
-from jjk_bot.battle_v2.starter_roster import (
+from jjk_arena.battle_v2.models import EnergyType, SkillClass
+from jjk_arena.battle_v2.starter_roster import (
     FIRST_CREATION_AVAILABILITY,
     FIRST_CREATION_CHARACTER_IDS,
     FIRST_CREATION_CHARACTER_NAMES,

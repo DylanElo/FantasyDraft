@@ -1,45 +1,5 @@
 from pathlib import Path
-import unittest
 from web import app as web_app
-from web.app import char_to_dict, v2_character_id_for_name
-from jjk_bot.characters import Character, Skill
-
-class TestApp(unittest.TestCase):
-    def test_character_to_dict_none(self):
-        self.assertIsNone(char_to_dict(None))
-
-    def test_character_to_dict_valid(self):
-        skill = Skill(
-            name="Punch",
-            desc="A punch",
-            cost=["green"],
-            classes=["Physical", "Instant"],
-            effects=[],
-            cooldown=0
-        )
-        char = Character(
-            name="Yuji Itadori",
-            description="Vessel of Sukuna",
-            image_url="http://example.com/yuji.png",
-            skills=[skill]
-        )
-
-        result = char_to_dict(char)
-
-        self.assertEqual(result['name'], "Yuji Itadori")
-        self.assertEqual(result['description'], "Vessel of Sukuna")
-        self.assertEqual(result['image_url'], "http://example.com/yuji.png")
-        self.assertEqual(result['portrait_url'], "http://example.com/yuji.png")
-        self.assertEqual(result['portrait_source'], "remote")
-        self.assertEqual(len(result['skills']), 1)
-
-        s_dict = result['skills'][0]
-        self.assertEqual(s_dict['name'], "Punch")
-        self.assertEqual(s_dict['description'], "A punch")
-        self.assertEqual(s_dict['cooldown'], 0)
-        self.assertEqual(s_dict['cooldown_int'], 0)
-        self.assertEqual(s_dict['energy'], ["green"])
-        self.assertEqual(s_dict['classes'], "Physical, Instant")
 
 
 def test_index_defaults_to_phaser_cursed_clash(monkeypatch):
@@ -137,19 +97,6 @@ def test_battle_v2_public_surface_uses_production_copy(monkeypatch):
     assert "showScreen('game-arena')" not in shell_js
     assert "showScreen('battle-arena')" not in shell_js
     assert "showScreen('team-selection')" not in shell_js
-
-
-def test_v2_character_id_for_v1_names():
-    assert v2_character_id_for_name("Yuji Itadori") == "yuji_itadori"
-    assert v2_character_id_for_name("Ryomen Sukuna") == "ryomen_sukuna"
-    assert v2_character_id_for_name("Sukuna (Incarnation)") == "ryomen_sukuna"
-    assert v2_character_id_for_name("Yuta Okkotsu (JJK 0)") == "yuta_okkotsu"
-    assert v2_character_id_for_name("Gojo (Unsealed)") == "satoru_gojo"
-    assert v2_character_id_for_name("Kento Nanami") is None
-
-if __name__ == '__main__':
-    unittest.main()
-
 
 
 def test_index_exposes_first_creation_payload_when_battle_v2_enabled(monkeypatch):

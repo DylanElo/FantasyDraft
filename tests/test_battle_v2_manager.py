@@ -1,7 +1,7 @@
 import pytest
 
-from jjk_bot.battle_v2.models import EnergyType, SkillClass, StatusEffect
-from jjk_bot.battle_v2.manager import BattleV2Manager, BattleV2Error
+from jjk_arena.battle_v2.models import EnergyType, SkillClass, StatusEffect
+from jjk_arena.battle_v2.manager import BattleV2Manager, BattleV2Error
 
 
 def player_one():

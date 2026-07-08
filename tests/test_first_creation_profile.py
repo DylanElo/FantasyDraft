@@ -1,10 +1,10 @@
-from jjk_bot.battle_v2.first_creation_profile import (
+from jjk_arena.battle_v2.first_creation_profile import (
     first_creation_profile_payload,
     load_first_creation_profile,
     merge_first_creation_progress,
     save_first_creation_profile,
 )
-from jjk_bot.battle_v2.first_creation_unlocks import first_creation_unlocks_payload, unknown_first_creation_unlocks
+from jjk_arena.battle_v2.first_creation_unlocks import first_creation_unlocks_payload, unknown_first_creation_unlocks
 
 
 def test_first_creation_profile_persists_completed_missions_and_unlocks(tmp_path, monkeypatch):

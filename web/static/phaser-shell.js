@@ -1232,7 +1232,7 @@
 
       this.mono(x, y, this.store.draftTarget === 'enemyTeam' ? 'TAP ROSTER CARD TO EDIT CPU TEAM' : 'TAP ROSTER CARD TO EDIT PLAYER TEAM', { color: '#cbd5e1' });
       const roster = this.store.rosterEntries();
-      const pageSize = frame.height < 900 ? 4 : 6;
+      const pageSize = frame.height < 760 ? 2 : frame.height < 900 ? 4 : 6;
       const pageMax = Math.max(0, Math.ceil(roster.length / pageSize) - 1);
       this.store.draftPage = clamp(this.store.draftPage, 0, pageMax);
       const page = roster.slice(this.store.draftPage * pageSize, this.store.draftPage * pageSize + pageSize);
@@ -1243,7 +1243,7 @@
         const teamKey = this.store.draftTarget;
         this.renderRosterCard(character, x + col * (cardW + 12), y + 24 + row * 102, cardW, 90, teamKey);
       });
-      const navY = Math.min(frame.height - 88, y + 340);
+      const navY = Math.min(frame.height - 112, y + 24 + Math.ceil(page.length / 2) * 102 + 12);
       this.button(x, navY, 74, 38, 'Prev', () => {
         this.store.draftPage = Math.max(0, this.store.draftPage - 1);
         this.store.notify();
@@ -1254,7 +1254,7 @@
         this.store.notify();
       }, { disabled: this.store.draftPage === pageMax, fill: 0x111827, mono: true });
 
-      this.button(x, frame.height - 62, frame.width - 32, 46, this.store.lobbyStatus ? 'Waiting For Opponent' : 'Ignite Battle', () => this.store.startMatch(), {
+      this.button(x, frame.height - 54, frame.width - 32, 40, this.store.lobbyStatus ? 'Waiting For Opponent' : 'Ignite Battle', () => this.store.startMatch(), {
         fill: this.store.lobbyStatus ? 0x1f2937 : COLORS.purple,
         stroke: this.store.lobbyStatus ? COLORS.cyan : COLORS.gold,
         fontSize: '15px',
@@ -1335,7 +1335,7 @@
         this.graphics.fillStyle(ENERGY_COLORS[color] || COLORS.gold, 0.95);
         this.graphics.fillCircle(x + 14 + index * 14, y + h - 16, 5);
       });
-      this.mono(x + 10, y + 62, cooldown > 0 ? `CD ${cooldown}` : fit.ok ? this.store.effectLine(skill).slice(0, 45) : fit.reason, {
+      this.mono(x + 10, y + h - 22, cooldown > 0 ? `CD ${cooldown}` : fit.ok ? this.store.effectLine(skill).slice(0, 36) : fit.reason, {
         color: disabled ? '#94a3b8' : '#fde68a',
         fontSize: '8px',
       });
@@ -1474,7 +1474,7 @@
         skills.forEach((skill, index) => {
           const col = index % 2;
           const row = Math.floor(index / 2);
-          this.renderSkillCard(skill, selected, frame.x + frame.gutter + col * (cardW + 12), dockY + 62 + row * 86, cardW, 76);
+          this.renderSkillCard(skill, selected, frame.x + frame.gutter + col * (cardW + 12), dockY + 62 + row * 72, cardW, 64);
         });
       } else {
         this.text(frame.x + frame.gutter, dockY + 22, 'Awaiting Command', { fontSize: '18px', fontStyle: '900' });

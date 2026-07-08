@@ -117,4 +117,5 @@ Keep these principles:
 - For frontend changes, start the local server and check the live page in a browser when feasible.
 - For Battle v2 contract changes, update `docs/battle_v2_socket_contract.md`.
 - For engine or loop changes, update `docs/battle_system_v2_design.md` and add focused tests.
+- After every meaningful pass, update `docs/session_history.md` with what changed, what was verified, what remains, and any commits or pushed state.
 - Be explicit about what was actually verified. Do not describe unrun checks as passing.

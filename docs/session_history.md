@@ -1,0 +1,101 @@
+# FantasyDraft Session History
+
+This file records recovered project passes and the current session state so future work can continue from the real repo history instead of scattered chat memory.
+
+After every meaningful pass, add a short dated entry with:
+
+- What changed
+- What was verified
+- What remains or needs caution
+- Relevant commits or pushed state
+
+## 2026-07-08 - V2-only cleanup and compact Phaser UI pass
+
+Source: current repo state and live work session.
+
+What changed:
+
+- Replaced the stale `CLAUDE.md` with current Battle v2 project context.
+- Removed legacy bot/v1 runtime surfaces and old static Pages/demo output.
+- Moved the maintained Battle v2 package to `jjk_arena/battle_v2`.
+- Rebuilt `web/app.py` as a v2-only Flask-SocketIO bridge.
+- Updated docs and tests to match the v2-only package layout.
+- Tightened compact Phaser layout for short screens: smaller draft pages, adjusted navigation, denser combat skill cards, and less crowded effect text.
+
+Verification:
+
+- `python -m pytest -q` -> `110 passed, 1 skipped`.
+- `node --check web/static/phaser-shell.js`.
+- Local Flask smoke: `GET /` returned HTTP 200.
+- Live SocketIO smoke covered CPU practice startup/update and PvP wait/cancel flow.
+- Browser smoke confirmed the Phaser lobby, draft, and combat screens loaded.
+
+Caution / next work:
+
+- Phaser UI is functional and less crowded, but the combat screen still needs a dedicated UX refinement pass for responsive spacing, target affordances, queue review clarity, and animation/readability polish.
+
+Commits:
+
+- `d86633d` - `Remove legacy bot code and keep Battle v2 only`
+- `6213da3` - `Tighten compact Phaser battle layout`
+
+Pushed state:
+
+- `main` was pushed to `origin/main` and was clean after the pass.
+
+## 2026-07-07 - Push current implementation and keep only main
+
+Source: recovered Codex memory summary.
+
+What changed:
+
+- Committed the staged Phaser mobile arena / first-creation implementation on `main`.
+- Pushed `main` to GitHub.
+- Removed non-`main` branches locally and remotely as requested.
+
+Verification:
+
+- Final remote branch verification used `git ls-remote --heads origin`.
+- Final local branch verification used `git branch --format='%(refname:short)'`.
+- End state was only `main` locally and only `refs/heads/main` remotely.
+
+Caution / next work:
+
+- `gh-pages` reappeared once after pruning, likely from deployment automation. For future branch cleanup, delete it again if needed and verify remote heads directly instead of trusting prune output alone.
+
+Commit:
+
+- `ee31454` - `Rewrite v2 client as Phaser mobile arena`
+
+## 2026-07-02 / 2026-07-03 - Repo identity cleanup and first Phaser battle renderer
+
+Source: recovered Codex memory summary.
+
+What changed:
+
+- Removed the old Telegram bot identity at the file/module/runtime level.
+- Renamed `jjk_bot` to `jjk_arena`.
+- Renamed `main.py` to `run_server.py`.
+- Updated imports across `web/`, tests, scripts, and docs.
+- Updated `Procfile`, `Dockerfile`, `start_server.bat`, and README to launch `run_server.py`.
+- Added `.pytest_cache/` to `.gitignore` after Windows/OneDrive access-denied cleanup issues.
+- Added a vendored Phaser presentation layer for the battle screen.
+- Mounted the Phaser canvas in the Flask template and pushed battle state into Phaser from the existing DOM/SocketIO client.
+- Added battle layout CSS for full-width arena mode versus command-sheet mode.
+
+Verification:
+
+- `python -m pytest -q` -> `44 passed`.
+- `node --check web/static/app.js`.
+- `node --check web/static/phaser-battle.js`.
+- Browser smoke confirmed battle screen load, Phaser canvas mount, skill sheet open, target mode toggle, and arena width restoration after cancel.
+
+Caution / next work:
+
+- This pass was intentionally partial: Phaser was introduced as a presentation layer while DOM/SocketIO still owned interaction and Python stayed authoritative.
+- Layout issues appeared around the command sheet overlapping the arena; the working direction was CSS grid/stretch fixes and large-screen spacing, not Phaser state rewrites.
+- Browser validation was more reliable through layout rects/screenshots than canvas pixel probing.
+
+Superseded by later work:
+
+- The July 8 pass removed remaining legacy/v1 surfaces and made Battle v2 the only maintained path.

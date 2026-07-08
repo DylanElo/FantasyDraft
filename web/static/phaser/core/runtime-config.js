@@ -9,25 +9,51 @@ export const TOKEN_TOUCH = DESIGN_TOKENS.touch || {};
 export const TOKEN_MOTION = DESIGN_TOKENS.motion || {};
 
 export const COLORS = {
-  bg: TOKEN_COLORS.voidBlack || 0x050711,
-  panel: TOKEN_COLORS.panelDeep || 0x0b1020,
-  panel2: TOKEN_COLORS.panelRaised || 0x111827,
-  line: TOKEN_COLORS.surfaceLine || 0x273449,
-  text: (DESIGN_TOKENS.colors && DESIGN_TOKENS.colors.textMain) || '#f8fafc',
-  muted: (DESIGN_TOKENS.colors && DESIGN_TOKENS.colors.textMuted) || '#94a3b8',
-  cyan: TOKEN_COLORS.cursedBlue || 0x3b82f6,
-  purple: TOKEN_COLORS.cursedPurple || 0xa855f7,
-  gold: TOKEN_COLORS.domainGold || 0xf59e0b,
-  red: TOKEN_COLORS.bloodRed || 0xef4444,
-  green: TOKEN_COLORS.bodyGreen || 0x22c55e,
-  white: TOKEN_COLORS.focusWhite || 0xf8fafc,
-  blue: TOKEN_COLORS.cursedBlue || 0x3b82f6,
-  black: TOKEN_COLORS.panelRaised || 0x111827,
+  bg: TOKEN_COLORS.voidBlack || 0x030303,
+  voidBlack: TOKEN_COLORS.voidBlack || 0x030303,
+  inkBlack: TOKEN_COLORS.inkBlack || 0x08080a,
+  panel: TOKEN_COLORS.surfaceDeep || 0x111111,
+  panel2: TOKEN_COLORS.surfaceRaised || 0x181715,
+  surfaceDeep: TOKEN_COLORS.surfaceDeep || 0x111111,
+  surfaceRaised: TOKEN_COLORS.surfaceRaised || 0x181715,
+  line: TOKEN_COLORS.surfaceLine || 0x3a3327,
+  surfaceLine: TOKEN_COLORS.surfaceLine || 0x3a3327,
+  talismanPaper: TOKEN_COLORS.talismanPaper || 0xd8c28a,
+  talismanDim: TOKEN_COLORS.talismanDim || 0x8a7650,
+  selectionGold: TOKEN_COLORS.selectionGold || 0xe6b84a,
+  cursedTeal: TOKEN_COLORS.cursedTeal || 0x20d0b2,
+  domainViolet: TOKEN_COLORS.domainViolet || 0x7c3aed,
+  sealRed: TOKEN_COLORS.sealRed || 0xa92d2d,
+  bloodRed: TOKEN_COLORS.bloodRed || 0xd43b3b,
+  bodyGreen: TOKEN_COLORS.bodyGreen || 0x4fb06d,
+  techniqueBlue: TOKEN_COLORS.techniqueBlue || 0x3d6bff,
+  focusIvory: TOKEN_COLORS.focusIvory || 0xede9d5,
+  text: (DESIGN_TOKENS.colors && DESIGN_TOKENS.colors.textMain) || '#f4efe1',
+  muted: (DESIGN_TOKENS.colors && DESIGN_TOKENS.colors.textMuted) || '#a39a86',
+  dim: (DESIGN_TOKENS.colors && DESIGN_TOKENS.colors.textDim) || '#6f675a',
+  cyan: TOKEN_COLORS.cursedTeal || 0x20d0b2,
+  purple: TOKEN_COLORS.domainViolet || 0x7c3aed,
+  gold: TOKEN_COLORS.selectionGold || 0xe6b84a,
+  red: TOKEN_COLORS.bloodRed || 0xd43b3b,
+  green: TOKEN_COLORS.bodyGreen || 0x4fb06d,
+  white: TOKEN_COLORS.focusIvory || 0xede9d5,
+  blue: TOKEN_COLORS.techniqueBlue || 0x3d6bff,
+  black: TOKEN_COLORS.surfaceRaised || 0x181715,
 };
-COLORS.stageDeep = 0x020412;
-COLORS.stageInk = 0x030712;
-COLORS.panelInk = 0x07101f;
-COLORS.paperGold = 0xfde68a;
+COLORS.stageDeep = COLORS.voidBlack;
+COLORS.stageInk = COLORS.inkBlack;
+COLORS.panelInk = COLORS.surfaceDeep;
+COLORS.paperGold = COLORS.talismanPaper;
+COLORS.ally = COLORS.cursedTeal;
+COLORS.enemy = COLORS.bloodRed;
+COLORS.target = COLORS.cursedTeal;
+COLORS.queued = COLORS.bodyGreen;
+COLORS.protected = COLORS.talismanDim;
+COLORS.domain = COLORS.domainViolet;
+COLORS.selection = COLORS.selectionGold;
+COLORS.cta = COLORS.selectionGold;
+COLORS.paperText = (DESIGN_TOKENS.colors && DESIGN_TOKENS.colors.talismanPaper) || '#d8c28a';
+COLORS.dimText = (DESIGN_TOKENS.colors && DESIGN_TOKENS.colors.textDim) || '#6f675a';
 
 export const ENERGY_COLORS = DESIGN_TOKENS.energyPhaser || {
   green: COLORS.green,

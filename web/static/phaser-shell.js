@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const SHELL_VERSION = '16';
+  const SHELL_VERSION = '17';
 
   import(`./phaser/index.js?v=${SHELL_VERSION}`).catch((error) => {
     console.error('Failed to load JJK Phaser shell module', error);

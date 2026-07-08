@@ -24,26 +24,26 @@
      the cursed-energy purple never feels hot-grafted on.
      ══════════════════════════════════════════════════════════════════ */
 
-  --jjk-bg-void:        #04040d;  /* the pitch behind the vignette */
-  --jjk-bg:             #07071a;  /* page / stage */
-  --jjk-bg-2:           #0a0a1f;  /* battle stage floor */
-  --jjk-surf:           #0e0e26;  /* primary panels */
-  --jjk-surf-2:         #161630;  /* nested surfaces, skill rows */
-  --jjk-surf-3:         #1d1d3d;  /* hover surface */
-  --jjk-obsidian:       #060614;  /* energy rack interior, deep wells */
-  --jjk-steel:          #2a2a3e;  /* metallic plate accent */
-  --jjk-steel-hi:       #4a4a6b;  /* metallic plate highlight */
+  --jjk-bg-void:        #030303;  /* the pitch behind the vignette */
+  --jjk-bg:             #08080a;  /* page / stage */
+  --jjk-bg-2:           #111111;  /* battle stage floor */
+  --jjk-surf:           #111111;  /* primary panels */
+  --jjk-surf-2:         #181715;  /* nested surfaces, skill rows */
+  --jjk-surf-3:         #241f18;  /* hover surface */
+  --jjk-obsidian:       #08080a;  /* energy rack interior, deep wells */
+  --jjk-steel:          #3a3327;  /* metallic plate accent */
+  --jjk-steel-hi:       #8a7650;  /* metallic plate highlight */
 
   --jjk-border:         rgba(255,255,255,0.07);
   --jjk-border-hi:      rgba(255,255,255,0.14);
-  --jjk-border-curse:   rgba(168,85,247,0.45);  /* curse-energy outlined panels */
-  --jjk-border-blood:   rgba(220,38,38,0.45);   /* blood-crimson outlined panels */
-  --jjk-border-gold:    rgba(252,211,77,0.55);  /* legendary frames */
+  --jjk-border-curse:   rgba(124,58,237,0.38);  /* curse-energy outlined panels */
+  --jjk-border-blood:   rgba(212,59,59,0.45);   /* blood-crimson outlined panels */
+  --jjk-border-gold:    rgba(230,184,74,0.55);  /* legendary frames */
 
   /* Steel-plate panel gradient — apply as background on heavy chrome */
-  --jjk-grad-steel:     linear-gradient(180deg, #1a1a30 0%, #0e0e26 55%, #07071a 100%);
-  --jjk-grad-obsidian:  linear-gradient(165deg, #14142d 0%, #08081a 100%);
-  --jjk-grad-cracked:   linear-gradient(135deg, #0e0e26 0%, #161630 40%, #0c0c1f 100%);
+  --jjk-grad-steel:     linear-gradient(180deg, #241f18 0%, #111111 55%, #08080a 100%);
+  --jjk-grad-obsidian:  linear-gradient(165deg, #181715 0%, #08080a 100%);
+  --jjk-grad-cracked:   linear-gradient(135deg, #111111 0%, #181715 40%, #08080a 100%);
 
   /* ════════════════════════════════════════════════════════════════════
      2. CURSED ENERGY — neon purple is the brand voltage
@@ -52,9 +52,9 @@
      ══════════════════════════════════════════════════════════════════ */
 
   --jjk-curse:          #7c3aed;  /* primary purple */
-  --jjk-curse-hi:       #a855f7;  /* highlight tone */
+  --jjk-curse-hi:       #9f7aea;  /* highlight tone */
   --jjk-curse-lo:       #4c1d95;  /* deep shadow */
-  --jjk-curse-neon:     #c084fc;  /* electric edge */
+  --jjk-curse-neon:     #b794f4;  /* electric edge */
   --jjk-curse-glow:     rgba(124,58,237,0.55);
   --jjk-curse-glow-sm:  rgba(124,58,237,0.30);
   --jjk-curse-tint:     rgba(124,58,237,0.12);
@@ -63,22 +63,22 @@
      3. SEMANTIC + ATTACK COLORS
      ══════════════════════════════════════════════════════════════════ */
 
-  --jjk-gold:           #f59e0b;   /* victory, legendary class */
-  --jjk-gold-hi:        #fcd34d;
-  --jjk-gold-deep:      #b45309;
-  --jjk-gold-glow:      rgba(245,158,11,0.45);
+  --jjk-gold:           #e6b84a;   /* victory, legendary class */
+  --jjk-gold-hi:        #d8c28a;
+  --jjk-gold-deep:      #8a7650;
+  --jjk-gold-glow:      rgba(230,184,74,0.42);
 
-  --jjk-crimson:        #dc2626;   /* assassin frame, blood cuts */
-  --jjk-crimson-hi:     #ef4444;
-  --jjk-crimson-glow:   rgba(220,38,38,0.50);
+  --jjk-crimson:        #a92d2d;   /* assassin frame, blood cuts */
+  --jjk-crimson-hi:     #d43b3b;
+  --jjk-crimson-glow:   rgba(212,59,59,0.48);
 
   --jjk-toxic:          #84cc16;   /* affliction / poison drip */
   --jjk-toxic-hi:       #bef264;
   --jjk-toxic-glow:     rgba(132,204,22,0.45);
 
-  --jjk-success:        #22c55e;
-  --jjk-warning:        #f59e0b;
-  --jjk-danger:         #dc2626;
+  --jjk-success:        #4fb06d;
+  --jjk-warning:        #e6b84a;
+  --jjk-danger:         #a92d2d;
 
   /* Damage-lag bar (orange chip under the segmented HP) */
   --jjk-dmg-lag:        #fb923c;
@@ -88,11 +88,11 @@
      4. TEXT
      ══════════════════════════════════════════════════════════════════ */
 
-  --jjk-text:           #f0f0ff;   /* primary — soft white w/ blue tint */
-  --jjk-text-dim:       #c7c8e6;   /* secondary body */
-  --jjk-muted:          #6b7094;   /* tertiary / labels */
-  --jjk-dim:            #3a3a5c;   /* placeholders / disabled */
-  --jjk-ink:            #0a0a1a;   /* dark text on light, very rare */
+  --jjk-text:           #ede9d5;   /* primary — soft white w/ blue tint */
+  --jjk-text-dim:       #a39a86;   /* secondary body */
+  --jjk-muted:          #6f675a;   /* tertiary / labels */
+  --jjk-dim:            #3a3327;   /* placeholders / disabled */
+  --jjk-ink:            #08080a;   /* dark text on light, very rare */
 
   /* ════════════════════════════════════════════════════════════════════
      5. ENERGY ORBS (5 types) — each is a 3D physical bead in the rack
@@ -100,23 +100,23 @@
      specular highlight; layer --orb-glow as a drop-shadow.
      ══════════════════════════════════════════════════════════════════ */
 
-  --jjk-e-green:        #22c55e;   /* Physical / Taijutsu */
-  --jjk-e-red:          #ef4444;   /* Bloodline */
-  --jjk-e-blue:         #3b82f6;   /* Curse Energy */
-  --jjk-e-white:        #e2e8f0;   /* Strategic */
-  --jjk-e-black:        #1f2030;   /* Generic */
+  --jjk-e-green:        #4fb06d;   /* Physical / Taijutsu */
+  --jjk-e-red:          #d43b3b;   /* Bloodline */
+  --jjk-e-blue:         #3d6bff;   /* Curse Energy */
+  --jjk-e-white:        #ede9d5;   /* Strategic */
+  --jjk-e-black:        #181715;   /* Generic */
 
-  --jjk-orb-grad-green: radial-gradient(circle at 30% 28%, #6ee7a3 0%, #22c55e 38%, #14532d 100%);
-  --jjk-orb-grad-red:   radial-gradient(circle at 30% 28%, #fca5a5 0%, #ef4444 38%, #7f1d1d 100%);
-  --jjk-orb-grad-blue:  radial-gradient(circle at 30% 28%, #93c5fd 0%, #3b82f6 38%, #1e3a8a 100%);
-  --jjk-orb-grad-white: radial-gradient(circle at 30% 28%, #ffffff 0%, #e2e8f0 38%, #64748b 100%);
-  --jjk-orb-grad-black: radial-gradient(circle at 30% 28%, #4a4a6b 0%, #1f2030 38%, #050510 100%);
+  --jjk-orb-grad-green: radial-gradient(circle at 30% 28%, #8fd0a3 0%, #4fb06d 38%, #1d4f30 100%);
+  --jjk-orb-grad-red:   radial-gradient(circle at 30% 28%, #ef8b8b 0%, #d43b3b 38%, #621919 100%);
+  --jjk-orb-grad-blue:  radial-gradient(circle at 30% 28%, #8ca5ff 0%, #3d6bff 38%, #172b7a 100%);
+  --jjk-orb-grad-white: radial-gradient(circle at 30% 28%, #ffffff 0%, #ede9d5 38%, #8a7650 100%);
+  --jjk-orb-grad-black: radial-gradient(circle at 30% 28%, #8a7650 0%, #181715 38%, #030303 100%);
 
-  --jjk-orb-glow-green: 0 0 12px rgba(34,197,94,0.75), 0 0 4px rgba(110,231,163,0.9);
-  --jjk-orb-glow-red:   0 0 12px rgba(239,68,68,0.75), 0 0 4px rgba(252,165,165,0.9);
-  --jjk-orb-glow-blue:  0 0 12px rgba(59,130,246,0.75),0 0 4px rgba(147,197,253,0.9);
-  --jjk-orb-glow-white: 0 0 12px rgba(226,232,240,0.7),0 0 4px rgba(255,255,255,0.9);
-  --jjk-orb-glow-black: 0 0 6px rgba(124,58,237,0.35);
+  --jjk-orb-glow-green: 0 0 12px rgba(79,176,109,0.65), 0 0 4px rgba(143,208,163,0.75);
+  --jjk-orb-glow-red:   0 0 12px rgba(212,59,59,0.70), 0 0 4px rgba(239,139,139,0.78);
+  --jjk-orb-glow-blue:  0 0 12px rgba(61,107,255,0.70),0 0 4px rgba(140,165,255,0.78);
+  --jjk-orb-glow-white: 0 0 12px rgba(237,233,213,0.62),0 0 4px rgba(255,255,255,0.82);
+  --jjk-orb-glow-black: 0 0 6px rgba(216,194,138,0.28);
 
   /* ════════════════════════════════════════════════════════════════════
      6. CHARACTER CLASS FRAMES
@@ -125,28 +125,28 @@
      accent color for HP bar end caps + skill list dividers.
      ══════════════════════════════════════════════════════════════════ */
 
-  --jjk-cls-attacker:   #ef4444;   /* jagged metal, hot edge */
+  --jjk-cls-attacker:   #d43b3b;   /* jagged metal, hot edge */
   --jjk-cls-assassin:   #b91c1c;   /* blood-crimson cut */
   --jjk-cls-defender:   #38bdf8;   /* metallic grid layers */
   --jjk-cls-support:    #facc15;   /* sun-bronze */
-  --jjk-cls-domain:     #a855f7;   /* curse purple, ultimate */
+  --jjk-cls-domain:     #9f7aea;   /* curse purple, ultimate */
 
   /* Rarity (overlay layer, NOT a faction) */
-  --jjk-rar-common:     #6b7094;
+  --jjk-rar-common:     #6f675a;
   --jjk-rar-rare:       #38bdf8;
-  --jjk-rar-epic:       #a855f7;
-  --jjk-rar-legend:     #fcd34d;
+  --jjk-rar-epic:       #9f7aea;
+  --jjk-rar-legend:     #d8c28a;
 
   /* ════════════════════════════════════════════════════════════════════
      7. FACTION PALETTE — the in-fiction allegiance, separate from class
      ══════════════════════════════════════════════════════════════════ */
 
-  --jjk-f-tokyo:        #3b82f6;
+  --jjk-f-tokyo:        #3d6bff;
   --jjk-f-kyoto:        #06b6d4;
   --jjk-f-sorcerer:     #8b5cf6;
-  --jjk-f-villain:      #ef4444;
-  --jjk-f-curse:        #dc2626;
-  --jjk-f-culling:      #f59e0b;
+  --jjk-f-villain:      #d43b3b;
+  --jjk-f-curse:        #a92d2d;
+  --jjk-f-culling:      #e6b84a;
 
   /* ════════════════════════════════════════════════════════════════════
      8. TYPE
@@ -249,8 +249,8 @@
   --jjk-aura-curse:     0 0 24px rgba(124,58,237,0.45), 0 0 60px rgba(124,58,237,0.18);
   --jjk-aura-curse-sm:  0 0 12px rgba(124,58,237,0.40);
   --jjk-aura-curse-lg:  0 0 60px rgba(124,58,237,0.45), 0 0 120px rgba(124,58,237,0.18);
-  --jjk-aura-gold:      0 0 32px rgba(245,158,11,0.55), 0 0 80px rgba(245,158,11,0.20);
-  --jjk-aura-crimson:   0 0 24px rgba(220,38,38,0.50), 0 0 60px rgba(220,38,38,0.20);
+  --jjk-aura-gold:      0 0 32px rgba(230,184,74,0.45), 0 0 80px rgba(216,194,138,0.16);
+  --jjk-aura-crimson:   0 0 24px rgba(212,59,59,0.48), 0 0 60px rgba(212,59,59,0.18);
   --jjk-aura-toxic:     0 0 24px rgba(132,204,22,0.45);
 
   /* Engraved-plate inner bevel — apply to metal frames */
@@ -263,8 +263,8 @@
                         inset 0 -1px 0 rgba(255,255,255,0.04);
 
   /* Heavy under-card lift for legendary frames */
-  --jjk-shadow-legend:  0 24px 72px rgba(245,158,11,0.18),
-                        0 0 0 1px rgba(252,211,77,0.4) inset;
+  --jjk-shadow-legend:  0 24px 72px rgba(230,184,74,0.16),
+                        0 0 0 1px rgba(216,194,138,0.38) inset;
 
   /* Full-stage vignette — apply to the stage root */
   --jjk-vignette:       radial-gradient(ellipse at center,
@@ -338,7 +338,7 @@
   font-weight: var(--jjk-fw-regular);
   font-size: var(--jjk-fs-mega);
   color: var(--jjk-text);
-  text-shadow: 0 0 32px var(--jjk-crimson-glow), 0 0 80px rgba(220,38,38,0.3);
+  text-shadow: 0 0 32px var(--jjk-crimson-glow), 0 0 80px rgba(212,59,59,0.26);
   writing-mode: vertical-rl;
   letter-spacing: -10px;
 }

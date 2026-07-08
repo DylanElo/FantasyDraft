@@ -18,7 +18,7 @@ The next UI/UX step is to turn that shell from a functional developer interface 
 
 - Naruto Arena combat flow: 3v3 teams, one skill per living character, queue review, wildcard/random energy payment, and left-to-right resolution.
 - First Creation identity: Student Era + Hidden Inventory + JJK0. The first roster should feel like "Welcome to Jujutsu High," not endgame apocalypse.
-- JJK visual direction: dark cursed-energy UI, talisman paper shapes, domain rings, hand-seal glyphs, school-issued dossier cards, and sharp purple/gold/blue/red combat accents.
+- JJK visual direction: ink-black surfaces, aged talisman paper accents, restrained cursed-energy glow, domain rings only for special moments, hand-seal glyphs, school-issued dossier cards, and clear combat-state accents.
 
 ## Design Pillars
 
@@ -82,29 +82,44 @@ Create these pages:
 
 | Token | Value |
 | --- | --- |
-| Void Black | `#050711` |
-| Panel Deep | `#0B1020` |
-| Panel Raised | `#111827` |
-| Cursed Purple | `#A855F7` |
-| Cursed Purple Glow | `rgba(168,85,247,0.34)` |
-| Domain Gold | `#F59E0B` |
-| Cursed Blue | `#3B82F6` |
-| Blood Red | `#EF4444` |
-| Body Green | `#22C55E` |
-| Focus White | `#F8FAFC` |
-| Text Main | `#F8FAFC` |
-| Text Muted | `#94A3B8` |
-| Text Dim | `#64748B` |
+| Void Black | `#030303` |
+| Ink Black | `#08080A` |
+| Surface Deep | `#111111` |
+| Surface Raised | `#181715` |
+| Surface Line | `#3A3327` |
+| Talisman Paper | `#D8C28A` |
+| Talisman Dim | `#8A7650` |
+| Selection Gold | `#E6B84A` |
+| Cursed Teal | `#20D0B2` |
+| Domain Violet | `#7C3AED` |
+| Seal Red | `#A92D2D` |
+| Blood Red | `#D43B3B` |
+| Body Green | `#4FB06D` |
+| Technique Blue | `#3D6BFF` |
+| Focus Ivory | `#EDE9D5` |
+| Text Main | `#F4EFE1` |
+| Text Muted | `#A39A86` |
+| Text Dim | `#6F675A` |
+
+### Combat State Color Rules
+
+- Selected caster / selected skill: talisman gold plate and one gold ring.
+- Legal target: cursed teal pulse and crosshair marks.
+- Queued action: muted green seal.
+- Protected / untargetable: ash/talisman-dim rim with `INVULN` chip.
+- Enemy threat and damage: blood red only.
+- Domain/cinematic effects: violet only during domain, status, or resolution moments.
+- Routine panel chrome should stay ink, charcoal, or talisman-dim; do not use violet as a default decoration.
 
 ### Energy Colors
 
 | Energy | Color |
 | --- | --- |
-| B / Body | Green `#22C55E` |
-| T / Technique | Blue `#3B82F6` |
-| F / Focus | White `#F8FAFC` |
-| C / Curse | Red `#EF4444` |
-| X / Wild | Black `#111827` with light rim |
+| B / Body | Muted green `#4FB06D` |
+| T / Technique | Saturated blue `#3D6BFF` |
+| F / Focus | Ivory `#EDE9D5` |
+| C / Curse | Blood red `#D43B3B` |
+| X / Wild | Charcoal `#181715` with talisman rim |
 
 ### Type
 

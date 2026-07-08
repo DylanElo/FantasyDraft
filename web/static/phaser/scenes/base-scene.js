@@ -1,7 +1,7 @@
-import { COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE } from '../core/runtime-config.js?v=16';
-import { initials, safeText } from '../core/text.js?v=16';
-import { LayoutService } from '../core/layout-service.js?v=16';
-import { costColors } from '../core/roster.js?v=16';
+import { COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE } from '../core/runtime-config.js?v=17';
+import { initials, safeText } from '../core/text.js?v=17';
+import { LayoutService } from '../core/layout-service.js?v=17';
+import { costColors } from '../core/roster.js?v=17';
 
 export class BaseScene extends Phaser.Scene {
     constructor(key) {
@@ -77,27 +77,27 @@ export class BaseScene extends Phaser.Scene {
 
     drawAppBg(frame) {
       const g = this.graphics;
-      g.fillGradientStyle(0x02030b, 0x061120, 0x180622, 0x030712, 1);
+      g.fillGradientStyle(COLORS.voidBlack, COLORS.inkBlack, 0x120b0d, COLORS.voidBlack, 1);
       g.fillRect(0, 0, frame.fullWidth, frame.fullHeight);
       g.fillStyle(COLORS.bg, 0.86);
       g.fillRoundedRect(frame.x, frame.y, frame.width, frame.height, frame.desktop ? 22 : 0);
-      g.lineStyle(1, 0xffffff, frame.desktop ? 0.14 : 0);
+      g.lineStyle(1, COLORS.talismanDim, frame.desktop ? 0.28 : 0);
       g.strokeRoundedRect(frame.x + 0.5, frame.y + 0.5, frame.width - 1, frame.height - 1, frame.desktop ? 22 : 0);
 
       const cx = frame.x + frame.width / 2;
       const cy = frame.y + frame.height * 0.47;
       [320, 236, 154].forEach((radius, index) => {
-        g.lineStyle(index === 1 ? 2 : 1, index === 1 ? COLORS.purple : COLORS.gold, index === 1 ? 0.06 : 0.035);
+        g.lineStyle(index === 1 ? 1.5 : 1, index === 1 ? COLORS.domain : COLORS.talismanDim, index === 1 ? 0.045 : 0.03);
         g.strokeCircle(cx, cy, radius);
       });
       for (let i = 0; i < 7; i += 1) {
         const y = frame.y + 84 + i * 104;
-        g.lineStyle(1, COLORS.purple, 0.03);
+        g.lineStyle(1, COLORS.surfaceLine, 0.045);
         g.strokeCircle(frame.x + (i % 2 ? frame.width - 34 : 34), y, 72);
       }
       for (let i = 0; i < 15; i += 1) {
         const y = frame.y + 42 + i * 48;
-        g.lineStyle(1, i % 3 === 0 ? COLORS.gold : 0xffffff, i % 3 === 0 ? 0.05 : 0.03);
+        g.lineStyle(1, i % 3 === 0 ? COLORS.talismanDim : 0xffffff, i % 3 === 0 ? 0.055 : 0.025);
         g.beginPath();
         g.moveTo(frame.x, y);
         g.lineTo(frame.x + frame.width, y + (i % 2 ? -18 : 18));
@@ -105,7 +105,7 @@ export class BaseScene extends Phaser.Scene {
       }
       for (let i = 0; i < 9; i += 1) {
         const x = frame.x + 18 + i * 49;
-        g.lineStyle(1, COLORS.gold, 0.05);
+        g.lineStyle(1, COLORS.talismanDim, 0.045);
         g.beginPath();
         g.moveTo(x, frame.y + 2);
         g.lineTo(x - 34, frame.y + frame.height - 2);
@@ -115,12 +115,14 @@ export class BaseScene extends Phaser.Scene {
 
     topBar(frame, title, backHandler) {
       const y = frame.top + 2;
-      this.graphics.fillStyle(0x020617, 0.38);
+      this.graphics.fillStyle(COLORS.inkBlack, 0.68);
       this.graphics.fillRoundedRect(frame.x + 10, frame.top - 4, frame.width - 20, 52, 16);
-      this.graphics.lineStyle(1, COLORS.purple, 0.16);
+      this.graphics.fillStyle(COLORS.talismanDim, 0.06);
+      this.graphics.fillRoundedRect(frame.x + 14, frame.top, frame.width - 28, 16, 10);
+      this.graphics.lineStyle(1, COLORS.talismanDim, 0.24);
       this.graphics.strokeRoundedRect(frame.x + 10, frame.top - 4, frame.width - 20, 52, 16);
       this.mono(frame.x + frame.gutter, y, 'CURSED CLASH', {
-        color: '#fde68a',
+        color: COLORS.paperText,
         fontSize: '11px',
         fontStyle: '700',
       });
@@ -128,7 +130,7 @@ export class BaseScene extends Phaser.Scene {
         fontFamily: 'Cinzel, Inter, serif',
         fontSize: '25px',
         fontStyle: '900',
-        color: '#f8fafc',
+        color: COLORS.text,
       });
       if (backHandler) {
         this.iconButton(frame.x + frame.width - frame.gutter - 42, frame.top + 4, 42, 36, '<', backHandler);
@@ -151,25 +153,25 @@ export class BaseScene extends Phaser.Scene {
       const x = frame.x + 18;
       const y = frame.height - 106;
       const w = frame.width - 36;
-      g.fillStyle(0x111827, 0.96);
+      g.fillStyle(COLORS.surfaceRaised, 0.96);
       g.fillRoundedRect(x, y, w, 48, 16);
-      g.fillStyle(0x17112a, 0.36);
+      g.fillStyle(COLORS.talismanDim, 0.12);
       g.fillRoundedRect(x + 3, y + 3, w - 6, 18, 13);
-      g.lineStyle(1.5, COLORS.gold, 0.72);
+      g.lineStyle(1.5, COLORS.selection, 0.72);
       g.strokeRoundedRect(x, y, w, 48, 16);
-      g.lineStyle(1, COLORS.purple, 0.28);
+      g.lineStyle(1, COLORS.talismanDim, 0.28);
       g.beginPath();
       g.moveTo(x + 12, y + 8);
       g.lineTo(x + w - 12, y + 8);
       g.strokePath();
-      this.mono(x + 14, y + 16, this.store.toast, { color: '#fde68a', fontSize: '11px' });
+      this.mono(x + 14, y + 16, this.store.toast, { color: COLORS.paperText, fontSize: '11px' });
     }
 
     drawTapPulse() {
       if (!this.lastTap || this.time.now - this.lastTap.t > 180) return;
       const age = (this.time.now - this.lastTap.t) / 180;
       const radius = 10 + age * 20;
-      const color = this.lastTap.disabled ? COLORS.red : COLORS.gold;
+      const color = this.lastTap.disabled ? COLORS.enemy : COLORS.selection;
       this.graphics.lineStyle(2, color, 0.75 * (1 - age));
       this.graphics.strokeCircle(this.lastTap.x, this.lastTap.y, radius);
     }
@@ -185,12 +187,12 @@ export class BaseScene extends Phaser.Scene {
       g.fillStyle(fill, alpha);
       g.fillRoundedRect(x, y, w, h, radius);
       if (!opts.disabled) {
-        g.fillStyle(topFill, opts.glowAlpha === undefined ? 0.22 : opts.glowAlpha);
+        g.fillStyle(topFill, opts.glowAlpha === undefined ? 0.12 : opts.glowAlpha);
         g.fillRoundedRect(x + 3, y + 3, w - 6, Math.max(3, h * 0.22), Math.max(4, radius - 5));
       }
-      g.lineStyle(opts.strokeWidth || 1.5, stroke, opts.strokeAlpha === undefined ? 0.75 : opts.strokeAlpha);
+      g.lineStyle(opts.strokeWidth || 1.5, stroke, opts.strokeAlpha === undefined ? 0.64 : opts.strokeAlpha);
       g.strokeRoundedRect(x, y, w, h, radius);
-      g.lineStyle(1, 0xffffff, opts.disabled ? 0.03 : 0.08);
+      g.lineStyle(1, COLORS.talismanPaper, opts.disabled ? 0.025 : 0.06);
       g.beginPath();
       g.moveTo(x + 10, y + 1.5);
       g.lineTo(x + w - 10, y + 1.5);
@@ -241,14 +243,14 @@ export class BaseScene extends Phaser.Scene {
       g.fillStyle(COLORS.panel, alpha === undefined ? 0.9 : alpha);
       const radius = Math.min(TOKEN_RADIUS.panelMin || 18, 18);
       g.fillRoundedRect(x, y, w, h, radius);
-      g.fillStyle(0x111827, 0.2);
+      g.fillStyle(COLORS.surfaceRaised, 0.26);
       g.fillRoundedRect(x + 4, y + 4, w - 8, Math.max(10, h * 0.22), Math.max(8, radius - 4));
-      g.fillStyle(tone || COLORS.line, 0.08);
+      g.fillStyle(tone || COLORS.line, 0.07);
       g.fillTriangle(x + w - 52, y, x + w, y, x + w, y + 52);
       g.fillTriangle(x, y + h - 46, x + 46, y + h, x, y + h);
-      g.lineStyle(1.5, tone || COLORS.line, 0.46);
+      g.lineStyle(1.5, tone || COLORS.line, 0.42);
       g.strokeRoundedRect(x, y, w, h, radius);
-      g.lineStyle(1, 0xffffff, 0.06);
+      g.lineStyle(1, COLORS.talismanPaper, 0.055);
       g.beginPath();
       g.moveTo(x + 14, y + 10);
       g.lineTo(x + w - 14, y + 10);
@@ -264,7 +266,7 @@ export class BaseScene extends Phaser.Scene {
         this.graphics.fillCircle(cx, y, size / 2);
         this.graphics.lineStyle(1, ENERGY_COLORS[color], 0.75);
         this.graphics.strokeCircle(cx, y, size / 2);
-        this.mono(cx + size / 2 + 2, y - 7, String(count), { fontSize: '10px', color: '#e2e8f0' });
+        this.mono(cx + size / 2 + 2, y - 7, String(count), { fontSize: '10px', color: COLORS.text });
       });
     }
 
@@ -274,17 +276,17 @@ export class BaseScene extends Phaser.Scene {
         const fill = ENERGY_COLORS[color] || COLORS.black;
         this.graphics.fillStyle(fill, color === 'white' ? 0.88 : 0.96);
         this.graphics.fillCircle(cx, y, size / 2);
-        this.graphics.lineStyle(1, color === 'black' ? COLORS.white : fill, 0.82);
+        this.graphics.lineStyle(1, color === 'black' ? COLORS.talismanPaper : fill, 0.82);
         this.graphics.strokeCircle(cx, y, size / 2);
         this.mono(cx - 3, y - 4, ENERGY_LABELS[color] || 'X', {
-          color: color === 'white' ? '#020617' : '#ffffff',
+          color: color === 'white' ? '#08080a' : COLORS.text,
           fontSize: '7px',
         });
       });
       if (!cost || !cost.length) {
-        this.graphics.lineStyle(1, COLORS.green, 0.72);
+        this.graphics.lineStyle(1, COLORS.queued, 0.72);
         this.graphics.strokeCircle(x, y, size / 2);
-        this.mono(x - 4, y - 4, '0', { color: '#bbf7d0', fontSize: '7px' });
+        this.mono(x - 4, y - 4, '0', { color: '#b7dbc0', fontSize: '7px' });
       }
     }
 
@@ -300,14 +302,19 @@ export class BaseScene extends Phaser.Scene {
       const tone = this.store.assets.toneFor(id || name);
       const cx = x + size / 2;
       const cy = y + size / 2;
-      this.graphics.fillStyle(0x020617, opts.dead ? 0.74 : 0.92);
+      this.graphics.fillStyle(COLORS.inkBlack, opts.dead ? 0.74 : 0.92);
       this.graphics.fillCircle(cx, cy, size / 2 + 3);
       this.graphics.fillStyle(tone, opts.dead ? 0.13 : 0.26);
       this.graphics.fillCircle(cx, cy, size / 2);
-      this.graphics.lineStyle(opts.targetable ? 3 : 1, opts.tone || tone, opts.dead ? 0.28 : 0.58);
-      this.graphics.strokeCircle(cx, cy, size / 2 + 3);
-      this.graphics.lineStyle(opts.selected ? 3 : 1.5, opts.tone || tone, opts.targetable ? 1 : 0.72);
-      this.graphics.strokeCircle(cx, cy, size / 2);
+      if (opts.noRing) {
+        this.graphics.lineStyle(1.25, opts.tone || tone, opts.dead ? 0.24 : 0.48);
+        this.graphics.strokeCircle(cx, cy, size / 2);
+      } else {
+        this.graphics.lineStyle(opts.targetable ? 2.5 : 1, opts.tone || tone, opts.dead ? 0.28 : 0.56);
+        this.graphics.strokeCircle(cx, cy, size / 2 + 3);
+        this.graphics.lineStyle(opts.selected ? 2.5 : 1.25, opts.tone || tone, opts.targetable ? 0.92 : 0.68);
+        this.graphics.strokeCircle(cx, cy, size / 2);
+      }
       if (this.textures.exists(key)) {
         const image = this.add.image(cx, cy, key);
         image.setDisplaySize(size - 6, size - 6);
@@ -323,13 +330,13 @@ export class BaseScene extends Phaser.Scene {
 
     talismanLabel(x, y, text, tone) {
       const w = Math.max(76, text.length * 7 + 28);
-      this.graphics.fillStyle(0x0b1020, 0.92);
+      this.graphics.fillStyle(COLORS.surfaceRaised, 0.92);
       this.graphics.fillRoundedRect(x, y, w, 22, 6);
-      this.graphics.fillStyle(tone || COLORS.gold, 0.14);
+      this.graphics.fillStyle(tone || COLORS.selection, 0.12);
       this.graphics.fillTriangle(x, y, x + 16, y, x, y + 16);
-      this.graphics.lineStyle(1, tone || COLORS.gold, 0.5);
+      this.graphics.lineStyle(1, tone || COLORS.selection, 0.48);
       this.graphics.strokeRoundedRect(x, y, w, 22, 6);
-      this.mono(x + 12, y + 6, text, { color: '#fde68a', fontSize: '8px' });
+      this.mono(x + 12, y + 6, text, { color: COLORS.paperText, fontSize: '8px' });
       return w;
     }
 

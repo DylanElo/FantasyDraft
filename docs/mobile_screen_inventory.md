@@ -56,6 +56,7 @@ This inventory converts the mobile Phaser UI/UX brief into implementation-ready 
 
 - The browser page remains a pure Phaser canvas host.
 - The Phaser shell uses shared design tokens for colors, type, radii, motion, and mobile frame targets.
+- The visible palette follows the Ink + Talisman system: ink surfaces by default, paper/gold for selection, teal for legal targets, green for queued actions, red for enemy/damage, and violet only for domain/cinematic moments.
 - Desktop and tablet viewports center a phone-shaped canvas rather than stretching battle UI.
 - Combat screen always exposes turn, living fighters, selected fighter, selected skill, legal targets, energy, queue, and latest resolution feedback.
 - Server authority remains unchanged: legality, damage, cooldowns, hidden info, winner, and mission progress stay server-owned.

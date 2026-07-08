@@ -53,7 +53,8 @@ def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
     assert 'v2-enemy-team' not in html
     assert 'v2-my-team' not in html
     assert 'vendor/phaser.min.js?v=3.90.0' in html
-    assert 'phaser-shell.js?v=16' in html
+    assert 'phaser-design-tokens.js?v=17' in html
+    assert 'phaser-shell.js?v=17' in html
     assert 'phaser-shell.css?v=1' in html
     assert 'phaser-battle.js' not in html
     assert 'app.js' not in html
@@ -92,17 +93,24 @@ def test_battle_v2_public_surface_uses_production_copy(monkeypatch):
     records_scene_js = Path(web_app.app.static_folder, "phaser", "scenes", "records-scene.js").read_text(encoding="utf-8")
     game_store_js = Path(web_app.app.static_folder, "phaser", "store", "game-store.js").read_text(encoding="utf-8")
     socket_client_js = Path(web_app.app.static_folder, "phaser", "network", "socket-client.js").read_text(encoding="utf-8")
+    design_tokens_js = Path(web_app.app.static_folder, "phaser-design-tokens.js").read_text(encoding="utf-8")
 
     assert "import(`./phaser/index.js?v=${SHELL_VERSION}`)" in shell_js
-    assert "import './legacy-shell.js?v=16';" in phaser_entry_js
-    assert "from './store/game-store.js?v=16';" in runtime_js
-    assert "from './network/socket-client.js?v=16';" in runtime_js
-    assert "from './scenes/scene-registry.js?v=16';" in runtime_js
+    assert "import './legacy-shell.js?v=17';" in phaser_entry_js
+    assert "from './store/game-store.js?v=17';" in runtime_js
+    assert "from './network/socket-client.js?v=17';" in runtime_js
+    assert "from './scenes/scene-registry.js?v=17';" in runtime_js
     assert "scene: SCENE_LIST" in runtime_js
-    assert "from './scenes/boot-scene.js?v=16';" not in runtime_js
-    assert "from './boot-scene.js?v=16';" in scene_registry_js
+    assert "from './scenes/boot-scene.js?v=17';" not in runtime_js
+    assert "from './boot-scene.js?v=17';" in scene_registry_js
     assert "export const SCENE_LIST" in scene_registry_js
     assert "export const COLORS" in runtime_config_js
+    assert "selectionGold" in design_tokens_js
+    assert "cursedTeal" in design_tokens_js
+    assert "talismanPaper" in design_tokens_js
+    assert "COLORS.target" in combat_scene_js
+    assert "COLORS.selection" in combat_scene_js
+    assert "COLORS.domain" in combat_playback_js
     assert "export class AssetRegistry" in asset_registry_js
     assert "export class LayoutService" in layout_service_js
     assert "export function firstCreationRoster" in roster_js

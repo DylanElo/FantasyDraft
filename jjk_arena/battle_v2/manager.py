@@ -14,6 +14,7 @@ from .models import BattleEvent, BattlePhase, BattleState, CharacterState, Damag
 from .first_creation_progression import evaluate_first_creation_progress, initial_first_creation_progress
 from .resolver import ResolverError, check_winner, finish_turn, resolve_queue, validate_queue
 from .serialization import serialize_battle_state
+from .targeting import invulnerability_blocks_skill
 from .starter_roster import (
     FIRST_CREATION_ROSTER,
     FIRST_CREATION_SKILLS_BY_ID,
@@ -164,6 +165,30 @@ def _wildcard_payment_options(
     return options
 
 
+def _is_legal_cpu_target(
+    state: BattleState,
+    player_id: str,
+    skill: SkillSpec,
+    target_player_id: str,
+    slot: int,
+) -> bool:
+    player = state.players[target_player_id]
+    if slot < 0 or slot >= len(player.team):
+        return False
+    target = player.team[slot]
+    if not target.alive:
+        return False
+    action = PendingAction(
+        id="cpu-target-probe",
+        player_id=player_id,
+        caster_slot=0,
+        skill_id=skill.id,
+        target_player_id=target_player_id,
+        target_slot=slot,
+    )
+    return not invulnerability_blocks_skill(target, skill, action, target_player_id)
+
+
 def _cpu_target_payloads(
     state: BattleState,
     player_id: str,
@@ -179,13 +204,13 @@ def _cpu_target_payloads(
     opponent = state.players[opponent_id]
     living_enemy_slots = [
         slot for slot in opponent.active_slots
-        if 0 <= slot < len(opponent.team) and opponent.team[slot].alive
+        if _is_legal_cpu_target(state, player_id, skill, opponent_id, slot)
     ]
     living_enemy_slots.sort(key=lambda slot: opponent.team[slot].hp)
     player = state.players[player_id]
     living_ally_slots = [
         slot for slot in player.active_slots
-        if 0 <= slot < len(player.team) and player.team[slot].alive
+        if _is_legal_cpu_target(state, player_id, skill, player_id, slot)
     ]
     living_ally_slots.sort(key=lambda slot: player.team[slot].hp / max(1, player.team[slot].max_hp))
     if skill.target_rule.kind == "self":

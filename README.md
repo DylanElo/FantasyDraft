@@ -24,10 +24,12 @@ python -m pytest -q
 
 - `web/app.py` is the Flask-SocketIO bridge.
 - `web/static/phaser-shell.js` owns the v2 browser client, scene stack, SocketIO bridge, and Phaser UI.
+- `web/static/phaser-design-tokens.js` exposes the portrait-first mobile UI tokens consumed by Phaser.
 - `web/static/phaser-shell.css` is only the canvas/container reset. Phaser draws the v2 screens.
 - `jjk_arena/battle_v2/` contains the Battle v2 rules engine and roster data.
 - Battle v2 currently supports CPU Practice and Private PvP room lobbies. PvP waiting rooms clean up when a player cancels, resets, or disconnects.
-- `docs/` contains markdown design notes and contracts only.
+- `docs/mobile_phaser_ui_ux_brief.md` is the current mobile UI/UX source brief.
+- `docs/mobile_screen_inventory.md` tracks the required Figma pages, Phaser screens, components, and mobile QA checklist.
 
 ## Deployment
 

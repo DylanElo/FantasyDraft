@@ -53,6 +53,19 @@ def test_first_creation_roster_has_real_character_specs_and_skill_contracts():
         assert all(SkillClass.DOMAIN not in skill.classes for skill in character.skills)
 
 
+def test_first_creation_untargetable_effects_follow_target_rule():
+    broom_rescue = FIRST_CREATION_SKILLS_BY_ID["fc_momo_nishimiya_broom_rescue"]
+    broom_invulnerable = next(effect for effect in broom_rescue.effects if effect.payload.get("invulnerable"))
+
+    high_altitude = FIRST_CREATION_SKILLS_BY_ID["fc_momo_nishimiya_high_altitude_evasion"]
+    high_altitude_invulnerable = next(effect for effect in high_altitude.effects if effect.payload.get("invulnerable"))
+
+    assert broom_rescue.target_rule.kind == "ally"
+    assert broom_invulnerable.target == "target"
+    assert high_altitude.target_rule.kind == "self"
+    assert high_altitude_invulnerable.target == "self"
+
+
 def test_first_creation_excludes_endgame_and_mission_unlock_variants():
     starter_ids = set(FIRST_CREATION_CHARACTER_IDS)
     assert "mahito" not in starter_ids

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from .conditions import has_status
-from .models import BattleState, CharacterState, DamageType, PendingAction, PlayerState, SkillSpec, TargetRule
+from .models import BattleState, CharacterState, DamageType, PendingAction, PlayerState, SkillClass, SkillSpec, TargetRule
 
 
 class TargetingError(ValueError):
@@ -49,19 +49,21 @@ def action_target_slots(action: PendingAction) -> list[int]:
     return []
 
 
-def skill_bypasses_invulnerability(skill: SkillSpec) -> bool:
+def skill_bypasses_invulnerability(skill: SkillSpec, target: CharacterState | None = None) -> bool:
     """Return whether a skill may target through invulnerability."""
 
-    if any(skill_class.value == "Domain" for skill_class in skill.classes):
+    if SkillClass.BYPASSING in skill.classes:
         return True
-    for effect in skill.effects:
-        if effect.type != "damage":
-            continue
-        if effect.damage_type == DamageType.SURE_HIT:
-            return True
-        if effect.payload.get("bypass_invulnerability"):
-            return True
-    return False
+    if any(effect.payload.get("bypass_invulnerability") for effect in skill.effects):
+        return True
+
+    has_domain_or_sure_hit = any(skill_class.value == "Domain" for skill_class in skill.classes) or any(
+        effect.damage_type == DamageType.SURE_HIT
+        for effect in skill.effects
+    )
+    if target is not None and has_domain_or_sure_hit and target_has_anti_domain(target):
+        return False
+    return has_domain_or_sure_hit
 
 
 def skill_is_harmful_to_target(skill: SkillSpec, action: PendingAction, target_player_id: str) -> bool:
@@ -94,16 +96,7 @@ def invulnerability_blocks_skill(target: CharacterState, skill: SkillSpec, actio
     if not invulnerable_statuses:
         return False
 
-    if any(status.payload.get("invulnerable_to_all", False) for status in invulnerable_statuses):
-        return True
-
-    harmful = skill_is_harmful_to_target(skill, action, target_player_id)
-    if harmful:
-        if skill_bypasses_invulnerability(skill) and not target_has_anti_domain(target):
-            return False
-        return True
-
-    return any(status.payload.get("invulnerable_to_helpful", False) for status in invulnerable_statuses)
+    return not skill_bypasses_invulnerability(skill, target)
 
 
 def validate_target_rule(

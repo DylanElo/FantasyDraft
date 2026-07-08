@@ -1,0 +1,61 @@
+import { COLORS } from '../core/runtime-config.js?v=16';
+import { shortText } from '../core/text.js?v=16';
+import { BaseScene } from './base-scene.js?v=16';
+
+export class RecordsScene extends BaseScene {
+    constructor() {
+      super('RecordsScene');
+    }
+
+    render() {
+      const frame = this.layout.frame();
+      this.clearSurface();
+      this.drawAppBg(frame);
+      this.topBar(frame, 'Records', () => this.store.changeScene('LobbyScene'));
+      const x = frame.x + frame.gutter;
+      const records = this.store.records;
+      const wins = records.filter((record) => record.result === 'Victory').length;
+      const losses = records.filter((record) => record.result === 'Defeat').length;
+      const totalDamage = records.reduce((total, record) => total + Number(record.damage || 0), 0);
+      const fastestWin = records
+        .filter((record) => record.result === 'Victory' && Number(record.turns || 0) > 0)
+        .sort((a, b) => Number(a.turns || 0) - Number(b.turns || 0))[0];
+      const biggestHit = records
+        .flatMap((record) => record.biggest || [])
+        .sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0))[0];
+      this.cardPanel(x, 96, frame.width - 32, 76, COLORS.green, 0.76);
+      this.text(x + 16, 116, `${wins}W / ${losses}L`, { fontSize: '27px', fontStyle: '900' });
+      this.mono(x + 18, 148, 'Local device battle records', { color: '#cbd5e1' });
+      const summaryY = 188;
+      const summaryW = (frame.width - 52) / 3;
+      [
+        { label: 'FASTEST WIN', value: fastestWin ? `${fastestWin.turns}T` : '--', tone: COLORS.gold },
+        { label: 'BIGGEST HIT', value: biggestHit ? String(biggestHit.amount || 0) : '0', tone: COLORS.red },
+        { label: 'TOTAL DAMAGE', value: String(totalDamage), tone: COLORS.cyan },
+      ].forEach((stat, index) => {
+        const sx = x + index * (summaryW + 10);
+        this.cardPanel(sx, summaryY, summaryW, 66, stat.tone, 0.62);
+        this.mono(sx + 9, summaryY + 12, stat.label, { color: '#fde68a', fontSize: '7px' });
+        this.text(sx + 9, summaryY + 31, stat.value, { fontSize: '18px', fontStyle: '900' });
+      });
+      const y = 278;
+      const maxRows = Math.max(3, Math.min(7, Math.floor((frame.height - 348) / 54)));
+      if (!records.length) {
+        this.mono(x, y, 'No finished battles yet.', { color: '#94a3b8' });
+      }
+      records.slice(0, maxRows).forEach((record, index) => {
+        const rowY = y + index * 54;
+        this.cardPanel(x, rowY, frame.width - 32, 44, record.result === 'Victory' ? COLORS.green : COLORS.red, 0.62);
+        this.mono(x + 14, rowY + 9, `${record.result} / ${record.turns} turns`, {
+          color: record.result === 'Victory' ? '#86efac' : '#fca5a5',
+        });
+        this.mono(x + 190, rowY + 9, `${record.damage} dmg`, { color: '#cbd5e1' });
+        this.mono(x + 14, rowY + 26, shortText(record.winner || 'Domain record', 28), { color: '#94a3b8', fontSize: '8px' });
+      });
+      this.button(x, frame.height - 62, frame.width - 32, 44, 'Lobby', () => this.store.changeScene('LobbyScene'), {
+        fill: COLORS.panel2,
+        stroke: COLORS.cyan,
+      });
+      this.toast(frame);
+    }
+  }

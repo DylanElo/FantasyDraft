@@ -207,7 +207,7 @@ def test_heal_effect_restores_target_and_respects_healing_delta():
     assert any(event.type == "heal" and event.payload["amount"] == 20 for event in events)
 
 
-def test_yuta_style_heal_can_target_invulnerable_ally():
+def test_helpful_skill_cannot_target_invulnerable_ally_without_bypass():
     state = make_state()
     ally = state.players["p1"].team[1]
     ally.hp = 40
@@ -228,6 +228,37 @@ def test_yuta_style_heal_can_target_invulnerable_ally():
         target_rule=TargetRule(kind="ally", allow_self=True),
         effects=[EffectSpec(type="heal", amount=30)],
     )
+
+    with pytest.raises(ResolverError, match="invulnerable"):
+        validate_action(
+            state,
+            PendingAction("a1", "p1", 0, "reverse_cursed_technique", "p1", 1),
+            {"reverse_cursed_technique": rct},
+        )
+
+
+def test_bypassing_helpful_skill_can_target_invulnerable_ally():
+    state = make_state()
+    ally = state.players["p1"].team[1]
+    ally.hp = 40
+    ally.statuses.append(
+        StatusEffect(
+            "infinity",
+            "Infinity",
+            "p1",
+            0,
+            "p1",
+            1,
+            duration=2,
+            payload={"invulnerable": True},
+        )
+    )
+    rct = skill(
+        "reverse_cursed_technique",
+        target_rule=TargetRule(kind="ally", allow_self=True),
+        classes=[SkillClass.BYPASSING, SkillClass.INSTANT],
+        effects=[EffectSpec(type="heal", amount=30)],
+    )
     state.pending_actions["p1"] = [
         PendingAction("a1", "p1", 0, "reverse_cursed_technique", "p1", 1)
     ]
@@ -238,7 +269,7 @@ def test_yuta_style_heal_can_target_invulnerable_ally():
     assert ally.hp == 70
 
 
-def test_enemy_harmful_skill_cannot_target_invulnerable_character():
+def test_enemy_skill_cannot_target_invulnerable_character_without_bypass():
     state = make_state()
     target = state.players["p2"].team[0]
     target.statuses.append(
@@ -259,35 +290,6 @@ def test_enemy_harmful_skill_cannot_target_invulnerable_character():
             state,
             PendingAction("a1", "p1", 0, "strike", "p2", 0),
             {"strike": skill()},
-        )
-
-
-def test_status_can_explicitly_block_helpful_effects():
-    state = make_state()
-    ally = state.players["p1"].team[1]
-    ally.statuses.append(
-        StatusEffect(
-            "closed_barrier",
-            "Closed Barrier",
-            "p1",
-            0,
-            "p1",
-            1,
-            duration=2,
-            payload={"invulnerable": True, "invulnerable_to_helpful": True},
-        )
-    )
-    rct = skill(
-        "reverse_cursed_technique",
-        target_rule=TargetRule(kind="ally", allow_self=True),
-        effects=[EffectSpec(type="heal", amount=30)],
-    )
-
-    with pytest.raises(ResolverError, match="invulnerable"):
-        validate_action(
-            state,
-            PendingAction("a1", "p1", 0, "reverse_cursed_technique", "p1", 1),
-            {"reverse_cursed_technique": rct},
         )
 
 
@@ -817,7 +819,34 @@ def test_damage_payload_can_increase_target_cooldowns_when_condition_matches():
 
     resolve_queue(state, "p1", {"blue": blue})
 
-    assert target.cooldowns["red"] == 2
+    assert target.cooldowns["red"] == 3
+
+
+def test_cooldowns_only_tick_on_owners_finished_turn():
+    state = make_state()
+    slow = skill("slow", cooldown=1)
+    state.pending_actions["p1"] = [PendingAction("a1", "p1", 0, "slow", "p2", 0)]
+    state.queue_order["p1"] = ["a1"]
+
+    resolve_queue(state, "p1", {"slow": slow})
+
+    caster = state.players["p1"].team[0]
+    assert caster.cooldowns["slow"] == 1
+
+    finish_turn(state, "p2")
+
+    assert caster.cooldowns["slow"] == 1
+    state.turn_player_id = "p1"
+    with pytest.raises(ResolverError, match="cooldown"):
+        validate_action(
+            state,
+            PendingAction("a2", "p1", 0, "slow", "p2", 0),
+            {"slow": slow},
+        )
+
+    finish_turn(state, "p1")
+
+    assert "slow" not in caster.cooldowns
 
 
 def test_black_cost_delta_reduces_wildcard_cost_until_bonus_is_consumed():

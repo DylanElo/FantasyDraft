@@ -26,8 +26,15 @@
     const BATTLE_V2_ENABLED = {{ 'true' if battle_v2_enabled else 'false' }};
     const BATTLE_V2_STARTER_ROSTER = {{ battle_v2_catalog | tojson }};
     const FIRST_CREATION = {{ first_creation | tojson }};
+    window.JJK_BOOTSTRAP = {
+      playerId: PLAYER_SESSION_ID,
+      battleV2Enabled: BATTLE_V2_ENABLED,
+      roster: BATTLE_V2_STARTER_ROSTER,
+      firstCreation: FIRST_CREATION,
+    };
   </script>
   <script src="{{ url_for('static', filename='vendor/phaser.min.js') }}?v=3.90.0"></script>
-  <script src="{{ url_for('static', filename='phaser-shell.js') }}?v=1"></script>
+  <script src="{{ url_for('static', filename='phaser-design-tokens.js') }}?v=1"></script>
+  <script src="{{ url_for('static', filename='phaser-shell.js') }}?v=16"></script>
 </body>
 </html>

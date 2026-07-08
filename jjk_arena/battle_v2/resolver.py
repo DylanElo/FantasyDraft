@@ -483,7 +483,8 @@ def finish_turn(state: BattleState, player_id: str) -> list[BattleEvent]:
             for event in apply_turn_end_statuses(character, player.id, slot, state.turn_number, player_id):
                 _append_event(events, state, event)
             tick_statuses(character, player_id)
-            tick_cooldowns(character)
+            if player.id == player_id:
+                tick_cooldowns(character)
             character.acted_this_turn = False
         player.queue_confirmed = False
         player.energy_converted_this_turn = False

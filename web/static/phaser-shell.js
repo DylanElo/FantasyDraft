@@ -1,9 +1,12 @@
 (function () {
   'use strict';
 
-  const SHELL_VERSION = '17';
+  const SHELL_VERSION = '18';
 
-  import(`./phaser/index.js?v=${SHELL_VERSION}`).catch((error) => {
-    console.error('Failed to load JJK Phaser shell module', error);
-  });
+  const fontsReady = window.JJK_FONTS_READY || Promise.resolve();
+  fontsReady
+    .then(() => import(`./phaser/index.js?v=${SHELL_VERSION}`))
+    .catch((error) => {
+      console.error('Failed to load JJK Phaser shell module', error);
+    });
 })();

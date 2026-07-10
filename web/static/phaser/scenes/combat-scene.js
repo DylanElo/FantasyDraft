@@ -1,454 +1,359 @@
-import { COLORS, ENERGY_COLORS } from '../core/runtime-config.js?v=17';
-import { clamp, shortText, titleize } from '../core/text.js?v=17';
-import { eventTone } from '../fx/event-metrics.js?v=17';
-import { CombatQueueReviewScene } from './combat-queue-review-scene.js?v=17';
+/* COMBAT — mobile-app-v2 composition: versus header meeting at a gold VS
+   diamond, "Your Turn" gold tag, inset energy tray, cut-corner fighter card
+   rows (teal pulse on legal targets, gold ACTIVE on the selected caster),
+   perspective-grid battlefield with a center prompt banner, and a command
+   console of 4 technique tabs + ONE focused technique panel. */
+
+import { COLORS, CORE_ENERGY } from '../core/runtime-config.js?v=18';
+import { shortText } from '../core/text.js?v=18';
+import { CombatQueueReviewScene } from './combat-queue-review-scene.js?v=18';
+import { bannerPoints, bladePoints } from '../components/blade.js?v=18';
+import { drawPlatePoly, drawWell, fillPoly } from '../components/plate.js?v=18';
+import { drawCostPips, drawEnergyPip, drawHpBar, drawSkewTag } from '../components/widgets.js?v=18';
+
+const CARD_W = 104;
+const CARD_PORTRAIT_H = 84;
+const CARD_H = 122;
 
 export class CombatScene extends CombatQueueReviewScene {
     constructor() {
       super('CombatScene');
+      this.focusTabBySlot = {};
     }
 
-    renderTopHud(frame, state, me) {
-      const x = frame.x + frame.gutter;
-      const g = this.graphics;
-      const hud = this.layout.topHud();
-      g.fillStyle(COLORS.surfaceDeep, 0.96);
-      g.fillRoundedRect(hud.x, hud.y, hud.width, hud.height, 18);
-      g.fillStyle(this.store.isMyTurn() ? COLORS.talismanDim : COLORS.enemy, this.store.isMyTurn() ? 0.1 : 0.12);
-      g.fillRoundedRect(hud.x + 3, hud.y + 3, hud.width - 6, 17, 14);
-      g.lineStyle(2, this.store.isMyTurn() ? COLORS.selection : COLORS.enemy, 0.56);
-      g.strokeRoundedRect(hud.x, hud.y, hud.width, hud.height, 18);
-      g.lineStyle(1, COLORS.talismanDim, 0.22);
-      g.beginPath();
-      g.moveTo(hud.x + 14, hud.y + hud.height - 10);
-      g.lineTo(hud.x + hud.width - 14, hud.y + hud.height - 10);
-      g.strokePath();
-      this.mono(x, 23, `TURN ${state.turn_number || 1}`, { color: COLORS.paperText, fontSize: '10px' });
-      this.text(x, 37, this.store.isMyTurn() ? 'Your Domain' : 'Enemy Domain', {
-        fontFamily: 'Cinzel, Inter, serif',
-        fontSize: '19px',
-        fontStyle: '900',
+    teamHp(player) {
+      let hp = 0;
+      let max = 0;
+      ((player && player.team) || []).forEach((character) => {
+        hp += Number(character.hp || 0);
+        max += Math.max(1, Number(character.max_hp || 1));
       });
-      const queueCount = this.store.actions.length;
+      return { hp, max: Math.max(1, max) };
+    }
+
+    renderVersusHeader(frame, me, foe) {
+      const x = frame.x + 14;
+      const w = frame.width - 28;
+      const y = 14;
+      const mine = this.teamHp(me);
+      const theirs = this.teamHp(foe);
+      const barW = (w - 54) / 2;
+      drawHpBar(this.graphics, x, y + 8, barW, 10, mine.hp / mine.max, 'hp');
+      drawHpBar(this.graphics, x + w - barW, y + 8, barW, 10, theirs.hp / theirs.max, 'danger');
+      // Gold VS diamond between the two bars.
+      const cx = frame.x + frame.width / 2;
+      const cy = y + 13;
+      const r = 19;
+      drawPlatePoly(this.graphics, [
+        { x: cx, y: cy - r },
+        { x: cx + r, y: cy },
+        { x: cx, y: cy + r },
+        { x: cx - r, y: cy },
+      ], { fillTop: COLORS.gold300, fillBottom: COLORS.gold500 });
+      this.display(cx, cy, 'VS', 13, { color: COLORS.inkText }).setOrigin(0.5, 0.5);
+    }
+
+    renderTurnRow(frame, state, me) {
+      const y = 48;
+      const x = frame.x + 14;
+      // Turn tag — gold when it is your turn, ink otherwise; red once the
+      // opponent disconnects (offline, or paused inside their grace window).
+      const myTurn = this.store.isMyTurn();
       const disconnectSeconds = this.store.disconnectSecondsRemaining();
       const connectionWarning = this.store.connectionState === 'disconnected'
-        ? 'OFFLINE'
+        ? 'Offline'
         : disconnectSeconds !== null
-          ? `PAUSED ${disconnectSeconds}S`
+          ? `Paused ${disconnectSeconds}s`
           : null;
-      const statusLabel = connectionWarning
-        || (this.store.queueSubmitting
-          ? 'RESOLVING'
-          : this.store.queueReviewOpen
-            ? 'REVIEW'
-            : this.store.controlsLocked()
-              ? 'LOCKED'
-              : queueCount
-                ? 'PLANNING'
-                : 'READY');
-      const badgeFill = connectionWarning ? COLORS.enemy : queueCount ? COLORS.queued : COLORS.panel2;
-      const badgeAlpha = connectionWarning ? 0.9 : queueCount ? 0.86 : 0.72;
-      this.graphics.fillStyle(badgeFill, badgeAlpha);
-      this.graphics.fillRoundedRect(x + 144, 43, 86, 20, 10);
-      this.graphics.lineStyle(1, badgeFill, connectionWarning ? 0.95 : queueCount ? 0.78 : 0.5);
-      this.graphics.strokeRoundedRect(x + 144, 43, 86, 20, 10);
-      this.mono(x + 187, 48, `QUEUE ${queueCount}/3`, {
-        color: queueCount ? '#d8f0dc' : COLORS.muted,
-        fontSize: '7px',
-      }).setOrigin(0.5, 0);
-      this.mono(x + 144, 63, statusLabel, {
-        color: connectionWarning ? '#ffe0e0' : statusLabel === 'READY' ? '#b7dbc0' : COLORS.paperText,
-        fontSize: '7px',
+      drawSkewTag(this, this.graphics, x, y, connectionWarning || (myTurn ? 'Your Turn' : 'Enemy Turn'), {
+        bg: connectionWarning ? COLORS.red500 : myTurn ? COLORS.gold400 : COLORS.ink700,
+        color: connectionWarning ? '#FFFFFF' : myTurn ? '#0E0B16' : COLORS.muted,
+        fontSize: 10,
       });
-      this.renderEnergyMeter(frame.x + frame.width - 150, 24, me && me.energy);
-      this.button(frame.x + frame.width - frame.gutter - 40, 26, 40, 32, 'Exit', () => this.store.resetToLobby(), {
-        fill: COLORS.surfaceRaised,
-        stroke: COLORS.enemy,
-        fontSize: '9px',
-        mono: true,
-        radius: 16,
+      // Inset energy tray.
+      const energy = (me && me.energy) || {};
+      const pips = [];
+      CORE_ENERGY.forEach((color) => {
+        for (let i = 0; i < Math.min(4, Number(energy[color] || 0)); i += 1) pips.push(color);
       });
+      const shown = pips.slice(0, 7);
+      const trayW = Math.max(74, shown.length * 21 + 22);
+      const trayX = frame.x + frame.width - 14 - 40 - trayW;
+      const trayPoints = bladePoints(trayX, y - 2, trayW, 28, 10, 'none');
+      drawWell(this.graphics, trayPoints, COLORS.ink900);
+      if (shown.length) {
+        shown.forEach((color, index) => {
+          drawEnergyPip(this, this.graphics, trayX + 14 + index * 21, y + 12, color, 17);
+        });
+        if (pips.length > shown.length) {
+          this.stat(trayX + trayW - 6, y + 12, `+${pips.length - shown.length}`, 9, { color: COLORS.dim }).setOrigin(1, 0.5);
+        }
+      } else {
+        this.label(trayX + trayW / 2, y + 12, 'No energy', 8, { color: COLORS.dim }).setOrigin(0.5, 0.5);
+      }
+      // Convert (2 same -> 1 chosen) — compact chip beside the tray.
+      const convertDisabled = this.store.controlsLocked() || !!this.store.actions.length || !!(me && me.energy_converted_this_turn);
+      this.plateButton(frame.x + frame.width - 14 - 34, y - 4, 34, 32, '⇄', () => this.store.convertEnergy(), {
+        tone: 'ink', fontSize: 13, disabled: convertDisabled,
+      });
+      // Turn counter + leave, inline right of the tag.
+      this.stat(x + 128, y + 12, `T${state.turn_number || 1}`, 10, { color: COLORS.dim }).setOrigin(0, 0.5);
+      this.hotspot(x + 150, y - 4, 64, 32, 'Leave Battle', () => this.store.resetToLobby());
+      this.label(x + 156, y + 12, 'Leave', 8, { color: COLORS.dim }).setOrigin(0, 0.5);
     }
 
-    renderEnergyMeter(x, y, energy) {
-      const slots = [
-        { color: 'green', label: 'B' },
-        { color: 'blue', label: 'T' },
-        { color: 'white', label: 'F' },
-        { color: 'red', label: 'C' },
-      ];
-      slots.forEach((slot, index) => {
-        const count = Number((energy && energy[slot.color]) || 0);
-        const cx = x + index * 27;
-        this.graphics.fillStyle(COLORS.inkBlack, 0.9);
-        this.graphics.fillCircle(cx, y, 11);
-        this.graphics.fillStyle(ENERGY_COLORS[slot.color], count ? 0.95 : 0.14);
-        this.graphics.fillCircle(cx, y, 8);
-        this.graphics.lineStyle(1.5, slot.color === 'white' ? COLORS.talismanPaper : ENERGY_COLORS[slot.color], 0.82);
-        this.graphics.strokeCircle(cx, y, 10);
-        this.mono(cx, y - 3, slot.label, { color: slot.color === 'white' ? '#08080a' : COLORS.text, fontSize: '7px' }).setOrigin(0.5, 0);
-        this.mono(cx, y + 13, String(count), { color: COLORS.text, fontSize: '8px' }).setOrigin(0.5, 0);
-      });
-    }
-
-    fighterLayout(frame, dockY) {
-      const compact = frame.height < 730;
-      const token = compact ? 58 : 66;
-      const enemyY = compact ? 86 : 92;
-      const allyY = Math.max(enemyY + token + 128, dockY - token - (compact ? 44 : 54));
-      const centerY = enemyY + token + 42;
-      return {
-        token,
-        enemyY,
-        allyY,
-        centerY,
-        centerH: Math.max(88, allyY - centerY - 28),
-      };
-    }
-
-    renderCombatantToken(character, side, slot, x, y, size) {
+    fighterCard(character, side, slot, x, y) {
       const store = this.store;
-      const selected = side === 'mine' && store.selectedCasterSlot === slot;
-      const queuedIndex = side === 'mine' ? store.actions.findIndex((action) => Number(action.caster_slot) === slot) : -1;
+      const selected = side === 'mine' && store.selectedCasterSlot === slot && !store.controlsLocked();
       const targetable = store.canTarget(character, slot, side);
-      const protectedTarget = store.targetHasInvulnerability(character) && !store.skillBypassesInvulnerability(store.selectedSkill(), character);
+      const queuedIndex = side === 'mine' ? store.actions.findIndex((action) => Number(action.caster_slot) === slot) : -1;
       const dead = !character || !character.alive;
-      const tone = targetable ? COLORS.target : protectedTarget ? COLORS.protected : selected ? COLORS.selection : queuedIndex >= 0 ? COLORS.queued : side === 'enemy' ? COLORS.enemy : COLORS.ally;
-      const cx = x + size / 2;
-      const cy = y + size / 2;
-      const playerId = side === 'mine' ? store.mineId() : store.enemyId();
+      const rim = targetable ? COLORS.target : selected ? COLORS.selection : COLORS.keyline;
+
+      const cardPoints = bladePoints(x, y, CARD_W, CARD_H, 14, 'br');
+      // Base plate + keyline.
+      drawPlatePoly(this.graphics, cardPoints, {
+        fillTop: COLORS.ink800,
+        fillBottom: COLORS.ink900,
+        alpha: dead ? 0.6 : 1,
+      });
+      // Portrait fills the top.
+      if (!dead || character) {
+        this.portraitPlate(character || { name: 'Down' }, x + 2, y + 2, CARD_W - 4, CARD_PORTRAIT_H, {
+          cut: 0, corners: 'none', rim: COLORS.keyline, rimWidth: 1, dead,
+          focusY: 0.35,
+        });
+      }
+      const g = this.graphics;
+      // Side tint over the portrait bottom: red for enemies only.
+      const tint = side === 'enemy' ? COLORS.red600 : COLORS.ink950;
+      for (let i = 0; i < 5; i += 1) {
+        g.fillStyle(tint, (side === 'enemy' ? 0.06 : 0.11) * i);
+        g.fillRect(x + 2, y + 2 + CARD_PORTRAIT_H * (0.55 + 0.09 * i), CARD_W - 4, CARD_PORTRAIT_H * 0.09 + 1);
+      }
+      // Info strip.
+      this.label(x + 8, y + CARD_PORTRAIT_H + 8, shortText((character && character.name) || 'Down', 12).split(' ')[0], 8.5, {
+        color: dead ? COLORS.dim : COLORS.text,
+      });
+      const hp = Number((character && character.hp) || 0);
+      const maxHp = Math.max(1, Number((character && character.max_hp) || 1));
+      drawHpBar(g, x + 8, y + CARD_PORTRAIT_H + 22, CARD_W - 16, 8, hp / maxHp, side === 'enemy' ? 'danger' : 'hp');
+      // Rim above everything on the card.
+      const rimG = this.layer();
+      if (rim !== COLORS.keyline || selected) {
+        rimG.lineStyle(3, rim, 1);
+      } else {
+        rimG.lineStyle(2, COLORS.keyline, 1);
+      }
+      rimG.beginPath();
+      rimG.moveTo(cardPoints[0].x, cardPoints[0].y);
+      for (let i = 1; i < cardPoints.length; i += 1) rimG.lineTo(cardPoints[i].x, cardPoints[i].y);
+      rimG.closePath();
+      rimG.strokePath();
+      if (targetable) this.fx({ kind: 'pulsePoly', poly: cardPoints, offsetMs: slot * 140 });
+      // ACTIVE tag on the selected caster.
+      if (selected) {
+        drawSkewTag(this, rimG, x + 4, y + 4, 'Active', {
+          bg: COLORS.gold400, color: '#0E0B16', fontSize: 7, height: 15, padX: 5, keyline: false,
+        });
+      }
+      if (queuedIndex >= 0) {
+        fillPoly(rimG, bladePoints(x + CARD_W - 24, y + 4, 20, 18, 6, 'br'), COLORS.ink950, 0.92);
+        this.stat(x + CARD_W - 14, y + 13, String(queuedIndex + 1), 10, { color: COLORS.goldTextSoft }).setOrigin(0.5, 0.5);
+      }
+      const protectedTarget = this.store.targetHasInvulnerability(character)
+        && !this.store.skillBypassesInvulnerability(this.store.selectedSkill(), character);
+      if (protectedTarget && !dead) {
+        this.label(x + CARD_W / 2, y + CARD_PORTRAIT_H - 8, 'Invuln', 7, { color: COLORS.text }).setOrigin(0.5, 0.5);
+      }
+      // Status beads.
+      ((character && character.statuses) || []).slice(0, 3).forEach((status, index) => {
+        rimG.fillStyle(COLORS.ink500, 1);
+        rimG.fillCircle(x + 12 + index * 14, y + CARD_PORTRAIT_H - 8, 6);
+        this.stat(x + 12 + index * 14, y + CARD_PORTRAIT_H - 8, shortText(status.name || status.id, 1).toUpperCase(), 7, {
+          color: '#FFFFFF',
+        }).setOrigin(0.5, 0.5);
+      });
+      if (dead) {
+        this.label(x + CARD_W / 2, y + CARD_PORTRAIT_H / 2, 'Down', 10, { color: COLORS.redText }).setOrigin(0.5, 0.5);
+      }
+      // Register playback anchor + hit area.
+      const playerId = side === 'mine' ? this.store.mineId() : this.store.enemyId();
       if (playerId) {
         this.playbackTargets = this.playbackTargets || {};
-        this.playbackTargets[`${playerId}:${slot}`] = { x: cx, y: cy, side, slot, size, tone };
+        this.playbackTargets[`${playerId}:${slot}`] = {
+          x: x + CARD_W / 2, y: y + CARD_PORTRAIT_H / 2, side, slot, size: CARD_PORTRAIT_H,
+          tone: side === 'enemy' ? COLORS.red500 : COLORS.ink300,
+        };
       }
-      this.graphics.fillStyle(COLORS.inkBlack, 0.9);
-      this.graphics.fillCircle(cx, cy, size / 2 + 10);
-      this.graphics.lineStyle(selected || targetable ? 3 : 1.5, tone, dead ? 0.28 : 0.82);
-      this.graphics.strokeCircle(cx, cy, size / 2 + 8);
-      if (targetable) {
-        this.graphics.lineStyle(2, COLORS.target, 0.86);
-        this.graphics.beginPath();
-        this.graphics.moveTo(cx - size / 2 - 16, cy);
-        this.graphics.lineTo(cx - size / 2 - 2, cy);
-        this.graphics.moveTo(cx + size / 2 + 2, cy);
-        this.graphics.lineTo(cx + size / 2 + 16, cy);
-        this.graphics.moveTo(cx, cy - size / 2 - 16);
-        this.graphics.lineTo(cx, cy - size / 2 - 2);
-        this.graphics.moveTo(cx, cy + size / 2 + 2);
-        this.graphics.lineTo(cx, cy + size / 2 + 16);
-        this.graphics.strokePath();
-      }
-      this.portrait(character || { name: 'Down' }, x + 4, y + 4, size - 8, { tone, dead, selected, targetable, noRing: true });
-      const hp = Number(character && character.hp ? character.hp : 0);
-      const maxHp = Math.max(1, Number(character && character.max_hp ? character.max_hp : 1));
-      const hpPct = clamp(hp / maxHp, 0, 1);
-      const barY = y + size + 10;
-      const barW = size + 20;
-      this.graphics.fillStyle(COLORS.inkBlack, 0.92);
-      this.graphics.fillRoundedRect(cx - barW / 2, barY, barW, 7, 4);
-      this.graphics.fillStyle(hpPct <= 0.3 ? COLORS.enemy : hpPct <= 0.6 ? COLORS.selection : COLORS.queued, dead ? 0.35 : 1);
-      this.graphics.fillRoundedRect(cx - barW / 2, barY, barW * hpPct, 7, 4);
-      this.text(cx, barY + 9, (character && character.name) || 'Down', {
-        fontSize: '8px',
-        fontStyle: '900',
-        align: 'center',
-        wordWrap: { width: size + 40 },
-      }).setOrigin(0.5, 0);
-      this.mono(cx, barY + 31, dead ? 'DOWN' : `${hp}/${maxHp}`, {
-        color: dead ? COLORS.dim : targetable ? COLORS.paperText : COLORS.text,
-        fontSize: '8px',
-      }).setOrigin(0.5, 0);
-      if (queuedIndex >= 0 || targetable || selected || protectedTarget) {
-        const chip = queuedIndex >= 0 ? `Q${queuedIndex + 1}` : targetable ? 'TARGET' : protectedTarget ? 'INVULN' : 'READY';
-        const chipW = targetable ? 52 : protectedTarget ? 50 : 36;
-        this.graphics.fillStyle(queuedIndex >= 0 ? COLORS.queued : targetable ? COLORS.target : protectedTarget ? COLORS.protected : COLORS.selection, 0.95);
-        this.graphics.fillRoundedRect(cx - chipW / 2, y - 10, chipW, 18, 9);
-        this.mono(cx, y - 5, chip, { color: protectedTarget ? COLORS.text : '#08080a', fontSize: '8px' }).setOrigin(0.5, 0);
-      }
-      (character && character.statuses ? character.statuses : []).slice(0, 2).forEach((status, index) => {
-        this.graphics.fillStyle(COLORS.domain, 0.82);
-        this.graphics.fillCircle(x + size - 3 - index * 14, y + 6, 6);
-        this.mono(x + size - 3 - index * 14, y + 1, shortText(status.name || status.id, 1).toUpperCase(), {
-          color: '#ffffff',
-          fontSize: '7px',
-        }).setOrigin(0.5, 0);
-      });
-      this.buttons.push({ x: x - 10, y: y - 12, w: size + 20, h: size + 58, label: `${side} ${slot}`, onClick: () => store.target(side, slot), disabled: false });
+      this.hotspot(x, y, CARD_W, CARD_H, `${side} ${slot}`, () => this.store.target(side, slot));
     }
 
-    renderTokenRow(team, side, frame, y, size) {
-      const x = frame.x + frame.gutter;
-      const laneW = frame.width - 32;
-      const gap = (laneW - size * 3) / 2;
-      this.talismanLabel(x, y - 26, side === 'enemy' ? 'ENEMY FIELD' : 'YOUR FIELD', side === 'enemy' ? COLORS.enemy : COLORS.ally);
+    renderCardRow(team, side, frame, y) {
+      const gap = 10;
+      const rowW = CARD_W * 3 + gap * 2;
+      const x0 = frame.x + (frame.width - rowW) / 2;
       (team || []).forEach((character, slot) => {
-        this.renderCombatantToken(character, side, slot, x + slot * (size + gap), y, size);
+        this.fighterCard(character, side, slot, x0 + slot * (CARD_W + gap), y);
       });
     }
 
-    renderBattlefield(frame, layout, prompt) {
-      const x = frame.x + frame.gutter;
-      const y = layout.centerY;
-      const w = frame.width - 32;
-      const h = layout.centerH;
-      this.graphics.fillStyle(COLORS.inkBlack, 0.78);
-      this.graphics.fillRoundedRect(x, y, w, h, 20);
-      this.graphics.fillStyle(COLORS.talismanDim, 0.055);
-      this.graphics.fillRoundedRect(x + 4, y + 4, w - 8, Math.max(20, h * 0.28), 16);
-      this.graphics.fillStyle(COLORS.domain, 0.035);
-      this.graphics.fillCircle(x + w / 2, y + h / 2, Math.min(w, h) * 0.42);
-      [0.34, 0.52, 0.72].forEach((scale, index) => {
-        this.graphics.lineStyle(index === 1 ? 1.5 : 1, index === 1 ? COLORS.talismanDim : COLORS.surfaceLine, index === 1 ? 0.2 : 0.12);
-        this.graphics.strokeCircle(x + w / 2, y + h / 2, Math.min(w, h) * scale);
-      });
-      this.graphics.lineStyle(1.5, COLORS.line, 0.65);
-      this.graphics.strokeRoundedRect(x, y, w, h, 18);
-      for (let i = 0; i < 5; i += 1) {
-        const laneY = y + 18 + i * Math.max(14, h / 5);
-        this.graphics.lineStyle(1, i === 2 ? COLORS.talismanDim : 0xffffff, i === 2 ? 0.22 : 0.035);
-        this.graphics.beginPath();
-        this.graphics.moveTo(x + 16, laneY);
-        this.graphics.lineTo(x + w - 16, laneY + (i % 2 ? -12 : 12));
-        this.graphics.strokePath();
+    renderBattlefield(frame, top, bottom, prompt, armed) {
+      const g = this.graphics;
+      const h = bottom - top;
+      if (h < 30) return;
+      // Perspective grid floor, violet, converging upward.
+      const cx = frame.x + frame.width / 2;
+      const horizon = top - h * 0.6;
+      g.lineStyle(1.5, COLORS.curse500, 0.16);
+      for (let i = 0; i <= 5; i += 1) {
+        const t = i / 5;
+        const y = top + h * t * t;
+        g.beginPath();
+        g.moveTo(frame.x - 20, y);
+        g.lineTo(frame.x + frame.width + 20, y);
+        g.strokePath();
       }
-      this.text(x + w / 2, y + 16, prompt, {
-        fontSize: frame.height < 730 ? '15px' : '17px',
-        fontStyle: '900',
+      for (let i = -6; i <= 6; i += 1) {
+        const xBottom = cx + i * (frame.width / 7);
+        const xTop = cx + i * (frame.width / 26);
+        g.beginPath();
+        g.moveTo(xTop, Math.max(top, horizon + (top - horizon)));
+        g.lineTo(xBottom, bottom);
+        g.strokePath();
+      }
+      // Center prompt banner.
+      const bannerW = Math.min(frame.width - 70, Math.max(210, prompt.length * 7 + 80));
+      const bannerH = 30;
+      const points = bannerPoints(cx - bannerW / 2, top + h / 2 - bannerH / 2, bannerW, bannerH, 18);
+      fillPoly(g, points, COLORS.ink950, 0.85);
+      this.text(cx, top + h / 2, prompt, {
+        fontSize: '12px',
+        fontStyle: '600',
+        color: armed ? COLORS.tealText : COLORS.muted,
         align: 'center',
-        wordWrap: { width: w - 52 },
-      }).setOrigin(0.5, 0);
-      if (this.store.selectedSkillId && this.store.selectedCasterSlot !== null) {
-        const laneTone = COLORS.target;
-        const slot = Number(this.store.selectedCasterSlot);
-        const laneW = frame.width - 32;
-        const gap = (laneW - layout.token * 3) / 2;
-        const fromX = frame.x + frame.gutter + slot * (layout.token + gap) + layout.token / 2;
-        const fromY = layout.allyY + layout.token / 2;
-        const toY = y + h * 0.48;
-        this.graphics.lineStyle(2, laneTone, 0.44);
-        this.graphics.beginPath();
-        this.graphics.moveTo(fromX, fromY - 10);
-        this.graphics.lineTo(x + w / 2, toY);
-        this.graphics.strokePath();
-        this.graphics.fillStyle(laneTone, 0.18);
-        this.graphics.fillCircle(x + w / 2, toY, 22);
-        this.graphics.lineStyle(1.5, laneTone, 0.58);
-        this.graphics.strokeCircle(x + w / 2, toY, 28);
-        this.mono(x + w / 2, toY - 4, 'TARGETING', { color: COLORS.paperText, fontSize: '8px' }).setOrigin(0.5, 0);
-      }
-      if (!this.store.queueReviewOpen) {
-        this.renderQueueChips(frame, y + h - 38);
-        this.renderReplayLine(frame, y + h - 66);
-      }
+      }).setOrigin(0.5, 0.5);
     }
 
-    renderSkillButton(skill, caster, x, y, w, h) {
-      const cooldown = this.store.skillCooldown(caster, skill);
-      const fit = this.store.skillFit(skill, caster);
-      const ruleReason = this.store.statusBlocksSkill(caster, skill);
-      const disabled = cooldown > 0 || !!ruleReason || !fit.ok || this.store.queuedSlots().has(Number(this.store.selectedCasterSlot)) || this.store.controlsLocked();
-      const selected = this.store.selectedSkillId === skill.id;
-      const tone = selected ? COLORS.selection : (ENERGY_COLORS[(skill.cost || [])[0]] || COLORS.talismanDim);
-      this.graphics.fillStyle(selected ? 0x221a0c : COLORS.surfaceRaised, disabled ? 0.42 : 0.96);
-      this.graphics.fillRoundedRect(x, y, w, h, 14);
-      this.graphics.fillStyle(selected ? COLORS.talismanDim : COLORS.surfaceDeep, disabled ? 0.16 : 0.28);
-      this.graphics.fillRoundedRect(x + 4, y + 4, w - 8, 16, 10);
-      this.graphics.lineStyle(selected ? 3 : 1.5, tone, disabled ? 0.38 : 0.88);
-      this.graphics.strokeRoundedRect(x, y, w, h, 14);
-      this.graphics.fillStyle(tone, disabled ? 0.16 : 0.32);
-      this.graphics.fillRoundedRect(x + 8, y + 8, 36, h - 16, 10);
-      this.graphics.lineStyle(1, tone, disabled ? 0.28 : 0.65);
-      this.graphics.strokeRoundedRect(x + 8, y + 8, 36, h - 16, 10);
-      this.mono(x + 26, y + 15, this.store.targetLabel(skill).slice(0, 3).toUpperCase(), {
-        color: selected ? COLORS.paperText : COLORS.text,
-        fontSize: '8px',
-      }).setOrigin(0.5, 0);
-      this.store.adjustedCost(caster, skill).slice(0, 4).forEach((color, index) => {
-        const orbX = x + 15 + index * 8;
-        this.graphics.fillStyle(COLORS.inkBlack, 0.9);
-        this.graphics.fillCircle(orbX, y + h - 15, 4.5);
-        this.graphics.fillStyle(ENERGY_COLORS[color] || COLORS.selection, 0.98);
-        this.graphics.fillCircle(orbX, y + h - 15, 3.2);
-      });
-      this.text(x + 52, y + 9, skill.name, {
-        fontSize: '11px',
-        fontStyle: '900',
-        wordWrap: { width: w - 58 },
-      });
-      if (selected) this.mono(x + w - 34, y + 8, 'INFO', { color: COLORS.paperText, fontSize: '7px' });
-      this.mono(x + 52, y + h - 19, cooldown > 0 ? `CD ${cooldown}` : ruleReason ? shortText(ruleReason, 23) : fit.ok ? shortText(this.store.effectLine(skill), 23) : shortText(fit.reason, 23), {
-        color: cooldown > 0 ? '#e6b84a' : disabled ? COLORS.muted : COLORS.paperText,
-        fontSize: '8px',
-      });
-      this.buttons.push({
-        x,
-        y,
-        w,
-        h,
-        label: disabled ? `Inspect disabled skill ${skill.name}` : `Skill ${skill.name}`,
-        disabled: false,
-        onClick: () => disabled ? this.store.openSkillDetail(skill.id) : this.store.selectSkill(skill.id),
-      });
+    focusedSkillIndex(caster, skills) {
+      const slot = Number(this.store.selectedCasterSlot);
+      const armedIndex = skills.findIndex((skill) => skill.id === this.store.selectedSkillId);
+      if (armedIndex >= 0) return armedIndex;
+      const remembered = this.focusTabBySlot[slot];
+      return remembered !== undefined && remembered < skills.length ? remembered : 0;
     }
 
-    renderSkillDetailSheet(frame, caster, skill) {
+    renderConsole(frame, consoleY, caster) {
+      const g = this.layer();
+      // Console slab.
+      g.fillStyle(COLORS.ink900, 1);
+      g.fillRect(frame.x, consoleY, frame.width, frame.height - consoleY);
+      g.fillStyle(COLORS.keyline, 1);
+      g.fillRect(frame.x, consoleY, frame.width, 2.5);
       const x = frame.x + 14;
-      const y = 118;
       const w = frame.width - 28;
-      const h = frame.height - y - 16;
-      const adjusted = this.store.adjustedCost(caster, skill);
-      const cooldown = this.store.skillCooldown(caster, skill);
-      const blocked = this.store.statusBlocksSkill(caster, skill);
-      const fit = this.store.skillFit(skill, caster);
-      const reason = cooldown > 0 ? `Cooldown: ${cooldown} turns` : blocked || (!fit.ok ? fit.reason : 'Available now');
-      this.cardPanel(x, y, w, h, COLORS.selection, 0.98);
-      this.mono(x + 18, y + 18, 'TECHNIQUE DETAIL', { color: COLORS.paperText, fontSize: '9px' });
-      this.text(x + 18, y + 40, skill.name, {
-        fontFamily: 'Cinzel, Inter, serif',
-        fontSize: '22px',
-        fontStyle: '900',
-        wordWrap: { width: w - 78 },
-      });
-      this.iconButton(x + w - 52, y + 18, 36, 34, 'x', () => this.store.closeSkillDetail(), { stroke: COLORS.enemy, fontSize: '13px' });
-      this.mono(x + 18, y + 96, `${titleize((skill.target_rule && skill.target_rule.kind) || 'enemy')} target`, { color: COLORS.text, fontSize: '10px' });
-      this.costPips(x + 22, y + 132, adjusted, 16);
-      this.mono(x + 18, y + 153, `ADJUSTED COST / BASE ${(skill.cost || []).length}`, { color: COLORS.paperText, fontSize: '8px' });
-      const classLine = (skill.classes || []).map((value) => titleize(value)).join(' / ') || 'Technique';
-      this.mono(x + 18, y + 184, classLine, { color: COLORS.text, fontSize: '9px' });
-      this.graphics.fillStyle(reason === 'Available now' ? COLORS.queued : COLORS.enemy, 0.16);
-      this.graphics.fillRoundedRect(x + 16, y + 212, w - 32, 40, 12);
-      this.graphics.lineStyle(1, reason === 'Available now' ? COLORS.queued : COLORS.enemy, 0.62);
-      this.graphics.strokeRoundedRect(x + 16, y + 212, w - 32, 40, 12);
-      this.mono(x + 28, y + 226, reason.toUpperCase(), { color: reason === 'Available now' ? '#b7dbc0' : '#f1a0a0', fontSize: '9px' });
-      this.mono(x + 18, y + 278, 'AUTHORITATIVE EFFECT', { color: COLORS.paperText, fontSize: '9px' });
-      this.text(x + 18, y + 300, skill.description || this.store.effectLine(skill), {
-        fontSize: '13px',
-        color: COLORS.text,
-        lineSpacing: 6,
-        wordWrap: { width: w - 36 },
-      });
-      this.mono(x + 18, y + h - 78, 'Tap Close, then select a legal target.', { color: COLORS.muted, fontSize: '9px' });
-      this.button(x + 16, y + h - 54, w - 32, 38, 'Close Detail', () => this.store.closeSkillDetail(), {
-        fill: COLORS.selection,
-        gradientTop: COLORS.talismanDim,
-        stroke: COLORS.talismanPaper,
-        color: '#08080a',
-        fontSize: '11px',
-      });
-    }
 
-    renderQueueChips(frame, y) {
-      const x = frame.x + frame.gutter;
-      const chipW = (frame.width - 44) / 3;
-      this.mono(x, y - 18, `QUEUE ${this.store.actions.length}/3`, {
-        color: this.store.actions.length ? '#b7dbc0' : COLORS.dim,
-        fontSize: '8px',
-      });
-      if (!this.store.actions.length) {
-        this.mono(x + 10, y + 8, 'Queue empty: pick a fighter, technique, then target.', { color: COLORS.muted, fontSize: '9px' });
+      if (!caster) {
+        this.display(x, consoleY + 16, 'Select a fighter', 17);
+        this.text(x, consoleY + 44, 'Tap one of your fighters to open their techniques.', {
+          fontSize: '11px', color: COLORS.muted,
+        });
+        this.renderConsoleFooter(frame, x, w);
         return;
       }
-      const me = this.store.me();
-      [0, 1, 2].forEach((index) => {
-        const action = this.store.actions[index];
-        const chipX = x + index * (chipW + 6);
-        this.graphics.fillStyle(action ? 0x111b13 : COLORS.inkBlack, action ? 0.9 : 0.52);
-        this.graphics.fillRoundedRect(chipX, y, chipW, 30, 12);
-        if (action) {
-          this.graphics.fillStyle(COLORS.queued, 0.18);
-          this.graphics.fillRoundedRect(chipX + 3, y + 3, chipW - 6, 9, 8);
-        }
-        this.graphics.lineStyle(1, action ? COLORS.queued : COLORS.line, action ? 0.72 : 0.4);
-        this.graphics.strokeRoundedRect(chipX, y, chipW, 30, 12);
-        if (!action) {
-          this.mono(chipX + chipW / 2, y + 9, `Q${index + 1}`, { color: COLORS.dim, fontSize: '8px' }).setOrigin(0.5, 0);
-          return;
-        }
-        const caster = me && me.team ? me.team[action.caster_slot] : null;
-        const skill = caster ? this.store.skillFor(caster, action.skill_id) : null;
-        this.mono(chipX + 8, y + 5, `Q${index + 1}`, { color: '#d8f0dc', fontSize: '8px' });
-        this.mono(chipX + 28, y + 5, shortText(skill ? skill.name : action.skill_id, 12), { color: COLORS.text, fontSize: '8px' });
-      });
-    }
 
-    renderReplayLine(frame, y) {
-      const events = this.store.recentEvents.slice(0, 1);
-      if (!events.length) return;
-      const x = frame.x + frame.gutter;
-      const event = events[0];
-      const tone = eventTone(event);
-      const color = tone === 'damage' ? '#f1a0a0' : tone === 'heal' ? '#b7dbc0' : tone === 'status' ? '#cbbdff' : COLORS.text;
-      this.graphics.fillStyle(COLORS.inkBlack, 0.72);
-      this.graphics.fillRoundedRect(x + 14, y, frame.width - 60, 22, 11);
-      this.mono(x + 28, y + 6, shortText(event.message || event.type, 42), {
-        color,
-        fontSize: '8px',
-      });
-    }
+      const skills = this.store.skillsFor(caster).slice(0, 4);
+      const tab = this.focusedSkillIndex(caster, skills);
+      const skill = skills[tab];
 
-    renderCommandDeck(frame, dockY, selected) {
-      const x = frame.x + frame.gutter;
-      const h = frame.height - dockY;
-      this.graphics.fillStyle(COLORS.surfaceDeep, 0.99);
-      this.graphics.fillRoundedRect(frame.x, dockY, frame.width, h + 18, 26);
-      this.graphics.fillStyle(COLORS.surfaceRaised, 0.5);
-      this.graphics.fillRoundedRect(frame.x + 6, dockY + 6, frame.width - 12, 58, 22);
-      this.graphics.fillStyle(selected ? COLORS.selection : COLORS.talismanDim, selected ? 0.13 : 0.08);
-      this.graphics.fillRoundedRect(frame.x + 12, dockY + 8, frame.width - 24, 46, 18);
-      this.graphics.lineStyle(2, selected ? COLORS.selection : COLORS.line, 0.72);
-      this.graphics.strokeRoundedRect(frame.x + 1, dockY + 1, frame.width - 2, h + 16, 26);
-      this.graphics.fillStyle(0xffffff, 0.14);
-      this.graphics.fillRoundedRect(frame.x + frame.width / 2 - 28, dockY + 8, 56, 4, 3);
-      if (selected) {
-        const tone = this.store.assets.toneFor(selected.character_id);
-        const skills = this.store.skillsFor(selected).slice(0, 4);
-        const readyCount = skills.filter((skill) => {
-          const cooldown = this.store.skillCooldown(selected, skill);
-          return cooldown <= 0 && !this.store.statusBlocksSkill(selected, skill) && this.store.skillFit(skill, selected).ok && !this.store.queuedSlots().has(Number(this.store.selectedCasterSlot)) && !this.store.controlsLocked();
-        }).length;
-        this.portrait(selected, x, dockY + 16, 54, { tone, selected: true });
-        this.text(x + 66, dockY + 15, shortText(selected.name, 24), { fontSize: '16px', fontStyle: '900' });
-        const instruction = readyCount
-          ? (this.store.selectedSkillId ? 'Pick a glowing target' : 'Choose technique')
-          : 'No technique online';
-        this.mono(x + 66, dockY + 38, instruction.toUpperCase(), { color: COLORS.paperText, fontSize: '9px' });
-        this.mono(frame.x + frame.width - frame.gutter - 76, dockY + 38, `READY ${readyCount}/${skills.length}`, {
-          color: readyCount ? '#b7dbc0' : '#f1a0a0',
-          fontSize: '8px',
-        }).setOrigin(0.5, 0);
-        const cardW = (frame.width - 44) / 2;
-        const cardH = frame.height < 730 ? 50 : 56;
-        skills.forEach((skill, index) => {
-          const col = index % 2;
-          const row = Math.floor(index / 2);
-          this.renderSkillButton(skill, selected, x + col * (cardW + 12), dockY + 82 + row * (cardH + 8), cardW, cardH);
+      // Technique tabs.
+      const tabY = consoleY + 12;
+      const tabW = (w - 6 * 3) / 4;
+      skills.forEach((s, index) => {
+        const tx = x + index * (tabW + 6);
+        const active = index === tab;
+        const cooldown = this.store.skillCooldown(caster, s);
+        const usable = cooldown <= 0 && !this.store.statusBlocksSkill(caster, s) && this.store.skillFit(s, caster).ok;
+        this.plateButton(tx, tabY, tabW, 44, `tab ${s.id}`, () => {
+          this.focusTabBySlot[Number(this.store.selectedCasterSlot)] = index;
+          if (this.store.selectedSkillId && this.store.selectedSkillId !== s.id) {
+            this.store.selectedSkillId = null;
+          }
+          this.store.notify();
+        }, {
+          tone: active ? 'primary' : 'ink',
+          showLabel: false,
+          cut: 8,
+          ledge: active ? undefined : null,
         });
-      } else {
-        this.text(x, dockY + 22, 'Select A Fighter', { fontSize: '18px', fontStyle: '900' });
-        this.mono(x, dockY + 50, 'READY TOKENS GLOW IN YOUR FIELD', { color: COLORS.muted, fontSize: '9px' });
+        const nameNode = this.label(tx + tabW / 2, tabY + 12, shortText(s.name, 12), 7, {
+          color: active ? '#FFFFFF' : COLORS.muted,
+        });
+        nameNode.setOrigin(0.5, 0.5);
+        nameNode.setAlpha(usable ? 1 : 0.55);
+        const adjusted = this.store.adjustedCost(caster, s);
+        const costW = Math.min(4, adjusted.length) * 11;
+        drawCostPips(this, this.layer(), tx + tabW / 2 - costW / 2, tabY + 30, adjusted.slice(0, 4), 8, 3);
+      });
+
+      // Focused technique panel.
+      const panelY = tabY + 52;
+      const panelH = 88;
+      this.platePanel(x, panelY, w, panelH, { fillTop: COLORS.ink800, fillBottom: COLORS.ink800 });
+      if (skill) {
+        const cooldown = this.store.skillCooldown(caster, skill);
+        const ruleBlock = this.store.statusBlocksSkill(caster, skill);
+        const fit = this.store.skillFit(skill, caster);
+        const slotQueued = this.store.queuedSlots().has(Number(this.store.selectedCasterSlot));
+        const locked = this.store.controlsLocked();
+        const blocked = cooldown > 0 ? `CD ${cooldown}` : ruleBlock || (!fit.ok ? fit.reason : slotQueued ? 'Already queued' : locked ? 'Waiting' : '');
+        const armed = this.store.selectedSkillId === skill.id;
+        const infoW = w - 108;
+        this.text(x + 12, panelY + 10, shortText(skill.name, 26), { fontSize: '14px', fontStyle: '900' });
+        this.text(x + 12, panelY + 30, shortText(this.store.effectLine(skill), 74), {
+          fontSize: '10.5px', fontStyle: '500', color: COLORS.muted,
+          wordWrap: { width: infoW - 16 },
+        });
+        this.stat(x + 12, panelY + panelH - 20, `CD ${skill.cooldown || 0}`, 10, { color: COLORS.goldText });
+        this.label(x + 58, panelY + panelH - 19, this.store.targetLabel(skill), 8, { color: COLORS.dim });
+        const costList = this.store.adjustedCost(caster, skill).slice(0, 5);
+        drawCostPips(this, this.layer(), x + infoW - costList.length * 15, panelY + 14, costList, 12, 3);
+        if (blocked) {
+          drawSkewTag(this, this.graphics, x + 118, panelY + panelH - 26, shortText(blocked, 22), {
+            bg: COLORS.red600, fontSize: 7, height: 15, padX: 6,
+          });
+        }
+        this.plateButton(x + w - 92, panelY + panelH / 2 - 22, 80, 44, armed ? 'Armed ▲' : 'Use', () => {
+          if (armed) {
+            this.store.selectedSkillId = null;
+            this.store.notify();
+          } else {
+            this.store.selectSkill(skill.id);
+          }
+        }, {
+          tone: armed ? 'gold' : 'primary',
+          fontSize: 12,
+          disabled: !!blocked,
+        });
       }
-      const buttonY = frame.height - 48;
-      this.button(x, buttonY, 76, 34, 'Cancel', () => this.store.cancelQueue(), {
-        fill: COLORS.surfaceRaised,
-        stroke: COLORS.line,
-        mono: true,
-        fontSize: '10px',
-        disabled: !this.store.actions.length || this.store.controlsLocked(),
+
+      this.renderConsoleFooter(frame, x, w);
+    }
+
+    renderConsoleFooter(frame, x, w) {
+      const y = frame.height - 52;
+      const locked = this.store.controlsLocked();
+      this.plateButton(x, y, 74, 40, 'Reset', () => this.store.cancelQueue(), {
+        tone: 'ghost', fontSize: 11,
+        disabled: !this.store.actions.length || locked,
       });
-      this.button(x + 84, buttonY, 64, 34, 'End', () => this.store.endTurn(), {
-        fill: COLORS.surfaceRaised,
-        stroke: COLORS.line,
-        mono: true,
-        fontSize: '10px',
-        disabled: this.store.controlsLocked(),
+      this.plateButton(x + 82, y, 88, 40, 'End Turn', () => this.store.endTurn(), {
+        tone: 'ink', fontSize: 11, disabled: locked,
       });
-      this.button(frame.x + frame.width - frame.gutter - 106, buttonY, 106, 34, this.store.queueSubmitting ? 'Resolving' : `Review ${this.store.actions.length}/3`, () => this.store.openQueueReview(), {
-        fill: this.store.actions.length ? COLORS.selection : COLORS.surfaceRaised,
-        gradientTop: this.store.actions.length ? COLORS.talismanDim : COLORS.surfaceRaised,
-        stroke: this.store.actions.length ? COLORS.talismanPaper : COLORS.line,
-        mono: true,
-        fontSize: '10px',
-        disabled: !this.store.actions.length || this.store.controlsLocked(),
+      const reviewLabel = this.store.queueSubmitting ? 'Resolving' : `Review Queue (${this.store.actions.length})`;
+      this.plateButton(x + 178, y, w - 178, 40, reviewLabel, () => this.store.openQueueReview(), {
+        tone: 'primary', fontSize: 12,
+        disabled: !this.store.actions.length || locked,
       });
     }
 
@@ -458,53 +363,49 @@ export class CombatScene extends CombatQueueReviewScene {
       this.drawAppBg(frame);
       const state = this.store.state;
       if (!state) {
-        this.topBar(frame, 'Opening Domain', () => this.store.resetToLobby());
+        this.topBar(frame, 'Opening Arena', () => this.store.resetToLobby());
         const waitingLabel = this.store.connectionState === 'disconnected'
           ? 'Reconnecting…'
-          : 'Waiting for battle state from server...';
-        this.mono(frame.x + frame.gutter, 130, waitingLabel, { color: this.store.connectionState === 'disconnected' ? COLORS.enemy : COLORS.text });
+          : 'Waiting for battle state from the server…';
+        this.text(frame.x + frame.gutter, 130, waitingLabel, {
+          fontSize: '12px', color: this.store.connectionState === 'disconnected' ? COLORS.redText : COLORS.muted,
+        });
         this.toast(frame);
         return;
       }
       const me = this.store.me();
       const foe = this.store.foe();
-      const selected = me && me.team ? me.team[this.store.selectedCasterSlot] : null;
-      const dockH = frame.height < 730 ? 248 : 268;
-      const dockY = frame.height - dockH;
-      const layout = this.fighterLayout(frame, dockY);
+      this.store.ensureSelectedCaster();
+      const caster = me && me.team ? me.team[this.store.selectedCasterSlot] : null;
       this.playbackTargets = {};
-      this.renderTopHud(frame, state, me);
-      if (this.store.detailSkillId && selected) {
-        const detailSkill = this.store.skillFor(selected, this.store.detailSkillId);
-        if (detailSkill) {
-          this.renderSkillDetailSheet(frame, selected, detailSkill);
-          return;
-        }
-        this.store.detailSkillId = null;
-      }
-      this.button(frame.x + frame.width - frame.gutter - 88, 72, 88, 28, 'Convert', () => this.store.convertEnergy(), {
-        fill: COLORS.surfaceRaised,
-        stroke: COLORS.ally,
-        fontSize: '10px',
-        mono: true,
-        disabled: this.store.controlsLocked() || !!this.store.actions.length || !!(me && me.energy_converted_this_turn),
-      });
+
+      const consoleH = frame.height < 760 ? 232 : 252;
+      const consoleY = frame.height - consoleH;
+      const enemyY = 92;
+      const allyY = consoleY - CARD_H - 10;
+
+      this.renderVersusHeader(frame, me, foe);
+      this.renderTurnRow(frame, state, me);
+
+      const armed = !!this.store.selectedSkillId;
       const prompt = state.winner_id
         ? 'Battle finished'
         : this.store.queueReviewOpen
           ? 'Review queued techniques'
           : this.store.controlsLocked()
-          ? 'Waiting for resolution'
-          : this.store.selectedSkillId
-            ? 'Tap a glowing target'
-          : this.store.selectedCasterSlot !== null
-              ? 'Choose technique'
-              : 'Tap an ally fighter';
-      this.renderTokenRow(foe && foe.team, 'enemy', frame, layout.enemyY, layout.token);
-      this.renderBattlefield(frame, layout, prompt);
+            ? 'Waiting for resolution…'
+            : armed
+              ? `Choose a target — ${shortText((this.store.selectedSkill() || {}).name, 20)}`
+              : this.store.actions.length
+                ? `${this.store.actions.length}/3 actions queued`
+                : 'Pick a fighter, arm a technique';
+
+      this.renderCardRow(foe && foe.team, 'enemy', frame, enemyY);
+      this.layer();
+      this.renderBattlefield(frame, enemyY + CARD_H + 8, allyY - 8, prompt, armed);
+      this.renderCardRow(me && me.team, 'mine', frame, allyY);
       if (!this.store.queueReviewOpen) {
-        this.renderTokenRow(me && me.team, 'mine', frame, layout.allyY, layout.token);
-        this.renderCommandDeck(frame, dockY, selected);
+        this.renderConsole(frame, consoleY, caster);
       }
       this.renderQueueReviewSheet(frame);
       this.toast(frame);

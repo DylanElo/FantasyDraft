@@ -9,6 +9,39 @@ After every meaningful pass, add a short dated entry with:
 - What remains or needs caution
 - Relevant commits or pushed state
 
+## 2026-07-11 - Cursed Arena design system integration (ground-up Phaser UI rebuild)
+
+Source: handoff prompt from the "Cursed Arena Design System" folder (repo root, outside the worktree); reference implementation `ui_kits/mobile-app-v2` (the "Domain Break" pass).
+
+What changed:
+
+- Replaced `web/static/phaser-design-tokens.js` with the design system export (`window.JJK_MOBILE_TOKENS` / `CURSED_ARENA_TOKENS`: ink-plum palette, `combatStates`, `rarity`, `plate`, new motion values). Cache versions bumped `?v=17` -> `?v=18` everywhere.
+- Copied design system assets into `web/static/assets/` (portraits incl. new `toge-inumaki.svg`, icons, orbs, logos, new `backdrops/`).
+- `web/templates/index.html`: swapped Cinzel for Lilita One + Inter + JetBrains Mono + Yuji Mai, and gated the Phaser boot on `document.fonts.ready` (`window.JJK_FONTS_READY`, 2.5s timeout fallback).
+- New shared factories in `web/static/phaser/components/`: `blade.js` (blade-cut/tag/banner polygons, convex clipping, color lerp), `plate.js` (THE plate factory: 3px near-black keyline, banded vertical gradient face, inner bevel, hard 4px ledge, pressed state, inset wells), `widgets.js` (energy pips, HP bar with damage-lag ghost, skewed tags), `text-styles.js` (display/label/stat ramps), `fx.js` (shine sweep, breathing glow, teal target pulse ring + polygon variant, embers, victory rays, reward pop-in; all gated on `prefers-reduced-motion`).
+- `base-scene.js` rewritten: per-frame FX overlay driven by `update()` + declarative `fx()` tasks, `layer()` display-list bumps so overlays cover images, `plateButton`/`platePanel`/`portraitPlate` primitives, 80ms press-onto-ledge state, radial violet-to-ink app background, kanji watermark helper.
+- `core/runtime-config.js` rebuilt around the new tokens: strict combat-state colors (gold=selected, teal=legal target, red=threat only, violet=domain only), energy display colors (focus is gold now), plus a clearly-marked legacy alias block for scenes not yet rebuilt (first-creation, mission-map, records, playback).
+- Scene rebuilds to the mobile-app-v2 compositions: Lobby (full-bleed poster + protection gradient, trophy HUD, season tag, giant blade-cut BATTLE plate with shine+breathe, mode tiles, Arena Pass strip), Team Builder/DraftScene (skewed banner, 3-slot pedestal on a violet glow floor, 4-col blade-cut grid with checkmarks, paged, Enter Arena gate), Combat (versus header with gold VS diamond, Your Turn tag, inset energy tray + convert chip, cut-corner fighter card rows with teal pulse/ACTIVE tag/queue numerals, perspective grid + prompt banner, 4 technique tabs + one focused technique panel with Use/Armed, Reset/End Turn/Review row), Queue Review (bottom sheet, numbered rows with portrait/skill->target/cost pips, wild payment pickers, reorder arrows, wild note, Confirm), Results (rotating rays + gold wash, gradient VICTORY canvas texture, gold blade-framed MVP portrait, staggered reward chips from real match data, Battle Again/Home).
+- Boot scene: portraits now load at 3:4 (240x320) plus a large lobby hero poster.
+- `web/app.py`: `PORT` falls back to the standard `PORT` env; default CORS origins now track the actual port instead of hardcoded 5000.
+- `tests/test_app.py`: UI-copy assertions updated to the new production surface (v=18, Cursed Arena token names, new combat/result copy).
+
+Spec-mapping decisions (prototype -> real app, flagged rather than invented):
+
+- BATTLE plate = CPU quick play; Private Match tile = PvP draft; Missions tile = mission map; Arena Pass strip = First Creation progress ("Claim" opens FirstCreationScene); trophies = 1000 + 30/win; no gold/gem economy exists so Results shows trophies/damage/turns/mission unlocks instead of invented currency.
+- Roster grid paginates (canvas has no scroll wells yet); grid tap toggles picks directly, dossier sheet still lives in First Creation.
+
+Verification:
+
+- `python -m pytest -q` -> `112 passed, 1 skipped`.
+- Live server via preview browser at 390x844: lobby, team builder, combat, queue review, results all screenshotted and compared against `ui_kits/mobile-app-v2`; full loop exercised against the real server (start CPU match -> arm Reflexive Guard -> wild pay auto-assigned C -> confirm -> resolver advanced to turn 3). Legacy scenes (MissionMap, Records, FirstCreation) smoke-switched with zero console errors.
+- Known cosmetic gaps: emoji glyphs render monochrome on Windows canvas (line icons are the production plan anyway); characters without local portrait art fall back to monogram plates (replaceable-slot pattern).
+
+Caution / next work:
+
+- First Creation, Mission Map, Records, and the combat playback cinematics still run on legacy compositions through the alias block in `runtime-config.js` — rebuild them next, then delete the alias block.
+- Nothing committed yet this pass; work lives in the `claude/cursed-arena-design-system-555f8a` worktree branch.
+
 ## 2026-07-09 - Line-ending policy and local verification
 
 Source: local repo check after external zip inspection summary.

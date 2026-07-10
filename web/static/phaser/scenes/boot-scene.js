@@ -1,7 +1,7 @@
-import { COLORS, LOCAL_PORTRAIT_FILES, TOKEN_MOTION, TOKEN_TYPE } from '../core/runtime-config.js?v=17';
-import { LayoutService } from '../core/layout-service.js?v=17';
-import { firstCreationRoster, imageKeyFor, portraitFileFor } from '../core/roster.js?v=17';
-import { BaseScene } from './base-scene.js?v=17';
+import { COLORS, LOCAL_PORTRAIT_FILES, TOKEN_MOTION, TOKEN_TYPE } from '../core/runtime-config.js?v=18';
+import { LayoutService } from '../core/layout-service.js?v=18';
+import { firstCreationRoster, imageKeyFor, portraitFileFor } from '../core/roster.js?v=18';
+import { BaseScene } from './base-scene.js?v=18';
 
 export class BootScene extends BaseScene {
     constructor() {
@@ -17,9 +17,11 @@ export class BootScene extends BaseScene {
       Object.keys(firstCreationRoster()).forEach((id) => {
         const file = portraitFileFor(id);
         if (LOCAL_PORTRAIT_FILES.has(file)) {
-          this.load.svg(imageKeyFor(id), `/static/assets/portraits/${file}`, { width: 192, height: 192 });
+          // Unit posters are 420x560 (3:4); keep the aspect.
+          this.load.svg(imageKeyFor(id), `/static/assets/portraits/${file}`, { width: 240, height: 320 });
         }
       });
+      this.load.svg('hero_lobby', '/static/assets/portraits/gojo-young.svg', { width: 540, height: 720 });
     }
 
     create() {

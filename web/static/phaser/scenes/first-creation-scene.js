@@ -1,6 +1,6 @@
-import { COLORS } from '../core/runtime-config.js?v=17';
-import { clamp, shortText } from '../core/text.js?v=17';
-import { DraftScene } from './draft-scene.js?v=17';
+import { COLORS } from '../core/runtime-config.js?v=18';
+import { clamp, shortText } from '../core/text.js?v=18';
+import { DraftScene } from './draft-scene.js?v=18';
 
 export class FirstCreationScene extends DraftScene {
     constructor() {
@@ -59,7 +59,7 @@ export class FirstCreationScene extends DraftScene {
       const pct = clamp(completed / total, 0, 1);
       this.cardPanel(x, y, frame.width - 32, 78, COLORS.talismanDim, 0.78);
       this.text(x + 14, y + 12, 'Welcome To Jujutsu High', {
-        fontFamily: 'Cinzel, Inter, serif',
+        fontFamily: '"Lilita One", Inter, sans-serif',
         fontSize: '18px',
         fontStyle: '900',
       });

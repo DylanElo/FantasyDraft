@@ -10,7 +10,7 @@
   <title>JJK Arena | Cursed Clash</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@500;600;700;800;900&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@600;700&family=Yuji+Mai&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='phaser-shell.css') }}?v=1">
   <script src="{{ url_for('static', filename='socket.io.min.js') }}?v=4.7.2"></script>
 </head>
@@ -34,7 +34,19 @@
     };
   </script>
   <script src="{{ url_for('static', filename='vendor/phaser.min.js') }}?v=3.90.0"></script>
-  <script src="{{ url_for('static', filename='phaser-design-tokens.js') }}?v=17"></script>
-  <script src="{{ url_for('static', filename='phaser-shell.js') }}?v=17"></script>
+  <script src="{{ url_for('static', filename='phaser-design-tokens.js') }}?v=18"></script>
+  <script>
+    // Display type must be ready before any Phaser text renders.
+    window.JJK_FONTS_READY = Promise.race([
+      Promise.all([
+        document.fonts.load('16px "Lilita One"'),
+        document.fonts.load('16px Inter'),
+        document.fonts.load('16px "JetBrains Mono"'),
+        document.fonts.load('16px "Yuji Mai"'),
+      ]).then(() => document.fonts.ready),
+      new Promise((resolve) => setTimeout(resolve, 2500)),
+    ]);
+  </script>
+  <script src="{{ url_for('static', filename='phaser-shell.js') }}?v=18"></script>
 </body>
 </html>

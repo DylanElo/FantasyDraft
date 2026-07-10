@@ -1,7 +1,12 @@
-import { COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE } from '../core/runtime-config.js?v=17';
-import { initials, safeText } from '../core/text.js?v=17';
-import { LayoutService } from '../core/layout-service.js?v=17';
-import { costColors } from '../core/roster.js?v=17';
+import { COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_MOTION, TOKEN_TOUCH } from '../core/runtime-config.js?v=18';
+import { initials, safeText } from '../core/text.js?v=18';
+import { LayoutService } from '../core/layout-service.js?v=18';
+import { costColors } from '../core/roster.js?v=18';
+import { bladePoints } from '../components/blade.js?v=18';
+import { drawBladePlate, drawPlatePoly, fillPoly } from '../components/plate.js?v=18';
+import { drawCostPips, drawEnergyPip, drawSkewTag } from '../components/widgets.js?v=18';
+import { FONT_MONO, FONT_UI, displayStyle, labelStyle, statStyle, upper } from '../components/text-styles.js?v=18';
+import { drawBreathe, drawEmbers, drawRays, drawShine, drawTargetPulse, drawTargetPulsePoly, reducedMotion } from '../components/fx.js?v=18';
 
 export class BaseScene extends Phaser.Scene {
     constructor(key) {
@@ -12,14 +17,20 @@ export class BaseScene extends Phaser.Scene {
       this.layout = null;
       this.store = null;
       this.graphics = null;
+      this.fxGraphics = null;
+      this.fxTasks = [];
       this.unsubscribe = null;
       this.lastTap = null;
+      this.pressedLabel = null;
     }
 
     create() {
       this.store = window.JJKPhaserShell.store;
       this.layout = new LayoutService(this);
-      this.graphics = this.add.graphics();
+      this.baseGraphics = this.add.graphics();
+      this.graphics = this.baseGraphics;
+      this.fxGraphics = this.add.graphics();
+      this.fxGraphics.setDepth(40);
       this.input.on('pointerdown', (pointer) => this.handlePointer(pointer));
       this.scale.on('resize', () => this.render());
       this.unsubscribe = this.store.onChange(() => {
@@ -32,15 +43,39 @@ export class BaseScene extends Phaser.Scene {
       if (this.unsubscribe) this.unsubscribe();
     }
 
+    update(time) {
+      if (!this.fxGraphics) return;
+      this.fxGraphics.clear();
+      if (reducedMotion()) {
+        this.drawTapPulse();
+        return;
+      }
+      this.fxTasks.forEach((task) => {
+        if (task.kind === 'shine') drawShine(this.fxGraphics, task.poly, time, task.offsetMs || 0);
+        else if (task.kind === 'breathe') drawBreathe(this.fxGraphics, task.poly, time, task.color);
+        else if (task.kind === 'pulse') drawTargetPulse(this.fxGraphics, task.x, task.y, task.r, time, task.offsetMs || 0);
+        else if (task.kind === 'pulsePoly') drawTargetPulsePoly(this.fxGraphics, task.poly, time, task.offsetMs || 0);
+        else if (task.kind === 'embers') drawEmbers(this.fxGraphics, task.xs, task.baseY, time);
+        else if (task.kind === 'rays') drawRays(this.fxGraphics, task.cx, task.cy, task.radius, time, task.color);
+      });
+      this.drawTapPulse();
+    }
+
+    fx(task) {
+      this.fxTasks.push(task);
+    }
+
     handlePointer(pointer) {
       for (let i = this.buttons.length - 1; i >= 0; i -= 1) {
         const button = this.buttons[i];
         if (pointer.x >= button.x && pointer.x <= button.x + button.w && pointer.y >= button.y && pointer.y <= button.y + button.h) {
           this.lastTap = { x: pointer.x, y: pointer.y, t: this.time.now, disabled: !!button.disabled };
           window.dispatchEvent(new CustomEvent('jjk:ui-tap', { detail: { scene: this.keyName, disabled: !!button.disabled } }));
+          this.pressedLabel = button.disabled ? null : button.label;
           if (!button.disabled) button.onClick();
           if (this.scene.isActive(this.keyName)) this.render();
-          this.time.delayedCall(180, () => {
+          this.time.delayedCall(TOKEN_MOTION.pressMs || 80, () => {
+            this.pressedLabel = null;
             if (this.scene.isActive(this.keyName)) this.render();
           });
           return;
@@ -49,15 +84,27 @@ export class BaseScene extends Phaser.Scene {
     }
 
     clearSurface() {
-      this.graphics.clear();
+      this.baseGraphics.clear();
+      this.graphics = this.baseGraphics;
       this.nodes.forEach((node) => node.destroy());
       this.nodes = [];
       this.buttons = [];
+      this.fxTasks = [];
+    }
+
+    /* Display-list layer bump: everything drawn after this covers everything
+       added before it (images included). Needed because a single Graphics
+       object renders below images added later in the same pass. */
+    layer() {
+      const g = this.add.graphics();
+      this.nodes.push(g);
+      this.graphics = g;
+      return g;
     }
 
     text(x, y, value, style) {
       const node = this.add.text(x, y, safeText(value), {
-        fontFamily: TOKEN_TYPE.ui || 'Inter, Arial, sans-serif',
+        fontFamily: FONT_UI,
         fontSize: '14px',
         color: COLORS.text,
         ...style,
@@ -66,145 +113,105 @@ export class BaseScene extends Phaser.Scene {
       return node;
     }
 
+    nodeText(x, y, value, style) {
+      return this.text(x, y, value, style);
+    }
+
+    /* Display type is Lilita One, always uppercase. */
+    display(x, y, value, size, style) {
+      return this.text(x, y, upper(value), displayStyle(size, style));
+    }
+
+    label(x, y, value, size, style) {
+      return this.text(x, y, upper(value), labelStyle(size || 11, style));
+    }
+
     mono(x, y, value, style) {
       return this.text(x, y, value, {
-        fontFamily: TOKEN_TYPE.mono || '"JetBrains Mono", monospace',
+        fontFamily: FONT_MONO,
         fontSize: '11px',
         color: COLORS.muted,
         ...style,
       });
     }
 
+    stat(x, y, value, size, style) {
+      return this.text(x, y, value, statStyle(size || 11, style));
+    }
+
+    skewTag(x, y, value, opts) {
+      return drawSkewTag(this, this.graphics, x, y, value, opts || {});
+    }
+
+    /* Radial violet-to-ink app gradient (surface-app-grad). */
     drawAppBg(frame) {
       const g = this.graphics;
-      g.fillGradientStyle(COLORS.voidBlack, COLORS.inkBlack, 0x120b0d, COLORS.voidBlack, 1);
+      g.fillStyle(COLORS.ink950, 1);
       g.fillRect(0, 0, frame.fullWidth, frame.fullHeight);
-      g.fillStyle(COLORS.bg, 0.86);
-      g.fillRoundedRect(frame.x, frame.y, frame.width, frame.height, frame.desktop ? 22 : 0);
-      g.lineStyle(1, COLORS.talismanDim, frame.desktop ? 0.28 : 0);
-      g.strokeRoundedRect(frame.x + 0.5, frame.y + 0.5, frame.width - 1, frame.height - 1, frame.desktop ? 22 : 0);
-
       const cx = frame.x + frame.width / 2;
-      const cy = frame.y + frame.height * 0.47;
-      [320, 236, 154].forEach((radius, index) => {
-        g.lineStyle(index === 1 ? 1.5 : 1, index === 1 ? COLORS.domain : COLORS.talismanDim, index === 1 ? 0.045 : 0.03);
-        g.strokeCircle(cx, cy, radius);
+      const cy = -frame.height * 0.1;
+      const maxR = frame.width * 1.2;
+      for (let i = 12; i >= 1; i -= 1) {
+        g.fillStyle(COLORS.curse900, 0.05);
+        g.fillEllipse(cx, cy, maxR * (i / 12) * 2, maxR * (i / 12) * 1.34);
+      }
+      if (frame.desktop) {
+        g.lineStyle(2, COLORS.ink700, 0.8);
+        g.strokeRoundedRect(frame.x - 1, frame.y, frame.width + 2, frame.height, 4);
+      }
+    }
+
+    /* Oversized kanji watermark, faint violet. */
+    kanjiWatermark(frame, glyph = '呪') {
+      const node = this.text(frame.x + frame.width + 60, frame.y + 150, glyph, {
+        fontFamily: '"Yuji Mai", serif',
+        fontSize: '340px',
+        color: '#8B3FF0',
       });
-      for (let i = 0; i < 7; i += 1) {
-        const y = frame.y + 84 + i * 104;
-        g.lineStyle(1, COLORS.surfaceLine, 0.045);
-        g.strokeCircle(frame.x + (i % 2 ? frame.width - 34 : 34), y, 72);
-      }
-      for (let i = 0; i < 15; i += 1) {
-        const y = frame.y + 42 + i * 48;
-        g.lineStyle(1, i % 3 === 0 ? COLORS.talismanDim : 0xffffff, i % 3 === 0 ? 0.055 : 0.025);
-        g.beginPath();
-        g.moveTo(frame.x, y);
-        g.lineTo(frame.x + frame.width, y + (i % 2 ? -18 : 18));
-        g.strokePath();
-      }
-      for (let i = 0; i < 9; i += 1) {
-        const x = frame.x + 18 + i * 49;
-        g.lineStyle(1, COLORS.talismanDim, 0.045);
-        g.beginPath();
-        g.moveTo(x, frame.y + 2);
-        g.lineTo(x - 34, frame.y + frame.height - 2);
-        g.strokePath();
-      }
+      node.setOrigin(1, 0);
+      node.setAlpha(0.06);
+      node.setAngle(8);
+      return node;
     }
 
-    topBar(frame, title, backHandler) {
-      const y = frame.top + 2;
-      this.graphics.fillStyle(COLORS.inkBlack, 0.68);
-      this.graphics.fillRoundedRect(frame.x + 10, frame.top - 4, frame.width - 20, 52, 16);
-      this.graphics.fillStyle(COLORS.talismanDim, 0.06);
-      this.graphics.fillRoundedRect(frame.x + 14, frame.top, frame.width - 28, 16, 10);
-      this.graphics.lineStyle(1, COLORS.talismanDim, 0.24);
-      this.graphics.strokeRoundedRect(frame.x + 10, frame.top - 4, frame.width - 20, 52, 16);
-      this.mono(frame.x + frame.gutter, y, 'CURSED CLASH', {
-        color: COLORS.paperText,
-        fontSize: '11px',
-        fontStyle: '700',
-      });
-      this.text(frame.x + frame.gutter, frame.top + 17, title, {
-        fontFamily: 'Cinzel, Inter, serif',
-        fontSize: '25px',
-        fontStyle: '900',
-        color: COLORS.text,
-      });
-      if (backHandler) {
-        this.iconButton(frame.x + frame.width - frame.gutter - 42, frame.top + 4, 42, 36, '<', backHandler);
-      }
-    }
-
-    toast(frame) {
-      this.drawTapPulse();
-      window.__phaserShellButtons = this.buttons.map((button) => ({
-        scene: this.keyName,
-        label: button.label || 'hotspot',
-        x: Math.round(button.x),
-        y: Math.round(button.y),
-        w: Math.round(button.w),
-        h: Math.round(button.h),
-        disabled: !!button.disabled,
-      }));
-      if (!this.store.toast) return;
-      const g = this.graphics;
-      const x = frame.x + 18;
-      const y = frame.height - 106;
-      const w = frame.width - 36;
-      g.fillStyle(COLORS.surfaceRaised, 0.96);
-      g.fillRoundedRect(x, y, w, 48, 16);
-      g.fillStyle(COLORS.talismanDim, 0.12);
-      g.fillRoundedRect(x + 3, y + 3, w - 6, 18, 13);
-      g.lineStyle(1.5, COLORS.selection, 0.72);
-      g.strokeRoundedRect(x, y, w, 48, 16);
-      g.lineStyle(1, COLORS.talismanDim, 0.28);
-      g.beginPath();
-      g.moveTo(x + 12, y + 8);
-      g.lineTo(x + w - 12, y + 8);
-      g.strokePath();
-      this.mono(x + 14, y + 16, this.store.toast, { color: COLORS.paperText, fontSize: '11px' });
-    }
-
-    drawTapPulse() {
-      if (!this.lastTap || this.time.now - this.lastTap.t > 180) return;
-      const age = (this.time.now - this.lastTap.t) / 180;
-      const radius = 10 + age * 20;
-      const color = this.lastTap.disabled ? COLORS.enemy : COLORS.selection;
-      this.graphics.lineStyle(2, color, 0.75 * (1 - age));
-      this.graphics.strokeCircle(this.lastTap.x, this.lastTap.y, radius);
-    }
-
-    button(x, y, w, h, label, onClick, options) {
+    /* THE pressable plate. Registers hit area + press-onto-ledge state. */
+    plateButton(x, y, w, h, label, onClick, options) {
       const opts = options || {};
-      const g = this.graphics;
-      const fill = opts.fill === undefined ? COLORS.panel2 : opts.fill;
-      const stroke = opts.stroke === undefined ? COLORS.line : opts.stroke;
-      const alpha = opts.disabled ? 0.42 : (opts.alpha === undefined ? 0.96 : opts.alpha);
-      const radius = opts.radius === undefined ? Math.min(14, TOKEN_RADIUS.skillCard || 14) : opts.radius;
-      const topFill = opts.gradientTop === undefined ? fill : opts.gradientTop;
-      g.fillStyle(fill, alpha);
-      g.fillRoundedRect(x, y, w, h, radius);
-      if (!opts.disabled) {
-        g.fillStyle(topFill, opts.glowAlpha === undefined ? 0.12 : opts.glowAlpha);
-        g.fillRoundedRect(x + 3, y + 3, w - 6, Math.max(3, h * 0.22), Math.max(4, radius - 5));
+      const pressed = this.pressedLabel === label;
+      const disabled = !!opts.disabled;
+      const tone = opts.tone || 'primary';
+      const tones = {
+        primary: { top: COLORS.curse400, bottom: COLORS.curse600, ledge: COLORS.curse900, color: '#FFFFFF' },
+        gold: { top: COLORS.gold300, bottom: COLORS.gold500, ledge: COLORS.gold800, color: COLORS.inkText },
+        ink: { top: COLORS.ink700, bottom: COLORS.ink800, ledge: COLORS.keyline, color: COLORS.text },
+        danger: { top: COLORS.red400, bottom: COLORS.red600, ledge: 0xa3172b, color: '#FFFFFF' },
+        ghost: { top: COLORS.ink900, bottom: COLORS.ink900, ledge: null, color: COLORS.muted },
+      };
+      const t = tones[tone] || tones.primary;
+      const alpha = disabled ? 0.45 : 1;
+      const points = drawBladePlate(this.graphics, x, y, w, h, {
+        cut: opts.cut,
+        corners: opts.corners || 'br',
+        fillTop: opts.fillTop === undefined ? t.top : opts.fillTop,
+        fillBottom: opts.fillBottom === undefined ? t.bottom : opts.fillBottom,
+        ledge: disabled ? null : (opts.ledge === undefined ? t.ledge : opts.ledge),
+        pressed,
+        alpha,
+        keyline: opts.keyline,
+        glow: opts.glow,
+      });
+      if (label && opts.showLabel !== false) {
+        const node = this.text(x + w / 2, y + h / 2 + (pressed ? 3 : 0), upper(label), {
+          fontFamily: opts.display ? '"Lilita One", Inter, sans-serif' : FONT_UI,
+          fontSize: `${opts.fontSize || 14}px`,
+          fontStyle: opts.display ? '400' : '900',
+          letterSpacing: opts.display ? 1 : 0.4,
+          color: opts.color || t.color,
+          align: 'center',
+        }).setOrigin(0.5, 0.5);
+        node.setAlpha(alpha);
+        if (opts.maxWidth) node.setWordWrapWidth(opts.maxWidth);
       }
-      g.lineStyle(opts.strokeWidth || 1.5, stroke, opts.strokeAlpha === undefined ? 0.64 : opts.strokeAlpha);
-      g.strokeRoundedRect(x, y, w, h, radius);
-      g.lineStyle(1, COLORS.talismanPaper, opts.disabled ? 0.025 : 0.06);
-      g.beginPath();
-      g.moveTo(x + 10, y + 1.5);
-      g.lineTo(x + w - 10, y + 1.5);
-      g.strokePath();
-      const text = this.text(x + w / 2, y + h / 2 - 8, label, {
-        fontFamily: opts.mono ? (TOKEN_TYPE.mono || '"JetBrains Mono", monospace') : (TOKEN_TYPE.ui || 'Inter, Arial, sans-serif'),
-        fontSize: opts.fontSize || '13px',
-        fontStyle: '800',
-        color: opts.color || COLORS.text,
-        align: 'center',
-      }).setOrigin(0.5, 0);
-      if (opts.maxWidth) text.setWordWrapWidth(opts.maxWidth);
       const minTarget = TOKEN_TOUCH.minTarget || 44;
       const hitW = Math.max(w, minTarget);
       const hitH = Math.max(h, minTarget);
@@ -215,81 +222,137 @@ export class BaseScene extends Phaser.Scene {
         h: hitH,
         label,
         onClick,
-        disabled: !!opts.disabled,
+        disabled,
       });
+      this.publishButtons();
+      return points;
+    }
+
+    /* Raised non-interactive panel plate. */
+    platePanel(x, y, w, h, opts) {
+      const o = opts || {};
+      return drawBladePlate(this.graphics, x, y, w, h, {
+        cut: o.cut,
+        corners: o.corners || 'br',
+        fillTop: o.fillTop === undefined ? COLORS.ink800 : o.fillTop,
+        fillBottom: o.fillBottom === undefined ? COLORS.ink800 : o.fillBottom,
+        alpha: o.alpha,
+        keyline: o.keyline,
+        bevel: o.bevel,
+        glow: o.glow,
+      });
+    }
+
+    publishButtons() {
       window.__phaserShellButtons = this.buttons.map((button) => ({
         scene: this.keyName,
-        label: button.label,
+        label: button.label || 'hotspot',
         x: Math.round(button.x),
         y: Math.round(button.y),
         w: Math.round(button.w),
         h: Math.round(button.h),
-        disabled: button.disabled,
+        disabled: !!button.disabled,
       }));
     }
 
+    hotspot(x, y, w, h, label, onClick, disabled) {
+      this.buttons.push({ x, y, w, h, label, onClick, disabled: !!disabled });
+      this.publishButtons();
+    }
+
+    topBar(frame, title, backHandler) {
+      const x = frame.x + frame.gutter;
+      this.label(x, frame.top, 'Cursed Arena', 10, { color: COLORS.curseText });
+      this.display(x, frame.top + 14, title, 26);
+      if (backHandler) {
+        this.iconButton(frame.x + frame.width - frame.gutter - 44, frame.top + 6, 44, 38, '<', backHandler);
+      }
+    }
+
+    toast(frame) {
+      this.publishButtons();
+      if (!this.store.toast) return;
+      const x = frame.x + 18;
+      const y = frame.height - 108;
+      const w = frame.width - 36;
+      drawBladePlate(this.graphics, x, y, w, 48, {
+        fillTop: COLORS.ink700,
+        fillBottom: COLORS.ink800,
+        corners: 'both',
+      });
+      this.text(x + 16, y + 24, safeText(this.store.toast), {
+        fontSize: '12px',
+        fontStyle: '600',
+        color: COLORS.text,
+      }).setOrigin(0, 0.5);
+    }
+
+    drawTapPulse() {
+      if (!this.lastTap || this.time.now - this.lastTap.t > 180) return;
+      const age = (this.time.now - this.lastTap.t) / 180;
+      const radius = 10 + age * 20;
+      const color = this.lastTap.disabled ? COLORS.red500 : COLORS.gold400;
+      this.fxGraphics.lineStyle(2, color, 0.75 * (1 - age));
+      this.fxGraphics.strokeCircle(this.lastTap.x, this.lastTap.y, radius);
+    }
+
+    button(x, y, w, h, label, onClick, options) {
+      const opts = options || {};
+      let tone = 'ink';
+      if (opts.tone) tone = opts.tone;
+      else if (opts.fill === COLORS.selection || opts.fill === COLORS.gold400) tone = 'gold';
+      else if (opts.fill === COLORS.curse500 || opts.fill === COLORS.cta) tone = 'primary';
+      this.plateButton(x, y, w, h, label, onClick, {
+        tone,
+        fontSize: opts.fontSize ? parseInt(opts.fontSize, 10) || 13 : 13,
+        disabled: opts.disabled,
+        color: opts.color && String(opts.color).startsWith('#') ? opts.color : undefined,
+        maxWidth: opts.maxWidth,
+      });
+    }
+
     iconButton(x, y, w, h, label, onClick, options) {
-      this.button(x, y, w, h, label, onClick, {
-        fill: COLORS.panel,
-        stroke: COLORS.line,
-        fontSize: '16px',
-        mono: true,
+      this.plateButton(x, y, w, h, label, onClick, {
+        tone: 'ink',
+        fontSize: 15,
         ...(options || {}),
       });
     }
 
     cardPanel(x, y, w, h, tone, alpha) {
-      const g = this.graphics;
-      g.fillStyle(COLORS.panel, alpha === undefined ? 0.9 : alpha);
-      const radius = Math.min(TOKEN_RADIUS.panelMin || 18, 18);
-      g.fillRoundedRect(x, y, w, h, radius);
-      g.fillStyle(COLORS.surfaceRaised, 0.26);
-      g.fillRoundedRect(x + 4, y + 4, w - 8, Math.max(10, h * 0.22), Math.max(8, radius - 4));
-      g.fillStyle(tone || COLORS.line, 0.07);
-      g.fillTriangle(x + w - 52, y, x + w, y, x + w, y + 52);
-      g.fillTriangle(x, y + h - 46, x + 46, y + h, x, y + h);
-      g.lineStyle(1.5, tone || COLORS.line, 0.42);
-      g.strokeRoundedRect(x, y, w, h, radius);
-      g.lineStyle(1, COLORS.talismanPaper, 0.055);
-      g.beginPath();
-      g.moveTo(x + 14, y + 10);
-      g.lineTo(x + w - 14, y + 10);
-      g.strokePath();
+      drawBladePlate(this.graphics, x, y, w, h, {
+        fillTop: COLORS.ink700,
+        fillBottom: COLORS.ink800,
+        alpha: alpha === undefined ? 1 : Math.min(1, alpha + 0.1),
+        corners: 'br',
+      });
+      if (tone !== undefined && tone !== COLORS.line) {
+        fillPoly(this.graphics, bladePoints(x, y, w, 4, 16, 'none'), tone, 0.9);
+      }
     }
 
     energyOrbs(x, y, energy, size) {
-      const colors = ['green', 'red', 'blue', 'white'];
+      const colors = ['green', 'blue', 'white', 'red'];
       colors.forEach((color, index) => {
         const count = Number((energy && energy[color]) || 0);
-        const cx = x + index * (size + 12);
-        this.graphics.fillStyle(ENERGY_COLORS[color], count ? 0.95 : 0.12);
-        this.graphics.fillCircle(cx, y, size / 2);
-        this.graphics.lineStyle(1, ENERGY_COLORS[color], 0.75);
-        this.graphics.strokeCircle(cx, y, size / 2);
-        this.mono(cx + size / 2 + 2, y - 7, String(count), { fontSize: '10px', color: COLORS.text });
+        const cx = x + index * (size + 14);
+        drawEnergyPip(this, this.graphics, cx, y, color, size, { filled: count > 0 });
+        this.stat(cx + size / 2 + 3, y - 6, String(count), 10, { color: COLORS.text });
       });
     }
 
     costPips(x, y, cost, size) {
-      costColors(cost).slice(0, 5).forEach((color, index) => {
-        const cx = x + index * (size + 5);
-        const fill = ENERGY_COLORS[color] || COLORS.black;
-        this.graphics.fillStyle(fill, color === 'white' ? 0.88 : 0.96);
-        this.graphics.fillCircle(cx, y, size / 2);
-        this.graphics.lineStyle(1, color === 'black' ? COLORS.talismanPaper : fill, 0.82);
-        this.graphics.strokeCircle(cx, y, size / 2);
-        this.mono(cx - 3, y - 4, ENERGY_LABELS[color] || 'X', {
-          color: color === 'white' ? '#08080a' : COLORS.text,
-          fontSize: '7px',
-        });
-      });
-      if (!cost || !cost.length) {
-        this.graphics.lineStyle(1, COLORS.queued, 0.72);
+      const list = costColors(cost);
+      if (!list.length) {
+        this.graphics.lineStyle(1.5, COLORS.ink500, 0.9);
         this.graphics.strokeCircle(x, y, size / 2);
-        this.mono(x - 4, y - 4, '0', { color: '#b7dbc0', fontSize: '7px' });
+        this.stat(x, y, '0', 7, { color: COLORS.dim }).setOrigin(0.5, 0.5);
+        return;
       }
+      drawCostPips(this, this.graphics, x - size / 2, y, list, size, 5);
     }
 
+    /* Circular portrait chip (legacy scenes + queue rows). */
     portrait(characterOrId, x, y, size, options) {
       const opts = options || {};
       const id = typeof characterOrId === 'string'
@@ -299,45 +362,82 @@ export class BaseScene extends Phaser.Scene {
         ? safeText(this.store.character(characterOrId).name, characterOrId)
         : safeText(characterOrId && characterOrId.name, id);
       const key = this.store.portraitKey(id);
-      const tone = this.store.assets.toneFor(id || name);
       const cx = x + size / 2;
       const cy = y + size / 2;
-      this.graphics.fillStyle(COLORS.inkBlack, opts.dead ? 0.74 : 0.92);
+      const ring = opts.targetable ? COLORS.target : opts.selected ? COLORS.selection : (opts.tone || COLORS.ink500);
+      this.graphics.fillStyle(COLORS.keyline, 1);
       this.graphics.fillCircle(cx, cy, size / 2 + 3);
-      this.graphics.fillStyle(tone, opts.dead ? 0.13 : 0.26);
+      this.graphics.fillStyle(COLORS.ink800, opts.dead ? 0.7 : 1);
       this.graphics.fillCircle(cx, cy, size / 2);
-      if (opts.noRing) {
-        this.graphics.lineStyle(1.25, opts.tone || tone, opts.dead ? 0.24 : 0.48);
-        this.graphics.strokeCircle(cx, cy, size / 2);
-      } else {
-        this.graphics.lineStyle(opts.targetable ? 2.5 : 1, opts.tone || tone, opts.dead ? 0.28 : 0.56);
-        this.graphics.strokeCircle(cx, cy, size / 2 + 3);
-        this.graphics.lineStyle(opts.selected ? 2.5 : 1.25, opts.tone || tone, opts.targetable ? 0.92 : 0.68);
-        this.graphics.strokeCircle(cx, cy, size / 2);
-      }
       if (this.textures.exists(key)) {
         const image = this.add.image(cx, cy, key);
-        image.setDisplaySize(size - 6, size - 6);
-        image.setAlpha(opts.dead ? 0.38 : 0.96);
+        const frame = this.textures.getFrame(key);
+        const scale = size / Math.min(frame.width, frame.height);
+        image.setScale(scale);
+        const maskShape = this.make.graphics({ add: false });
+        maskShape.fillStyle(0xffffff, 1);
+        maskShape.fillCircle(cx, cy, size / 2 - 1);
+        image.setMask(maskShape.createGeometryMask());
+        image.setAlpha(opts.dead ? 0.35 : 1);
         this.nodes.push(image);
+        this.nodes.push(maskShape);
+        this.layer();
       } else {
-        this.text(cx, cy - 11, initials(name), {
-          fontSize: `${Math.max(18, Math.round(size * 0.32))}px`,
-          fontStyle: '900',
-        }).setOrigin(0.5, 0);
+        this.display(cx, cy, initials(name), Math.max(16, Math.round(size * 0.3))).setOrigin(0.5, 0.5);
       }
+      this.graphics.lineStyle(opts.selected || opts.targetable ? 3 : 2, ring, opts.dead ? 0.4 : 1);
+      this.graphics.strokeCircle(cx, cy, size / 2 + 1);
     }
 
     talismanLabel(x, y, text, tone) {
-      const w = Math.max(76, text.length * 7 + 28);
-      this.graphics.fillStyle(COLORS.surfaceRaised, 0.92);
-      this.graphics.fillRoundedRect(x, y, w, 22, 6);
-      this.graphics.fillStyle(tone || COLORS.selection, 0.12);
-      this.graphics.fillTriangle(x, y, x + 16, y, x, y + 16);
-      this.graphics.lineStyle(1, tone || COLORS.selection, 0.48);
-      this.graphics.strokeRoundedRect(x, y, w, 22, 6);
-      this.mono(x + 12, y + 6, text, { color: COLORS.paperText, fontSize: '8px' });
-      return w;
+      return this.skewTag(x, y, text, {
+        bg: tone === COLORS.enemy || tone === COLORS.red500 ? COLORS.red600 : COLORS.ink700,
+        fontSize: 8,
+        color: COLORS.muted,
+      });
+    }
+
+    /* Blade-cut rectangular portrait plate (fighter cards, pedestals). */
+    portraitPlate(characterOrId, x, y, w, h, opts = {}) {
+      const id = typeof characterOrId === 'string'
+        ? characterOrId
+        : (characterOrId && (characterOrId.id || characterOrId.character_id));
+      const key = this.store.portraitKey(id);
+      const corners = opts.corners || 'br';
+      const points = bladePoints(x, y, w, h, opts.cut === undefined ? 16 : opts.cut, corners);
+      const rim = opts.rim === undefined ? COLORS.keyline : opts.rim;
+      drawPlatePoly(this.graphics, points, {
+        fillTop: COLORS.ink800,
+        fillBottom: COLORS.ink900,
+        keyline: false,
+        bevel: false,
+      });
+      if (this.textures.exists(key)) {
+        const frame = this.textures.getFrame(key);
+        const scale = Math.max(w / frame.width, h / frame.height);
+        const image = this.add.image(x + w / 2, y + h * (opts.focusY === undefined ? 0.42 : opts.focusY), key);
+        image.setScale(scale);
+        const maskShape = this.make.graphics({ add: false });
+        fillPoly(maskShape, points, 0xffffff, 1);
+        image.setMask(maskShape.createGeometryMask());
+        image.setAlpha(opts.dead ? 0.35 : opts.alpha === undefined ? 1 : opts.alpha);
+        this.nodes.push(image);
+        this.nodes.push(maskShape);
+        this.layer();
+      } else {
+        const name = typeof characterOrId === 'string' ? id : safeText(characterOrId && characterOrId.name, id);
+        this.display(x + w / 2, y + h / 2, initials(name), Math.max(16, Math.round(h * 0.24)), {
+          color: COLORS.curseText,
+        }).setOrigin(0.5, 0.5);
+      }
+      // Rim on top of the art
+      this.graphics.lineStyle(opts.rimWidth || 2.5, rim, 1);
+      this.graphics.beginPath();
+      this.graphics.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i += 1) this.graphics.lineTo(points[i].x, points[i].y);
+      this.graphics.closePath();
+      this.graphics.strokePath();
+      return points;
     }
 
     render() {}

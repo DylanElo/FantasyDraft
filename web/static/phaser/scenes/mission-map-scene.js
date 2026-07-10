@@ -1,6 +1,6 @@
-import { COLORS } from '../core/runtime-config.js?v=17';
-import { clamp, shortText, titleize } from '../core/text.js?v=17';
-import { BaseScene } from './base-scene.js?v=17';
+import { COLORS } from '../core/runtime-config.js?v=18';
+import { clamp, shortText, titleize } from '../core/text.js?v=18';
+import { BaseScene } from './base-scene.js?v=18';
 
 export class MissionMapScene extends BaseScene {
     constructor() {
@@ -59,7 +59,7 @@ export class MissionMapScene extends BaseScene {
       let y = 92;
       this.cardPanel(x, y, frame.width - 32, 74, COLORS.selection, 0.66);
       this.text(x + 16, y + 13, 'Student Era Route', {
-        fontFamily: 'Cinzel, Inter, serif',
+        fontFamily: '"Lilita One", Inter, sans-serif',
         fontSize: '18px',
         fontStyle: '900',
       });

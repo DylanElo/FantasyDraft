@@ -1,11 +1,49 @@
-import { COLORS } from '../core/runtime-config.js?v=17';
-import { safeText, shortText } from '../core/text.js?v=17';
-import { eventAmount } from '../fx/event-metrics.js?v=17';
-import { BaseScene } from './base-scene.js?v=17';
+/* RESULTS — mobile-app-v2 composition: rotating burst rays + gold radial
+   wash, VICTORY in gold-gradient display type, MVP blade-framed portrait,
+   reward chips popping in staggered, Battle Again / Home. */
+
+import { COLORS } from '../core/runtime-config.js?v=18';
+import { safeText, shortText } from '../core/text.js?v=18';
+import { BaseScene } from './base-scene.js?v=18';
+import { popIn, reducedMotion } from '../components/fx.js?v=18';
 
 export class ResultScene extends BaseScene {
     constructor() {
       super('ResultScene');
+      this.introPlayed = false;
+    }
+
+    create() {
+      this.introPlayed = false;
+      super.create();
+    }
+
+    /* Gold-gradient display text via a canvas texture (Graphics/Text can't
+       gradient-fill glyphs in the canvas renderer). */
+    gradientTitle(key, content, fontSize, stops) {
+      if (this.textures.exists(key)) this.textures.remove(key);
+      const text = content.toUpperCase();
+      const font = `400 ${fontSize}px "Lilita One", Inter, sans-serif`;
+      const probe = document.createElement('canvas').getContext('2d');
+      probe.font = font;
+      const w = Math.ceil(probe.measureText(text).width) + 16;
+      const h = Math.ceil(fontSize * 1.3);
+      const texture = this.textures.createCanvas(key, w, h);
+      const ctx = texture.getContext();
+      ctx.font = font;
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center';
+      const gradient = ctx.createLinearGradient(0, 0, w * 0.4, h);
+      stops.forEach(([offset, color]) => gradient.addColorStop(offset, color));
+      ctx.fillStyle = gradient;
+      ctx.fillText(text, w / 2, h / 2);
+      texture.refresh();
+      return key;
+    }
+
+    mvpFighter(me) {
+      const team = (me && me.team) || [];
+      return team.find((character) => character && character.alive) || team[0] || null;
     }
 
     render() {
@@ -14,72 +52,113 @@ export class ResultScene extends BaseScene {
       this.drawAppBg(frame);
       const state = this.store.state;
       const mine = this.store.mineId();
-      const victory = state && state.winner_id === mine;
-      this.topBar(frame, victory ? 'Victory' : 'Defeat', () => this.store.resetToLobby());
-      const x = frame.x + frame.gutter;
-      const compact = frame.height < 730;
-      const heroY = compact ? 84 : 108;
-      const heroH = compact ? 144 : 180;
-      this.cardPanel(x, heroY, frame.width - 32, heroH, victory ? COLORS.selection : COLORS.enemy, 0.84);
-      this.text(frame.x + frame.width / 2, heroY + (compact ? 22 : 26), victory ? 'DOMAIN WON' : 'DOMAIN LOST', {
-        fontFamily: 'Cinzel, Inter, serif',
-        fontSize: compact ? '27px' : '32px',
-        fontStyle: '900',
-        color: victory ? COLORS.paperText : '#f1a0a0',
-      }).setOrigin(0.5, 0);
-      const winner = state && state.players && state.players[state.winner_id] ? state.players[state.winner_id].name : 'Unknown';
-      const last = this.store.records[0] || {};
-      this.mono(frame.x + frame.width / 2, heroY + (compact ? 69 : 76), `${winner} controls the domain`, { color: COLORS.text }).setOrigin(0.5, 0);
-      this.mono(x + 22, heroY + heroH - 52, `Turns: ${last.turns || (state && state.turn_number) || 0}`, { color: COLORS.text });
-      this.mono(x + 160, heroY + heroH - 52, `Damage: ${last.damage || 0}`, { color: COLORS.text });
-      this.mono(x + 22, heroY + heroH - 29, victory ? 'Route clear registered.' : 'Route remains uncleared.', {
-        color: victory ? '#b7dbc0' : '#f1a0a0',
-        fontSize: '9px',
-      });
-      const strikesY = heroY + heroH + (compact ? 16 : 26);
-      const strikesH = compact ? 118 : 150;
-      this.cardPanel(x, strikesY, frame.width - 32, strikesH, COLORS.line, 0.72);
-      this.mono(x + 16, strikesY + 18, 'BIGGEST STRIKES', { color: COLORS.paperText });
-      const strikes = (last.biggest && last.biggest.length ? last.biggest : ((state && state.event_log) || [])
-        .map((event) => ({ message: event.message || event.type, amount: eventAmount(event) }))
-        .filter((event) => event.amount > 0)
-        .sort((a, b) => b.amount - a.amount)
-        .slice(0, 3));
-      if (!strikes.length) {
-        this.mono(x + 16, strikesY + 50, 'No strike data recorded.', { color: COLORS.muted });
+      const victory = !!state && state.winner_id === mine;
+      const cx = frame.x + frame.width / 2;
+      const burstY = frame.height * 0.3;
+
+      // Burst rays + radial wash (gold for victory, cold ink for defeat).
+      if (victory) {
+        this.fx({ kind: 'rays', cx, cy: burstY, radius: 470, color: COLORS.gold500 });
+        const g = this.graphics;
+        for (let i = 8; i >= 1; i -= 1) {
+          g.fillStyle(COLORS.gold500, 0.025);
+          g.fillEllipse(cx, frame.height * 0.24, frame.width * 1.7 * (i / 8), frame.height * 0.85 * (i / 8));
+        }
       } else {
-        strikes.forEach((event, index) => {
-          this.mono(x + 16, strikesY + 48 + index * (compact ? 21 : 26), safeText(event.message).slice(0, 44), { color: COLORS.text, fontSize: '9px' });
-          this.mono(x + frame.width - 86, strikesY + 48 + index * (compact ? 21 : 26), `${event.amount} DMG`, { color: '#f1a0a0', fontSize: '9px' });
-        });
+        const g = this.graphics;
+        for (let i = 6; i >= 1; i -= 1) {
+          g.fillStyle(COLORS.red600, 0.02);
+          g.fillEllipse(cx, frame.height * 0.24, frame.width * 1.5 * (i / 6), frame.height * 0.7 * (i / 6));
+        }
       }
+
+      const introNodes = [];
+
+      // Title.
+      const titleKey = this.gradientTitle(
+        'result_title',
+        victory ? 'Victory' : 'Defeat',
+        62,
+        victory
+          ? [[0, '#FFFFFF'], [0.45, '#FFD873'], [1, '#F0A82E']]
+          : [[0, '#FFFFFF'], [0.45, '#FF6B7E'], [1, '#D8203B']],
+      );
+      const title = this.add.image(cx, frame.height * 0.16, titleKey);
+      this.nodes.push(title);
+      introNodes.push([title, 0]);
+
+      // MVP blade-framed portrait.
+      const me = this.store.me() || {};
+      const mvp = this.mvpFighter(me);
+      const mvpW = 170;
+      const mvpH = 210;
+      const mvpY = frame.height * 0.24;
+      this.layer();
+      if (mvp) {
+        this.portraitPlate(mvp, cx - mvpW / 2, mvpY, mvpW, mvpH, {
+          corners: 'both',
+          rim: victory ? COLORS.gold400 : COLORS.ink500,
+          rimWidth: 3,
+        });
+        const badge = this.text(cx, mvpY + mvpH + 18, `MVP · ${safeText(mvp.name, 'Fighter')}`.toUpperCase(), {
+          fontSize: '11px',
+          fontStyle: '900',
+          letterSpacing: 1.4,
+          color: victory ? '#0E0B16' : COLORS.text,
+          backgroundColor: victory ? '#FBBF42' : '#2C2340',
+          padding: { x: 12, y: 6 },
+        }).setOrigin(0.5, 0.5);
+        introNodes.push([badge, 100]);
+      }
+
+      // Reward chips (real match data — no fake currency).
+      const last = this.store.records[0] || {};
+      const turns = last.turns || (state && state.turn_number) || 0;
+      const damage = last.damage || 0;
+      const chips = [
+        { label: `🏆 ${victory ? '+30' : '-10'}`, bg: '#FBBF42', color: '#0E0B16' },
+        { label: `${damage} DMG`, bg: '#2C2340', color: '#FBF8FF' },
+        { label: `${turns} TURNS`, bg: '#2C2340', color: '#FBF8FF' },
+      ];
       const mission = this.store.activeMission();
-      const profile = (window.JJK_BOOTSTRAP && window.JJK_BOOTSTRAP.firstCreation && window.JJK_BOOTSTRAP.firstCreation.profile) || {};
-      const completed = (profile.completed_missions || []).length;
-      const total = this.store.missions().length || 1;
-      const missionY = strikesY + strikesH + (compact ? 14 : 22);
-      const missionH = compact ? 108 : 116;
-      this.cardPanel(x, missionY, frame.width - 32, missionH, COLORS.selection, 0.58);
-      this.mono(x + 16, missionY + 15, 'MISSION PROGRESS', { color: COLORS.paperText, fontSize: '9px' });
-      this.text(x + 16, missionY + 32, shortText(mission ? mission.title : 'First Creation Progress', 34), { fontSize: '13px', fontStyle: '900' });
-      this.graphics.fillStyle(COLORS.inkBlack, 0.72);
-      this.graphics.fillRoundedRect(x + 16, missionY + 58, frame.width - 164, 8, 4);
-      this.graphics.fillStyle(COLORS.selection, 0.9);
-      this.graphics.fillRoundedRect(x + 16, missionY + 58, (frame.width - 164) * Math.min(1, completed / total), 8, 4);
-      this.mono(x + frame.width - 128, missionY + 56, `${completed}/${total} ROUTES`, { color: COLORS.text, fontSize: '8px' });
-      const unlocks = mission && mission.unlocks && mission.unlocks.length ? `Unlocks: ${mission.unlocks.join(' / ')}` : 'Progress saved to your profile.';
-      this.mono(x + 16, missionY + 78, 'REWARD CHECK', { color: COLORS.paperText, fontSize: '8px' });
-      this.mono(x + 16, missionY + 94, shortText(victory ? unlocks : 'Replay the route to clear the objective.', 58), { color: COLORS.text, fontSize: '9px' });
-      this.button(x, frame.height - 120, frame.width - 32, 44, 'Rematch', () => this.store.changeScene('DraftScene'), {
-        fill: COLORS.panel2,
-        stroke: COLORS.ally,
+      if (victory && mission && (mission.unlocks || []).length) {
+        chips.push({ label: `UNLOCK: ${shortText(mission.unlocks[0], 14)}`, bg: '#6D28D9', color: '#FFFFFF' });
+      }
+      const chipY = frame.height * 0.24 + mvpH + 52;
+      let totalW = 0;
+      const chipNodes = chips.map((chip) => {
+        const node = this.text(0, chipY, chip.label, {
+          fontFamily: '"JetBrains Mono", monospace',
+          fontSize: '11px',
+          fontStyle: '700',
+          color: chip.color,
+          backgroundColor: chip.bg,
+          padding: { x: 10, y: 6 },
+        });
+        totalW += node.width + 8;
+        return node;
       });
-      this.button(x, frame.height - 62, frame.width - 32, 44, 'Lobby', () => this.store.resetToLobby(), {
-        fill: COLORS.selection,
-        gradientTop: COLORS.talismanDim,
-        stroke: COLORS.talismanPaper,
-        color: '#08080a',
+      let chipX = cx - (totalW - 8) / 2;
+      chipNodes.forEach((node, index) => {
+        node.setPosition(chipX, chipY);
+        chipX += node.width + 8;
+        introNodes.push([node, 200 + index * 100]);
       });
+
+      // Actions.
+      const x = frame.x + frame.gutter;
+      const w = frame.width - frame.gutter * 2;
+      this.plateButton(x + w / 2 - 140, frame.height - 132, 280, 54, 'Battle Again', () => this.store.changeScene('DraftScene'), {
+        tone: 'primary', corners: 'both', display: true, fontSize: 18,
+      });
+      this.plateButton(x + w / 2 - 140, frame.height - 66, 280, 44, 'Home', () => this.store.resetToLobby(), {
+        tone: 'ghost', fontSize: 12,
+      });
+
+      if (!this.introPlayed && !reducedMotion()) {
+        this.introPlayed = true;
+        introNodes.forEach(([node, delay]) => popIn(this, node, delay));
+      }
       this.toast(frame);
     }
   }

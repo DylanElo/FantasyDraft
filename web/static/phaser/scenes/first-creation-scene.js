@@ -1,153 +1,118 @@
+/* FIRST CREATION — starter onboarding: mission progress strip, trio
+   pedestal, preset chips, dossier card list (tap to inspect skills),
+   Enter Domain gate. "Welcome to Jujutsu High", not endgame apocalypse. */
+
 import { COLORS } from '../core/runtime-config.js?v=18';
 import { clamp, shortText } from '../core/text.js?v=18';
 import { DraftScene } from './draft-scene.js?v=18';
+import { drawHpBar } from '../components/widgets.js?v=18';
 
 export class FirstCreationScene extends DraftScene {
     constructor() {
       super('FirstCreationScene');
     }
 
-    renderTrioSlots(frame, y) {
+    renderMissionStrip(frame, y) {
       const x = frame.x + frame.gutter;
-      const slotW = (frame.width - 64) / 3;
-      const ready = this.store.playerTeam.length;
-      this.mono(x, y - 18, `CHOOSE YOUR FIRST TRIO ${ready}/3`, { color: ready === 3 ? '#b7dbc0' : COLORS.paperText, fontSize: '9px' });
-      [0, 1, 2].forEach((index) => {
-        const id = this.store.playerTeam[index];
-        const sx = x + index * (slotW + 8);
-        this.cardPanel(sx, y, slotW, 76, id ? COLORS.ally : COLORS.line, id ? 0.84 : 0.52);
-        this.mono(sx + 8, y + 7, `S${index + 1}`, { color: id ? COLORS.text : COLORS.dim, fontSize: '8px' });
-        if (id) {
-          const character = this.store.character(id);
-          this.portrait(character, sx + slotW / 2 - 19, y + 7, 38, { tone: COLORS.ally });
-          this.text(sx + slotW / 2, y + 48, character.name, {
-            fontSize: '9px',
-            fontStyle: '800',
-            align: 'center',
-            wordWrap: { width: slotW - 12 },
-          }).setOrigin(0.5, 0);
-        } else {
-          this.mono(sx + slotW / 2, y + 31, 'OPEN SLOT', { color: COLORS.dim, fontSize: '8px' }).setOrigin(0.5, 0);
-        }
-      });
-    }
-
-    renderPresetTile(entry, x, y, w, h) {
-      const active = entry.team.every((id) => this.store.playerTeam.includes(id));
-      this.cardPanel(x, y, w, h, active ? COLORS.queued : COLORS.selection, active ? 0.88 : 0.68);
-      this.text(x + 10, y + 9, shortText(entry.title, 21), { fontSize: '11px', fontStyle: '900' });
-      const portraitSize = 26;
-      entry.team.slice(0, 3).forEach((id, index) => {
-        this.portrait(this.store.character(id), x + 12 + index * 31, y + 30, portraitSize, { tone: COLORS.selection });
-      });
-      const chipW = active ? 76 : 70;
-      const chipX = x + w - chipW - 10;
-      this.graphics.fillStyle(active ? COLORS.queued : COLORS.surfaceRaised, active ? 0.9 : 0.82);
-      this.graphics.fillRoundedRect(chipX, y + h - 23, chipW, 17, 8);
-      this.graphics.lineStyle(1, active ? COLORS.queued : COLORS.selection, 0.7);
-      this.graphics.strokeRoundedRect(chipX, y + h - 23, chipW, 17, 8);
-      this.mono(chipX + chipW / 2, y + h - 18, active ? 'ACTIVE TRIO' : 'USE PRESET', { color: active ? '#d8f0dc' : COLORS.paperText, fontSize: '7px' }).setOrigin(0.5, 0);
-      this.buttons.push({ x, y, w, h, label: `Use ${entry.title}`, onClick: () => this.store.applyPreset(entry.id, 'playerTeam') });
-    }
-
-    renderMissionHeader(frame, y) {
-      const x = frame.x + frame.gutter;
+      const w = frame.width - frame.gutter * 2;
       const mission = this.store.activeMission();
       const profile = (window.JJK_BOOTSTRAP && window.JJK_BOOTSTRAP.firstCreation && window.JJK_BOOTSTRAP.firstCreation.profile) || {};
       const completed = (profile.completed_missions || []).length;
       const total = this.store.missions().length || 1;
-      const pct = clamp(completed / total, 0, 1);
-      this.cardPanel(x, y, frame.width - 32, 78, COLORS.talismanDim, 0.78);
-      this.text(x + 14, y + 12, 'Welcome To Jujutsu High', {
-        fontFamily: '"Lilita One", Inter, sans-serif',
-        fontSize: '18px',
-        fontStyle: '900',
+      this.platePanel(x, y, w, 62);
+      this.text(x + 14, y + 10, mission ? shortText(mission.title, 30) : 'Starter route ready', {
+        fontSize: '12px', fontStyle: '900',
       });
-      this.mono(x + 16, y + 41, mission ? shortText(mission.title, 33) : 'Starter route ready', { color: COLORS.paperText, fontSize: '9px' });
-      this.graphics.fillStyle(COLORS.inkBlack, 0.76);
-      this.graphics.fillRoundedRect(x + 16, y + 59, frame.width - 172, 8, 4);
-      this.graphics.fillStyle(COLORS.selection, 0.92);
-      this.graphics.fillRoundedRect(x + 16, y + 59, (frame.width - 172) * pct, 8, 4);
-      this.mono(x + frame.width - 174, y + 58, `${completed}/${total} ROUTES`, { color: COLORS.text, fontSize: '7px' });
-      this.button(x + frame.width - 138, y + 22, 104, 34, 'Mission Map', () => this.store.changeScene('MissionMapScene'), {
-        fill: COLORS.surfaceRaised,
-        stroke: COLORS.selection,
-        mono: true,
-        fontSize: '9px',
+      drawHpBar(this.graphics, x + 14, y + 32, w - 220, 8, clamp(completed / total, 0, 1), 'gold');
+      this.stat(x + w - 196, y + 31, `${completed}/${total} ROUTES`, 9, { color: COLORS.muted });
+      this.plateButton(x + w - 116, y + 13, 104, 36, 'Mission Map', () => this.store.changeScene('MissionMapScene'), {
+        tone: 'ink', fontSize: 10,
       });
+    }
+
+    renderPresetChips(frame, y) {
+      const x = frame.x + frame.gutter;
+      const w = frame.width - frame.gutter * 2;
+      const presets = this.store.presetEntries();
+      const perPage = 2;
+      const pageMax = Math.max(0, Math.ceil(presets.length / perPage) - 1);
+      this.store.creationPresetPage = clamp(this.store.creationPresetPage, 0, pageMax);
+      const page = presets.slice(this.store.creationPresetPage * perPage, this.store.creationPresetPage * perPage + perPage);
+      const chipW = (w - 46 - 8) / 2;
+      page.forEach((entry, index) => {
+        const active = entry.team.length === 3 && entry.team.every((id) => this.store.playerTeam.includes(id));
+        this.plateButton(x + index * (chipW + 8), y, chipW, 34, shortText(entry.title, 20), () => this.store.applyPreset(entry.id, 'playerTeam'), {
+          tone: active ? 'primary' : 'ink', fontSize: 9,
+        });
+        if (active) {
+          this.label(x + index * (chipW + 8) + 6, y - 11, 'Active Trio', 7, { color: COLORS.curseText });
+        }
+      });
+      if (pageMax > 0) {
+        this.plateButton(x + w - 38, y, 38, 34, '>', () => {
+          this.store.creationPresetPage = this.store.creationPresetPage >= pageMax ? 0 : this.store.creationPresetPage + 1;
+          this.store.notify();
+        }, { tone: 'ink', fontSize: 12 });
+      }
     }
 
     render() {
       const frame = this.layout.frame();
       this.clearSurface();
       this.drawAppBg(frame);
-      this.topBar(frame, 'First Creation', () => this.store.resetToLobby());
-      if (this.store.detailCharacterId) {
-        this.renderCharacterDetailSheet(frame, 'playerTeam');
-        this.toast(frame);
-        return;
-      }
+      this.kanjiWatermark(frame, '始');
+      this.layer();
       const x = frame.x + frame.gutter;
-      let y = 86;
+      const w = frame.width - frame.gutter * 2;
 
-      this.renderMissionHeader(frame, y);
-      y += 108;
-      this.renderTrioSlots(frame, y);
-      y += 92;
+      this.iconButton(frame.x + frame.width - frame.gutter - 44, 14, 44, 38, '<', () => this.store.resetToLobby());
+      this.skewTag(x, 16, 'Welcome to Jujutsu High', { fontSize: 10 });
+      this.display(x, 40, 'First Creation', 28);
 
-      const presets = this.store.presetEntries();
-      const presetPageSize = frame.height < 790 ? 2 : 4;
-      const presetMax = Math.max(0, Math.ceil(presets.length / presetPageSize) - 1);
-      this.store.creationPresetPage = clamp(this.store.creationPresetPage, 0, presetMax);
-      const presetPage = presets.slice(this.store.creationPresetPage * presetPageSize, this.store.creationPresetPage * presetPageSize + presetPageSize);
-      this.mono(x, y - 6, 'STARTER PRESETS', { color: COLORS.paperText, fontSize: '9px' });
-      const presetW = (frame.width - 44) / 2;
-      presetPage.forEach((entry, index) => {
-        const col = index % 2;
-        const row = Math.floor(index / 2);
-        this.renderPresetTile(entry, x + col * (presetW + 12), y + 14 + row * 72, presetW, 60);
-      });
-      if (presetMax > 0) {
-        this.button(x + frame.width - 100, y - 12, 68, 28, `Set ${this.store.creationPresetPage + 1}`, () => {
-          this.store.creationPresetPage = this.store.creationPresetPage >= presetMax ? 0 : this.store.creationPresetPage + 1;
-          this.store.notify();
-        }, { fill: COLORS.surfaceRaised, stroke: COLORS.selection, mono: true, fontSize: '8px' });
-      }
+      this.renderMissionStrip(frame, 82);
 
-      y += presetPageSize > 2 ? 166 : 94;
-      this.mono(x, y, 'TAP A DOSSIER TO INSPECT SKILLS', { color: COLORS.text, fontSize: '8px' });
+      // Trio pedestal (compact) + preset chips.
+      const slotH = 118;
+      this.renderPedestal(frame, 168, slotH, 'playerTeam');
+      this.renderPresetChips(frame, 168 + slotH + 18);
+
+      // Dossier list — tap a card to inspect skills before committing.
+      const listY = 168 + slotH + 66;
+      this.layer();
+      this.label(x, listY - 14, 'Tap a dossier to inspect skills', 8, { color: COLORS.dim });
       const roster = this.store.rosterEntries();
-      const pageSize = frame.height < 790 ? 4 : 6;
+      const ctaH = 56;
+      const ctaY = frame.height - 16 - ctaH;
+      const cardH = 72;
+      const rows = Math.max(1, Math.floor((ctaY - 12 - listY - 40) / (cardH + 8)));
+      const pageSize = rows;
       const pageMax = Math.max(0, Math.ceil(roster.length / pageSize) - 1);
       this.store.draftPage = clamp(this.store.draftPage, 0, pageMax);
       const page = roster.slice(this.store.draftPage * pageSize, this.store.draftPage * pageSize + pageSize);
-      const cardW = (frame.width - 44) / 2;
       page.forEach((character, index) => {
-        const col = index % 2;
-        const row = Math.floor(index / 2);
-        this.renderStarterRosterCard(character, x + col * (cardW + 12), y + 20 + row * 92, cardW, 80, 'playerTeam');
+        this.renderStarterRosterCard(character, x, listY + index * (cardH + 8), w, cardH, 'playerTeam');
       });
+      if (pageMax > 0) {
+        const navY = listY + page.length * (cardH + 8) + 2;
+        this.plateButton(x, navY, 56, 32, '<', () => {
+          this.store.draftPage = Math.max(0, this.store.draftPage - 1);
+          this.store.notify();
+        }, { tone: 'ink', fontSize: 12, disabled: this.store.draftPage === 0 });
+        this.stat(x + w / 2, navY + 16, `${this.store.draftPage + 1}/${pageMax + 1}`, 10, { color: COLORS.dim }).setOrigin(0.5, 0.5);
+        this.plateButton(x + w - 56, navY, 56, 32, '>', () => {
+          this.store.draftPage = Math.min(pageMax, this.store.draftPage + 1);
+          this.store.notify();
+        }, { tone: 'ink', fontSize: 12, disabled: this.store.draftPage === pageMax });
+      }
 
-      const navY = Math.min(frame.height - 110, y + 20 + Math.ceil(page.length / 2) * 92 + 6);
-      this.button(x, navY, 70, 34, 'Prev', () => {
-        this.store.draftPage = Math.max(0, this.store.draftPage - 1);
-        this.store.notify();
-      }, { disabled: this.store.draftPage === 0, fill: COLORS.surfaceRaised, mono: true, fontSize: '9px' });
-      this.mono(x + 86, navY + 11, `Roster ${this.store.draftPage + 1}/${pageMax + 1}`, { color: COLORS.muted, fontSize: '9px' });
-      this.button(x + frame.width - 102, navY, 70, 34, 'Next', () => {
-        this.store.draftPage = Math.min(pageMax, this.store.draftPage + 1);
-        this.store.notify();
-      }, { disabled: this.store.draftPage === pageMax, fill: COLORS.surfaceRaised, mono: true, fontSize: '9px' });
-
+      // Enter Domain gate.
+      this.layer();
       const ready = this.store.playerTeam.length === 3;
-      this.button(x, frame.height - 58, frame.width - 32, 42, ready ? 'Enter Domain' : `Choose ${3 - this.store.playerTeam.length} More`, () => this.store.startMatch(), {
-        fill: ready ? COLORS.selection : COLORS.surfaceRaised,
-        gradientTop: ready ? COLORS.talismanDim : COLORS.surfaceRaised,
-        stroke: ready ? COLORS.talismanPaper : COLORS.line,
-        color: ready ? '#08080a' : COLORS.text,
-        fontSize: '14px',
+      this.plateButton(x, ctaY, w, ctaH, ready ? 'Enter Domain' : `Choose ${3 - this.store.playerTeam.length} More`, () => this.store.startMatch(), {
+        tone: 'primary', corners: 'both', display: true, fontSize: 18,
         disabled: !ready,
       });
+
       this.renderCharacterDetailSheet(frame, 'playerTeam');
       this.toast(frame);
     }

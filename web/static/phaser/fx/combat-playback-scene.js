@@ -59,7 +59,7 @@ export class CombatPlaybackScene extends BaseScene {
     playCinematicCurtain(frame) {
       const nodes = [];
       const topBar = this.add.graphics().setDepth(21);
-      topBar.fillStyle(COLORS.voidBlack, 0.74);
+      topBar.fillStyle(COLORS.ink950, 0.74);
       topBar.fillRect(frame.x, 0, frame.width, 62);
       topBar.fillRect(frame.x, frame.height - 66, frame.width, 66);
       topBar.lineStyle(1, COLORS.selection, 0.34);
@@ -78,7 +78,7 @@ export class CombatPlaybackScene extends BaseScene {
         ring.lineStyle(index === 1 ? 2 : 1, index === 1 ? COLORS.selection : COLORS.domain, index === 1 ? 0.46 : 0.22);
         ring.strokeCircle(0, 0, radius);
       });
-      ring.lineStyle(1, COLORS.talismanDim, 0.22);
+      ring.lineStyle(1, COLORS.ink500, 0.22);
       ring.beginPath();
       ring.moveTo(-132, 0);
       ring.lineTo(132, 0);
@@ -91,7 +91,7 @@ export class CombatPlaybackScene extends BaseScene {
         fontFamily: TOKEN_TYPE.mono || '"JetBrains Mono", monospace',
         fontSize: '10px',
         fontStyle: '900',
-        color: COLORS.paperText,
+        color: COLORS.goldTextSoft,
       }).setOrigin(0.5, 0).setDepth(22));
       this.tweens.add({
         targets: ring,
@@ -116,7 +116,7 @@ export class CombatPlaybackScene extends BaseScene {
       const y = frame.height * 0.205;
       const w = Math.min(frame.width - 26, 352);
       const panel = this.add.graphics({ x: cx - w / 2, y }).setDepth(27);
-      panel.fillStyle(COLORS.inkBlack, 0.92);
+      panel.fillStyle(COLORS.ink950, 0.92);
       panel.fillRoundedRect(0, 0, w, 72, 18);
       panel.fillStyle(tone, 0.18);
       panel.fillTriangle(0, 0, w * 0.42, 0, 0, 72);
@@ -136,10 +136,10 @@ export class CombatPlaybackScene extends BaseScene {
         fontFamily: TOKEN_TYPE.mono || '"JetBrains Mono", monospace',
         fontSize: '8px',
         fontStyle: '900',
-        color: COLORS.paperText,
+        color: COLORS.goldTextSoft,
       }).setDepth(28));
       nodes.push(this.add.text(cx - w / 2 + 18, y + 31, shortText(title, 34), {
-        fontFamily: TOKEN_TYPE.display || 'Cinzel, Inter, serif',
+        fontFamily: TOKEN_TYPE.display || '"Lilita One", Inter, sans-serif',
         fontSize: '17px',
         fontStyle: '900',
         color: COLORS.text,
@@ -212,7 +212,7 @@ export class CombatPlaybackScene extends BaseScene {
       const y = frame.height * 0.31;
       const w = Math.min(frame.width - 44, 328);
       const panel = this.add.graphics({ x: x - w / 2, y }).setDepth(28);
-      panel.fillStyle(COLORS.inkBlack, 0.94);
+      panel.fillStyle(COLORS.ink950, 0.94);
       panel.fillRoundedRect(0, 0, w, 58, 18);
       panel.fillStyle(tone, 0.16);
       panel.fillRoundedRect(4, 4, w - 8, 18, 14);
@@ -228,11 +228,11 @@ export class CombatPlaybackScene extends BaseScene {
           fontFamily: TOKEN_TYPE.mono || '"JetBrains Mono", monospace',
           fontSize: '9px',
           fontStyle: '800',
-          color: '#08080a',
+          color: '#0E0B16',
         }).setOrigin(0.5, 0.5).setDepth(29));
       }
       nodes.push(this.add.text(x - w / 2 + (actionNumber ? 56 : 18), y + 12, shortText(title, 34), {
-        fontFamily: TOKEN_TYPE.display || 'Cinzel, Inter, serif',
+        fontFamily: TOKEN_TYPE.display || '"Lilita One", Inter, sans-serif',
         fontSize: '15px',
         fontStyle: '900',
         color: COLORS.text,
@@ -241,7 +241,7 @@ export class CombatPlaybackScene extends BaseScene {
         fontFamily: TOKEN_TYPE.mono || '"JetBrains Mono", monospace',
         fontSize: '8px',
         fontStyle: '700',
-        color: COLORS.paperText,
+        color: COLORS.goldTextSoft,
       }).setDepth(29));
       this.tweens.add({
         targets: nodes,
@@ -256,9 +256,9 @@ export class CombatPlaybackScene extends BaseScene {
     playHpLag(point, tone) {
       const barW = 74;
       const bar = this.add.graphics({ x: point.x - barW / 2, y: point.y + (point.size || 62) / 2 + 18 }).setDepth(25);
-      bar.fillStyle(COLORS.inkBlack, 0.94);
+      bar.fillStyle(COLORS.ink950, 0.94);
       bar.fillRoundedRect(0, 0, barW, 8, 4);
-      bar.fillStyle(COLORS.selection, 0.82);
+      bar.fillStyle(0xff8a3d, 0.85);
       bar.fillRoundedRect(0, 0, barW, 8, 4);
       bar.fillStyle(tone, 0.95);
       bar.fillRoundedRect(0, 0, barW * 0.36, 8, 4);
@@ -275,7 +275,7 @@ export class CombatPlaybackScene extends BaseScene {
     playFloatingText(point, text, color, options) {
       const opts = options || {};
       const node = this.add.text(point.x, point.y + (opts.offsetY || 0), text, {
-        fontFamily: opts.mono ? (TOKEN_TYPE.mono || '"JetBrains Mono", monospace') : (TOKEN_TYPE.display || 'Cinzel, Inter, serif'),
+        fontFamily: opts.mono ? (TOKEN_TYPE.mono || '"JetBrains Mono", monospace') : (TOKEN_TYPE.display || '"Lilita One", Inter, sans-serif'),
         fontSize: opts.fontSize || '28px',
         fontStyle: '900',
         color,
@@ -298,12 +298,12 @@ export class CombatPlaybackScene extends BaseScene {
       const tone = eventTone(event);
       const amount = eventAmount(event);
       const color = tone === 'damage'
-        ? '#f1a0a0'
+        ? '#FF6B7E'
         : tone === 'heal'
-          ? '#b7dbc0'
+          ? '#8FE9AF'
           : tone === 'status'
-            ? '#c4b5fd'
-            : COLORS.paperText;
+            ? '#E3C6FF'
+            : COLORS.goldTextSoft;
       const type = safeText(event && event.type);
       const message = safeText(event && event.message, type);
       const point = this.pointFromPayload(event, frame);
@@ -319,7 +319,7 @@ export class CombatPlaybackScene extends BaseScene {
       if (type.includes('counter') || type.includes('reflect')) {
         this.playActionBanner(frame, message, type.includes('reflect') ? 'REFLECT REVEAL' : 'COUNTER REVEAL', COLORS.enemy, actionNumber);
         this.playRing(point, COLORS.enemy, { crosshair: true, radius: (point.size || 62) / 2 + 22, width: 3, alpha: 0.95, duration: 820 });
-        this.playFloatingText(point, type.includes('reflect') ? 'REFLECT' : 'COUNTER', '#f1a0a0', {
+        this.playFloatingText(point, type.includes('reflect') ? 'REFLECT' : 'COUNTER', '#FF6B7E', {
           fontSize: '19px',
           backgroundColor: '#3a0d0d',
           mono: true,
@@ -331,7 +331,7 @@ export class CombatPlaybackScene extends BaseScene {
       if (tone === 'damage' || tone === 'heal') {
         const text = amount ? (tone === 'heal' ? `+${amount}` : `-${amount}`) : safeText(type, 'EVENT').replace(/_/g, ' ').toUpperCase();
         if (casterPoint && tone === 'damage') this.playSlashLine(casterPoint, point, COLORS.enemy);
-        this.playRing(point, tone === 'heal' ? COLORS.queued : COLORS.enemy, {
+        this.playRing(point, tone === 'heal' ? COLORS.success : COLORS.enemy, {
           crosshair: tone === 'damage',
           radius: (point.size || 62) / 2 + 18,
           alpha: 0.86,
@@ -340,7 +340,7 @@ export class CombatPlaybackScene extends BaseScene {
           fontSize: amount ? '31px' : '18px',
           rise: 48,
         });
-        this.playHpLag(point, tone === 'heal' ? COLORS.queued : COLORS.enemy);
+        this.playHpLag(point, tone === 'heal' ? COLORS.success : COLORS.enemy);
         if (tone === 'damage') {
           this.cameras.main.shake(150, 0.006);
         }

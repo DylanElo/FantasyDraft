@@ -14,23 +14,24 @@ export class DraftScene extends DraftRosterScene {
       super(key || 'DraftScene');
     }
 
-    renderPedestal(frame, y, slotH) {
+    renderPedestal(frame, y, slotH, teamKey) {
       const x = frame.x + frame.gutter;
       const w = frame.width - frame.gutter * 2;
       const slotW = (w - 20) / 3;
+      const key = teamKey || this.store.draftTarget;
       // Violet glow floor under the trio.
       const g = this.graphics;
       for (let i = 6; i >= 1; i -= 1) {
         g.fillStyle(COLORS.curse500, 0.07);
         g.fillEllipse(x + w / 2, y + slotH + 4, w * 0.84 * (i / 6), 26 * (i / 6));
       }
-      const team = this.store[this.store.draftTarget] || [];
+      const team = this.store[key] || [];
       for (let i = 0; i < 3; i += 1) {
         const sx = x + i * (slotW + 10);
         const id = team[i];
         if (id) {
           this.portraitPlate(id, sx, y, slotW, slotH, { corners: 'both', rim: COLORS.keyline, rimWidth: 3 });
-          this.hotspot(sx, y, slotW, slotH, `Slot ${i + 1}`, () => this.store.toggleTeamPick(this.store.draftTarget, id));
+          this.hotspot(sx, y, slotW, slotH, `Slot ${i + 1}`, () => this.store.toggleTeamPick(key, id));
         } else {
           const points = bladePoints(sx, y, slotW, slotH, 16, 'both');
           fillPoly(this.graphics, points, COLORS.ink900, 0.9);

@@ -50,7 +50,7 @@ export class BootScene extends BaseScene {
       const cy = frame.height * 0.43;
       const radiusBase = Math.min(frame.width, frame.height) * 0.28;
 
-      this.graphics.fillStyle(COLORS.voidBlack, 0.68);
+      this.graphics.fillStyle(COLORS.ink950, 0.68);
       this.graphics.fillRect(frame.x, 0, frame.width, frame.height);
       [1, 0.72, 0.44].forEach((scale, index) => {
         const radius = radiusBase * scale;
@@ -63,7 +63,7 @@ export class BootScene extends BaseScene {
         const y1 = cy + Math.sin(angle) * (radiusBase * 0.35);
         const x2 = cx + Math.cos(angle) * (radiusBase * 1.04);
         const y2 = cy + Math.sin(angle) * (radiusBase * 1.04);
-        this.graphics.lineStyle(1, i % 2 ? COLORS.talismanDim : COLORS.domain, i % 2 ? 0.14 : 0.18);
+        this.graphics.lineStyle(1, i % 2 ? COLORS.ink500 : COLORS.domain, i % 2 ? 0.14 : 0.18);
         this.graphics.beginPath();
         this.graphics.moveTo(x1, y1);
         this.graphics.lineTo(x2, y2);
@@ -71,34 +71,34 @@ export class BootScene extends BaseScene {
       }
 
       const sigil = this.text(cx, cy - 58, 'JJK', {
-        fontFamily: TOKEN_TYPE.display || 'Cinzel, Inter, serif',
+        fontFamily: TOKEN_TYPE.display || '"Lilita One", Inter, sans-serif',
         fontSize: '58px',
         fontStyle: '900',
         color: COLORS.text,
       }).setOrigin(0.5, 0);
       const seal = this.add.graphics({ x: cx - 84, y: cy + 16 });
-      seal.fillStyle(COLORS.talismanPaper, 0.92);
+      seal.fillStyle(COLORS.gold300, 0.92);
       seal.fillRoundedRect(0, 0, 168, 28, 5);
-      seal.fillStyle(COLORS.sealRed, 0.76);
+      seal.fillStyle(COLORS.red600, 0.76);
       seal.fillRoundedRect(64, 0, 40, 28, 5);
       seal.lineStyle(1, COLORS.selection, 0.82);
       seal.strokeRoundedRect(0, 0, 168, 28, 5);
       this.nodes.push(seal);
-      this.mono(cx, cy + 24, 'CURSED CLASH', { color: '#08080a', fontSize: '10px' }).setOrigin(0.5, 0);
+      this.mono(cx, cy + 24, 'CURSED CLASH', { color: '#0E0B16', fontSize: '10px' }).setOrigin(0.5, 0);
       this.text(cx, cy + 72, 'Cursed Clash', {
-        fontFamily: TOKEN_TYPE.display || 'Cinzel, Inter, serif',
+        fontFamily: TOKEN_TYPE.display || '"Lilita One", Inter, sans-serif',
         fontSize: '24px',
         fontStyle: '900',
       }).setOrigin(0.5, 0);
       this.mono(cx, cy + 108, 'DRAFT A TRIO / READ THE TECHNIQUE / BREAK THE DOMAIN', {
-        color: COLORS.paperText,
+        color: COLORS.goldTextSoft,
         fontSize: '8px',
       }).setOrigin(0.5, 0);
 
       const meterW = Math.min(frame.width - 92, 280);
       const meterX = cx - meterW / 2;
       const meterY = frame.height - 128;
-      this.graphics.fillStyle(COLORS.inkBlack, 0.92);
+      this.graphics.fillStyle(COLORS.ink950, 0.92);
       this.graphics.fillRoundedRect(meterX, meterY, meterW, 8, 4);
       this.graphics.fillStyle(COLORS.domain, 0.58);
       this.graphics.fillRoundedRect(meterX, meterY, Math.max(18, meterW * Math.max(0.18, this.loadProgress || 1)), 8, 4);

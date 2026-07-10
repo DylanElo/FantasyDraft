@@ -50,12 +50,7 @@ export const COLORS = {
   red400: TOKEN_COLORS.red400 ?? 0xff6b7e,
 };
 
-// Semantic surfaces
-COLORS.bg = COLORS.ink950;
-COLORS.panel = COLORS.ink800;
-COLORS.panel2 = COLORS.ink700;
-COLORS.sunken = COLORS.ink900;
-COLORS.line = COLORS.ink500;
+// Plate keyline (near-black sticker outline)
 COLORS.keyline = TOKEN_PLATE.keylineColor;
 
 // Strict combat-state colors (see design system: these four are law)
@@ -65,10 +60,6 @@ COLORS.enemy = (COMBAT_STATES.threat && COMBAT_STATES.threat.phaser) ?? COLORS.r
 COLORS.domain = (COMBAT_STATES.domain && COMBAT_STATES.domain.phaser) ?? COLORS.curse400;
 
 // Routine chrome (never the four combat states)
-COLORS.ally = COLORS.ink300;
-COLORS.queued = COLORS.curse500;
-COLORS.protected = COLORS.ink300;
-COLORS.cta = COLORS.curse500;
 COLORS.success = 0x3fbe6b;
 
 // CSS text colors
@@ -81,39 +72,6 @@ COLORS.tealText = TOKEN_TEXT.teal400 || '#38D9BE';
 COLORS.redText = TOKEN_TEXT.red500 || '#F03A52';
 COLORS.curseText = TOKEN_TEXT.curse300 || '#C084FC';
 COLORS.inkText = TOKEN_TEXT.ink950 || '#0E0B16';
-
-/* Migration shim for scenes not yet rebuilt to the Cursed Arena spec
-   (draft, first-creation, mission-map, records, playback). Values derive
-   from the new palette only. Remove once those scenes are rebuilt. */
-COLORS.voidBlack = COLORS.ink950;
-COLORS.inkBlack = COLORS.ink950;
-COLORS.surfaceDeep = COLORS.ink900;
-COLORS.surfaceRaised = COLORS.ink800;
-COLORS.surfaceLine = COLORS.ink500;
-COLORS.talismanPaper = COLORS.gold300;
-COLORS.talismanDim = COLORS.ink500;
-COLORS.selectionGold = COLORS.gold400;
-COLORS.cursedTeal = COLORS.teal400;
-COLORS.domainViolet = COLORS.curse400;
-COLORS.sealRed = COLORS.red600;
-COLORS.bloodRed = COLORS.red500;
-COLORS.bodyGreen = COLORS.success;
-COLORS.techniqueBlue = 0x3d7bff;
-COLORS.focusIvory = COLORS.gold400;
-COLORS.stageDeep = COLORS.ink950;
-COLORS.stageInk = COLORS.ink950;
-COLORS.panelInk = COLORS.ink900;
-COLORS.paperGold = COLORS.gold300;
-COLORS.cyan = COLORS.teal400;
-COLORS.purple = COLORS.curse400;
-COLORS.gold = COLORS.gold400;
-COLORS.red = COLORS.red500;
-COLORS.green = COLORS.success;
-COLORS.white = COLORS.paper;
-COLORS.blue = 0x3d7bff;
-COLORS.black = COLORS.ink900;
-COLORS.paperText = COLORS.goldTextSoft;
-COLORS.dimText = COLORS.dim;
 
 const TOKEN_ENERGY = DESIGN_TOKENS.energy || {};
 

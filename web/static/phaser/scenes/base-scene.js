@@ -1,10 +1,9 @@
-import { COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_MOTION, TOKEN_TOUCH } from '../core/runtime-config.js?v=18';
+import { COLORS, TOKEN_MOTION, TOKEN_TOUCH } from '../core/runtime-config.js?v=18';
 import { initials, safeText } from '../core/text.js?v=18';
 import { LayoutService } from '../core/layout-service.js?v=18';
-import { costColors } from '../core/roster.js?v=18';
 import { bladePoints } from '../components/blade.js?v=18';
 import { drawBladePlate, drawPlatePoly, fillPoly } from '../components/plate.js?v=18';
-import { drawCostPips, drawEnergyPip, drawSkewTag } from '../components/widgets.js?v=18';
+import { drawSkewTag } from '../components/widgets.js?v=18';
 import { FONT_MONO, FONT_UI, displayStyle, labelStyle, statStyle, upper } from '../components/text-styles.js?v=18';
 import { drawBreathe, drawEmbers, drawRays, drawShine, drawTargetPulse, drawTargetPulsePoly, reducedMotion } from '../components/fx.js?v=18';
 
@@ -296,21 +295,6 @@ export class BaseScene extends Phaser.Scene {
       this.fxGraphics.strokeCircle(this.lastTap.x, this.lastTap.y, radius);
     }
 
-    button(x, y, w, h, label, onClick, options) {
-      const opts = options || {};
-      let tone = 'ink';
-      if (opts.tone) tone = opts.tone;
-      else if (opts.fill === COLORS.selection || opts.fill === COLORS.gold400) tone = 'gold';
-      else if (opts.fill === COLORS.curse500 || opts.fill === COLORS.cta) tone = 'primary';
-      this.plateButton(x, y, w, h, label, onClick, {
-        tone,
-        fontSize: opts.fontSize ? parseInt(opts.fontSize, 10) || 13 : 13,
-        disabled: opts.disabled,
-        color: opts.color && String(opts.color).startsWith('#') ? opts.color : undefined,
-        maxWidth: opts.maxWidth,
-      });
-    }
-
     iconButton(x, y, w, h, label, onClick, options) {
       this.plateButton(x, y, w, h, label, onClick, {
         tone: 'ink',
@@ -319,40 +303,7 @@ export class BaseScene extends Phaser.Scene {
       });
     }
 
-    cardPanel(x, y, w, h, tone, alpha) {
-      drawBladePlate(this.graphics, x, y, w, h, {
-        fillTop: COLORS.ink700,
-        fillBottom: COLORS.ink800,
-        alpha: alpha === undefined ? 1 : Math.min(1, alpha + 0.1),
-        corners: 'br',
-      });
-      if (tone !== undefined && tone !== COLORS.line) {
-        fillPoly(this.graphics, bladePoints(x, y, w, 4, 16, 'none'), tone, 0.9);
-      }
-    }
-
-    energyOrbs(x, y, energy, size) {
-      const colors = ['green', 'blue', 'white', 'red'];
-      colors.forEach((color, index) => {
-        const count = Number((energy && energy[color]) || 0);
-        const cx = x + index * (size + 14);
-        drawEnergyPip(this, this.graphics, cx, y, color, size, { filled: count > 0 });
-        this.stat(cx + size / 2 + 3, y - 6, String(count), 10, { color: COLORS.text });
-      });
-    }
-
-    costPips(x, y, cost, size) {
-      const list = costColors(cost);
-      if (!list.length) {
-        this.graphics.lineStyle(1.5, COLORS.ink500, 0.9);
-        this.graphics.strokeCircle(x, y, size / 2);
-        this.stat(x, y, '0', 7, { color: COLORS.dim }).setOrigin(0.5, 0.5);
-        return;
-      }
-      drawCostPips(this, this.graphics, x - size / 2, y, list, size, 5);
-    }
-
-    /* Circular portrait chip (legacy scenes + queue rows). */
+    /* Circular portrait chip (queue rows, recommended-team strips). */
     portrait(characterOrId, x, y, size, options) {
       const opts = options || {};
       const id = typeof characterOrId === 'string'
@@ -387,14 +338,6 @@ export class BaseScene extends Phaser.Scene {
       }
       this.graphics.lineStyle(opts.selected || opts.targetable ? 3 : 2, ring, opts.dead ? 0.4 : 1);
       this.graphics.strokeCircle(cx, cy, size / 2 + 1);
-    }
-
-    talismanLabel(x, y, text, tone) {
-      return this.skewTag(x, y, text, {
-        bg: tone === COLORS.enemy || tone === COLORS.red500 ? COLORS.red600 : COLORS.ink700,
-        fontSize: 8,
-        color: COLORS.muted,
-      });
     }
 
     /* Blade-cut rectangular portrait plate (fighter cards, pedestals). */

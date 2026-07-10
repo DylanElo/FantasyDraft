@@ -3,7 +3,8 @@ import { safeText } from './text.js?v=18';
 
 export class AssetRegistry {
   toneFor(id) {
-    const tones = [COLORS.talismanDim, COLORS.cursedTeal, COLORS.selectionGold, COLORS.sealRed, COLORS.bodyGreen, COLORS.techniqueBlue];
+    // Neutral/ink accent tones only — combat-state colors stay reserved.
+    const tones = [COLORS.ink500, COLORS.ink300, COLORS.curse600, COLORS.gold800, COLORS.ink700, COLORS.curse900];
     let hash = 0;
     safeText(id).split('').forEach((char) => {
       hash = ((hash << 5) - hash + char.charCodeAt(0)) | 0;

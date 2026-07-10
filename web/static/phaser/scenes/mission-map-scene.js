@@ -1,6 +1,10 @@
+/* MISSION MAP — Student Era route: mission plates with objectives and a
+   recommended trio, locked later arcs, First Creation CTA. */
+
 import { COLORS } from '../core/runtime-config.js?v=18';
 import { clamp, shortText, titleize } from '../core/text.js?v=18';
 import { BaseScene } from './base-scene.js?v=18';
+import { drawBladePlate } from '../components/plate.js?v=18';
 
 export class MissionMapScene extends BaseScene {
     constructor() {
@@ -8,40 +12,44 @@ export class MissionMapScene extends BaseScene {
     }
 
     renderMissionCard(mission, x, y, w, h, index) {
-      const tone = index === 0 ? COLORS.selection : COLORS.talismanDim;
-      this.cardPanel(x, y, w, h, tone, 0.74);
-      this.mono(x + 14, y + 12, titleize(mission.tier || 'starter').toUpperCase(), { color: COLORS.paperText, fontSize: '8px' });
-      this.text(x + 14, y + 29, shortText(mission.title || mission.id, 31), { fontSize: '15px', fontStyle: '900' });
-      this.mono(x + 14, y + 56, shortText(mission.description || 'Clear this route to unlock the next dossier.', 58), {
-        color: COLORS.text,
-        fontSize: '8px',
+      this.platePanel(x, y, w, h);
+      this.skewTag(x + 12, y + 10, titleize(mission.tier || 'starter'), {
+        fontSize: 7, height: 16, padX: 6,
+        bg: index === 0 ? COLORS.gold400 : COLORS.ink700,
+        color: index === 0 ? '#0E0B16' : COLORS.muted,
+      });
+      this.text(x + 14, y + 32, shortText(mission.title || mission.id, 31), { fontSize: '15px', fontStyle: '900' });
+      this.text(x + 14, y + 54, shortText(mission.description || 'Clear this route to unlock the next dossier.', 60), {
+        fontSize: '10px', fontStyle: '500', color: COLORS.muted, wordWrap: { width: w - 28 },
       });
       (mission.objectives || []).slice(0, 2).forEach((objective, objectiveIndex) => {
-        this.mono(x + 16, y + 82 + objectiveIndex * 18, `- ${shortText(objective, 44)}`, { color: COLORS.muted, fontSize: '8px' });
+        this.label(x + 14, y + 80 + objectiveIndex * 15, `· ${shortText(objective, 46)}`, 8, { color: COLORS.dim });
       });
-      this.mono(x + 14, y + h - 51, 'RECOMMENDED TEAM', { color: COLORS.paperText, fontSize: '8px' });
+      this.label(x + 14, y + h - 48, 'Recommended Team', 8, { color: COLORS.goldTextSoft });
       (mission.recommended_team || []).slice(0, 3).forEach((id, portraitIndex) => {
-        this.portrait(this.store.character(id), x + 14 + portraitIndex * 39, y + h - 36, 30, { tone });
+        this.portrait(this.store.character(id), x + 14 + portraitIndex * 38, y + h - 36, 30, {});
       });
-      this.button(x + w - 114, y + h - 42, 96, 30, 'Use Team', () => this.store.applyRecommendedTeam(mission), {
-        fill: COLORS.surfaceRaised,
-        stroke: tone,
-        mono: true,
-        fontSize: '8px',
+      this.layer();
+      this.plateButton(x + w - 110, y + h - 46, 96, 36, 'Use Team', () => this.store.applyRecommendedTeam(mission), {
+        tone: 'gold', fontSize: 10,
       });
     }
 
     renderLockedRoutes(frame, y) {
       const x = frame.x + frame.gutter;
-      this.cardPanel(x, y, frame.width - 32, 92, COLORS.line, 0.58);
-      this.mono(x + 14, y + 12, 'LOCKED ROUTES', { color: COLORS.muted, fontSize: '8px' });
+      const w = frame.width - frame.gutter * 2;
+      this.label(x + 2, y, 'Locked Routes', 8, { color: COLORS.dim });
       ['Shibuya Incident', 'Culling Game', 'Shinjuku Showdown'].forEach((route, index) => {
-        const rx = x + 14 + index * ((frame.width - 60) / 3);
-        this.graphics.fillStyle(COLORS.inkBlack, 0.76);
-        this.graphics.fillRoundedRect(rx, y + 35, (frame.width - 76) / 3, 36, 12);
-        this.graphics.lineStyle(1, COLORS.line, 0.54);
-        this.graphics.strokeRoundedRect(rx, y + 35, (frame.width - 76) / 3, 36, 12);
-        this.mono(rx + 8, y + 47, shortText(route, 13), { color: COLORS.dim, fontSize: '7px' });
+        const rw = (w - 16) / 3;
+        const rx = x + index * (rw + 8);
+        drawBladePlate(this.graphics, rx, y + 14, rw, 38, {
+          fillTop: COLORS.ink900,
+          fillBottom: COLORS.ink900,
+          cut: 10,
+          bevel: false,
+        });
+        this.text(rx + rw / 2, y + 27, '🔒', { fontSize: '9px' }).setOrigin(0.5, 0.5);
+        this.label(rx + rw / 2, y + 42, shortText(route, 16), 6.5, { color: COLORS.dim }).setOrigin(0.5, 0.5);
       });
     }
 
@@ -49,43 +57,44 @@ export class MissionMapScene extends BaseScene {
       const frame = this.layout.frame();
       this.clearSurface();
       this.drawAppBg(frame);
-      this.topBar(frame, 'Mission Map', () => this.store.changeScene('LobbyScene'));
+      this.kanjiWatermark(frame, '任');
+      this.layer();
       const x = frame.x + frame.gutter;
+      const w = frame.width - frame.gutter * 2;
+
+      this.iconButton(frame.x + frame.width - frame.gutter - 44, 14, 44, 38, '<', () => this.store.changeScene('LobbyScene'));
+      this.skewTag(x, 16, 'Student Era Route', { fontSize: 10 });
+      this.display(x, 40, 'Missions', 28);
+      this.text(x, 76, 'Clear starter missions to reveal later arcs.', {
+        fontSize: '11px', fontStyle: '500', color: COLORS.muted,
+      });
+
       const missions = this.store.missions();
       const pageSize = frame.height < 790 ? 1 : 2;
       const maxPage = Math.max(0, Math.ceil(missions.length / pageSize) - 1);
       this.store.missionPage = clamp(this.store.missionPage, 0, maxPage);
       const page = missions.slice(this.store.missionPage * pageSize, this.store.missionPage * pageSize + pageSize);
-      let y = 92;
-      this.cardPanel(x, y, frame.width - 32, 74, COLORS.selection, 0.66);
-      this.text(x + 16, y + 13, 'Student Era Route', {
-        fontFamily: '"Lilita One", Inter, sans-serif',
-        fontSize: '18px',
-        fontStyle: '900',
-      });
-      this.mono(x + 18, y + 44, 'Clear starter missions to reveal later arcs.', { color: COLORS.text, fontSize: '9px' });
-      y += 94;
+      let y = 104;
       page.forEach((mission, index) => {
-        this.renderMissionCard(mission, x, y + index * 158, frame.width - 32, 142, this.store.missionPage * pageSize + index);
+        this.renderMissionCard(mission, x, y + index * 190, w, 176, this.store.missionPage * pageSize + index);
       });
-      y += page.length * 158 + 4;
-      this.renderLockedRoutes(frame, Math.min(y, frame.height - 212));
+      y += page.length * 190;
+      this.renderLockedRoutes(frame, Math.min(y + 6, frame.height - 200));
 
-      this.button(x, frame.height - 106, 78, 34, 'Prev', () => {
+      const navY = frame.height - 128;
+      this.layer();
+      this.plateButton(x, navY, 56, 34, '<', () => {
         this.store.missionPage = Math.max(0, this.store.missionPage - 1);
         this.store.notify();
-      }, { disabled: this.store.missionPage === 0, fill: COLORS.surfaceRaised, mono: true, fontSize: '9px' });
-      this.mono(x + 94, frame.height - 96, `Route ${this.store.missionPage + 1}/${maxPage + 1}`, { color: COLORS.muted, fontSize: '9px' });
-      this.button(x + frame.width - 108, frame.height - 106, 76, 34, 'Next', () => {
+      }, { tone: 'ink', fontSize: 12, disabled: this.store.missionPage === 0 });
+      this.stat(x + w / 2, navY + 17, `Route ${this.store.missionPage + 1}/${maxPage + 1}`, 10, { color: COLORS.dim }).setOrigin(0.5, 0.5);
+      this.plateButton(x + w - 56, navY, 56, 34, '>', () => {
         this.store.missionPage = Math.min(maxPage, this.store.missionPage + 1);
         this.store.notify();
-      }, { disabled: this.store.missionPage === maxPage, fill: COLORS.surfaceRaised, mono: true, fontSize: '9px' });
-      this.button(x, frame.height - 58, frame.width - 32, 42, 'First Creation', () => this.store.changeScene('FirstCreationScene'), {
-        fill: COLORS.selection,
-        gradientTop: COLORS.talismanDim,
-        stroke: COLORS.talismanPaper,
-        color: '#08080a',
-        fontSize: '13px',
+      }, { tone: 'ink', fontSize: 12, disabled: this.store.missionPage === maxPage });
+
+      this.plateButton(x, frame.height - 74, w, 56, 'First Creation', () => this.store.changeScene('FirstCreationScene'), {
+        tone: 'gold', corners: 'both', display: true, fontSize: 18,
       });
       this.toast(frame);
     }

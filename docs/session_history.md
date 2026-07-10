@@ -39,8 +39,17 @@ Verification:
 
 Caution / next work:
 
-- First Creation, Mission Map, Records, and the combat playback cinematics still run on legacy compositions through the alias block in `runtime-config.js` — rebuild them next, then delete the alias block.
-- Nothing committed yet this pass; work lives in the `claude/cursed-arena-design-system-555f8a` worktree branch.
+- (Resolved in the follow-up pass below.) First Creation, Mission Map, Records, and the combat playback cinematics initially ran on legacy compositions through an alias block in `runtime-config.js`.
+- Committed as `Integrate Cursed Arena design system into Phaser client` on the `claude/cursed-arena-design-system-555f8a` worktree branch.
+
+Follow-up (same day) — remaining scenes rebuilt, alias block deleted:
+
+- First Creation rebuilt: skew banner + display title, mission progress strip with Mission Map chip, trio pedestal (shared with Team Builder), preset chips, dossier card list (tap to inspect), Enter Domain gate. Dossier detail sheet and starter cards rebuilt in `draft-roster-scene.js` (bottom sheet with grab handle, blade portrait, skill rows with cost pips); unused `renderRosterCard`/legacy detail styles deleted.
+- Mission Map rebuilt: mission plates with tier tag, objectives, recommended-team portraits + gold Use Team button, locked-route blade chips, gold First Creation CTA.
+- Records rebuilt: W/L display numeral in gold, three stat tiles (Fastest Win / Biggest Hit / Total Damage), blade-plate battle rows with victory tags.
+- Combat playback cinematics and boot splash migrated off alias color names (heal ring now success green — violet stays domain-only; HP-lag bar uses the orange damage ghost; display font fallbacks to Lilita One).
+- Legacy alias block and dead base-scene helpers (`button`, `cardPanel`, `talismanLabel`, `energyOrbs`, `costPips`) deleted; `asset-registry` tones now draw from ink/curse/gold neutrals only. Zero old token names remain outside comments.
+- Verification: `python -m pytest -q` -> `112 passed, 1 skipped` (test copy assertions updated); First Creation, dossier sheet, Mission Map, Records screenshotted at 390x844; another live CPU battle confirmed queue -> confirm -> resolution (turn 3) with the migrated playback code and no console errors.
 
 ## 2026-07-09 - Line-ending policy and local verification
 

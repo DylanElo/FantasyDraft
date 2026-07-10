@@ -173,10 +173,10 @@ def test_battle_v2_public_surface_uses_production_copy(monkeypatch):
     assert "Battle Again" in result_scene_js
     assert "MVP" in result_scene_js
     assert "gradientTitle" in result_scene_js
-    assert "FASTEST WIN" in records_scene_js
-    assert "BIGGEST HIT" in records_scene_js
-    assert "TOTAL DAMAGE" in records_scene_js
-    assert "TECHNIQUE DOSSIER" in draft_roster_scene_js
+    assert "Fastest Win" in records_scene_js
+    assert "Biggest Hit" in records_scene_js
+    assert "Total Damage" in records_scene_js
+    assert "Technique Dossier" in draft_roster_scene_js
     assert "Student Era Route" in mission_map_scene_js
     assert "setDraftTarget" in game_store_js
     assert "jjk:ui-tap" in base_scene_js
@@ -213,13 +213,12 @@ def test_index_exposes_first_creation_payload_when_battle_v2_enabled(monkeypatch
     assert "roster_mode: 'first_creation'" in game_store_js
     assert "applyPreset" in game_store_js
     assert "applyRecommendedTeam" in game_store_js
-    assert "renderRosterCard" in draft_roster_scene_js
     assert "renderStarterRosterCard" in draft_roster_scene_js
     assert "renderCharacterDetailSheet" in draft_roster_scene_js
-    assert "MISSION OBJECTIVE" in draft_roster_scene_js
+    assert "Mission Objective" in draft_roster_scene_js
     assert "renderStarterRosterCard" in first_creation_scene_js
     assert "renderCharacterDetailSheet" in first_creation_scene_js
-    assert "ACTIVE TRIO" in first_creation_scene_js
+    assert "Active Trio" in first_creation_scene_js
     assert "ROUTES" in first_creation_scene_js
     assert "Choose ${3 - this.store.playerTeam.length} More" in first_creation_scene_js
     assert "renderConsole" in combat_scene_js

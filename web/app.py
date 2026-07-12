@@ -10,7 +10,7 @@ import time
 import uuid
 from collections import defaultdict, deque
 
-from flask import Flask, abort, jsonify, redirect, render_template, session
+from flask import Flask, abort, jsonify, redirect, render_template, request, session
 from flask_socketio import SocketIO, emit, join_room
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -20,11 +20,13 @@ from jjk_arena.battle_v2.first_creation_profile import (
     load_first_creation_profile,
     merge_first_creation_progress,
     save_first_creation_profile,
+    update_first_creation_profile,
 )
 from jjk_arena.battle_v2.manager import BattleV2Error, BattleV2Manager, battle_v2_enabled, skill_catalog
 from jjk_arena.battle_v2.starter_roster import FIRST_CREATION_PRESETS, first_creation_payload
 from jjk_arena.battle_v2.sessions import BattleSessionRegistry
 from jjk_arena.battle_v2.timer_scheduler import PhaseTimerScheduler
+from jjk_arena.battle_v2.runtime_store import SQLiteRuntimeStore
 
 
 def env_flag(name: str, default: bool = False) -> bool:
@@ -35,22 +37,47 @@ def env_flag(name: str, default: bool = False) -> bool:
 
 
 DEBUG_MODE = env_flag("JJK_DEBUG", False)
+PRODUCTION_MODE = env_flag("JJK_PRODUCTION", False)
 HOST = os.getenv("JJK_HOST", "127.0.0.1")
 PORT = int(os.getenv("JJK_PORT", "5000"))
+WEB_WORKERS = max(1, int(os.getenv("JJK_WEB_WORKERS", "1")))
+CAPTURE_REPLAYS = env_flag("JJK_CAPTURE_REPLAYS", False)
+REPLAY_RETENTION_DAYS = max(1, int(os.getenv("JJK_REPLAY_RETENTION_DAYS", "30")))
+FINISHED_ROOM_TTL_SECONDS = max(60, int(os.getenv("JJK_FINISHED_ROOM_TTL_SECONDS", "900")))
+ACTIVE_ROOM_TTL_SECONDS = max(300, int(os.getenv("JJK_ACTIVE_ROOM_TTL_SECONDS", "7200")))
+LOBBY_TTL_SECONDS = max(60, int(os.getenv("JJK_LOBBY_TTL_SECONDS", "900")))
+configured_cors_origins = os.getenv("JJK_CORS_ORIGINS")
 CORS_ORIGINS = [
     origin.strip()
-    for origin in os.getenv("JJK_CORS_ORIGINS", "http://127.0.0.1:5000,http://localhost:5000").split(",")
+    for origin in (configured_cors_origins or "http://127.0.0.1:5000,http://localhost:5000").split(",")
     if origin.strip()
 ]
 
 app = Flask(__name__)
-app.secret_key = os.getenv("FLASK_SECRET_KEY") or secrets.token_hex(32)
-socketio = SocketIO(app, cors_allowed_origins=CORS_ORIGINS)
+configured_secret = os.getenv("FLASK_SECRET_KEY")
+app.secret_key = configured_secret or secrets.token_hex(32)
+app.config.update(
+    MAX_CONTENT_LENGTH=max(4096, int(os.getenv("JJK_MAX_REQUEST_BYTES", "65536"))),
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=PRODUCTION_MODE,
+)
+socketio = SocketIO(
+    app,
+    cors_allowed_origins=CORS_ORIGINS,
+    async_mode=os.getenv("JJK_SOCKETIO_ASYNC_MODE", "threading"),
+)
 
-battle_v2_manager = BattleV2Manager()
+battle_v2_manager = BattleV2Manager(capture_replays=CAPTURE_REPLAYS)
 battle_v2_sessions = BattleSessionRegistry()
+runtime_store = SQLiteRuntimeStore()
 v2_pvp_lobbies: dict[str, list[dict]] = {}
 rate_limits = defaultdict(deque)
+room_last_activity: dict[str, float] = {}
+lobby_last_activity: dict[str, float] = {}
+archived_replays: set[str] = set()
+operational_counters = defaultdict(int)
+last_runtime_prune_at = 0.0
 CPU_V2_PLAYER_ID = "__cpu_v2__"
 
 
@@ -77,6 +104,79 @@ battle_v2_timer_scheduler = PhaseTimerScheduler(
 ROOM_RE = re.compile(r"[^a-zA-Z0-9_-]+")
 CONTROL_RE = re.compile(r"[\x00-\x1f\x7f]+")
 RESUME_TOKEN_RE = re.compile(r"[^a-zA-Z0-9_-]+")
+
+
+def production_readiness_issues() -> list[str]:
+    issues = []
+    if PRODUCTION_MODE and (not configured_secret or len(configured_secret) < 32):
+        issues.append("FLASK_SECRET_KEY must contain at least 32 characters in production")
+    if WEB_WORKERS != 1:
+        issues.append("JJK_WEB_WORKERS must remain 1 until authoritative rooms use an external coordinator")
+    if PRODUCTION_MODE and not configured_cors_origins:
+        issues.append("JJK_CORS_ORIGINS must be explicitly configured in production")
+    if PRODUCTION_MODE and ("*" in CORS_ORIGINS or any(not origin.startswith("https://") for origin in CORS_ORIGINS)):
+        issues.append("JJK_CORS_ORIGINS must contain only explicit HTTPS origins in production")
+    if PRODUCTION_MODE and not os.getenv("JJK_DATABASE_PATH"):
+        issues.append("JJK_DATABASE_PATH must point to a durable production volume")
+    try:
+        storage = runtime_store.healthcheck()
+        if not storage.get("ok"):
+            issues.append("runtime database schema is unavailable")
+    except Exception:
+        issues.append("runtime database is unavailable")
+    return issues
+
+
+@app.after_request
+def apply_security_headers(response):
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "same-origin")
+    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; connect-src 'self' ws: wss:; font-src 'self' data:; "
+        "object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+    )
+    if PRODUCTION_MODE and request.is_secure:
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    return response
+
+
+@app.route("/healthz")
+def healthz():
+    operational_counters["health_checks"] += 1
+    return jsonify({"status": "ok", "service": "jjk-arena"})
+
+
+@app.route("/readyz")
+def readyz():
+    operational_counters["readiness_checks"] += 1
+    issues = production_readiness_issues()
+    payload = {
+        "status": "ready" if not issues else "not_ready",
+        "issues": issues,
+        "storage": runtime_store.healthcheck() if not any("database" in issue for issue in issues) else {"ok": False},
+        "topology": "single-authority-worker",
+    }
+    return jsonify(payload), 200 if not issues else 503
+
+
+@app.route("/ops/runtime")
+def runtime_status():
+    token = os.getenv("JJK_OPS_TOKEN", "")
+    supplied = request.headers.get("Authorization", "")
+    if not token or not secrets.compare_digest(supplied, f"Bearer {token}"):
+        abort(404)
+    return jsonify(
+        {
+            "active_rooms": len(battle_v2_manager.rooms),
+            "waiting_lobbies": len(v2_pvp_lobbies),
+            "rate_limit_keys": len(rate_limits),
+            "counters": dict(operational_counters),
+        }
+    )
 
 
 def clean_room_id(value) -> str:
@@ -126,9 +226,11 @@ def first_creation_payload_for_player(player_id: str | None) -> dict:
 
 
 def remember_first_creation_team(player_id: str, team: list[str]) -> None:
-    profile = load_first_creation_profile(player_id)
-    profile["selected_starter_team"] = list(team[:3])
-    save_first_creation_profile(player_id, profile)
+    def remember(profile):
+        profile["selected_starter_team"] = list(team[:3])
+        return profile
+
+    update_first_creation_profile(player_id, remember)
 
 
 def start_battle_v2_match_for_mode(room_id: str, players: list[dict], mode: str) -> dict:
@@ -136,8 +238,28 @@ def start_battle_v2_match_for_mode(room_id: str, players: list[dict], mode: str)
         payload = battle_v2_manager.start_first_creation_match(room_id, players)
     else:
         payload = battle_v2_manager.start_classic_match(room_id, players)
+    room_last_activity[room_id] = time.monotonic()
+    operational_counters["matches_started"] += 1
     battle_v2_timer_scheduler.arm(room_id)
     return payload
+
+
+def archive_finished_replay(room_id: str) -> None:
+    if not CAPTURE_REPLAYS or room_id in archived_replays:
+        return
+    state = battle_v2_manager.rooms.get(room_id)
+    if state is None or not state.winner_id:
+        return
+    document = battle_v2_manager.replay_document(room_id)
+    if document is None:
+        return
+    try:
+        runtime_store.save_replay(document, retention_days=REPLAY_RETENTION_DAYS)
+    except Exception:
+        operational_counters["replay_archive_errors"] += 1
+        return
+    archived_replays.add(room_id)
+    operational_counters["replays_archived"] += 1
 
 
 def clamp_int(value, minimum: int, maximum: int, default: int = 0) -> int:
@@ -240,6 +362,8 @@ def execute_v2_player_command(
         nonce,
         payload or {},
     )
+    room_last_activity[room_id] = time.monotonic()
+    operational_counters["commands_replayed" if replayed else "commands_applied"] += 1
     battle_v2_timer_scheduler.arm(room_id)
     return replayed
 
@@ -263,6 +387,9 @@ def active_v2_context(data=None):
 
 def emit_battle_v2_update(room_id: str, viewer_id: str | None = None):
     state = battle_v2_manager.get_state(room_id)
+    room_last_activity[room_id] = time.monotonic()
+    if state.winner_id:
+        archive_finished_replay(room_id)
     viewer_ids = [player_id for player_id in state.players if player_id != CPU_V2_PLAYER_ID]
     if viewer_id and viewer_id not in viewer_ids and viewer_id in state.players:
         viewer_ids.append(viewer_id)
@@ -283,6 +410,7 @@ def emit_battle_v2_update(room_id: str, viewer_id: str | None = None):
 
 
 def emit_battle_v2_error(exc: Exception):
+    operational_counters["command_errors"] += 1
     emit("battle_v2_error", {"message": str(exc)})
 
 
@@ -320,6 +448,7 @@ def handle_battle_v2_timeout(room_id: str) -> None:
 
     if room_id not in battle_v2_manager.rooms:
         return
+    operational_counters["phase_timeouts"] += 1
     if battle_v2_has_cpu(room_id):
         run_battle_v2_cpu_turns(room_id)
     emit_battle_v2_update(room_id)
@@ -350,6 +479,8 @@ def remove_battle_v2_room(room_id: str) -> None:
         battle_v2_manager.room_first_creation_progress.pop(room_id, None)
         battle_v2_manager.room_replays.pop(room_id, None)
         battle_v2_sessions.remove_room(room_id)
+        room_last_activity.pop(room_id, None)
+        archived_replays.discard(room_id)
 
     if lock is None:
         remove_state()
@@ -366,20 +497,71 @@ def remove_v2_pvp_lobby_player(room_id: str, player_session: str) -> list[dict]:
         v2_pvp_lobbies[room_id] = kept
     else:
         v2_pvp_lobbies.pop(room_id, None)
+        lobby_last_activity.pop(room_id, None)
     return kept
+
+
+def prune_stale_runtime(now: float | None = None) -> dict[str, int]:
+    current = time.monotonic() if now is None else float(now)
+    removed_rooms = 0
+    for room_id, last_activity in list(room_last_activity.items()):
+        state = battle_v2_manager.rooms.get(room_id)
+        ttl = FINISHED_ROOM_TTL_SECONDS if state is not None and state.winner_id else ACTIVE_ROOM_TTL_SECONDS
+        if current - last_activity >= ttl:
+            remove_battle_v2_room(room_id)
+            removed_rooms += 1
+    removed_lobbies = 0
+    for room_id, last_activity in list(lobby_last_activity.items()):
+        if current - last_activity >= LOBBY_TTL_SECONDS:
+            v2_pvp_lobbies.pop(room_id, None)
+            lobby_last_activity.pop(room_id, None)
+            removed_lobbies += 1
+    removed_limits = 0
+    for key, hits in list(rate_limits.items()):
+        while hits and current - hits[0] > 60:
+            hits.popleft()
+        if not hits:
+            rate_limits.pop(key, None)
+            removed_limits += 1
+    try:
+        expired_replays = runtime_store.prune_expired_replays()
+    except Exception:
+        expired_replays = 0
+        operational_counters["storage_maintenance_errors"] += 1
+    operational_counters["rooms_pruned"] += removed_rooms
+    operational_counters["lobbies_pruned"] += removed_lobbies
+    operational_counters["replays_pruned"] += expired_replays
+    return {
+        "rooms": removed_rooms,
+        "lobbies": removed_lobbies,
+        "rate_limits": removed_limits,
+        "replays": expired_replays,
+    }
+
+
+def maybe_prune_runtime(now: float | None = None) -> None:
+    global last_runtime_prune_at
+    current = time.monotonic() if now is None else float(now)
+    if current - last_runtime_prune_at < 60:
+        return
+    last_runtime_prune_at = current
+    prune_stale_runtime(current)
 
 
 def allow_event(event_name: str, limit: int = 30, window_seconds: int = 5) -> bool:
     player_session = session.get("player_id", "anonymous")
     now = time.monotonic()
+    maybe_prune_runtime(now)
     key = (player_session, event_name)
     hits = rate_limits[key]
     while hits and now - hits[0] > window_seconds:
         hits.popleft()
     if len(hits) >= limit:
+        operational_counters["rate_limited_events"] += 1
         emit("message", {"text": "Too many actions. Slow down for a moment."})
         return False
     hits.append(now)
+    operational_counters["socket_events"] += 1
     return True
 
 
@@ -481,6 +663,7 @@ def on_battle_v2_join_pvp(data=None):
         if roster_mode == "first_creation":
             remember_first_creation_team(player_session, player_team)
         v2_pvp_lobbies[room_id] = lobby[:2]
+        lobby_last_activity[room_id] = time.monotonic()
 
         if len(v2_pvp_lobbies[room_id]) < 2:
             emit(
@@ -495,6 +678,7 @@ def on_battle_v2_join_pvp(data=None):
             return
 
         players = v2_pvp_lobbies.pop(room_id)
+        lobby_last_activity.pop(room_id, None)
         modes = {entry.get("roster_mode", "classic") for entry in players}
         if len(modes) != 1:
             raise BattleV2Error("Both PvP players must use the same roster mode.")
@@ -721,5 +905,5 @@ if __name__ == "__main__":
         debug=DEBUG_MODE,
         host=HOST,
         port=PORT,
-        allow_unsafe_werkzeug=DEBUG_MODE,
+        allow_unsafe_werkzeug=not PRODUCTION_MODE,
     )

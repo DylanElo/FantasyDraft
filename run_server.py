@@ -1,4 +1,4 @@
-from web.app import DEBUG_MODE, HOST, PORT, app, socketio
+from web.app import DEBUG_MODE, HOST, PORT, PRODUCTION_MODE, app, socketio
 
 
 if __name__ == "__main__":
@@ -8,5 +8,5 @@ if __name__ == "__main__":
         debug=DEBUG_MODE,
         host=HOST,
         port=PORT,
-        allow_unsafe_werkzeug=DEBUG_MODE,
+        allow_unsafe_werkzeug=not PRODUCTION_MODE,
     )

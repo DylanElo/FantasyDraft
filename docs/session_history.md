@@ -388,3 +388,29 @@ Caution / remaining Chunk 2 validation:
 - The all-preset balance matrix exceeded the local two-minute ceiling; bounded mirrored matchup batches completed after orphaned timeout workers were stopped.
 - Human playtesting, assistive-technology review, physical iOS/Android browser passes, and broader matchup sampling remain external validation work.
 - No battle number, roster, progression, mission, or server-authority rule changed in this pass.
+
+## 2026-07-13 - Chunk 3 production and live readiness
+
+What changed:
+
+- Replaced default whole-file profile persistence with WAL-backed SQLite and atomic per-player update transactions while preserving the JSON path override for compatibility/tests.
+- Added opt-in durable replay archival with explicit retention expiry; capture remains disabled by default pending privacy/consent approval.
+- Added liveness, fail-closed readiness, protected aggregate runtime counters, production cookie/security headers, and request-size limits.
+- Added bounded cleanup for finished/inactive rooms, waiting lobbies, stale rate-limit keys, and expired replay rows.
+- Replaced development production commands with guarded single-authority Gunicorn gthread deployment; startup rejects unsafe worker counts.
+- Added an environment template, deploy/rollback runbook, and automated/human/external release checklist.
+
+Verification:
+
+- Focused tests cover SQLite durability/concurrency/expiry, health/readiness/security, ops authentication, lifecycle pruning, replay archive idempotence, and worker-topology rejection.
+- Full pytest passed with 289 tests and 1 opt-in visual skip; Python compilation and `git diff --check` passed.
+- Declared production dependencies installed; the guarded config loaded as one gthread worker/eight threads and rejected two workers.
+- The local threaded server returned HTTP 200 from `/healthz` and `/readyz` against a temporary SQLite database.
+- Native Gunicorn launch was not executed on Windows because Gunicorn requires Unix `fcntl`; Docker Desktop's Linux daemon was unavailable, so the real Linux container start remains a deployment-environment check.
+
+Caution / external launch gates:
+
+- Active rooms remain process-local. Horizontal multi-worker scaling requires one external coordinator for room state, timers, sessions, and command receipts; a SocketIO message queue alone is insufficient.
+- Replay capture requires approved consent/privacy and retention policy before enabling.
+- Legal/IP/commercial approval, licensed art/audio provenance, physical-device/accessibility QA, human balance, load/soak/failure exercises, and staffed live operations remain external sign-offs.
+- No roster, progression content, combat rule, balance number, Phaser layout, or visual effect changed.

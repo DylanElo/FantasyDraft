@@ -48,6 +48,11 @@ Character kits should be declared as `SkillSpec` data with `EffectSpec`, `Condit
 
 The client submits intent only. The server owns legality, damage, cooldowns, targeting, hidden effects, queue resolution, and winner detection.
 
+Mutating client intents carry an authoritative state revision and a per-player
+nonce. Stale intents and conflicting nonce reuse are rejected atomically;
+identical retries do not execute twice. Rejected commands do not consume RNG or
+change battle state.
+
 ## Runtime Flag
 
 The `use_battle_v2()` helper remains as an operational guard for socket handlers. It defaults to enabled and should not be used to route to a legacy engine.

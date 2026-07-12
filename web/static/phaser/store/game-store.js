@@ -35,6 +35,7 @@ export class GameStore {
       this.playbackEvents = [];
       this.recentEvents = [];
       this.lastActionPayloads = [];
+      this.commandNonceCounter = 0;
       this.records = this.loadRecords();
       this.playerTeam = preset('story_tutorial', ['yuji_itadori', 'megumi_fushiguro', 'nobara_kugisaki']);
       this.enemyTeam = preset('jjk0_beginner_special', ['yuta_okkotsu_jjk0', 'maki_zenin', 'toge_inumaki']);
@@ -97,6 +98,16 @@ export class GameStore {
           this.notify();
         }
       }, 2200);
+    }
+
+    commandPayload(payload = {}, revisionOffset = 0) {
+      this.commandNonceCounter += 1;
+      const revision = Number((this.state && this.state.state_revision) || 0) + revisionOffset;
+      return {
+        ...payload,
+        state_revision: revision,
+        client_action_nonce: `${Date.now()}-${this.commandNonceCounter}`,
+      };
     }
 
     changeScene(sceneName) {
@@ -694,7 +705,7 @@ export class GameStore {
       this.ensureSelectedCaster();
       this.ensureWildcardPayments();
       this.lastActionPayloads = this.pendingActionPayloads();
-      this.socketClient.emit('battle_v2_submit_plan', { actions: this.lastActionPayloads });
+      this.socketClient.emit('battle_v2_submit_plan', this.commandPayload({ actions: this.lastActionPayloads }));
       this.notify();
     }
 
@@ -855,11 +866,11 @@ export class GameStore {
       this.queueSubmitting = true;
       this.queueReviewOpen = false;
       const payloads = this.pendingActionPayloads();
-      this.socketClient.emit('battle_v2_update_queue', {
+      this.socketClient.emit('battle_v2_update_queue', this.commandPayload({
         queue_order: payloads.map((action) => action.id),
         wildcard_pays: Object.fromEntries(payloads.map((action) => [action.id, action.wildcard_pays || []])),
-      });
-      this.socketClient.emit('battle_v2_confirm_queue', {});
+      }));
+      this.socketClient.emit('battle_v2_confirm_queue', this.commandPayload({}, 1));
       this.notify();
     }
 
@@ -870,7 +881,7 @@ export class GameStore {
       this.selectedSkillId = null;
       this.queueSubmitting = false;
       this.queueReviewOpen = false;
-      this.socketClient.emit('battle_v2_cancel_queue', {});
+      this.socketClient.emit('battle_v2_cancel_queue', this.commandPayload());
       this.notify();
     }
 
@@ -880,7 +891,7 @@ export class GameStore {
       this.actionWildPays = {};
       this.queueSubmitting = true;
       this.queueReviewOpen = false;
-      this.socketClient.emit('battle_v2_end_turn', {});
+      this.socketClient.emit('battle_v2_end_turn', this.commandPayload());
       this.notify();
     }
 
@@ -899,7 +910,7 @@ export class GameStore {
       const target = colors
         .filter((color) => color !== source)
         .sort((a, b) => Number((me.energy || {})[a] || 0) - Number((me.energy || {})[b] || 0))[0];
-      this.socketClient.emit('battle_v2_convert_energy', { source, target });
+      this.socketClient.emit('battle_v2_convert_energy', this.commandPayload({ source, target }));
       this.showToast(`Converting ${source} to ${target}.`);
     }
 

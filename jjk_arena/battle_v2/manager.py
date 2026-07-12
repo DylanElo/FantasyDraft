@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import random
 from collections import Counter
+from collections import OrderedDict
 from itertools import product
 from copy import deepcopy
 from dataclasses import dataclass
+import json
 from typing import Any, Callable
 
 from .energy import CORE_ENERGY, gain_turn_energy, normalize_energy, split_cost
@@ -351,6 +353,7 @@ class BattleV2Manager:
         self.room_catalogs: dict[str, dict[str, Any]] = {}
         self.room_roster_modes: dict[str, str] = {}
         self.room_first_creation_progress: dict[str, dict[str, dict[str, Any]]] = {}
+        self.command_receipts: dict[str, dict[str, OrderedDict[str, str]]] = {}
         self.timer_policy = timer_policy or BattleTimerPolicy()
         self.clock = clock
 
@@ -394,6 +397,7 @@ class BattleV2Manager:
         self.rngs[room_id] = rng
         gain_turn_energy(state.players[turn_player_id], state.turn_number, True, rng)
         self.rooms[room_id] = state
+        self.command_receipts[room_id] = {}
         arm_phase_timer(state, self.timer_policy, self.clock)
         self.room_rosters[room_id] = roster
         self.room_skill_maps[room_id] = skills
@@ -436,6 +440,114 @@ class BattleV2Manager:
             return self.rooms[room_id]
         except KeyError as exc:
             raise BattleV2Error(f"unknown room: {room_id}") from exc
+
+    def execute_player_command(
+        self,
+        room_id: str,
+        player_id: str,
+        command: str,
+        state_revision: int,
+        client_action_nonce: str,
+        payload: dict[str, Any] | None = None,
+    ) -> bool:
+        """Execute one versioned command atomically; return True for a safe retry."""
+
+        payload = payload or {}
+        nonce = str(client_action_nonce).strip()
+        if not nonce:
+            raise BattleV2Error("client_action_nonce is required")
+        if len(nonce) > 64:
+            raise BattleV2Error("client_action_nonce is too long")
+        state = self.get_state(room_id)
+        self.expire_phase_if_needed(room_id)
+
+        fingerprint = json.dumps(
+            {"command": command, "payload": payload},
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        player_receipts = self.command_receipts.setdefault(room_id, {}).setdefault(
+            player_id, OrderedDict()
+        )
+        previous = player_receipts.get(nonce)
+        if previous is not None:
+            if previous != fingerprint:
+                raise BattleV2Error("client_action_nonce was already used for a different command")
+            player_receipts.move_to_end(nonce)
+            return True
+        if isinstance(state_revision, bool) or not isinstance(state_revision, int) or state_revision < 0:
+            raise BattleV2Error("state_revision must be a non-negative integer")
+        if state_revision != state.state_revision:
+            raise BattleV2Error(
+                f"stale state revision: expected {state.state_revision}, got {state_revision}"
+            )
+
+        state_snapshot = deepcopy(state)
+        progress_snapshot = deepcopy(self.room_first_creation_progress.get(room_id))
+        rng = self.rngs.get(room_id)
+        rng_snapshot = rng.getstate() if rng is not None else None
+        try:
+            if command == "submit_plan":
+                self.submit_plan(room_id, player_id, list(payload.get("actions", [])))
+            elif command == "update_queue":
+                self.update_queue(
+                    room_id,
+                    player_id,
+                    list(payload.get("queue_order", [])),
+                    dict(payload.get("wildcard_pays", {})),
+                )
+            elif command == "confirm_queue":
+                self.confirm_queue(room_id, player_id)
+            elif command == "cancel_queue":
+                self.cancel_queue(room_id, player_id)
+            elif command == "convert_energy":
+                self.convert_energy(room_id, player_id, str(payload.get("source", "")), str(payload.get("target", "")))
+            elif command == "end_turn":
+                self.end_turn(room_id, player_id)
+            elif command == "surrender":
+                self.surrender(room_id, player_id)
+            else:
+                raise BattleV2Error(f"unknown battle command: {command}")
+        except Exception:
+            self.rooms[room_id] = state_snapshot
+            if progress_snapshot is None:
+                self.room_first_creation_progress.pop(room_id, None)
+            else:
+                self.room_first_creation_progress[room_id] = progress_snapshot
+            if rng is not None and rng_snapshot is not None:
+                rng.setstate(rng_snapshot)
+            raise
+
+        self.rooms[room_id].state_revision += 1
+        player_receipts[nonce] = fingerprint
+        player_receipts.move_to_end(nonce)
+        while len(player_receipts) > 128:
+            player_receipts.popitem(last=False)
+        return False
+
+    def advance_state_revision(self, room_id: str) -> None:
+        """Record an authoritative automatic continuation such as a CPU turn."""
+
+        self.get_state(room_id).state_revision += 1
+
+    def surrender(self, room_id: str, player_id: str) -> dict:
+        """Finish a match by authoritative player surrender."""
+
+        state = self.get_state(room_id)
+        if player_id not in state.players:
+            raise BattleV2Error(f"unknown player: {player_id}")
+        winners = [pid for pid in state.players if pid != player_id]
+        if not winners:
+            raise BattleV2Error("no opponent to award surrender")
+        state.winner_id = winners[0]
+        state.phase = BattlePhase.FINISHED
+        state.event_log.append(BattleEvent(
+            type="battle_finished",
+            message=f"{state.winner_id} wins by surrender",
+            turn_number=state.turn_number,
+            payload={"winner_id": state.winner_id, "surrendered_id": player_id},
+        ))
+        return self.serialize_for_player(room_id, player_id)
 
     def submit_plan(self, room_id: str, player_id: str, actions: list[dict[str, Any]]) -> dict:
         """Store pending actions for queue review without spending energy."""
@@ -672,6 +784,7 @@ class BattleV2Manager:
         self._refresh_first_creation_progress(room_id)
         self._grant_next_turn_energy(room_id, timed_out_player_id)
         arm_phase_timer(state, self.timer_policy, self.clock)
+        state.state_revision += 1
         return True
 
     def serialize_for_player(self, room_id: str, viewer_id: str) -> dict:

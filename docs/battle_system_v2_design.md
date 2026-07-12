@@ -106,6 +106,17 @@ do not decide when expiration occurs.
 
 Invisible statuses must be visible to their owner, hidden from opponents, revealed when triggered, and never leak protected targets through public serialization.
 
+## Session continuity
+
+Each human player receives an opaque, room-scoped resume token over their
+private socket room. The server stores only its hash and rotates the token after
+successful use. Resume reattaches the socket to the original player identity
+and emits a fresh viewer-specific snapshot containing the authoritative phase,
+revision, pending queue, and remaining time without exposing opponent-private
+state. Tokens live with the process-owned room and are revoked on room cleanup.
+Disconnect expiry, automatic surrender, and ranked penalties remain explicit
+product-policy decisions and are not inferred by the transport layer.
+
 ## Acceptance Criteria
 
 - `jjk_arena.battle_v2.models` imports cleanly.

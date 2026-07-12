@@ -23,6 +23,7 @@ from jjk_arena.battle_v2.first_creation_profile import (
 )
 from jjk_arena.battle_v2.manager import BattleV2Error, BattleV2Manager, battle_v2_enabled, skill_catalog
 from jjk_arena.battle_v2.starter_roster import FIRST_CREATION_PRESETS, first_creation_payload
+from jjk_arena.battle_v2.sessions import BattleSessionRegistry
 from jjk_arena.battle_v2.timer_scheduler import PhaseTimerScheduler
 
 
@@ -47,6 +48,7 @@ app.secret_key = os.getenv("FLASK_SECRET_KEY") or secrets.token_hex(32)
 socketio = SocketIO(app, cors_allowed_origins=CORS_ORIGINS)
 
 battle_v2_manager = BattleV2Manager()
+battle_v2_sessions = BattleSessionRegistry()
 v2_pvp_lobbies: dict[str, list[dict]] = {}
 rate_limits = defaultdict(deque)
 CPU_V2_PLAYER_ID = "__cpu_v2__"
@@ -74,6 +76,7 @@ battle_v2_timer_scheduler = PhaseTimerScheduler(
 
 ROOM_RE = re.compile(r"[^a-zA-Z0-9_-]+")
 CONTROL_RE = re.compile(r"[\x00-\x1f\x7f]+")
+RESUME_TOKEN_RE = re.compile(r"[^a-zA-Z0-9_-]+")
 
 
 def clean_room_id(value) -> str:
@@ -200,6 +203,10 @@ def clean_v2_energy_color(value) -> str:
     return CONTROL_RE.sub("", str(value or "").strip().lower())[:8]
 
 
+def clean_resume_token(value) -> str:
+    return RESUME_TOKEN_RE.sub("", str(value or "").strip())[:128]
+
+
 def clean_v2_command_metadata(data: dict) -> tuple[int, str]:
     if "state_revision" not in data:
         raise BattleV2Error("state_revision is required")
@@ -279,6 +286,19 @@ def emit_battle_v2_error(exc: Exception):
     emit("battle_v2_error", {"message": str(exc)})
 
 
+def issue_battle_v2_resume_sessions(room_id: str) -> None:
+    state = battle_v2_manager.get_state(room_id)
+    for player_id in state.players:
+        if player_id == CPU_V2_PLAYER_ID:
+            continue
+        grant = battle_v2_sessions.issue(room_id, player_id)
+        socketio.emit(
+            "battle_v2_session",
+            {"room_id": room_id, "player_id": player_id, "resume_token": grant.token},
+            room=player_id,
+        )
+
+
 def run_battle_v2_cpu_turns(room_id: str):
     for _ in range(6):
         state = battle_v2_manager.get_state(room_id)
@@ -322,6 +342,7 @@ def remove_battle_v2_room(room_id: str) -> None:
         battle_v2_manager.room_catalogs.pop(room_id, None)
         battle_v2_manager.room_roster_modes.pop(room_id, None)
         battle_v2_manager.room_first_creation_progress.pop(room_id, None)
+        battle_v2_sessions.remove_room(room_id)
 
     if lock is None:
         remove_state()
@@ -419,6 +440,7 @@ def on_battle_v2_start_classic(data=None):
             ],
             roster_mode,
         )
+        issue_battle_v2_resume_sessions(room_id)
         if roster_mode == "first_creation":
             remember_first_creation_team(player_session, player_team)
         emit_battle_v2_update(room_id, player_session)
@@ -470,9 +492,40 @@ def on_battle_v2_join_pvp(data=None):
         if len(modes) != 1:
             raise BattleV2Error("Both PvP players must use the same roster mode.")
         start_battle_v2_match_for_mode(room_id, players, modes.pop())
+        issue_battle_v2_resume_sessions(room_id)
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
         emit_battle_v2_error(exc)
+
+
+@socketio.on("battle_v2_resume")
+def on_battle_v2_resume(data=None):
+    if not allow_event("battle_v2_resume", limit=10, window_seconds=10):
+        return
+    data = data or {}
+    room_id = clean_room_id(data.get("room_id"))
+    player_id = CONTROL_RE.sub("", str(data.get("player_id", "")).strip())[:64]
+    token = clean_resume_token(data.get("resume_token"))
+    state = battle_v2_manager.rooms.get(room_id)
+    grant = (
+        battle_v2_sessions.resume(room_id, player_id, token)
+        if state is not None and player_id in state.players and player_id != CPU_V2_PLAYER_ID
+        else None
+    )
+    if grant is None:
+        emit("battle_v2_resume_rejected", {"message": "Battle session could not be resumed."})
+        return
+    session["player_id"] = player_id
+    session["room_id"] = room_id
+    join_room(room_id)
+    join_room(player_id)
+    emit(
+        "battle_v2_session",
+        {"room_id": room_id, "player_id": player_id, "resume_token": grant.token},
+        room=player_id,
+    )
+    battle_v2_timer_scheduler.arm(room_id)
+    emit_battle_v2_update(room_id, player_id)
 
 
 @socketio.on("battle_v2_leave_pvp")

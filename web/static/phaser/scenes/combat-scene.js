@@ -1,5 +1,5 @@
 import { COLORS, ENERGY_COLORS } from '../core/runtime-config.js?v=17';
-import { clamp, shortText } from '../core/text.js?v=17';
+import { clamp, shortText, titleize } from '../core/text.js?v=17';
 import { eventTone } from '../fx/event-metrics.js?v=17';
 import { CombatQueueReviewScene } from './combat-queue-review-scene.js?v=17';
 
@@ -52,8 +52,11 @@ export class CombatScene extends CombatQueueReviewScene {
         fontSize: '7px',
       });
       this.renderEnergyMeter(frame.x + frame.width - 150, 24, me && me.energy);
-      this.iconButton(frame.x + frame.width - frame.gutter - 38, 26, 38, 32, '<', () => this.store.resetToLobby(), {
-        fontSize: '15px',
+      this.button(frame.x + frame.width - frame.gutter - 40, 26, 40, 32, 'Exit', () => this.store.resetToLobby(), {
+        fill: COLORS.surfaceRaised,
+        stroke: COLORS.enemy,
+        fontSize: '9px',
+        mono: true,
         radius: 16,
       });
     }
@@ -136,12 +139,13 @@ export class CombatScene extends CombatQueueReviewScene {
       this.graphics.fillRoundedRect(cx - barW / 2, barY, barW, 7, 4);
       this.graphics.fillStyle(hpPct <= 0.3 ? COLORS.enemy : hpPct <= 0.6 ? COLORS.selection : COLORS.queued, dead ? 0.35 : 1);
       this.graphics.fillRoundedRect(cx - barW / 2, barY, barW * hpPct, 7, 4);
-      this.text(cx, barY + 10, shortText(character && character.name, 13), {
-        fontSize: '10px',
+      this.text(cx, barY + 9, (character && character.name) || 'Down', {
+        fontSize: '8px',
         fontStyle: '900',
         align: 'center',
+        wordWrap: { width: size + 40 },
       }).setOrigin(0.5, 0);
-      this.mono(cx, barY + 25, dead ? 'DOWN' : `${hp}/${maxHp}`, {
+      this.mono(cx, barY + 31, dead ? 'DOWN' : `${hp}/${maxHp}`, {
         color: dead ? COLORS.dim : targetable ? COLORS.paperText : COLORS.text,
         fontSize: '8px',
       }).setOrigin(0.5, 0);
@@ -257,16 +261,71 @@ export class CombatScene extends CombatQueueReviewScene {
         this.graphics.fillStyle(ENERGY_COLORS[color] || COLORS.selection, 0.98);
         this.graphics.fillCircle(orbX, y + h - 15, 3.2);
       });
-      this.text(x + 52, y + 9, shortText(skill.name, 21), {
+      this.text(x + 52, y + 9, skill.name, {
         fontSize: '11px',
         fontStyle: '900',
         wordWrap: { width: w - 58 },
       });
+      if (selected) this.mono(x + w - 34, y + 8, 'INFO', { color: COLORS.paperText, fontSize: '7px' });
       this.mono(x + 52, y + h - 19, cooldown > 0 ? `CD ${cooldown}` : ruleReason ? shortText(ruleReason, 23) : fit.ok ? shortText(this.store.effectLine(skill), 23) : shortText(fit.reason, 23), {
         color: cooldown > 0 ? '#e6b84a' : disabled ? COLORS.muted : COLORS.paperText,
         fontSize: '8px',
       });
-      this.buttons.push({ x, y, w, h, label: `Skill ${skill.name}`, disabled, onClick: () => this.store.selectSkill(skill.id) });
+      this.buttons.push({
+        x,
+        y,
+        w,
+        h,
+        label: disabled ? `Inspect disabled skill ${skill.name}` : `Skill ${skill.name}`,
+        disabled: false,
+        onClick: () => disabled ? this.store.openSkillDetail(skill.id) : this.store.selectSkill(skill.id),
+      });
+    }
+
+    renderSkillDetailSheet(frame, caster, skill) {
+      const x = frame.x + 14;
+      const y = 118;
+      const w = frame.width - 28;
+      const h = frame.height - y - 16;
+      const adjusted = this.store.adjustedCost(caster, skill);
+      const cooldown = this.store.skillCooldown(caster, skill);
+      const blocked = this.store.statusBlocksSkill(caster, skill);
+      const fit = this.store.skillFit(skill, caster);
+      const reason = cooldown > 0 ? `Cooldown: ${cooldown} turns` : blocked || (!fit.ok ? fit.reason : 'Available now');
+      this.cardPanel(x, y, w, h, COLORS.selection, 0.98);
+      this.mono(x + 18, y + 18, 'TECHNIQUE DETAIL', { color: COLORS.paperText, fontSize: '9px' });
+      this.text(x + 18, y + 40, skill.name, {
+        fontFamily: 'Cinzel, Inter, serif',
+        fontSize: '22px',
+        fontStyle: '900',
+        wordWrap: { width: w - 78 },
+      });
+      this.iconButton(x + w - 52, y + 18, 36, 34, 'x', () => this.store.closeSkillDetail(), { stroke: COLORS.enemy, fontSize: '13px' });
+      this.mono(x + 18, y + 96, `${titleize((skill.target_rule && skill.target_rule.kind) || 'enemy')} target`, { color: COLORS.text, fontSize: '10px' });
+      this.costPips(x + 22, y + 132, adjusted, 16);
+      this.mono(x + 18, y + 153, `ADJUSTED COST / BASE ${(skill.cost || []).length}`, { color: COLORS.paperText, fontSize: '8px' });
+      const classLine = (skill.classes || []).map((value) => titleize(value)).join(' / ') || 'Technique';
+      this.mono(x + 18, y + 184, classLine, { color: COLORS.text, fontSize: '9px' });
+      this.graphics.fillStyle(reason === 'Available now' ? COLORS.queued : COLORS.enemy, 0.16);
+      this.graphics.fillRoundedRect(x + 16, y + 212, w - 32, 40, 12);
+      this.graphics.lineStyle(1, reason === 'Available now' ? COLORS.queued : COLORS.enemy, 0.62);
+      this.graphics.strokeRoundedRect(x + 16, y + 212, w - 32, 40, 12);
+      this.mono(x + 28, y + 226, reason.toUpperCase(), { color: reason === 'Available now' ? '#b7dbc0' : '#f1a0a0', fontSize: '9px' });
+      this.mono(x + 18, y + 278, 'AUTHORITATIVE EFFECT', { color: COLORS.paperText, fontSize: '9px' });
+      this.text(x + 18, y + 300, skill.description || this.store.effectLine(skill), {
+        fontSize: '13px',
+        color: COLORS.text,
+        lineSpacing: 6,
+        wordWrap: { width: w - 36 },
+      });
+      this.mono(x + 18, y + h - 78, 'Tap Close, then select a legal target.', { color: COLORS.muted, fontSize: '9px' });
+      this.button(x + 16, y + h - 54, w - 32, 38, 'Close Detail', () => this.store.closeSkillDetail(), {
+        fill: COLORS.selection,
+        gradientTop: COLORS.talismanDim,
+        stroke: COLORS.talismanPaper,
+        color: '#08080a',
+        fontSize: '11px',
+      });
     }
 
     renderQueueChips(frame, y) {
@@ -403,6 +462,14 @@ export class CombatScene extends CombatQueueReviewScene {
       const layout = this.fighterLayout(frame, dockY);
       this.playbackTargets = {};
       this.renderTopHud(frame, state, me);
+      if (this.store.detailSkillId && selected) {
+        const detailSkill = this.store.skillFor(selected, this.store.detailSkillId);
+        if (detailSkill) {
+          this.renderSkillDetailSheet(frame, selected, detailSkill);
+          return;
+        }
+        this.store.detailSkillId = null;
+      }
       this.button(frame.x + frame.width - frame.gutter - 88, 72, 88, 28, 'Convert', () => this.store.convertEnergy(), {
         fill: COLORS.surfaceRaised,
         stroke: COLORS.ally,

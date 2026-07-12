@@ -117,6 +117,15 @@ state. Tokens live with the process-owned room and are revoked on room cleanup.
 Disconnect expiry, automatic surrender, and ranked penalties remain explicit
 product-policy decisions and are not inferred by the transport layer.
 
+## Deterministic replay
+
+Versioned replay documents reconstruct a seeded match and execute the original
+versioned commands through the authoritative manager. A canonical SHA-256 hash
+covers complete public and private battle state after initialization and every
+command. Only the process-local monotonic deadline is excluded. Unsupported
+format/rules versions and any hash mismatch fail closed. The detailed schema is
+defined in `docs/battle_v2_replay_contract.md`.
+
 ## Acceptance Criteria
 
 - `jjk_arena.battle_v2.models` imports cleanly.

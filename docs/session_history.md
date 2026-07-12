@@ -282,3 +282,23 @@ Caution / next work:
 - Resume state is process-local; shared persistence and room affinity are required before horizontal scaling.
 - No grace-period expiry, automatic surrender, ranked penalty, or disconnect winner policy was chosen because that remains a product decision gate.
 - No combat rules, roster, progression, balance, Phaser layout, or visual behavior changed.
+
+## 2026-07-12 - Deterministic Battle v2 golden replays
+
+What changed:
+
+- Added a versioned JSON replay schema containing rules version, roster mode, seed, initial teams, ordered commands, nonces, revisions, and expected hashes.
+- Added canonical SHA-256 hashing of complete authoritative public/private battle state, excluding only the process-local monotonic deadline.
+- Added replay recording and verification helpers that execute through the normal manager command path with a frozen clock.
+- Added a CLI verifier and a checked-in First Creation two-turn golden replay.
+
+Verification:
+
+- Tests prove identical hashes across independent runs, per-command tamper detection, checked-in fixture stability, and CLI verification.
+- Full pytest, Python compilation, replay CLI verification, and `git diff --check` passed in the focused branch.
+
+Caution / next work:
+
+- Live production matches are not automatically persisted; capture, retention, privacy, and storage belong to telemetry/production work.
+- The rules version is intentionally explicit and must change when an incompatible authoritative rule migration occurs.
+- No resolver behavior, RNG behavior, combat rules, networking, roster, progression, balance, Phaser layout, or visual behavior changed.

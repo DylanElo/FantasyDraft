@@ -126,6 +126,15 @@ command. Only the process-local monotonic deadline is excluded. Unsupported
 format/rules versions and any hash mismatch fail closed. The detailed schema is
 defined in `docs/battle_v2_replay_contract.md`.
 
+## Headless simulation
+
+Seeded CPU-vs-CPU batches reuse the authoritative legal-action and resolution
+path and emit privacy-safe aggregate match summaries for diagnostics. A turn
+cap is explicit and never converted into an invented draw/winner rule. The
+schema and limitations are defined in
+`docs/battle_v2_simulation_contract.md`; heuristic results are not treated as a
+substitute for human balance testing.
+
 ## Acceptance Criteria
 
 - `jjk_arena.battle_v2.models` imports cleanly.

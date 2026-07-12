@@ -302,3 +302,22 @@ Caution / next work:
 - Live production matches are not automatically persisted; capture, retention, privacy, and storage belong to telemetry/production work.
 - The rules version is intentionally explicit and must change when an incompatible authoritative rule migration occurs.
 - No resolver behavior, RNG behavior, combat rules, networking, roster, progression, balance, Phaser layout, or visual behavior changed.
+
+## 2026-07-12 - Headless Battle v2 simulation diagnostics
+
+What changed:
+
+- Added deterministic First Creation CPU-vs-CPU matches using the normal authoritative manager, legal-action generator, resolver, energy, status, and winner paths.
+- Added seeded batch execution and privacy-safe JSON summaries for outcomes, turns, team composition, living fighters, HP, actions, damage/healing received, and final state hash.
+- Added an explicit turn-cap outcome rather than inventing a draw or winner policy.
+- Added a CLI suitable for reproducible local balance/softlock diagnostics.
+
+Verification:
+
+- Tests cover independent determinism, privacy-safe schema, explicit turn caps, batch accounting, and CLI JSON output.
+- Full pytest, Python compilation, sample simulation CLI, and `git diff --check` passed in the focused branch.
+
+Caution / next work:
+
+- Results describe the current heuristic AI and are not sufficient evidence for balance changes without human playtesting.
+- No result persistence/upload, live player telemetry, dashboard, AI tuning, balance change, combat rule, roster, progression, Phaser layout, or visual behavior was added.

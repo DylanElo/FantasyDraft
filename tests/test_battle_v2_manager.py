@@ -473,8 +473,12 @@ def test_first_creation_kamo_drains_energy_only_from_blood_marked_target():
         [{"id": "kamo", "caster_slot": 1, "skill_id": "fc_noritoshi_kamo_crimson_binding", "target_player_id": "p2", "target_slot": 0, "wildcard_pays": ["green"]}],
     )
     serialized = manager.confirm_queue("first", "p1")
+    assert not any(event["type"] == "energy_drained" for event in serialized["event_log"])
+    serialized = manager.end_turn("first", "p2")
 
-    assert any(event["type"] == "energy_drained" and event["payload"].get("energy") == "green" for event in serialized["event_log"])
+    drains = [event for event in serialized["event_log"] if event["type"] == "energy_drained" and event["payload"].get("status") == "blood_mark_drain"]
+    assert len(drains) == 1
+    assert drains[0]["payload"]["energy"] in {"green", "red", "blue", "white"}
 
 
 def test_first_creation_todo_redirects_next_harmful_direct_skill():
@@ -483,7 +487,7 @@ def test_first_creation_todo_redirects_next_harmful_direct_skill():
     manager.submit_plan(
         "first",
         "p1",
-        [{"id": "todo", "caster_slot": 0, "skill_id": "fc_aoi_todo_boogie_woogie", "target_player_id": "p2", "target_slot": 0}],
+        [{"id": "todo", "caster_slot": 0, "skill_id": "fc_aoi_todo_boogie_woogie", "target_player_id": "p2", "target_slot": 0, "alternate_target_player_id": "p1", "alternate_target_slot": 0}],
     )
     manager.confirm_queue("first", "p1")
     state = manager.get_state("first")

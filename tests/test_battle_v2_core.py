@@ -207,7 +207,7 @@ def test_heal_effect_restores_target_and_respects_healing_delta():
     assert any(event.type == "heal" and event.payload["amount"] == 20 for event in events)
 
 
-def test_helpful_skill_cannot_target_invulnerable_ally_without_bypass():
+def test_helpful_skill_can_target_invulnerable_ally_without_bypass():
     state = make_state()
     ally = state.players["p1"].team[1]
     ally.hp = 40
@@ -229,12 +229,11 @@ def test_helpful_skill_cannot_target_invulnerable_ally_without_bypass():
         effects=[EffectSpec(type="heal", amount=30)],
     )
 
-    with pytest.raises(ResolverError, match="invulnerable"):
-        validate_action(
-            state,
-            PendingAction("a1", "p1", 0, "reverse_cursed_technique", "p1", 1),
-            {"reverse_cursed_technique": rct},
-        )
+    validate_action(
+        state,
+        PendingAction("a1", "p1", 0, "reverse_cursed_technique", "p1", 1),
+        {"reverse_cursed_technique": rct},
+    )
 
 
 def test_bypassing_helpful_skill_can_target_invulnerable_ally():
@@ -651,6 +650,8 @@ def test_turn_end_status_damage_ticks_and_expires():
     state.queue_order["p1"] = ["a1"]
 
     events = resolve_queue(state, "p1", {"burn": burn})
+    assert not any(event.type == "status_damage" for event in events)
+    events = finish_turn(state, "p2")
 
     assert any(event.type == "status_damage" for event in events)
     assert target.hp == 85
@@ -692,6 +693,7 @@ def test_sure_hit_turn_end_status_damage_bypasses_invulnerability():
     state.queue_order["p1"] = ["a1"]
 
     resolve_queue(state, "p1", {"domain_burn": domain_burn})
+    finish_turn(state, "p2")
 
     assert target.hp == 85
 

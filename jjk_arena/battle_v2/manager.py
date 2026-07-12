@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .energy import CORE_ENERGY, gain_turn_energy, normalize_energy, split_cost
+from .conditions import has_status
 from .models import BattleEvent, BattlePhase, BattleState, CharacterState, DamageType, PendingAction, PlayerState, SkillSpec, use_battle_v2
 from .first_creation_progression import evaluate_first_creation_progress, initial_first_creation_progress
 from .resolver import ResolverError, check_winner, finish_turn, resolve_queue, validate_queue
@@ -80,6 +81,9 @@ def payload_to_action(player_id: str, index: int, payload: dict[str, Any]) -> Pe
             None if payload.get("target_slot") is None else int(payload.get("target_slot"))
         ),
         target_slots=[int(slot) for slot in payload.get("target_slots", [])],
+        secondary_target_slot=(None if payload.get("secondary_target_slot") is None else int(payload["secondary_target_slot"])),
+        alternate_target_player_id=(None if payload.get("alternate_target_player_id") is None else str(payload["alternate_target_player_id"])),
+        alternate_target_slot=(None if payload.get("alternate_target_slot") is None else int(payload["alternate_target_slot"])),
         wildcard_pays=wildcard_pays,
         queue_index=int(payload.get("queue_index", index)),
     )
@@ -213,6 +217,20 @@ def _cpu_target_payloads(
         if _is_legal_cpu_target(state, player_id, skill, player_id, slot)
     ]
     living_ally_slots.sort(key=lambda slot: player.team[slot].hp / max(1, player.team[slot].max_hp))
+    if any(effect.payload.get("controlled_redirect") for effect in skill.effects):
+        alternate_slot = living_ally_slots[0] if living_ally_slots else caster_slot
+        return [
+            {"target_player_id": opponent_id, "target_slot": slot, "alternate_target_player_id": player_id, "alternate_target_slot": alternate_slot}
+            for slot in living_enemy_slots
+        ]
+    if any(effect.payload.get("conditional_targeting") == "venom_bloom" for effect in skill.effects):
+        poisoned = [slot for slot in living_enemy_slots if has_status(opponent.team[slot], "poison")]
+        if not poisoned:
+            return [{"target_player_id": opponent_id, "target_slot": None, "target_slots": living_enemy_slots}]
+        return [
+            {"target_player_id": opponent_id, "target_slot": primary, "target_slots": [primary, secondary], "secondary_target_slot": secondary}
+            for primary in poisoned for secondary in living_enemy_slots if secondary != primary
+        ]
     if skill.target_rule.kind == "self":
         return [{"target_player_id": player_id, "target_slot": caster_slot}]
     if skill.target_rule.kind == "ally":
@@ -557,6 +575,9 @@ class BattleV2Manager:
                             target_slot=target_payload.get("target_slot"),
                             target_slots=list(target_payload.get("target_slots", [])),
                             wildcard_pays=wildcard_pays,
+                            secondary_target_slot=target_payload.get("secondary_target_slot"),
+                            alternate_target_player_id=target_payload.get("alternate_target_player_id"),
+                            alternate_target_slot=target_payload.get("alternate_target_slot"),
                             queue_index=len(actions),
                         )
                         trial_state = deepcopy(state)

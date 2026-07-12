@@ -5,11 +5,12 @@ from __future__ import annotations
 from collections import Counter
 from collections.abc import Mapping
 from dataclasses import replace
+import random
 
-from .conditions import evaluate_conditions, is_stunned_for_class
-from .effects import apply_effect, apply_turn_end_statuses, tick_cooldowns, tick_statuses
+from .conditions import evaluate_conditions, has_status, is_stunned_for_class, skill_is_harmful
+from .effects import apply_damage, apply_effect, apply_status, apply_turn_end_statuses, should_tick_status, tick_cooldowns, tick_statuses
 from .energy import EnergyValidationError, can_afford_specific, normalize_energy, spend_skill_energy, split_cost, validate_wildcard_payments
-from .models import BattleEvent, BattlePhase, BattleState, CharacterState, EffectSpec, EnergyType, PendingAction, SkillClass, SkillSpec, StatusEffect
+from .models import BattleEvent, BattlePhase, BattleState, CharacterState, DamageType, DurationClock, EffectContext, EffectSpec, EnergyType, PendingAction, SkillClass, SkillSpec, StatusEffect, StatusFamily
 from .targeting import TargetingError, get_character, get_player, validate_target_rule
 
 
@@ -78,11 +79,46 @@ def validate_action(
         cost_skill = _adjusted_cost_skill(caster, skill)
         if caster.cooldowns.get(skill.id, 0) > 0:
             raise ResolverError("skill is on cooldown")
-        if is_stunned_for_class(caster, skill.classes):
+        if is_stunned_for_class(caster, skill.classes, skill):
             raise ResolverError("caster is stunned for this skill class")
+        if skill.target_rule.kind in {"ally", "ally_team"} and any(
+            status.duration != 0 and status.payload.get("cannot_target_allies", False)
+            for status in caster.statuses
+        ):
+            raise ResolverError("caster cannot use skills that target allies")
+        if any(status.duration != 0 and status.payload.get("block_non_damaging_skills") for status in caster.statuses) and not any(effect.type in {"damage", "health_steal"} and effect.target != "self" for effect in skill.effects):
+            raise ResolverError("caster cannot use non-damaging skills")
+        if any(status.duration != 0 and status.payload.get("block_counters") for status in caster.statuses) and any(effect.payload.get("counter") for effect in skill.effects):
+            raise ResolverError("caster cannot use counters")
         if not can_afford_specific(player, cost_skill):
             raise ResolverError("cannot afford specific skill costs")
         validate_wildcard_payments(player, cost_skill, action.wildcard_pays)
+
+        if any(effect.payload.get("controlled_redirect") for effect in skill.effects):
+            if action.alternate_target_player_id is None or action.alternate_target_slot is None:
+                raise ResolverError("controlled redirect requires an alternate target")
+            alternate_player = get_player(state, action.alternate_target_player_id)
+            alternate = get_character(alternate_player, action.alternate_target_slot)
+            if not alternate.alive:
+                raise ResolverError("alternate redirect target is dead")
+            if action.alternate_target_player_id == action.target_player_id and action.alternate_target_slot == action.target_slot:
+                raise ResolverError("alternate redirect target must differ from watched target")
+
+        if any(effect.payload.get("conditional_targeting") == "venom_bloom" for effect in skill.effects):
+            enemy = get_player(state, action.target_player_id)
+            poisoned_slots = [slot for slot in enemy.active_slots if has_status(enemy.team[slot], "poison")]
+            selected_slots = action.target_slots or ([action.target_slot] if action.target_slot is not None else [])
+            if poisoned_slots:
+                primary_slot = action.target_slot if action.target_slot is not None else (selected_slots[0] if selected_slots else None)
+                if primary_slot not in poisoned_slots:
+                    raise ResolverError("Venom Bloom primary target must be poisoned")
+                if action.secondary_target_slot is None or action.secondary_target_slot == primary_slot:
+                    raise ResolverError("Venom Bloom requires a distinct secondary spread target")
+                secondary = get_character(enemy, action.secondary_target_slot)
+                if not secondary.alive:
+                    raise ResolverError("Venom Bloom secondary target is dead")
+            elif set(selected_slots) != set(enemy.active_slots):
+                raise ResolverError("Venom Bloom without poison must target the enemy team")
 
         _, targets = validate_target_rule(state, action, skill)
         primary_target = targets[0] if targets else None
@@ -182,7 +218,7 @@ def _is_harmful_effect(effect: EffectSpec) -> bool:
 
 
 def _is_harmful_skill(skill: SkillSpec) -> bool:
-    return any(_is_harmful_effect(effect) for effect in skill.effects)
+    return skill_is_harmful(skill)
 
 
 def _consume_status(character: CharacterState, status: StatusEffect) -> None:
@@ -203,7 +239,9 @@ def _counter_status(character: CharacterState, skill: SkillSpec) -> StatusEffect
             continue
         if counter == "first_harmful_non_domain" and _has_class(skill, SkillClass.DOMAIN):
             continue
-        if counter in {"first_harmful", "first_harmful_non_domain", "first_counterable_skill"}:
+        if counter == "first_harmful_melee" and SkillClass.PHYSICAL not in skill.classes:
+            continue
+        if counter in {"first_harmful", "first_harmful_non_domain", "first_counterable_skill", "first_harmful_melee"}:
             return status
     return None
 
@@ -276,23 +314,19 @@ def _apply_post_skill_punish(
 
 
 
-def _first_available_energy(player) -> EnergyType | None:
-    for energy in player.energy:
-        if energy != EnergyType.BLACK:
-            return energy
-    return None
-
-
 def _append_energy_gain(state: BattleState, events: list[BattleEvent], player_id: str, amount: int, reason: str, source_status: StatusEffect | None = None) -> None:
-    energy = _first_available_energy(state.players[player_id])
-    if energy is None or amount <= 0:
+    core_energy = [EnergyType.GREEN, EnergyType.RED, EnergyType.BLUE, EnergyType.WHITE]
+    if amount <= 0:
         return
-    state.players[player_id].energy[energy] += amount
+    rng = random.Random(f"{state.rng_seed}:{state.turn_number}:{len(state.event_log)}:{player_id}:{reason}")
+    gained = [rng.choice(core_energy) for _ in range(amount)]
+    for energy in gained:
+        state.players[player_id].energy[energy] += 1
     _append_event(events, state, BattleEvent(
         type="energy_gained",
         message=f"{reason} generated {amount} energy",
         turn_number=state.turn_number,
-        payload={"player_id": player_id, "energy": energy.value, "amount": amount, "status": source_status.id if source_status else None},
+        payload={"player_id": player_id, "energy": gained[0].value, "energies": [energy.value for energy in gained], "amount": amount, "status": source_status.id if source_status else None},
     ))
 
 
@@ -305,10 +339,28 @@ def _trigger_watch_statuses(state: BattleState, events: list[BattleEvent], actio
                 payload = status.payload
                 if status.duration == 0 or payload.get("watch_target_player_id") != action.player_id:
                     continue
+                if payload.get("watch_target_slot") is not None and int(payload["watch_target_slot"]) != action.caster_slot:
+                    continue
                 watched_classes = payload.get("watch_skill_classes") or []
                 if watched_classes and not any(skill_class.value in watched_classes or skill_class in watched_classes for skill_class in skill.classes):
                     continue
+                if payload.get("watch_harmful") and not _is_harmful_skill(skill):
+                    continue
                 _append_energy_gain(state, events, watcher_player.id, int(payload.get("reward_energy", 1)), status.name, status)
+                reward_buff = payload.get("reward_buff") or {}
+                if reward_buff:
+                    watcher.statuses.append(StatusEffect(
+                        id=str(reward_buff.get("id", f"{status.id}_reward")),
+                        name=str(reward_buff.get("name", "Watcher Reward")),
+                        source_player_id=watcher_player.id,
+                        source_slot=watcher_player.team.index(watcher),
+                        target_player_id=watcher_player.id,
+                        target_slot=watcher_player.team.index(watcher),
+                        duration=int(reward_buff.get("duration", 1)),
+                        payload={key: value for key, value in reward_buff.items() if key not in {"id", "name", "duration"}},
+                        duration_clock=DurationClock.SOURCE_TURN,
+                        families=[StatusFamily.BUFF],
+                    ))
                 if payload.get("consume_on_trigger", True):
                     _consume_status(watcher, status)
 
@@ -345,6 +397,36 @@ def _maybe_redirect_action(state: BattleState, events: list[BattleEvent], action
 def _consume_statuses_by_payload(character: CharacterState, key: str) -> None:
     character.statuses = [status for status in character.statuses if status.duration == 0 or not status.payload.get(key)]
 
+
+def _consume_statuses_for_skill(character: CharacterState, skill_id: str) -> None:
+    character.statuses = [
+        status for status in character.statuses
+        if status.duration == 0 or status.payload.get("consume_on_skill_id") != skill_id
+    ]
+
+
+def _apply_melee_punishments(state: BattleState, events: list[BattleEvent], action: PendingAction, skill: SkillSpec, target_player_id: str, target_slots: list[int]) -> None:
+    if SkillClass.PHYSICAL not in skill.classes:
+        return
+    caster = state.players[action.player_id].team[action.caster_slot]
+    for slot in target_slots:
+        target = state.players[target_player_id].team[slot]
+        for guard in list(target.statuses):
+            punish_status = guard.payload.get("punish_melee_status") if guard.duration != 0 else None
+            if not punish_status:
+                continue
+            caster.statuses.append(StatusEffect(
+                id=str(punish_status), name=str(punish_status).replace("_", " ").title(),
+                source_player_id=target_player_id, source_slot=slot,
+                target_player_id=action.player_id, target_slot=action.caster_slot, duration=2,
+            ))
+            _append_event(events, state, BattleEvent(
+                type="status_applied", message=f"{target.name} punished {caster.name} with {str(punish_status).replace('_', ' ').title()}",
+                turn_number=state.turn_number,
+                payload={"action_id": action.id, "status": str(punish_status), "target_player_id": action.player_id, "target_slot": action.caster_slot},
+            ))
+            break
+
 def resolve_queue(
     state: BattleState,
     player_id: str,
@@ -362,6 +444,7 @@ def resolve_queue(
         if not caster.alive:
             continue
         skill = get_skill_for_action(skills, caster, action)
+        preexisting_one_shots = {id(status) for status in caster.statuses if status.duration != 0 and status.payload.get("consume_on_next_skill")}
         try:
             target_player_id, targets = validate_target_rule(state, action, skill)
         except TargetingError as exc:
@@ -405,6 +488,8 @@ def resolve_queue(
             counter = _counter_status(target, skill)
             if counter is None:
                 continue
+            if SkillClass.PHYSICAL in skill.classes and counter.payload.get("punish_melee_status"):
+                _apply_melee_punishments(state, events, action, skill, target_player_id, [slot])
             _consume_status(target, counter)
             event = BattleEvent(
                 type="skill_countered",
@@ -448,25 +533,68 @@ def resolve_queue(
             )
             _append_event(events, state, reflected)
 
+        original_target = targets[0] if targets else None
+        resolved_targets = [state.players[target_player_id].team[slot] for slot in target_slots]
+        primary_target = resolved_targets[0] if resolved_targets else None
+        secondary_target = None
+        if action.secondary_target_slot is not None and action.secondary_target_slot in target_slots:
+            secondary_target = state.players[target_player_id].team[action.secondary_target_slot]
+        elif len(resolved_targets) > 1:
+            secondary_target = resolved_targets[1]
+        original_status_ids = frozenset(status.id for status in original_target.statuses if status.duration != 0) if original_target else frozenset()
+        recipient_statuses = {id(target): frozenset(status.id for status in target.statuses if status.duration != 0) for target in resolved_targets}
+
+        def effect_context(recipient: CharacterState | None) -> EffectContext:
+            return EffectContext(caster, recipient, original_target, primary_target, secondary_target, resolved_targets, original_status_ids, recipient_statuses.get(id(recipient), frozenset()))
+
         for effect in skill.effects:
+            target_scope = effect.payload.get("target_scope")
+            if target_scope == "primary" or effect.payload.get("selected_target_only"):
+                effect_slots = target_slots[:1]
+            elif target_scope == "secondary":
+                effect_slots = [action.secondary_target_slot] if action.secondary_target_slot is not None else []
+            else:
+                effect_slots = target_slots
             if effect.target == "self":
-                event = apply_effect(state, action, effect, action.player_id, action.caster_slot, skill.name)
+                event = apply_effect(state, action, effect, action.player_id, action.caster_slot, skill.name, condition_target=original_target, selected_target_count=len(target_slots), selected_targets=resolved_targets, skill_id=skill.id, skill_classes=skill.classes, context=effect_context(caster))
                 _append_event(events, state, event)
                 continue
             if not targets:
-                event = apply_effect(state, action, effect, target_player_id, None, skill.name)
+                event = apply_effect(state, action, effect, target_player_id, None, skill.name, condition_target=original_target, selected_target_count=len(target_slots), selected_targets=resolved_targets, skill_id=skill.id, skill_classes=skill.classes, context=effect_context(None))
                 _append_event(events, state, event)
                 continue
-            for slot in target_slots:
+            for slot in effect_slots:
                 effect_target_player_id = target_player_id
                 effect_target_slot = slot
                 if slot in reflected_slots and _is_harmful_effect(effect):
                     effect_target_player_id = action.player_id
                     effect_target_slot = action.caster_slot
-                event = apply_effect(state, action, effect, effect_target_player_id, effect_target_slot, skill.name)
+                recipient = state.players[effect_target_player_id].team[effect_target_slot]
+                event = apply_effect(state, action, effect, effect_target_player_id, effect_target_slot, skill.name, condition_target=original_target, selected_target_count=len(target_slots), selected_targets=resolved_targets, skill_id=skill.id, skill_classes=skill.classes, context=effect_context(recipient))
                 _append_event(events, state, event)
+                if event.type == "damage" and event.payload.get("amount", 0) > 0 and effect.target != "self":
+                    recipient.statuses = [status for status in recipient.statuses if status.id != "damaged_last_turn"]
+                    recipient.statuses.append(StatusEffect("damaged_last_turn", "Damaged Last Turn", action.player_id, action.caster_slot, effect_target_player_id, effect_target_slot, 2, payload={"duration_clock": "target_turn"}))
+                    for guard in list(recipient.statuses):
+                        retaliation = int(guard.payload.get("retaliate_damage", 0))
+                        if guard.duration == 0 or retaliation <= 0:
+                            continue
+                        actual = apply_damage(caster, retaliation, DamageType.SOUL)
+                        retaliate_status = guard.payload.get("retaliate_status")
+                        if retaliate_status:
+                            apply_status(state, action, action.player_id, action.caster_slot, EffectSpec(type="apply_status", status=str(retaliate_status), duration=2, payload={"name": str(retaliate_status).title(), "turn_end_damage": retaliation, "turn_end_damage_type": DamageType.SOUL.value}))
+                        _append_event(events, state, BattleEvent("retaliation", f"{guard.name} retaliated for {actual}", state.turn_number, {"action_id": action.id, "amount": actual, "status": guard.id}))
+                        break
         if any(effect.type == "damage" and effect.target != "self" for effect in skill.effects):
             _consume_statuses_by_payload(caster, "consume_after_damage")
+            _apply_melee_punishments(state, events, action, skill, target_player_id, target_slots)
+        _consume_statuses_for_skill(caster, skill.id)
+        caster.statuses = [status for status in caster.statuses if id(status) not in preexisting_one_shots]
+        for status in list(caster.statuses):
+            if status.duration == 0 or not status.payload.get("expose_if_targets_source"):
+                continue
+            if target_player_id == status.source_player_id and status.source_slot in target_slots:
+                caster.statuses.append(StatusEffect("exposed", "Exposed", status.source_player_id, status.source_slot, action.player_id, action.caster_slot, 2))
         _apply_post_skill_punish(state, events, action, caster, skill)
 
     events.extend(finish_turn(state, player_id))
@@ -478,11 +606,31 @@ def finish_turn(state: BattleState, player_id: str) -> list[BattleEvent]:
     """Apply turn-end cleanup for the acting player."""
 
     events: list[BattleEvent] = []
+    round_ending = player_id == list(state.players)[-1]
     for player in state.players.values():
         for slot, character in enumerate(player.team):
-            for event in apply_turn_end_statuses(character, player.id, slot, state.turn_number, player_id):
+            for status in list(character.statuses):
+                if status.duration == 1 and status.payload.get("redirect_next_harmful_direct") and should_tick_status(status, player_id, round_ending=round_ending, turn_number=state.turn_number):
+                    source = state.players.get(status.source_player_id)
+                    if source and 0 <= status.source_slot < len(source.team) and source.team[status.source_slot].alive:
+                        source.team[status.source_slot].statuses.append(StatusEffect("boogie_woogie_guard", "Boogie Woogie Guard", status.source_player_id, status.source_slot, status.source_player_id, status.source_slot, 2, payload={"destructible_defense": 15}))
+                        _append_event(events, state, BattleEvent("status_applied", "Boogie Woogie granted 15 defense after no redirect", state.turn_number, {"status": "boogie_woogie_guard", "target_player_id": status.source_player_id, "target_slot": status.source_slot}))
+                if status.payload.get("ends_if_source_dies"):
+                    source = state.players.get(status.source_player_id)
+                    if not source or not (0 <= status.source_slot < len(source.team)) or not source.team[status.source_slot].alive:
+                        status.duration = 0
+                drain_amount = int(status.payload.get("turn_end_drain_energy", 0))
+                if drain_amount > 0 and status.target_player_id == player_id and should_tick_status(status, player_id, round_ending=round_ending, turn_number=state.turn_number):
+                    available = [energy for energy, amount in player.energy.items() if energy != EnergyType.BLACK and amount > 0]
+                    rng = random.Random(f"{state.rng_seed}:{state.turn_number}:{status.id}:{status.source_player_id}:{status.source_slot}")
+                    drained = rng.sample(available, k=min(drain_amount, len(available)))
+                    for energy in drained:
+                        player.energy[energy] -= 1
+                        _append_event(events, state, BattleEvent("energy_drained", f"{status.name} drained energy at turn end", state.turn_number, {"status": status.id, "target_player_id": player_id, "energy": energy.value, "amount": 1}))
+                    status.duration = 0
+            for event in apply_turn_end_statuses(character, player.id, slot, state.turn_number, player_id, round_ending):
                 _append_event(events, state, event)
-            tick_statuses(character, player_id)
+            tick_statuses(character, player_id, round_ending=round_ending, turn_number=state.turn_number)
             if player.id == player_id:
                 tick_cooldowns(character)
             character.acted_this_turn = False

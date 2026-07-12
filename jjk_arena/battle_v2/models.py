@@ -50,6 +50,23 @@ class DamageType(StrEnum):
     HEALTH_STEAL = "health_steal"
 
 
+class DurationClock(StrEnum):
+    SOURCE_TURN = "source_turn"
+    TARGET_TURN = "target_turn"
+    ROUND = "round"
+    GLOBAL_TURN = "global_turn"
+
+
+class StatusFamily(StrEnum):
+    AFFLICTION = "AFFLICTION"
+    SOUL = "SOUL"
+    STUN = "STUN"
+    CONTROL = "CONTROL"
+    MARK = "MARK"
+    BUFF = "BUFF"
+    DEBUFF = "DEBUFF"
+
+
 class SkillClass(StrEnum):
     """Skill tags used for targeting, stun gates, counters, and persistence."""
 
@@ -158,6 +175,16 @@ class StatusEffect:
     stacks: int = 1
     payload: dict[str, Any] = field(default_factory=dict)
     revealed: bool = False
+    duration_clock: DurationClock = DurationClock.GLOBAL_TURN
+    families: list[StatusFamily] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        legacy_clock = self.payload.get("duration_clock")
+        if legacy_clock:
+            self.duration_clock = DurationClock(legacy_clock)
+        legacy_families = self.payload.get("families") or []
+        if legacy_families and not self.families:
+            self.families = [StatusFamily(family) for family in legacy_families]
 
 
 @dataclass(slots=True)
@@ -203,6 +230,21 @@ class PendingAction:
     target_slots: list[int] = field(default_factory=list)
     wildcard_pays: list[EnergyType] = field(default_factory=list)
     queue_index: int = 0
+    secondary_target_slot: int | None = None
+    alternate_target_player_id: str | None = None
+    alternate_target_slot: int | None = None
+
+
+@dataclass(slots=True)
+class EffectContext:
+    caster: CharacterState
+    recipient: CharacterState | None
+    original_selected_target: CharacterState | None
+    primary_target: CharacterState | None
+    secondary_selected_target: CharacterState | None
+    resolved_targets: list[CharacterState] = field(default_factory=list)
+    original_target_status_ids: frozenset[str] = field(default_factory=frozenset)
+    recipient_status_ids: frozenset[str] = field(default_factory=frozenset)
 
 
 @dataclass(slots=True)

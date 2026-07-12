@@ -96,7 +96,13 @@ def invulnerability_blocks_skill(target: CharacterState, skill: SkillSpec, actio
     if not invulnerable_statuses:
         return False
 
-    return not skill_bypasses_invulnerability(skill, target)
+    if skill_bypasses_invulnerability(skill, target):
+        return False
+    if any(status.payload.get("invulnerable_to_all", False) for status in invulnerable_statuses):
+        return True
+    if skill_is_harmful_to_target(skill, action, target_player_id):
+        return True
+    return any(status.payload.get("invulnerable_to_helpful", False) for status in invulnerable_statuses)
 
 
 def validate_target_rule(

@@ -35,6 +35,8 @@ def serialize_status(status: StatusEffect, viewer_id: str) -> dict | None:
         "target_player_id": status.target_player_id,
         "target_slot": status.target_slot,
         "duration": status.duration,
+        "duration_clock": status.duration_clock.value,
+        "families": [family.value for family in status.families],
         "classes": _class_values(status.classes),
         "invisible": status.invisible,
         "soulbound": status.soulbound,
@@ -72,6 +74,9 @@ def serialize_action(action: PendingAction) -> dict:
         "target_player_id": action.target_player_id,
         "target_slot": action.target_slot,
         "target_slots": list(action.target_slots),
+        "secondary_target_slot": action.secondary_target_slot,
+        "alternate_target_player_id": action.alternate_target_player_id,
+        "alternate_target_slot": action.alternate_target_slot,
         "wildcard_pays": [energy.value for energy in action.wildcard_pays],
         "queue_index": action.queue_index,
     }

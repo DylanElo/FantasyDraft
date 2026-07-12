@@ -191,3 +191,24 @@ Caution:
 
 - `AGENTS.md` is the enforceable concise layer; `docs/CODEX_PROJECT_MEMORY.md` is the detailed canonical memory.
 - Open decisions in the memory document still require explicit user approval rather than autonomous resolution.
+
+## 2026-07-12 - Battle v2 authoritative validation hardening
+
+What changed:
+
+- Bound every live caster to declared base skill slots and resolved active replacements only from those slots.
+- Rejected foreign/replacement-only skill IDs, empty or duplicate action IDs, incomplete/duplicate queue order, and duplicate or misordered primary/secondary targets.
+- Preserved secondary and alternate redirect fields through the real SocketIO cleaner.
+- Added explicit `Melee` and `Ranged` tags; melee counters no longer treat all Physical skills as melee.
+- Deferred one-shot damage-buff consumption until the complete skill finishes, corrected helpful/hostile status families, and emitted configured invisible-expiry reveals.
+- Added an isolated server-authoritative Planning/Queue Review timer policy module and manager timeout transitions.
+
+Verification:
+
+- Full pytest, Python compilation, and `git diff --check` passed in the clean PR worktree.
+- Socket integration coverage traverses Phaser-style payloads through the cleaner, manager, and resolver for Todo and Junpei.
+
+Caution / next work:
+
+- Timer deadlines are authoritative and serialized; production scheduling may poll `expire_phase_if_needed` or invoke it through normal manager/socket entry points.
+- No Phaser layout, roster, progression, damage-family aggregation, or anti-domain behavior changed.

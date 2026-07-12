@@ -27,10 +27,35 @@ def effective_skill_id(caster, skill_id: str) -> str:
 def get_skill_for_action(skills: Mapping[str, SkillSpec], caster, action: PendingAction) -> SkillSpec:
     """Return the skill used by an action after applying replacements."""
 
+    if caster.base_skill_ids and action.skill_id not in caster.base_skill_ids:
+        raise ResolverError("skill is not a declared base slot for this caster")
     resolved_id = effective_skill_id(caster, action.skill_id)
     if resolved_id not in skills:
         raise ResolverError(f"unknown skill: {resolved_id}")
     return skills[resolved_id]
+
+
+def validate_action_identity(
+    state: BattleState,
+    action: PendingAction,
+    skills: Mapping[str, SkillSpec],
+) -> None:
+    """Validate client-controlled action identity without resolving gameplay."""
+
+    if not action.id:
+        raise ResolverError("action id must be non-empty")
+    if len(action.target_slots) != len(set(action.target_slots)):
+        raise ResolverError("duplicate target slots are not allowed")
+    if action.target_slot is not None and action.target_slots and action.target_slots[0] != action.target_slot:
+        raise ResolverError("primary target must be first in target slots")
+    if action.secondary_target_slot is not None:
+        if action.secondary_target_slot == action.target_slot:
+            raise ResolverError("secondary target must differ from primary target")
+        if len(action.target_slots) < 2 or action.target_slots[1] != action.secondary_target_slot:
+            raise ResolverError("secondary target must be second in target slots")
+    player = get_player(state, action.player_id)
+    caster = get_character(player, action.caster_slot)
+    get_skill_for_action(skills, caster, action)
 
 
 def _adjusted_cost_skill(caster: CharacterState, skill: SkillSpec) -> SkillSpec:
@@ -66,6 +91,7 @@ def validate_action(
     """Validate a pending action without mutating battle state."""
 
     try:
+        validate_action_identity(state, action, skills)
         player = get_player(state, action.player_id)
         caster = get_character(player, action.caster_slot)
         if action.caster_slot not in player.active_slots:
@@ -156,6 +182,23 @@ def validate_queue_energy(
         if player.energy.get(energy, 0) < amount:
             raise ResolverError(f"not enough {energy.value} energy for queued actions")
 
+def validate_queue_identity(state: BattleState, player_id: str) -> None:
+    """Validate action and ordering identity without inspecting skill effects."""
+    actions = list(state.pending_actions.get(player_id, []))
+    action_ids = [action.id for action in actions]
+    ordered_ids = state.queue_order.get(player_id, [])
+    if any(not action_id for action_id in action_ids):
+        raise ResolverError("action id must be non-empty")
+    if len(action_ids) != len(set(action_ids)):
+        raise ResolverError("action ids must be unique")
+    if len(ordered_ids) != len(actions):
+        raise ResolverError("queue order length must equal pending action count")
+    if len(ordered_ids) != len(set(ordered_ids)):
+        raise ResolverError("queue order cannot contain duplicate entries")
+    if ordered_ids != [] and set(ordered_ids) != set(action_ids):
+        raise ResolverError("queue order must include exactly the pending action ids")
+
+
 def validate_queue(
     state: BattleState,
     player_id: str,
@@ -164,9 +207,7 @@ def validate_queue(
     """Validate all queued actions for a player without mutating state."""
 
     actions = list(state.pending_actions.get(player_id, []))
-    ordered_ids = state.queue_order.get(player_id) or [action.id for action in sorted(actions, key=lambda item: item.queue_index)]
-    if set(ordered_ids) != {action.id for action in actions}:
-        raise ResolverError("queue order must include exactly the pending action ids")
+    validate_queue_identity(state, player_id)
 
     seen_casters: set[int] = set()
     for action in actions:
@@ -239,7 +280,7 @@ def _counter_status(character: CharacterState, skill: SkillSpec) -> StatusEffect
             continue
         if counter == "first_harmful_non_domain" and _has_class(skill, SkillClass.DOMAIN):
             continue
-        if counter == "first_harmful_melee" and SkillClass.PHYSICAL not in skill.classes:
+        if counter == "first_harmful_melee" and SkillClass.MELEE not in skill.classes:
             continue
         if counter in {"first_harmful", "first_harmful_non_domain", "first_counterable_skill", "first_harmful_melee"}:
             return status
@@ -398,6 +439,13 @@ def _consume_statuses_by_payload(character: CharacterState, key: str) -> None:
     character.statuses = [status for status in character.statuses if status.duration == 0 or not status.payload.get(key)]
 
 
+def _consume_one_shot_damage_bonuses(character: CharacterState) -> None:
+    character.statuses = [
+        status for status in character.statuses
+        if status.duration == 0 or "damage_bonus" not in status.payload
+    ]
+
+
 def _consume_statuses_for_skill(character: CharacterState, skill_id: str) -> None:
     character.statuses = [
         status for status in character.statuses
@@ -406,7 +454,7 @@ def _consume_statuses_for_skill(character: CharacterState, skill_id: str) -> Non
 
 
 def _apply_melee_punishments(state: BattleState, events: list[BattleEvent], action: PendingAction, skill: SkillSpec, target_player_id: str, target_slots: list[int]) -> None:
-    if SkillClass.PHYSICAL not in skill.classes:
+    if SkillClass.MELEE not in skill.classes:
         return
     caster = state.players[action.player_id].team[action.caster_slot]
     for slot in target_slots:
@@ -488,7 +536,7 @@ def resolve_queue(
             counter = _counter_status(target, skill)
             if counter is None:
                 continue
-            if SkillClass.PHYSICAL in skill.classes and counter.payload.get("punish_melee_status"):
+            if SkillClass.MELEE in skill.classes and counter.payload.get("punish_melee_status"):
                 _apply_melee_punishments(state, events, action, skill, target_player_id, [slot])
             _consume_status(target, counter)
             event = BattleEvent(
@@ -587,6 +635,7 @@ def resolve_queue(
                         break
         if any(effect.type == "damage" and effect.target != "self" for effect in skill.effects):
             _consume_statuses_by_payload(caster, "consume_after_damage")
+            _consume_one_shot_damage_bonuses(caster)
             _apply_melee_punishments(state, events, action, skill, target_player_id, target_slots)
         _consume_statuses_for_skill(caster, skill.id)
         caster.statuses = [status for status in caster.statuses if id(status) not in preexisting_one_shots]
@@ -619,6 +668,34 @@ def finish_turn(state: BattleState, player_id: str) -> list[BattleEvent]:
                     source = state.players.get(status.source_player_id)
                     if not source or not (0 <= status.source_slot < len(source.team)) or not source.team[status.source_slot].alive:
                         status.duration = 0
+                if (
+                    status.invisible
+                    and not status.revealed
+                    and status.duration == 1
+                    and status.payload.get("reveal_mode") in {"expiry", "trigger_or_expiry"}
+                    and should_tick_status(
+                        status,
+                        player_id,
+                        round_ending=round_ending,
+                        turn_number=state.turn_number,
+                    )
+                ):
+                    status.revealed = True
+                    _append_event(
+                        events,
+                        state,
+                        BattleEvent(
+                            type="status_revealed",
+                            message=f"{status.name} was revealed as it expired",
+                            turn_number=state.turn_number,
+                            payload={
+                                "status": status.id,
+                                "target_player_id": status.target_player_id,
+                                "target_slot": status.target_slot,
+                                "reason": "expiry",
+                            },
+                        ),
+                    )
                 drain_amount = int(status.payload.get("turn_end_drain_energy", 0))
                 if drain_amount > 0 and status.target_player_id == player_id and should_tick_status(status, player_id, round_ending=round_ending, turn_number=state.turn_number):
                     available = [energy for energy, amount in player.energy.items() if energy != EnergyType.BLACK and amount > 0]

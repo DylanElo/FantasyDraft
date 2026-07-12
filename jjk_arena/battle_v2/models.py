@@ -71,6 +71,8 @@ class SkillClass(StrEnum):
     """Skill tags used for targeting, stun gates, counters, and persistence."""
 
     PHYSICAL = "Physical"
+    MELEE = "Melee"
+    RANGED = "Ranged"
     CURSED_ENERGY = "CursedEnergy"
     INNATE = "Innate"
     SOUL = "Soul"
@@ -200,6 +202,7 @@ class CharacterState:
     statuses: list[StatusEffect] = field(default_factory=list)
     skill_replacements: dict[str, str] = field(default_factory=dict)
     acted_this_turn: bool = False
+    base_skill_ids: list[str] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -271,3 +274,4 @@ class BattleState:
     event_log: list[BattleEvent] = field(default_factory=list)
     winner_id: str | None = None
     rng_seed: int | None = None
+    phase_deadline: float | None = None

@@ -71,8 +71,27 @@ def status_effect(
     if duration_clock is None:
         duration_clock = DurationClock.SOURCE_TURN if target == "self" else DurationClock.TARGET_TURN
     clock = DurationClock(duration_clock)
+    if payload.get("invisible") and "reveal_mode" not in payload:
+        payload["reveal_mode"] = (
+            "trigger_or_expiry"
+            if payload.get("controlled_redirect") or payload.get("watch_target_player_id")
+            else "never"
+        )
     if families is None:
-        harmful_payload = any(key in payload for key in ("stun_classes", "stun_harmful", "turn_end_damage", "damage_output_delta", "healing_received_delta", "block_non_damaging_skills", "block_counters"))
+        control_payload = any(
+            payload.get(key)
+            for key in (
+                "stun_classes", "stun_harmful", "block_non_damaging_skills",
+                "block_counters", "cannot_target_allies", "controlled_redirect",
+            )
+        )
+        harmful_payload = (
+            control_payload
+            or int(payload.get("turn_end_damage", 0)) > 0
+            or int(payload.get("damage_output_delta", 0)) < 0
+            or int(payload.get("physical_damage_output_delta", 0)) < 0
+            or int(payload.get("healing_received_delta", 0)) < 0
+        )
         mark_ids = {"soul_bruise", "scent", "nail", "blood_mark", "revealed", "exposed", "pulled", "crow_mark"}
         families = []
         if status == "soul_bruise":
@@ -81,14 +100,16 @@ def status_effect(
             families.append(StatusFamily.AFFLICTION)
         if payload.get("stun_classes") or payload.get("stun_harmful"):
             families.extend([StatusFamily.STUN, StatusFamily.CONTROL])
+        elif control_payload:
+            families.append(StatusFamily.CONTROL)
         if status in mark_ids:
             families.append(StatusFamily.MARK)
-        if target == "self" and not harmful_payload:
+        if not harmful_payload and not families:
             families.append(StatusFamily.BUFF)
         elif harmful_payload:
             families.append(StatusFamily.DEBUFF)
         if not families:
-            families.append(StatusFamily.BUFF if target == "self" else StatusFamily.DEBUFF)
+            families.append(StatusFamily.BUFF)
     return EffectSpec(
         type="apply_status",
         status=status,
@@ -935,6 +956,29 @@ def s(
 ) -> SkillSpec:
     if effects is None:
         raise ValueError(f"first-creation skill {cid}.{slug} requires an explicit effect contract")
+    melee_skills = {
+        ("yuji_itadori", "divergent_fist"),
+        ("yuji_itadori", "black_flash_attempt"),
+        ("maki_zenin", "cursed_tool_combo"),
+        ("maki_zenin", "spear_sweep"),
+        ("panda", "panda_jab"),
+        ("panda", "drumming_beat"),
+        ("aoi_todo", "brutal_palm_strike"),
+        ("aoi_todo", "brotherly_beatdown"),
+        ("kasumi_miwa", "new_shadow_quick_draw"),
+        ("kasumi_miwa", "earnest_slash"),
+        ("mei_mei_young", "axe_sweep"),
+        ("yuta_okkotsu_jjk0", "cursed_katana"),
+    }
+    ranged_skills = {
+        ("mai_zenin", "revolver_shot"),
+        ("mei_mei_young", "black_bird_strike"),
+    }
+    classes = list(classes)
+    if (cid, slug) in melee_skills and SkillClass.MELEE not in classes:
+        classes.append(SkillClass.MELEE)
+    if (cid, slug) in ranged_skills and SkillClass.RANGED not in classes:
+        classes.append(SkillClass.RANGED)
     return first_creation_skill(
         cid,
         slug,

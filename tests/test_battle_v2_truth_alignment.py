@@ -90,7 +90,7 @@ def test_gorilla_guard_grants_ally_defense_and_melee_guard_punishes_attacker():
 
     defender = state.players["p2"].team[0]
     defender.statuses.append(status("hammer_guard", invulnerable=True, punish_melee_status="nail"))
-    strike = SkillSpec("strike", "Strike", "", [], 0, TargetRule("enemy"), [SkillClass.PHYSICAL, SkillClass.BYPASSING], [EffectSpec("damage", 10)])
+    strike = SkillSpec("strike", "Strike", "", [], 0, TargetRule("enemy"), [SkillClass.PHYSICAL, SkillClass.MELEE, SkillClass.BYPASSING], [EffectSpec("damage", 10)])
     state.pending_actions["p1"] = [PendingAction("a2", "p1", 0, "strike", "p2", 0)]
     state.queue_order["p1"] = ["a2"]
     resolve_queue(state, "p1", {"strike": strike})

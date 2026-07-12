@@ -125,16 +125,6 @@ def _outgoing_damage_delta(caster: CharacterState) -> int:
     )
 
 
-def _consume_damage_bonus_statuses(caster: CharacterState) -> None:
-    kept: list[StatusEffect] = []
-    for status in caster.statuses:
-        if status.duration != 0 and "damage_bonus" in status.payload:
-            _remove_status_side_effects(caster, status)
-            continue
-        kept.append(status)
-    caster.statuses = kept
-
-
 def apply_damage(
     target: CharacterState,
     amount: int,
@@ -399,8 +389,6 @@ def apply_effect(
                 "source_slot": action.caster_slot,
             },
         )
-        if effect.target != "self":
-            _consume_damage_bonus_statuses(caster)
         return event
     if effect.type == "health_steal":
         if target_slot is None:

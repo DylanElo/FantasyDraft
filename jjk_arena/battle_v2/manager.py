@@ -7,13 +7,13 @@ from collections import Counter
 from itertools import product
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
 
 from .energy import CORE_ENERGY, gain_turn_energy, normalize_energy, split_cost
 from .conditions import has_status
 from .models import BattleEvent, BattlePhase, BattleState, CharacterState, DamageType, PendingAction, PlayerState, SkillSpec, use_battle_v2
 from .first_creation_progression import evaluate_first_creation_progress, initial_first_creation_progress
-from .resolver import ResolverError, check_winner, finish_turn, resolve_queue, validate_queue
+from .resolver import ResolverError, check_winner, finish_turn, get_skill_for_action, resolve_queue, validate_action_identity, validate_queue, validate_queue_identity
 from .serialization import serialize_battle_state
 from .targeting import invulnerability_blocks_skill
 from .starter_roster import (
@@ -25,6 +25,7 @@ from .starter_roster import (
     first_creation_catalog,
     validate_first_creation_team,
 )
+from .timers import BattleTimerPolicy, arm_phase_timer, phase_timer_expired, system_clock
 
 
 class BattleV2Error(ValueError):
@@ -53,7 +54,24 @@ class BattlePlayerConfig:
 
 
 def _character_state(spec: CharacterSpec) -> CharacterState:
-    return CharacterState(character_id=spec.id, name=spec.name)
+    replacement_ids = {
+        transformation.replacement_skill_id
+        for skill in spec.skills
+        for transformation in skill.transformations
+        if transformation.replacement_skill_id
+    }
+    replacement_ids.update(
+        str(replacement)
+        for skill in spec.skills
+        for effect in skill.effects
+        for replacement in (effect.payload.get("skill_replacements") or {}).values()
+    )
+    base_skill_ids = [skill.id for skill in spec.skills if skill.id not in replacement_ids]
+    return CharacterState(
+        character_id=spec.id,
+        name=spec.name,
+        base_skill_ids=base_skill_ids,
+    )
 
 
 def _coerce_player_config(raw: BattlePlayerConfig | dict[str, Any]) -> BattlePlayerConfig:
@@ -72,7 +90,7 @@ def payload_to_action(player_id: str, index: int, payload: dict[str, Any]) -> Pe
         for energy in payload.get("wildcard_pays", [])
     ]
     return PendingAction(
-        id=str(payload.get("id") or f"{player_id}:action:{index}"),
+        id=str(payload.get("id", "")).strip(),
         player_id=player_id,
         caster_slot=int(payload["caster_slot"]),
         skill_id=str(payload["skill_id"]),
@@ -318,7 +336,13 @@ def _cpu_action_score(state: BattleState, player_id: str, action: PendingAction,
 class BattleV2Manager:
     """Manage authoritative v2 battle states by room id."""
 
-    def __init__(self, rng_seed: int | None = None):
+    def __init__(
+        self,
+        rng_seed: int | None = None,
+        *,
+        timer_policy: BattleTimerPolicy | None = None,
+        clock: Callable[[], float] = system_clock,
+    ):
         self.rooms: dict[str, BattleState] = {}
         self.rngs: dict[str, random.Random] = {}
         self.rng_seed = rng_seed
@@ -327,6 +351,8 @@ class BattleV2Manager:
         self.room_catalogs: dict[str, dict[str, Any]] = {}
         self.room_roster_modes: dict[str, str] = {}
         self.room_first_creation_progress: dict[str, dict[str, dict[str, Any]]] = {}
+        self.timer_policy = timer_policy or BattleTimerPolicy()
+        self.clock = clock
 
     def start_classic_match(
         self,
@@ -368,6 +394,7 @@ class BattleV2Manager:
         self.rngs[room_id] = rng
         gain_turn_energy(state.players[turn_player_id], state.turn_number, True, rng)
         self.rooms[room_id] = state
+        arm_phase_timer(state, self.timer_policy, self.clock)
         self.room_rosters[room_id] = roster
         self.room_skill_maps[room_id] = skills
         self.room_catalogs[room_id] = catalog
@@ -413,6 +440,7 @@ class BattleV2Manager:
     def submit_plan(self, room_id: str, player_id: str, actions: list[dict[str, Any]]) -> dict:
         """Store pending actions for queue review without spending energy."""
 
+        self.expire_phase_if_needed(room_id)
         state = self.get_state(room_id)
         self._ensure_turn_player(state, player_id)
         previous_actions = deepcopy(state.pending_actions.get(player_id, []))
@@ -421,6 +449,7 @@ class BattleV2Manager:
         state.pending_actions[player_id] = parsed
         state.queue_order[player_id] = [action.id for action in sorted(parsed, key=lambda item: item.queue_index)]
         state.phase = BattlePhase.QUEUE_REVIEW
+        arm_phase_timer(state, self.timer_policy, self.clock)
         try:
             if all(not action.wildcard_pays for action in parsed):
                 self._validate_non_wildcard_plan(room_id, state, player_id)
@@ -430,6 +459,7 @@ class BattleV2Manager:
             state.pending_actions[player_id] = previous_actions
             state.queue_order[player_id] = previous_order
             state.phase = BattlePhase.PLANNING
+            arm_phase_timer(state, self.timer_policy, self.clock)
             raise BattleV2Error(str(exc)) from exc
         return self.serialize_for_player(room_id, player_id)
 
@@ -442,6 +472,7 @@ class BattleV2Manager:
     ) -> dict:
         """Update queue order and wildcard payments, then validate the queue."""
 
+        self.expire_phase_if_needed(room_id)
         state = self.get_state(room_id)
         self._ensure_turn_player(state, player_id)
         previous_actions = deepcopy(state.pending_actions.get(player_id, []))
@@ -466,6 +497,7 @@ class BattleV2Manager:
     def confirm_queue(self, room_id: str, player_id: str) -> dict:
         """Validate and resolve the current player's queue."""
 
+        self.expire_phase_if_needed(room_id)
         state = self.get_state(room_id)
         self._ensure_turn_player(state, player_id)
         resolve_queue(state, player_id, self._skills_for_room(room_id))
@@ -476,16 +508,19 @@ class BattleV2Manager:
     def cancel_queue(self, room_id: str, player_id: str) -> dict:
         """Clear a player's pending queue and return to planning."""
 
+        self.expire_phase_if_needed(room_id)
         state = self.get_state(room_id)
         self._ensure_turn_player(state, player_id)
         state.pending_actions[player_id] = []
         state.queue_order[player_id] = []
         state.phase = BattlePhase.PLANNING
+        arm_phase_timer(state, self.timer_policy, self.clock)
         return self.serialize_for_player(room_id, player_id)
 
     def convert_energy(self, room_id: str, player_id: str, source: str, target: str) -> dict:
         """Convert two core energy of one color into one other core color once this turn."""
 
+        self.expire_phase_if_needed(room_id)
         state = self.get_state(room_id)
         self._ensure_turn_player(state, player_id)
         player = state.players[player_id]
@@ -526,6 +561,7 @@ class BattleV2Manager:
     def end_turn(self, room_id: str, player_id: str) -> dict:
         """End the active player's turn without resolving queued actions."""
 
+        self.expire_phase_if_needed(room_id)
         state = self.get_state(room_id)
         self._ensure_turn_player(state, player_id)
         player = state.players[player_id]
@@ -547,6 +583,7 @@ class BattleV2Manager:
     def take_cpu_turn(self, room_id: str, player_id: str) -> dict:
         """Submit and resolve a simple first-legal CPU queue for the active turn."""
 
+        self.expire_phase_if_needed(room_id)
         state = self.get_state(room_id)
         self._ensure_turn_player(state, player_id)
         player = state.players[player_id]
@@ -561,16 +598,18 @@ class BattleV2Manager:
             if character_spec is None:
                 continue
             best: tuple[int, PendingAction] | None = None
-            for skill in character_spec.skills:
+            for base_skill_id in caster.base_skill_ids:
+                resolved_skill_id = caster.skill_replacements.get(base_skill_id, base_skill_id)
+                resolved_skill = self._skills_for_room(room_id)[resolved_skill_id]
                 for target_payload in _cpu_target_payloads(
-                    state, player_id, skill.id, slot, self._skills_for_room(room_id)
+                    state, player_id, resolved_skill_id, slot, self._skills_for_room(room_id)
                 ):
-                    for wildcard_pays in _wildcard_payment_options(player, skill.id, self._skills_for_room(room_id)):
+                    for wildcard_pays in _wildcard_payment_options(player, resolved_skill_id, self._skills_for_room(room_id)):
                         candidate = PendingAction(
-                            id=f"{player_id}:cpu:{slot}:{skill.id}",
+                            id=f"{player_id}:cpu:{slot}:{base_skill_id}",
                             player_id=player_id,
                             caster_slot=slot,
-                            skill_id=skill.id,
+                            skill_id=base_skill_id,
                             target_player_id=target_payload["target_player_id"],
                             target_slot=target_payload.get("target_slot"),
                             target_slots=list(target_payload.get("target_slots", [])),
@@ -589,7 +628,7 @@ class BattleV2Manager:
                             validate_queue(trial_state, player_id, self._skills_for_room(room_id))
                         except ResolverError:
                             continue
-                        score = _cpu_action_score(state, player_id, candidate, skill)
+                        score = _cpu_action_score(state, player_id, candidate, resolved_skill)
                         if best is None or score > best[0]:
                             best = (score, candidate)
             if best is not None:
@@ -604,7 +643,39 @@ class BattleV2Manager:
         self._grant_next_turn_energy(room_id, player_id)
         return self.serialize_for_player(room_id, player_id)
 
+    def expire_phase_if_needed(self, room_id: str) -> bool:
+        """Apply the authoritative timeout transition once a deadline passes."""
+
+        state = self.get_state(room_id)
+        if not phase_timer_expired(state, self.clock) or state.phase == BattlePhase.FINISHED:
+            return False
+        timed_out_player_id = state.turn_player_id
+        if state.phase == BattlePhase.QUEUE_REVIEW and state.pending_actions.get(timed_out_player_id):
+            try:
+                resolve_queue(state, timed_out_player_id, self._skills_for_room(room_id))
+            except ResolverError:
+                state.pending_actions[timed_out_player_id] = []
+                state.queue_order[timed_out_player_id] = []
+                finish_turn(state, timed_out_player_id)
+                check_winner(state)
+        else:
+            state.pending_actions[timed_out_player_id] = []
+            state.queue_order[timed_out_player_id] = []
+            finish_turn(state, timed_out_player_id)
+            check_winner(state)
+        state.event_log.append(BattleEvent(
+            type="phase_timeout",
+            message=f"{state.players[timed_out_player_id].name} ran out of time",
+            turn_number=state.turn_number,
+            payload={"player_id": timed_out_player_id},
+        ))
+        self._refresh_first_creation_progress(room_id)
+        self._grant_next_turn_energy(room_id, timed_out_player_id)
+        arm_phase_timer(state, self.timer_policy, self.clock)
+        return True
+
     def serialize_for_player(self, room_id: str, viewer_id: str) -> dict:
+        self.expire_phase_if_needed(room_id)
         state = self.get_state(room_id)
         if viewer_id not in state.players:
             raise BattleV2Error(f"unknown viewer: {viewer_id}")
@@ -658,13 +729,15 @@ class BattleV2Manager:
             False,
             rng,
         )
+        arm_phase_timer(state, self.timer_policy, self.clock)
 
     def _validate_non_wildcard_plan(self, room_id: str, state: BattleState, player_id: str) -> None:
         skills = self._skills_for_room(room_id)
+        validate_queue_identity(state, player_id)
         for action in state.pending_actions.get(player_id, []):
-            skill = skills.get(action.skill_id)
-            if skill is None:
-                raise BattleV2Error(f"unknown skill: {action.skill_id}")
+            caster = state.players[player_id].team[action.caster_slot]
+            skill = get_skill_for_action(skills, caster, action)
+            validate_action_identity(state, action, skills)
             if any(energy.value == "black" for energy in skill.cost):
                 return
         validate_queue(state, player_id, skills)

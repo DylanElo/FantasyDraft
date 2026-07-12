@@ -121,6 +121,8 @@ def validate_target_rule(
         return target_player_id, []
 
     slots = action_target_slots(action)
+    if len(slots) != len(set(slots)):
+        raise TargetingError("duplicate target slots are not allowed")
     if rule.kind in {"enemy_team", "ally_team", "team"} and not slots:
         slots = list(target_player.active_slots)
 

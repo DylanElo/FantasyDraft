@@ -167,3 +167,27 @@ Caution / next work:
 Superseded by later work:
 
 - The July 8 pass removed remaining legacy/v1 surfaces and made Battle v2 the only maintained path.
+
+## 2026-07-12 - Persistent Codex project memory
+
+What changed:
+
+- Added root `AGENTS.md` with cross-project product, gameplay, roster, UI/UX, scope, and verification rules.
+- Added `jjk_arena/battle_v2/AGENTS.md` with authoritative engine invariants and high-risk starter regressions.
+- Added `web/static/phaser/AGENTS.md` with the mobile redesign constitution and client/server parity rules.
+- Added `docs/CODEX_PROJECT_MEMORY.md` as the canonical durable record of decisions agreed across design sessions.
+
+Purpose:
+
+- Ensure Codex reloads the project’s agreed constraints on every task instead of relying on chat history.
+- Reduce design drift, repeated rediscovery, and accidental scope expansion.
+
+Verification:
+
+- Instruction file byte sizes were checked against Codex’s default combined project-instruction limit.
+- The repository instruction chain can be verified with `codex --ask-for-approval never "Summarize the current instructions."` from the repository root and from the relevant nested directory.
+
+Caution:
+
+- `AGENTS.md` is the enforceable concise layer; `docs/CODEX_PROJECT_MEMORY.md` is the detailed canonical memory.
+- Open decisions in the memory document still require explicit user approval rather than autonomous resolution.

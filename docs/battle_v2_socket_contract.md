@@ -175,6 +175,12 @@ Emitted to each human player in the room through that player's private socket
 room. Every payload is serialized for its viewer, so invisible statuses,
 private events, and pending queues do not leak to opponents.
 
+The payload includes authoritative `state_revision` and
+`phase_seconds_remaining`. Remaining time is a display value derived from the
+server's monotonic deadline. The server independently wakes the room and emits
+a new viewer-specific update when Planning or Queue Review expires; the client
+must not perform the timeout transition itself.
+
 ### `battle_v2_error`
 
 Returned when the feature flag is disabled, the session is missing, validation

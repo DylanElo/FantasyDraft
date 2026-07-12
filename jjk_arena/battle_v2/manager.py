@@ -9,6 +9,7 @@ from itertools import product
 from copy import deepcopy
 from dataclasses import dataclass
 import json
+from threading import RLock
 from typing import Any, Callable
 
 from .energy import CORE_ENERGY, gain_turn_energy, normalize_energy, split_cost
@@ -27,7 +28,7 @@ from .starter_roster import (
     first_creation_catalog,
     validate_first_creation_team,
 )
-from .timers import BattleTimerPolicy, arm_phase_timer, phase_timer_expired, system_clock
+from .timers import BattleTimerPolicy, arm_phase_timer, phase_seconds_remaining, phase_timer_expired, system_clock
 
 
 class BattleV2Error(ValueError):
@@ -354,6 +355,7 @@ class BattleV2Manager:
         self.room_roster_modes: dict[str, str] = {}
         self.room_first_creation_progress: dict[str, dict[str, dict[str, Any]]] = {}
         self.command_receipts: dict[str, dict[str, OrderedDict[str, str]]] = {}
+        self.room_locks: dict[str, RLock] = {}
         self.timer_policy = timer_policy or BattleTimerPolicy()
         self.clock = clock
 
@@ -398,6 +400,7 @@ class BattleV2Manager:
         gain_turn_energy(state.players[turn_player_id], state.turn_number, True, rng)
         self.rooms[room_id] = state
         self.command_receipts[room_id] = {}
+        self.room_locks[room_id] = RLock()
         arm_phase_timer(state, self.timer_policy, self.clock)
         self.room_rosters[room_id] = roster
         self.room_skill_maps[room_id] = skills
@@ -451,6 +454,26 @@ class BattleV2Manager:
         payload: dict[str, Any] | None = None,
     ) -> bool:
         """Execute one versioned command atomically; return True for a safe retry."""
+
+        with self.room_locks.setdefault(room_id, RLock()):
+            return self._execute_player_command(
+                room_id,
+                player_id,
+                command,
+                state_revision,
+                client_action_nonce,
+                payload,
+            )
+
+    def _execute_player_command(
+        self,
+        room_id: str,
+        player_id: str,
+        command: str,
+        state_revision: int,
+        client_action_nonce: str,
+        payload: dict[str, Any] | None = None,
+    ) -> bool:
 
         payload = payload or {}
         nonce = str(client_action_nonce).strip()
@@ -758,6 +781,12 @@ class BattleV2Manager:
     def expire_phase_if_needed(self, room_id: str) -> bool:
         """Apply the authoritative timeout transition once a deadline passes."""
 
+        with self.room_locks.setdefault(room_id, RLock()):
+            return self._expire_phase_if_needed(room_id)
+
+    def _expire_phase_if_needed(self, room_id: str) -> bool:
+        """Locked implementation for authoritative timeout transitions."""
+
         state = self.get_state(room_id)
         if not phase_timer_expired(state, self.clock) or state.phase == BattlePhase.FINISHED:
             return False
@@ -788,11 +817,16 @@ class BattleV2Manager:
         return True
 
     def serialize_for_player(self, room_id: str, viewer_id: str) -> dict:
+        with self.room_locks.setdefault(room_id, RLock()):
+            return self._serialize_for_player(room_id, viewer_id)
+
+    def _serialize_for_player(self, room_id: str, viewer_id: str) -> dict:
         self.expire_phase_if_needed(room_id)
         state = self.get_state(room_id)
         if viewer_id not in state.players:
             raise BattleV2Error(f"unknown viewer: {viewer_id}")
         payload = battle_state_to_dict(state, viewer_id)
+        payload["phase_seconds_remaining"] = phase_seconds_remaining(state, self.clock)
         payload["skill_catalog"] = self.room_catalogs.get(room_id, skill_catalog())
         payload["roster_mode"] = self.room_roster_modes.get(room_id, "classic")
         if self.room_roster_modes.get(room_id) == "first_creation":
@@ -831,6 +865,7 @@ class BattleV2Manager:
     def _grant_next_turn_energy(self, room_id: str, previous_player_id: str) -> None:
         state = self.get_state(room_id)
         if state.phase != BattlePhase.PLANNING or state.winner_id is not None:
+            arm_phase_timer(state, self.timer_policy, self.clock)
             return
         next_player_id = state.turn_player_id
         if next_player_id == previous_player_id:

@@ -235,3 +235,27 @@ Caution / next work:
 - Nonce receipts are intentionally bounded and in-memory with the room; durable reconnect/resume and multi-process persistence remain separate networking work.
 - The client emits unique nonces but does not yet implement an automatic retransmission policy.
 - No timer scheduler, reconnect flow, roster, progression, balance, or visual layout changed.
+
+## 2026-07-12 - Scheduled authoritative Battle v2 phase timers
+
+What changed:
+
+- Switched internal Planning and Queue Review deadlines from wall time to a monotonic server clock.
+- Added an isolated stale-safe scheduler that actively wakes idle rooms, ignores superseded deadlines, and supports cancellation on room cleanup.
+- Serialized whole `phase_seconds_remaining` values for display while keeping expiration decisions server-authoritative.
+- Added per-room reentrant locking between player commands and background timeout transitions.
+- Broadcast viewer-specific SocketIO state after background expiration and continued CPU rooms automatically before returning control to the player.
+- Cleared finished-match deadlines and advanced command revisions for every timeout/CPU continuation.
+
+Verification:
+
+- Deterministic scheduler tests cover duplicate arming, cancellation, and stale wakeups.
+- Manager tests cover Planning timeout and valid Queue Review resolution exactly once.
+- Real SocketIO integration proves an idle Planning timeout broadcasts and completes the CPU response without a client command.
+- Full pytest, Python compilation, and `git diff --check` passed in the focused branch.
+
+Caution / next work:
+
+- Timer state remains process-local with its room; durable multi-process room ownership belongs with reconnect/session persistence.
+- Timeout durations and timeout policy were not changed.
+- No reconnect flow, roster, progression, balance, Phaser layout, or visual behavior changed.

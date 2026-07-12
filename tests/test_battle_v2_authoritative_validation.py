@@ -169,6 +169,40 @@ def test_planning_timer_is_server_authoritative_and_advances_turn():
     assert any(event.type == "phase_timeout" for event in manager.get_state("timer").event_log)
 
 
+def test_valid_queue_review_timeout_resolves_once_and_advances_turn():
+    now = [200.0]
+    manager = BattleV2Manager(
+        rng_seed=1,
+        timer_policy=BattleTimerPolicy(planning_seconds=5, queue_review_seconds=2),
+        clock=lambda: now[0],
+    )
+    manager.start_classic_match(
+        "queue-timer",
+        [
+            {"id": "p1", "name": "P1", "team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]},
+            {"id": "p2", "name": "P2", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+        ],
+    )
+    state = manager.get_state("queue-timer")
+    state.players["p1"].energy[next(iter(FIRST_CREATION_SKILLS_BY_ID["fc_yuji_itadori_divergent_fist"].cost))] = 1
+    manager.submit_plan("queue-timer", "p1", [{
+        "id": "queued-hit",
+        "caster_slot": 0,
+        "skill_id": "divergent_fist",
+        "target_player_id": "p2",
+        "target_slot": 0,
+    }])
+    assert state.phase_deadline == 202.0
+
+    now[0] = 202.0
+    assert manager.expire_phase_if_needed("queue-timer") is True
+
+    assert state.players["p2"].team[0].hp == 80
+    assert state.turn_player_id == "p2"
+    assert [event.type for event in state.event_log].count("skill_resolved") == 1
+    assert [event.type for event in state.event_log].count("phase_timeout") == 1
+
+
 def test_invisible_status_reveals_on_expiry_when_reveal_mode_requires_it():
     hidden = StatusEffect(
         "trap",

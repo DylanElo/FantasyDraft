@@ -23,6 +23,7 @@ from jjk_arena.battle_v2.first_creation_profile import (
 )
 from jjk_arena.battle_v2.manager import BattleV2Error, BattleV2Manager, battle_v2_enabled, skill_catalog
 from jjk_arena.battle_v2.starter_roster import FIRST_CREATION_PRESETS, first_creation_payload
+from jjk_arena.battle_v2.timer_scheduler import PhaseTimerScheduler
 
 
 def env_flag(name: str, default: bool = False) -> bool:
@@ -49,6 +50,27 @@ battle_v2_manager = BattleV2Manager()
 v2_pvp_lobbies: dict[str, list[dict]] = {}
 rate_limits = defaultdict(deque)
 CPU_V2_PLAYER_ID = "__cpu_v2__"
+
+
+def _timer_deadline(room_id: str) -> float | None:
+    state = battle_v2_manager.rooms.get(room_id)
+    return state.phase_deadline if state is not None else None
+
+
+def _expire_timer_room(room_id: str) -> bool:
+    if room_id not in battle_v2_manager.rooms:
+        return False
+    return battle_v2_manager.expire_phase_if_needed(room_id)
+
+
+battle_v2_timer_scheduler = PhaseTimerScheduler(
+    get_deadline=_timer_deadline,
+    expire=_expire_timer_room,
+    on_expired=lambda room_id: handle_battle_v2_timeout(room_id),
+    clock=lambda: battle_v2_manager.clock(),
+    start_task=socketio.start_background_task,
+    sleep=socketio.sleep,
+)
 
 ROOM_RE = re.compile(r"[^a-zA-Z0-9_-]+")
 CONTROL_RE = re.compile(r"[\x00-\x1f\x7f]+")
@@ -108,8 +130,11 @@ def remember_first_creation_team(player_id: str, team: list[str]) -> None:
 
 def start_battle_v2_match_for_mode(room_id: str, players: list[dict], mode: str) -> dict:
     if mode == "first_creation":
-        return battle_v2_manager.start_first_creation_match(room_id, players)
-    return battle_v2_manager.start_classic_match(room_id, players)
+        payload = battle_v2_manager.start_first_creation_match(room_id, players)
+    else:
+        payload = battle_v2_manager.start_classic_match(room_id, players)
+    battle_v2_timer_scheduler.arm(room_id)
+    return payload
 
 
 def clamp_int(value, minimum: int, maximum: int, default: int = 0) -> int:
@@ -200,7 +225,7 @@ def execute_v2_player_command(
     payload: dict | None = None,
 ) -> bool:
     state_revision, nonce = clean_v2_command_metadata(data)
-    return battle_v2_manager.execute_player_command(
+    replayed = battle_v2_manager.execute_player_command(
         room_id,
         player_id,
         command,
@@ -208,6 +233,8 @@ def execute_v2_player_command(
         nonce,
         payload or {},
     )
+    battle_v2_timer_scheduler.arm(room_id)
+    return replayed
 
 
 def active_v2_context(data=None):
@@ -243,9 +270,9 @@ def emit_battle_v2_update(room_id: str, viewer_id: str | None = None):
                 else load_first_creation_profile(target_viewer_id)
             )
             payload["first_creation_account"] = first_creation_profile_payload(profile)
-        emit("battle_v2_update", payload, room=target_viewer_id)
+        socketio.emit("battle_v2_update", payload, room=target_viewer_id)
         if payload.get("winner_id"):
-            emit("battle_v2_finished", {"winner_id": payload["winner_id"]}, room=target_viewer_id)
+            socketio.emit("battle_v2_finished", {"winner_id": payload["winner_id"]}, room=target_viewer_id)
 
 
 def emit_battle_v2_error(exc: Exception):
@@ -259,6 +286,17 @@ def run_battle_v2_cpu_turns(room_id: str):
             return
         battle_v2_manager.take_cpu_turn(room_id, CPU_V2_PLAYER_ID)
         battle_v2_manager.advance_state_revision(room_id)
+        battle_v2_timer_scheduler.arm(room_id)
+
+
+def handle_battle_v2_timeout(room_id: str) -> None:
+    """Continue automatic CPU play and broadcast a background timeout result."""
+
+    if room_id not in battle_v2_manager.rooms:
+        return
+    if battle_v2_has_cpu(room_id):
+        run_battle_v2_cpu_turns(room_id)
+    emit_battle_v2_update(room_id)
 
 
 def battle_v2_has_cpu(room_id: str) -> bool:
@@ -267,6 +305,30 @@ def battle_v2_has_cpu(room_id: str) -> bool:
     except BattleV2Error:
         return False
     return CPU_V2_PLAYER_ID in state.players
+
+
+def remove_battle_v2_room(room_id: str) -> None:
+    """Cancel timer work and remove room-owned authoritative runtime state."""
+
+    battle_v2_timer_scheduler.cancel(room_id)
+    lock = battle_v2_manager.room_locks.get(room_id)
+
+    def remove_state() -> None:
+        battle_v2_manager.rooms.pop(room_id, None)
+        battle_v2_manager.rngs.pop(room_id, None)
+        battle_v2_manager.command_receipts.pop(room_id, None)
+        battle_v2_manager.room_rosters.pop(room_id, None)
+        battle_v2_manager.room_skill_maps.pop(room_id, None)
+        battle_v2_manager.room_catalogs.pop(room_id, None)
+        battle_v2_manager.room_roster_modes.pop(room_id, None)
+        battle_v2_manager.room_first_creation_progress.pop(room_id, None)
+
+    if lock is None:
+        remove_state()
+    else:
+        with lock:
+            remove_state()
+        battle_v2_manager.room_locks.pop(room_id, None)
 
 
 def remove_v2_pvp_lobby_player(room_id: str, player_session: str) -> list[dict]:
@@ -312,9 +374,7 @@ def reset_room(room_id):
     if not DEBUG_MODE:
         abort(404)
     room_id = clean_room_id(room_id)
-    battle_v2_manager.rooms.pop(room_id, None)
-    battle_v2_manager.rngs.pop(room_id, None)
-    battle_v2_manager.command_receipts.pop(room_id, None)
+    remove_battle_v2_room(room_id)
     v2_pvp_lobbies.pop(room_id, None)
     return f"Room '{room_id}' purged."
 
@@ -581,9 +641,7 @@ def on_reset_room():
     room_id = session.get("room_id")
     if not room_id:
         return
-    battle_v2_manager.rooms.pop(room_id, None)
-    battle_v2_manager.rngs.pop(room_id, None)
-    battle_v2_manager.command_receipts.pop(room_id, None)
+    remove_battle_v2_room(room_id)
     v2_pvp_lobbies.pop(room_id, None)
     session.pop("room_id", None)
     emit("room_reset", {}, room=room_id)

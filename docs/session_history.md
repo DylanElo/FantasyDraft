@@ -321,3 +321,22 @@ Caution / next work:
 
 - Results describe the current heuristic AI and are not sufficient evidence for balance changes without human playtesting.
 - No result persistence/upload, live player telemetry, dashboard, AI tuning, balance change, combat rule, roster, progression, Phaser layout, or visual behavior was added.
+
+## 2026-07-12 - Orientation-balanced offline matchup reports
+
+What changed:
+
+- Added mirrored team-order matchup batches over deterministic headless simulations.
+- Added matchup wins, average turns, turn-cap rate, and first-seat win rate.
+- Added per-character appearances, wins, descriptive rates, and Wilson 95% intervals.
+- Added deterministic JSON and matchup CSV export suitable for later notebook/dashboard work.
+
+Verification:
+
+- Tests cover mirrored accounting, deterministic reruns, Wilson bounds, CSV rows, and CLI JSON output.
+- Full pytest, Python compilation, sample multi-preset report CLI, and `git diff --check` passed in the focused branch.
+
+Caution / next work:
+
+- Character rates remain confounded by preset teammates, opponents, heuristic AI, and sample size; they are not automatic balance recommendations.
+- No in-game dashboard, persistence/upload, live telemetry, AI tuning, balance change, combat rule, roster, progression, Phaser layout, or visual behavior was added.

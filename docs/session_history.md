@@ -340,3 +340,26 @@ Caution / next work:
 
 - Character rates remain confounded by preset teammates, opponents, heuristic AI, and sample size; they are not automatic balance recommendations.
 - No in-game dashboard, persistence/upload, live telemetry, AI tuning, balance change, combat rule, roster, progression, Phaser layout, or visual behavior was added.
+
+## 2026-07-12 - Chunk 1 engine and networking closure
+
+What changed:
+
+- Locked canonical resolver ordering across commitment, counter, reflect, frozen context, ordered effects, one-shot consumption, cleanup, and victory.
+- Added a deterministic 100-case hostile-command corpus with authoritative state-hash atomicity checks and controlled error normalization.
+- Added seeded CPU legal-action stress covering every one of the 19 First Creation characters.
+- Added opt-in, disabled-by-default in-memory replay capture for successful player and authoritative CPU commands; rejected commands are excluded.
+- Added cleanup of captured replay state with the rest of room-owned runtime data.
+
+Verification:
+
+- Cross-mechanic tests prove counter prevents all effects after commitment and reflect is decided before ordered effects while self-effects remain correctly scoped.
+- Adversarial tests prove rejected malformed/foreign/duplicate/out-of-range commands preserve state and revision.
+- Captured player/CPU transcripts verify through the deterministic replay runner.
+- Full pytest, Python compilation, Phaser syntax, replay verification, and `git diff --check` passed in the focused branch.
+
+Caution / remaining Chunk 1 policy gates:
+
+- Fixed damage reduction, universal anti-domain behavior, disconnect outcome, draw/stalemate, and final ranked timeout values still require explicit product decisions.
+- Timeout transitions are not yet represented as replay commands; durable replay retention and consent remain production work.
+- Existing stacked PRs still require review and ordered merging.

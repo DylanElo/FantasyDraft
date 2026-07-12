@@ -345,6 +345,7 @@ class BattleV2Manager:
         *,
         timer_policy: BattleTimerPolicy | None = None,
         clock: Callable[[], float] = system_clock,
+        capture_replays: bool = False,
     ):
         self.rooms: dict[str, BattleState] = {}
         self.rngs: dict[str, random.Random] = {}
@@ -356,6 +357,8 @@ class BattleV2Manager:
         self.room_first_creation_progress: dict[str, dict[str, dict[str, Any]]] = {}
         self.command_receipts: dict[str, dict[str, OrderedDict[str, str]]] = {}
         self.room_locks: dict[str, RLock] = {}
+        self.room_replays: dict[str, dict[str, Any]] = {}
+        self.capture_replays = capture_replays
         self.timer_policy = timer_policy or BattleTimerPolicy()
         self.clock = clock
 
@@ -407,6 +410,22 @@ class BattleV2Manager:
         self.room_catalogs[room_id] = catalog
         self.room_roster_modes[room_id] = "classic"
         self.room_first_creation_progress.pop(room_id, None)
+        if self.capture_replays:
+            from .replay import REPLAY_FORMAT_VERSION, RULES_VERSION, authoritative_state_hash
+            self.room_replays[room_id] = {
+                "format_version": REPLAY_FORMAT_VERSION,
+                "rules_version": RULES_VERSION,
+                "match_id": room_id,
+                "roster_mode": "classic",
+                "rng_seed": self.rng_seed,
+                "players": [
+                    {"id": config.id, "name": config.name, "team": list(config.team)}
+                    for config in configs
+                ],
+                "commands": [],
+                "initial_state_hash": authoritative_state_hash(state),
+                "final_state_hash": authoritative_state_hash(state),
+            }
         return self.serialize_for_player(room_id, turn_player_id)
 
     def start_first_creation_match(
@@ -429,6 +448,8 @@ class BattleV2Manager:
             catalog=first_creation_catalog(),
         )
         self.room_roster_modes[room_id] = "first_creation"
+        if room_id in self.room_replays:
+            self.room_replays[room_id]["roster_mode"] = "first_creation"
         self.room_first_creation_progress[room_id] = initial_first_creation_progress(self.get_state(room_id))
         return self.serialize_for_player(room_id, configs[0].id)
 
@@ -529,9 +550,11 @@ class BattleV2Manager:
                 self.end_turn(room_id, player_id)
             elif command == "surrender":
                 self.surrender(room_id, player_id)
+            elif command == "cpu_turn":
+                self.take_cpu_turn(room_id, player_id)
             else:
                 raise BattleV2Error(f"unknown battle command: {command}")
-        except Exception:
+        except Exception as exc:
             self.rooms[room_id] = state_snapshot
             if progress_snapshot is None:
                 self.room_first_creation_progress.pop(room_id, None)
@@ -539,19 +562,35 @@ class BattleV2Manager:
                 self.room_first_creation_progress[room_id] = progress_snapshot
             if rng is not None and rng_snapshot is not None:
                 rng.setstate(rng_snapshot)
+            if isinstance(exc, BattleV2Error):
+                raise
+            if isinstance(exc, (IndexError, KeyError, TypeError, ValueError)):
+                raise BattleV2Error("invalid command payload") from exc
             raise
 
         self.rooms[room_id].state_revision += 1
+        if self.capture_replays and room_id in self.room_replays:
+            from .replay import authoritative_state_hash
+            state_hash = authoritative_state_hash(self.rooms[room_id])
+            self.room_replays[room_id]["commands"].append({
+                "player_id": player_id,
+                "command": command,
+                "state_revision": state_revision,
+                "client_action_nonce": nonce,
+                "payload": deepcopy(payload),
+                "expected_state_hash": state_hash,
+            })
+            self.room_replays[room_id]["final_state_hash"] = state_hash
         player_receipts[nonce] = fingerprint
         player_receipts.move_to_end(nonce)
         while len(player_receipts) > 128:
             player_receipts.popitem(last=False)
         return False
 
-    def advance_state_revision(self, room_id: str) -> None:
-        """Record an authoritative automatic continuation such as a CPU turn."""
-
-        self.get_state(room_id).state_revision += 1
+    def replay_document(self, room_id: str) -> dict[str, Any]:
+        if room_id not in self.room_replays:
+            raise BattleV2Error("replay capture is not enabled for this room")
+        return deepcopy(self.room_replays[room_id])
 
     def surrender(self, room_id: str, player_id: str) -> dict:
         """Finish a match by authoritative player surrender."""

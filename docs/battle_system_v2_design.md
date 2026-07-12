@@ -135,6 +135,13 @@ schema and limitations are defined in
 `docs/battle_v2_simulation_contract.md`; heuristic results are not treated as a
 substitute for human balance testing.
 
+## Canonical resolver ordering
+
+Cross-mechanic commitment, counter, reflect, frozen context, effects,
+one-shot consumption, cleanup, and victory ordering is locked by executable
+regressions and documented in
+`docs/battle_v2_resolution_order_contract.md`.
+
 ## Acceptance Criteria
 
 - `jjk_arena.battle_v2.models` imports cleanly.

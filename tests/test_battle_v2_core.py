@@ -782,7 +782,7 @@ def test_damage_bonus_status_applies_to_next_offensive_skill_and_is_consumed():
             "p1",
             0,
             duration=3,
-            payload={"damage_bonus": 10},
+            payload={"damage_bonus": 10, "consume_after_damage": True},
         )
     )
     self_damage = skill(
@@ -866,7 +866,7 @@ def test_black_cost_delta_reduces_wildcard_cost_until_bonus_is_consumed():
             "p1",
             0,
             duration=3,
-            payload={"black_cost_delta": -1, "damage_bonus": 10},
+            payload={"black_cost_delta": -1, "damage_bonus": 10, "consume_after_damage": True},
         )
     )
     vow_attack = skill("vow_attack", cost=[EnergyType.RED, EnergyType.BLACK])

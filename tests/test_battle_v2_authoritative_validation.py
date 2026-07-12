@@ -118,6 +118,21 @@ def test_aoe_one_shot_damage_bonus_applies_to_all_targets_then_consumes():
     assert not any(status.id == "boost" for status in caster.statuses)
 
 
+def test_unmarked_persistent_damage_bonus_is_not_consumed_as_one_shot():
+    skill = SkillSpec("hit", "Hit", "", [], 0, TargetRule("enemy"), [SkillClass.RANGED], [EffectSpec("damage", 20)])
+    caster = CharacterState("c", "C", base_skill_ids=["hit"])
+    caster.statuses.append(StatusEffect("aura", "Aura", "p1", 0, "p1", 0, 3, payload={"damage_bonus": 10}))
+    enemy = CharacterState("e", "E")
+    state = BattleState({"p1": PlayerState("p1", "P1", team=[caster]), "p2": PlayerState("p2", "P2", team=[enemy])}, "p1")
+    state.pending_actions["p1"] = [PendingAction("a", "p1", 0, "hit", "p2", 0)]
+    state.queue_order["p1"] = ["a"]
+
+    resolve_queue(state, "p1", {"hit": skill})
+
+    assert enemy.hp == 70
+    assert any(status.id == "aura" for status in caster.statuses)
+
+
 def test_ranged_physical_skill_does_not_trigger_melee_counter():
     skill = FIRST_CREATION_SKILLS_BY_ID["fc_mai_zenin_revolver_shot"]
     caster = CharacterState("mai_zenin", "Mai", base_skill_ids=[skill.id])

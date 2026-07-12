@@ -439,13 +439,6 @@ def _consume_statuses_by_payload(character: CharacterState, key: str) -> None:
     character.statuses = [status for status in character.statuses if status.duration == 0 or not status.payload.get(key)]
 
 
-def _consume_one_shot_damage_bonuses(character: CharacterState) -> None:
-    character.statuses = [
-        status for status in character.statuses
-        if status.duration == 0 or "damage_bonus" not in status.payload
-    ]
-
-
 def _consume_statuses_for_skill(character: CharacterState, skill_id: str) -> None:
     character.statuses = [
         status for status in character.statuses
@@ -635,7 +628,6 @@ def resolve_queue(
                         break
         if any(effect.type == "damage" and effect.target != "self" for effect in skill.effects):
             _consume_statuses_by_payload(caster, "consume_after_damage")
-            _consume_one_shot_damage_bonuses(caster)
             _apply_melee_punishments(state, events, action, skill, target_player_id, target_slots)
         _consume_statuses_for_skill(caster, skill.id)
         caster.statuses = [status for status in caster.statuses if id(status) not in preexisting_one_shots]

@@ -200,7 +200,7 @@ What changed:
 - Rejected foreign/replacement-only skill IDs, empty or duplicate action IDs, incomplete/duplicate queue order, and duplicate or misordered primary/secondary targets.
 - Preserved secondary and alternate redirect fields through the real SocketIO cleaner.
 - Added explicit `Melee` and `Ranged` tags; melee counters no longer treat all Physical skills as melee.
-- Deferred one-shot damage-buff consumption until the complete skill finishes, corrected helpful/hostile status families, and emitted configured invisible-expiry reveals.
+- Deferred explicitly marked one-shot damage-buff consumption until the complete skill finishes, preserved persistent damage bonuses, corrected helpful/hostile status families, and emitted configured invisible-expiry reveals.
 - Added an isolated server-authoritative Planning/Queue Review timer policy module and manager timeout transitions.
 
 Verification:

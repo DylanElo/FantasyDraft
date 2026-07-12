@@ -411,7 +411,7 @@ SUKUNA = CharacterSpec(
             target_rule=self_target(),
             classes=[SkillClass.VOW, SkillClass.STRATEGIC, SkillClass.INSTANT],
             effects=[
-                status_effect("binding_vow", "Binding Vow", 2, target="self", black_cost_delta=-1, damage_bonus=10),
+                status_effect("binding_vow", "Binding Vow", 2, target="self", black_cost_delta=-1, damage_bonus=10, consume_after_damage=True),
                 damage(10, DamageType.SOUL, target="self"),
             ],
         ),
@@ -532,6 +532,7 @@ AOI_TODO = CharacterSpec(
                     2,
                     damage_reduction=10,
                     damage_bonus=10,
+                    consume_after_damage=True,
                 )
             ],
         ),
@@ -620,6 +621,7 @@ MAKI = CharacterSpec(
                     target="self",
                     black_cost_delta=-1,
                     damage_bonus=10,
+                    consume_after_damage=True,
                 )
             ],
         ),
@@ -1000,7 +1002,7 @@ def kit(character_id: str, role: str, state: str, difficulty: str, rows: list[Sk
 FIRST_CREATION_ROSTER: dict[str, CharacterSpec] = {
     "yuji_itadori": kit("yuji_itadori", "Beginner bruiser / finisher", "Momentum, Soul Bruise", "Easy", [
         s("yuji_itadori", "divergent_fist", "Divergent Fist", "Deal 20 damage and 10 delayed damage; Soul Bruise triggers the delayed hit immediately.", [BODY], 0, enemy(), [SkillClass.PHYSICAL, SkillClass.INSTANT], [damage(20), damage(10, condition_recipient_has_status="soul_bruise"), status_effect("soul_bruise", "Soul Bruise", 1, condition_recipient_missing_status="soul_bruise", turn_end_damage=10), EffectSpec(type="remove_status", status="soul_bruise", payload={"condition_recipient_has_status": "soul_bruise"})]),
-        s("yuji_itadori", "cursed_energy_reinforcement", "Cursed Energy Reinforcement", "Yuji gains 20 damage reduction for 1 turn and his next damaging skill deals +10 damage.", [FOCUS], 2, self_target(), [SkillClass.STRATEGIC, SkillClass.INSTANT], [status_effect("yuji_reinforced", "Cursed Energy Reinforcement", 2, target="self", damage_reduction=20, damage_bonus=10)]),
+        s("yuji_itadori", "cursed_energy_reinforcement", "Cursed Energy Reinforcement", "Yuji gains 20 damage reduction for 1 turn and his next damaging skill deals +10 damage.", [FOCUS], 2, self_target(), [SkillClass.STRATEGIC, SkillClass.INSTANT], [status_effect("yuji_reinforced", "Cursed Energy Reinforcement", 2, target="self", damage_reduction=20, damage_bonus=10, consume_after_damage=True)]),
         s("yuji_itadori", "black_flash_attempt", "Black Flash Attempt", "Deal 35 damage; against Stunned, Exposed, or Soul Bruised targets deal +10 piercing and gain Momentum.", [BODY, FOCUS], 3, enemy(), [SkillClass.PHYSICAL, SkillClass.STRATEGIC, SkillClass.INSTANT], [damage(35), damage(10, DamageType.PIERCING, condition_statuses=["stunned", "exposed", "soul_bruise"]), status_effect("momentum", "Momentum", 2, target="self", condition_scope="original_target", condition_statuses=["stunned", "exposed", "soul_bruise"])]),
         s("yuji_itadori", "reflexive_guard", "Reflexive Guard", "Yuji becomes untargetable for 1 turn.", [WILD], 4, self_target(), [SkillClass.STRATEGIC, SkillClass.INSTANT], [status_effect("reflexive_guard", "Reflexive Guard", 2, target="self", invulnerable=True)]),
     ]),
@@ -1020,7 +1022,7 @@ FIRST_CREATION_ROSTER: dict[str, CharacterSpec] = {
         s("maki_zenin", "cursed_tool_combo", "Cursed Tool Combo", "Destroy up to 15 destructible defense on one enemy, then deal 20 damage.", [BODY], 0, enemy(), [SkillClass.PHYSICAL, SkillClass.INSTANT], [damage(20, destroy_defense_first=15)]),
         s("maki_zenin", "spear_sweep", "Spear Sweep", "Deal 15 damage to all enemies and Disarm them for 1 turn, reducing Body damage by 10.", [BODY, WILD], 2, enemy_team(), [SkillClass.PHYSICAL, SkillClass.INSTANT], [damage(15), status_effect("disarmed", "Disarmed", 2, physical_damage_output_delta=-10)]),
         s("maki_zenin", "weapon_specialist", "Weapon Specialist", "For 3 turns Maki gains 10 damage reduction; next Cursed Tool Combo gains +10 damage and defense break.", [FOCUS], 3, self_target(), [SkillClass.STRATEGIC, SkillClass.INSTANT], [status_effect("weapon_specialist", "Weapon Specialist", 3, target="self", damage_reduction=10, next_skill_modifiers={"fc_maki_zenin_cursed_tool_combo": {"damage": 10, "destroy_defense_first": 10}}, consume_on_skill_id="fc_maki_zenin_cursed_tool_combo")]),
-        s("maki_zenin", "tool_parry_stance", "Tool-Parry Stance", "Maki becomes untargetable for 1 turn and her next damaging skill deals +10.", [WILD], 4, self_target(), [SkillClass.STRATEGIC, SkillClass.INSTANT], [status_effect("tool_parry", "Tool-Parry Stance", 2, target="self", invulnerable=True, damage_bonus=10)]),
+        s("maki_zenin", "tool_parry_stance", "Tool-Parry Stance", "Maki becomes untargetable for 1 turn and her next damaging skill deals +10.", [WILD], 4, self_target(), [SkillClass.STRATEGIC, SkillClass.INSTANT], [status_effect("tool_parry", "Tool-Parry Stance", 2, target="self", invulnerable=True, damage_bonus=10, consume_after_damage=True)]),
     ]),
     "toge_inumaki": kit("toge_inumaki", "Cursed speech control / self-risk", "Throat Strain", "Medium", [
         s("toge_inumaki", "stop", "Stop.", "Stun one enemy's harmful skills for 1 turn. Toge takes 5 soul damage.", [FOCUS], 1, enemy(), [SkillClass.STRATEGIC, SkillClass.CONTROL, SkillClass.INSTANT], [status_effect("stopped", "Stop", 2, stun_harmful=True), damage(5, DamageType.SOUL, target="self")]),

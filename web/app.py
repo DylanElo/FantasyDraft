@@ -395,6 +395,12 @@ def record_match_finished_analytics(room_id: str) -> None:
     analytics_recorded_matches.add(room_id)
 
 
+# Recorded at the authoritative terminal state transition (manager._finish_match),
+# not from the emit_battle_v2_update broadcast path — a repeated broadcast/reconnect
+# refresh must not be the thing deciding whether a match-finished event exists.
+battle_v2_manager.on_match_finished = record_match_finished_analytics
+
+
 def clamp_int(value, minimum: int, maximum: int, default: int = 0) -> int:
     try:
         parsed = int(value)
@@ -542,8 +548,9 @@ def emit_battle_v2_update(room_id: str, viewer_id: str | None = None):
     state = battle_v2_manager.get_state(room_id)
     room_last_activity[room_id] = time.monotonic()
     if state.phase.value == "finished":
+        # Match-finished analytics are recorded by battle_v2_manager.on_match_finished
+        # at the authoritative _finish_match transition, not here.
         archive_finished_replay(room_id)
-        record_match_finished_analytics(room_id)
     viewer_ids = [player_id for player_id in state.players if player_id != CPU_V2_PLAYER_ID]
     if viewer_id and viewer_id not in viewer_ids and viewer_id in state.players:
         viewer_ids.append(viewer_id)
@@ -553,20 +560,12 @@ def emit_battle_v2_update(room_id: str, viewer_id: str | None = None):
         payload = battle_v2_manager.serialize_for_player(room_id, target_viewer_id)
         if payload.get("roster_mode") == "first_creation":
             if payload.get("winner_id"):
-                previously_completed = set(load_first_creation_profile(target_viewer_id).get("completed_missions", []))
-                profile = merge_first_creation_progress(target_viewer_id, payload.get("first_creation_progress"))
-                newly_completed = set(profile.get("completed_missions", [])) - previously_completed
-                for mission_id in newly_completed:
-                    try:
-                        runtime_store.record_analytics_event(
-                            "mission_completed",
-                            {"mission_id": mission_id},
-                            match_id=room_id,
-                            player_id=target_viewer_id,
-                            event_key=f"mission_completed:{room_id}:{target_viewer_id}:{mission_id}",
-                        )
-                    except Exception:
-                        operational_counters["analytics_write_errors"] += 1
+                profile = merge_first_creation_progress(
+                    target_viewer_id,
+                    payload.get("first_creation_progress"),
+                    match_id=room_id,
+                    analytics_store=runtime_store,
+                )
             else:
                 profile = load_first_creation_profile(target_viewer_id)
             payload["first_creation_account"] = first_creation_profile_payload(profile)

@@ -393,6 +393,11 @@ class BattleV2Manager:
         self.capture_replays = capture_replays
         self.timer_policy = timer_policy or BattleTimerPolicy()
         self.clock = clock
+        # Optional hook invoked exactly once, at the authoritative terminal
+        # state transition in `_finish_match` — not from any broadcast path.
+        # Lets callers (e.g. web/app.py) record match-finished analytics at
+        # the true source of truth instead of a viewer-serialization side effect.
+        self.on_match_finished: Callable[[str], None] | None = None
 
     def start_classic_match(
         self,
@@ -434,6 +439,7 @@ class BattleV2Manager:
             players=player_states,
             turn_player_id=turn_player_id,
             rng_seed=seed,
+            room_id=room_id,
             disconnect_seconds_used={config.id: 0 for config in configs},
             timeout_total={config.id: 0 for config in configs},
             timeout_consecutive={config.id: 0 for config in configs},
@@ -678,6 +684,11 @@ class BattleV2Manager:
             state.turn_number,
             {"winner_id": winner_id, "result_type": result_type, "reason": reason},
         ))
+        if self.on_match_finished is not None and state.room_id is not None:
+            try:
+                self.on_match_finished(state.room_id)
+            except Exception:
+                pass
 
     def _finish_by_tiebreak(self, state: BattleState, reason: str) -> None:
         scores = {}

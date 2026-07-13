@@ -64,7 +64,35 @@ def test_replay_retention_is_opt_in_storage_with_expiry(tmp_path):
 
 def test_runtime_store_healthcheck_reports_schema(tmp_path):
     store = SQLiteRuntimeStore(tmp_path / "runtime.sqlite3")
-    assert store.healthcheck() == {"ok": True, "schema_version": 3}
+    assert store.healthcheck() == {"ok": True, "schema_version": 4}
+
+
+def test_analytics_summary_uses_sql_aggregation_not_python_payload_decoding(tmp_path):
+    """Regression for the P2 finding that /ops/runtime decoded every row's
+    JSON payload in Python. Corrupt a row's payload_json directly (bypassing
+    the store's own write path) while leaving the typed dimension columns
+    intact, and confirm the summary still reflects it correctly — proving
+    the aggregation reads the typed columns, not payload_json."""
+
+    import sqlite3
+
+    store = SQLiteRuntimeStore(tmp_path / "runtime.sqlite3")
+    store.record_analytics_event(
+        "match_finished",
+        {"result_type": "WIN", "vs_cpu": True, "cpu_difficulty": "hard"},
+        match_id="m1",
+        event_key="match_finished:m1",
+    )
+    with sqlite3.connect(tmp_path / "runtime.sqlite3") as connection:
+        connection.execute(
+            "UPDATE analytics_events SET payload_json = 'not valid json' WHERE match_id = 'm1'"
+        )
+
+    summary = store.analytics_summary()["match_finished"]
+
+    assert summary["total"] == 1
+    assert summary["by_result_type"] == {"WIN": 1}
+    assert summary["by_difficulty"] == {"hard": 1}
 
 
 def test_analytics_summary_counts_match_finished_events_by_result_type_and_difficulty(tmp_path):

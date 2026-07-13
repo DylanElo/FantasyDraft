@@ -81,6 +81,18 @@ truth. Writes are best-effort (wrapped in try/except, counted under
 `analytics_write_errors` on failure) so a storage hiccup never breaks a
 battle in progress.
 
+Match-finished analytics are recorded at the authoritative terminal state
+transition (`BattleV2Manager._finish_match`, via an `on_match_finished` hook
+the manager invokes exactly once per match), not as a side effect of
+broadcasting a viewer update — a repeated or delayed broadcast can no longer
+be the thing that creates or skips a business event. Mission-completed
+analytics are recorded at the point a mission's completion is durably merged
+into the player's profile (`merge_first_creation_progress`), for the same
+reason. `analytics_summary()` aggregates entirely in SQL (`GROUP BY` over
+typed `result_type`/`cpu_difficulty`/`outcome`/`mission_id` columns mirrored
+off each event's payload at write time) instead of loading and JSON-decoding
+every row in Python, so it stays cheap as the table grows.
+
 Finished rooms, inactive rooms, waiting lobbies, expired replay rows, and stale
 rate-limit keys are pruned on bounded socket activity. The defaults are 15
 minutes for finished rooms/lobbies and two hours for inactive active rooms.

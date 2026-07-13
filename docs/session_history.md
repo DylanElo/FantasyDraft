@@ -1044,3 +1044,86 @@ coverage) is unchanged from the prior pass — Todo, Mechamaru, Utahime,
 Maki/Toge, and Nobara/Megumi still have no dedicated per-character
 objective; out of scope for this corrective pass, which targeted semantics
 bugs, not new content.
+
+## 2026-07-13 - Milestone C: the two remaining P2 analytics items
+
+Source: same session, after PR #55 (the P1 corrective pass) was opened.
+Tackled both deferred P2s: analytics recorded from the broadcast path
+instead of the authoritative state transition, and `/ops/runtime` decoding
+every row's JSON payload in Python instead of aggregating in SQL.
+
+**Authoritative recording location.**
+- `models.py`: added `BattleState.room_id: str | None = None`; set once in
+  `manager.py`'s `start_classic_match` at construction (inherited by
+  `start_first_creation_match`, which delegates to it) — no other
+  `BattleState(...)` construction site exists.
+- `manager.py`: added `BattleV2Manager.on_match_finished: Callable[[str],
+  None] | None`, invoked (wrapped in try/except so a hook failure can never
+  break a battle) at the end of `_finish_match` — the single choke point
+  all 6 finish call sites (`_finish_by_tiebreak`, `expire_disconnects` x2,
+  `_complete_player_turn`, `surrender`) already funnel through, and which
+  is already idempotency-guarded (`if phase == FINISHED and result_type is
+  not None: return` at the top). This was the actual authoritative
+  terminal transition Codex's original pass avoided touching because it
+  "touches 6 call sites" — turns out only one of those (`_finish_match`
+  itself) needed a change, not all 6.
+- `web/app.py`: registered `battle_v2_manager.on_match_finished =
+  record_match_finished_analytics` once at module load (right after the
+  function is defined), and removed the call to it from
+  `emit_battle_v2_update`. A repeated/delayed broadcast can no longer be
+  the thing that creates or skips the event.
+- `replay.py`: adding `room_id` to `BattleState` changed
+  `authoritative_state_hash()`'s output (it hashes every dataclass field),
+  breaking the checked-in golden replay fixture. Added `"room_id"` to the
+  existing `HASH_EXCLUDED_FIELDS` set alongside `"phase_deadline"` — it's
+  routing metadata, not battle-authoritative content, so excluding it (not
+  re-baselining the golden hash) is the correct fix.
+- Mission-completed analytics moved the same way: `first_creation_profile.py`'s
+  `merge_first_creation_progress` now computes `newly_completed` itself
+  (inside the same closure that mutates `completed_missions`) and records
+  the analytics event right after the durable profile merge succeeds,
+  instead of `web/app.py` diffing before/after profile snapshots around
+  the broadcast. Added an `analytics_store` parameter so callers with their
+  own long-lived `SQLiteRuntimeStore` (like `web/app.py`'s singleton, whose
+  `.path` tests redirect) can pass it in — a naive `SQLiteRuntimeStore()`
+  constructed fresh inside `first_creation_profile.py` would have silently
+  written to the real default database path during tests instead of the
+  test-isolated one (caught this via a failing test, not by inspection).
+- Added `test_match_finished_analytics_are_recorded_without_any_broadcast`
+  (calls `battle_v2_manager.surrender()` directly, zero socket/broadcast
+  calls, confirms the event still lands) in `tests/test_battle_v2_socket.py`.
+
+**SQL-aggregated `/ops/runtime`.**
+- `runtime_store.py`: bumped `SCHEMA_VERSION` to 4. Added typed columns
+  (`result_type`, `finish_reason`, `cpu_difficulty`, `vs_cpu`, `outcome`,
+  `mission_id`) to `analytics_events`, populated automatically from
+  whichever of those keys happen to be present in the event's `payload`
+  dict at write time (no call-site changes needed) — `payload_json` still
+  stores the full record for detail/debugging, but is no longer read by
+  the summary path. Added indexes on `(event_type, result_type)`,
+  `(event_type, outcome)`, `(event_type, mission_id)`.
+- `analytics_summary()` rewritten as five small `SELECT ... GROUP BY`
+  queries instead of `SELECT * ... ` + a Python loop decoding every row's
+  JSON. Same public return shape as before (no caller changes needed).
+- Added `test_analytics_summary_uses_sql_aggregation_not_python_payload_decoding`,
+  which corrupts a row's `payload_json` directly via a raw `sqlite3`
+  connection (bypassing the store's own write path) while leaving the
+  typed columns intact, and confirms the summary is still correct —
+  proving the aggregation genuinely reads the typed columns, not the JSON.
+
+Verification:
+- `python -m pytest -q` — 370 passed, 1 skipped, both normal and reverse
+  file order (added 3 tests net: the no-broadcast regression, the
+  SQL-aggregation regression, and the schema-version bump to 4 fixed one
+  existing assertion).
+- `python -m compileall -q jjk_arena web run_server.py`; `node --check
+  web/static/phaser-shell.js`.
+- Re-ran `python -m jjk_arena.battle_v2.skill_audit` — identical
+  pre-existing findings, no new regressions.
+- Did not live-browser-verify; covered by the new/updated tests above.
+
+Remaining for Milestone C: mission "19/19 mastery coverage" (per-character
+objectives, not just team presence) is still open — same 5 characters as
+before (Todo, Mechamaru, Utahime, Maki/Toge, Nobara/Megumi). Both original
+P2 analytics items are now closed. Audio/haptics remains the one Milestone C
+deliverable that isn't agent-doable.

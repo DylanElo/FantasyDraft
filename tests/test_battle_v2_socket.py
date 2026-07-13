@@ -133,6 +133,29 @@ def test_cpu_rematch_preserves_the_original_difficulty(monkeypatch):
     assert web_app.battle_v2_manager.room_cpu_difficulty[rematch["new_match_id"]] == "hard"
 
 
+def test_match_finished_analytics_are_recorded_without_any_broadcast(monkeypatch):
+    """Match-finished analytics must come from the authoritative state
+    transition, not the emit_battle_v2_update broadcast path.
+
+    Regression for the P2 finding that analytics were only ever recorded
+    as a side effect of broadcasting a viewer update — calling the
+    manager's authoritative `surrender()` directly (with no socket client,
+    no `emit_battle_v2_update` call at all) must still produce the event.
+    """
+
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    web_app.battle_v2_manager.start_classic_match("no-broadcast-room", [
+        {"id": "p1", "name": "Player One", "team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]},
+        {"id": "p2", "name": "Player Two", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+    ])
+
+    before = web_app.runtime_store.analytics_summary()["match_finished"]["total"]
+    web_app.battle_v2_manager.surrender("no-broadcast-room", "p1")
+    after = web_app.runtime_store.analytics_summary()["match_finished"]["total"]
+
+    assert after - before == 1
+
+
 def test_emit_battle_v2_update_records_mission_completed_analytics_once(monkeypatch):
     from jjk_arena.battle_v2.models import BattleEvent
 

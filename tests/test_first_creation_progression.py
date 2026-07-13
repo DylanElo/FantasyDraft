@@ -36,6 +36,12 @@ def test_story_tutorial_mission_completes_from_cumulative_events():
             turn_number=1,
             payload={"player_id": "p1", "skill_id": skill_id},
         ))
+    state.event_log.append(BattleEvent(
+        type="status_applied",
+        message="Momentum",
+        turn_number=1,
+        payload={"status": "momentum", "source_player_id": "p1", "source_skill_id": "fc_yuji_itadori_black_flash_attempt"},
+    ))
     state.winner_id = "p1"
 
     payload = manager.serialize_for_player("room", "p1")
@@ -53,15 +59,15 @@ def test_yuta_route_tracks_rika_state_and_replacement_skill():
     ])
     state = manager.get_state("room")
     state.event_log.extend([
-        BattleEvent(type="status_applied", message="Rika", turn_number=1, payload={"status": "rikas_curse", "source_player_id": "p1"}),
+        BattleEvent(type="status_applied", message="Rika", turn_number=1, payload={"status": "rikas_curse", "source_player_id": "p1", "source_skill_id": "fc_yuta_okkotsu_jjk0_rikas_curse"}),
         BattleEvent(
             type="skill_resolved",
             message="Megaphone",
             turn_number=2,
             payload={"player_id": "p1", "skill_id": "fc_yuta_okkotsu_jjk0_cursed_speech_megaphone"},
         ),
-        BattleEvent(type="status_applied", message="Weapon Specialist", turn_number=1, payload={"status": "weapon_specialist", "source_player_id": "p1"}),
-        BattleEvent(type="status_applied", message="Stop", turn_number=1, payload={"status": "stopped", "source_player_id": "p1"}),
+        BattleEvent(type="status_applied", message="Weapon Specialist", turn_number=1, payload={"status": "weapon_specialist", "source_player_id": "p1", "source_skill_id": "fc_maki_zenin_weapon_specialist"}),
+        BattleEvent(type="status_applied", message="Stop", turn_number=1, payload={"status": "stopped", "source_player_id": "p1", "source_skill_id": "fc_toge_inumaki_stop"}),
     ])
     state.winner_id = "p1"
 
@@ -84,21 +90,35 @@ def test_cursed_child_bond_does_not_complete_on_a_loss():
     ])
     state = manager.get_state("room")
     state.event_log.extend([
-        BattleEvent(type="status_applied", message="Rika", turn_number=1, payload={"status": "rikas_curse", "source_player_id": "p1"}),
+        BattleEvent(type="status_applied", message="Rika", turn_number=1, payload={"status": "rikas_curse", "source_player_id": "p1", "source_skill_id": "fc_yuta_okkotsu_jjk0_rikas_curse"}),
         BattleEvent(
             type="skill_resolved",
             message="Megaphone",
             turn_number=2,
             payload={"player_id": "p1", "skill_id": "fc_yuta_okkotsu_jjk0_cursed_speech_megaphone"},
         ),
-        BattleEvent(type="status_applied", message="Weapon Specialist", turn_number=1, payload={"status": "weapon_specialist", "source_player_id": "p1"}),
-        BattleEvent(type="status_applied", message="Stop", turn_number=1, payload={"status": "stopped", "source_player_id": "p1"}),
+        BattleEvent(type="status_applied", message="Weapon Specialist", turn_number=1, payload={"status": "weapon_specialist", "source_player_id": "p1", "source_skill_id": "fc_maki_zenin_weapon_specialist"}),
+        BattleEvent(type="status_applied", message="Stop", turn_number=1, payload={"status": "stopped", "source_player_id": "p1", "source_skill_id": "fc_toge_inumaki_stop"}),
     ])
     state.winner_id = "p2"
 
     progress = evaluate_first_creation_progress(state, "p1")
 
     assert "cursed_child_bond" not in progress["completed_ids"]
+
+
+def _hidden_inventory_events():
+    return [
+        BattleEvent(type="energy_gained", message="Read payoff", turn_number=1, payload={"player_id": "p1"}),
+        BattleEvent(
+            type="skill_resolved", message="Compressed Uzumaki", turn_number=2,
+            payload={"player_id": "p1", "skill_id": "fc_suguru_geto_young_compressed_uzumaki"},
+        ),
+        BattleEvent(
+            type="skill_resolved", message="Reverse Cursed Treatment", turn_number=2,
+            payload={"player_id": "p1", "skill_id": "fc_shoko_ieiri_young_reverse_cursed_treatment"},
+        ),
+    ]
 
 
 def test_hidden_inventory_echoes_requires_a_win():
@@ -108,14 +128,7 @@ def test_hidden_inventory_echoes_requires_a_win():
         {"id": "p2", "name": "Player Two", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
     ])
     state = manager.get_state("room")
-    state.event_log.append(
-        BattleEvent(
-            type="energy_gained",
-            message="Read payoff",
-            turn_number=1,
-            payload={"player_id": "p1"},
-        )
-    )
+    state.event_log.extend(_hidden_inventory_events())
     state.players["p1"].team[0].hp = 30
 
     progress_on_loss = evaluate_first_creation_progress(state, "p1")
@@ -125,6 +138,33 @@ def test_hidden_inventory_echoes_requires_a_win():
     progress_on_win = evaluate_first_creation_progress(state, "p1")
     assert "hidden_inventory_echoes" in progress_on_win["completed_ids"]
     assert "gojo_adult" in progress_on_win["unlocked"]
+
+
+def test_hidden_inventory_echoes_requires_gojo_and_geto_payoffs_independently():
+    """Regression: Gojo's read payoff and Geto's stock payoff previously
+    shared one objective satisfied by either -- completing only one of the
+    two teammates' signature payoffs still finished the mission."""
+
+    manager = BattleV2Manager(rng_seed=1)
+    manager.start_first_creation_match("room", [
+        {"id": "p1", "name": "Player One", "team": ["satoru_gojo_young", "suguru_geto_young", "shoko_ieiri_young"]},
+        {"id": "p2", "name": "Player Two", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
+    ])
+    state = manager.get_state("room")
+    state.winner_id = "p1"
+    state.players["p1"].team[0].hp = 30
+    # Only Gojo's payoff -- Geto's and Shoko's objectives are missing.
+    state.event_log.append(
+        BattleEvent(type="energy_gained", message="Read payoff", turn_number=1, payload={"player_id": "p1"})
+    )
+
+    progress = evaluate_first_creation_progress(state, "p1")
+
+    assert "hidden_inventory_echoes" not in progress["completed_ids"]
+    mission = next(m for m in progress["missions"] if m["id"] == "hidden_inventory_echoes")
+    incomplete_labels = {o["label"] for o in mission["objectives"] if not o["complete"]}
+    assert "Consume Curse Stock with Geto's Compressed Uzumaki" in incomplete_labels
+    assert "Heal an ally with Shoko's Reverse Cursed Treatment" in incomplete_labels
 
 
 def test_cursed_child_bond_is_incomplete_without_makis_or_toges_objective():
@@ -139,7 +179,7 @@ def test_cursed_child_bond_is_incomplete_without_makis_or_toges_objective():
     ])
     state = manager.get_state("room")
     state.event_log.extend([
-        BattleEvent(type="status_applied", message="Rika", turn_number=1, payload={"status": "rikas_curse", "source_player_id": "p1"}),
+        BattleEvent(type="status_applied", message="Rika", turn_number=1, payload={"status": "rikas_curse", "source_player_id": "p1", "source_skill_id": "fc_yuta_okkotsu_jjk0_rikas_curse"}),
         BattleEvent(
             type="skill_resolved",
             message="Megaphone",
@@ -165,14 +205,14 @@ def test_kyoto_pressure_gauntlet_completes_from_blood_mark_and_revolver_shot_and
     ])
     state = manager.get_state("room")
     state.event_log.extend([
-        BattleEvent(type="status_applied", message="Blood Mark", turn_number=1, payload={"status": "blood_mark", "source_player_id": "p1"}),
+        BattleEvent(type="status_applied", message="Blood Mark", turn_number=1, payload={"status": "blood_mark", "source_player_id": "p1", "source_skill_id": "fc_noritoshi_kamo_blood_tipped_arrow"}),
         BattleEvent(
             type="skill_resolved",
             message="Revolver Shot",
             turn_number=1,
             payload={"player_id": "p1", "skill_id": "fc_mai_zenin_revolver_shot"},
         ),
-        BattleEvent(type="status_applied", message="Boogie Woogie", turn_number=1, payload={"status": "boogie_woogie_redirect", "source_player_id": "p1"}),
+        BattleEvent(type="status_applied", message="Boogie Woogie", turn_number=1, payload={"status": "boogie_woogie_redirect", "source_player_id": "p1", "source_skill_id": "fc_aoi_todo_boogie_woogie"}),
     ])
     state.winner_id = "p1"
 
@@ -193,7 +233,7 @@ def test_kyoto_pressure_gauntlet_is_incomplete_without_todos_objective():
     ])
     state = manager.get_state("room")
     state.event_log.extend([
-        BattleEvent(type="status_applied", message="Blood Mark", turn_number=1, payload={"status": "blood_mark", "source_player_id": "p1"}),
+        BattleEvent(type="status_applied", message="Blood Mark", turn_number=1, payload={"status": "blood_mark", "source_player_id": "p1", "source_skill_id": "fc_noritoshi_kamo_blood_tipped_arrow"}),
         BattleEvent(
             type="skill_resolved",
             message="Revolver Shot",
@@ -215,7 +255,7 @@ def test_kyoto_pressure_gauntlet_is_ineligible_for_a_different_team():
     manager.start_first_creation_match("room", _players())
     state = manager.get_state("room")
     state.event_log.extend([
-        BattleEvent(type="status_applied", message="Blood Mark", turn_number=1, payload={"status": "blood_mark", "source_player_id": "p1"}),
+        BattleEvent(type="status_applied", message="Blood Mark", turn_number=1, payload={"status": "blood_mark", "source_player_id": "p1", "source_skill_id": "fc_noritoshi_kamo_blood_tipped_arrow"}),
         BattleEvent(
             type="skill_resolved",
             message="Revolver Shot",
@@ -242,7 +282,7 @@ def test_kyoto_pressure_gauntlet_does_not_complete_on_a_loss():
     ])
     state = manager.get_state("room")
     state.event_log.extend([
-        BattleEvent(type="status_applied", message="Blood Mark", turn_number=1, payload={"status": "blood_mark", "source_player_id": "p1"}),
+        BattleEvent(type="status_applied", message="Blood Mark", turn_number=1, payload={"status": "blood_mark", "source_player_id": "p1", "source_skill_id": "fc_noritoshi_kamo_blood_tipped_arrow"}),
         BattleEvent(
             type="skill_resolved",
             message="Revolver Shot",
@@ -269,7 +309,7 @@ def test_kyoto_pressure_gauntlet_ignores_blood_mark_applied_by_the_opponent():
     ])
     state = manager.get_state("room")
     state.event_log.extend([
-        BattleEvent(type="status_applied", message="Blood Mark", turn_number=1, payload={"status": "blood_mark", "source_player_id": "p2"}),
+        BattleEvent(type="status_applied", message="Blood Mark", turn_number=1, payload={"status": "blood_mark", "source_player_id": "p2", "source_skill_id": "fc_noritoshi_kamo_blood_tipped_arrow"}),
         BattleEvent(
             type="skill_resolved",
             message="Revolver Shot",
@@ -292,9 +332,9 @@ def test_defensive_artillery_drill_completes_from_quick_draw_stun_and_aerial_sco
     ])
     state = manager.get_state("room")
     state.event_log.extend([
-        BattleEvent(type="status_applied", message="Quick Draw Stun", turn_number=1, payload={"status": "quick_draw_stun", "source_player_id": "p1"}),
-        BattleEvent(type="status_applied", message="Revealed", turn_number=1, payload={"status": "revealed", "source_player_id": "p1"}),
-        BattleEvent(type="status_applied", message="Remote Puppet Net", turn_number=1, payload={"status": "remote_puppet_net", "source_player_id": "p1"}),
+        BattleEvent(type="status_applied", message="Quick Draw Stun", turn_number=1, payload={"status": "quick_draw_stun", "source_player_id": "p1", "source_skill_id": "fc_kasumi_miwa_new_shadow_quick_draw"}),
+        BattleEvent(type="status_applied", message="Revealed", turn_number=1, payload={"status": "revealed", "source_player_id": "p1", "source_skill_id": "fc_momo_nishimiya_aerial_scout"}),
+        BattleEvent(type="status_applied", message="Remote Puppet Net", turn_number=1, payload={"status": "remote_puppet_net", "source_player_id": "p1", "source_skill_id": "fc_kokichi_muta_mechamaru_remote_puppet_net"}),
     ])
     state.winner_id = "p1"
 
@@ -315,8 +355,8 @@ def test_defensive_artillery_drill_is_incomplete_without_mechamarus_objective():
     ])
     state = manager.get_state("room")
     state.event_log.extend([
-        BattleEvent(type="status_applied", message="Quick Draw Stun", turn_number=1, payload={"status": "quick_draw_stun", "source_player_id": "p1"}),
-        BattleEvent(type="status_applied", message="Revealed", turn_number=1, payload={"status": "revealed", "source_player_id": "p1"}),
+        BattleEvent(type="status_applied", message="Quick Draw Stun", turn_number=1, payload={"status": "quick_draw_stun", "source_player_id": "p1", "source_skill_id": "fc_kasumi_miwa_new_shadow_quick_draw"}),
+        BattleEvent(type="status_applied", message="Revealed", turn_number=1, payload={"status": "revealed", "source_player_id": "p1", "source_skill_id": "fc_momo_nishimiya_aerial_scout"}),
     ])
     state.winner_id = "p1"
 
@@ -339,7 +379,7 @@ def test_defensive_artillery_drill_reveal_objective_requires_the_status_to_actua
     ])
     state = manager.get_state("room")
     state.event_log.extend([
-        BattleEvent(type="status_applied", message="Quick Draw Stun", turn_number=1, payload={"status": "quick_draw_stun", "source_player_id": "p1"}),
+        BattleEvent(type="status_applied", message="Quick Draw Stun", turn_number=1, payload={"status": "quick_draw_stun", "source_player_id": "p1", "source_skill_id": "fc_kasumi_miwa_new_shadow_quick_draw"}),
         BattleEvent(
             type="skill_resolved",
             message="Aerial Scout (countered)",
@@ -362,9 +402,9 @@ def test_student_reserves_trial_completes_from_gorilla_core_and_crow_mark_and_a_
     ])
     state = manager.get_state("room")
     state.event_log.extend([
-        BattleEvent(type="status_applied", message="Gorilla Core", turn_number=1, payload={"status": "gorilla_core", "source_player_id": "p1"}),
-        BattleEvent(type="status_applied", message="Crow Mark", turn_number=1, payload={"status": "crow_mark", "source_player_id": "p1"}),
-        BattleEvent(type="status_applied", message="Solo Solo Kinku", turn_number=1, payload={"status": "solo_solo_kinku", "source_player_id": "p1"}),
+        BattleEvent(type="status_applied", message="Gorilla Core", turn_number=1, payload={"status": "gorilla_core", "source_player_id": "p1", "source_skill_id": "fc_panda_gorilla_core"}),
+        BattleEvent(type="status_applied", message="Crow Mark", turn_number=1, payload={"status": "crow_mark", "source_player_id": "p1", "source_skill_id": "fc_mei_mei_young_crow_scout"}),
+        BattleEvent(type="status_applied", message="Solo Solo Kinku", turn_number=1, payload={"status": "solo_solo_kinku", "source_player_id": "p1", "source_skill_id": "fc_utahime_iori_young_solo_solo_kinku"}),
     ])
     state.winner_id = "p1"
 
@@ -385,8 +425,8 @@ def test_student_reserves_trial_is_incomplete_without_utahimes_objective():
     ])
     state = manager.get_state("room")
     state.event_log.extend([
-        BattleEvent(type="status_applied", message="Gorilla Core", turn_number=1, payload={"status": "gorilla_core", "source_player_id": "p1"}),
-        BattleEvent(type="status_applied", message="Crow Mark", turn_number=1, payload={"status": "crow_mark", "source_player_id": "p1"}),
+        BattleEvent(type="status_applied", message="Gorilla Core", turn_number=1, payload={"status": "gorilla_core", "source_player_id": "p1", "source_skill_id": "fc_panda_gorilla_core"}),
+        BattleEvent(type="status_applied", message="Crow Mark", turn_number=1, payload={"status": "crow_mark", "source_player_id": "p1", "source_skill_id": "fc_mei_mei_young_crow_scout"}),
     ])
     state.winner_id = "p1"
 
@@ -405,8 +445,8 @@ def test_student_reserves_trial_does_not_complete_on_a_loss():
     ])
     state = manager.get_state("room")
     state.event_log.extend([
-        BattleEvent(type="status_applied", message="Gorilla Core", turn_number=1, payload={"status": "gorilla_core", "source_player_id": "p1"}),
-        BattleEvent(type="status_applied", message="Crow Mark", turn_number=1, payload={"status": "crow_mark", "source_player_id": "p1"}),
+        BattleEvent(type="status_applied", message="Gorilla Core", turn_number=1, payload={"status": "gorilla_core", "source_player_id": "p1", "source_skill_id": "fc_panda_gorilla_core"}),
+        BattleEvent(type="status_applied", message="Crow Mark", turn_number=1, payload={"status": "crow_mark", "source_player_id": "p1", "source_skill_id": "fc_mei_mei_young_crow_scout"}),
     ])
     state.winner_id = "p2"
 
@@ -425,8 +465,8 @@ def test_outsider_poison_path_completes_from_poison_junpei_alive_nail_and_scent(
     state.event_log.extend([
         BattleEvent(type="status_applied", message="Poison", turn_number=1, payload={"status": "poison", "source_player_id": "p1"}),
         BattleEvent(type="status_applied", message="Poison", turn_number=2, payload={"status": "poison", "source_player_id": "p1"}),
-        BattleEvent(type="status_applied", message="Nail", turn_number=1, payload={"status": "nail", "source_player_id": "p1"}),
-        BattleEvent(type="status_applied", message="Scent", turn_number=1, payload={"status": "scent", "source_player_id": "p1"}),
+        BattleEvent(type="status_applied", message="Nail", turn_number=1, payload={"status": "nail", "source_player_id": "p1", "source_skill_id": "fc_nobara_kugisaki_nail_barrage"}),
+        BattleEvent(type="status_applied", message="Scent", turn_number=1, payload={"status": "scent", "source_player_id": "p1", "source_skill_id": "fc_megumi_fushiguro_divine_dogs"}),
     ])
     state.winner_id = "p1"
 
@@ -472,8 +512,8 @@ def test_outsider_poison_path_ignores_nail_and_scent_applied_by_the_opponent():
     state.event_log.extend([
         BattleEvent(type="status_applied", message="Poison", turn_number=1, payload={"status": "poison", "source_player_id": "p1"}),
         BattleEvent(type="status_applied", message="Poison", turn_number=2, payload={"status": "poison", "source_player_id": "p1"}),
-        BattleEvent(type="status_applied", message="Nail", turn_number=1, payload={"status": "nail", "source_player_id": "p2"}),
-        BattleEvent(type="status_applied", message="Scent", turn_number=1, payload={"status": "scent", "source_player_id": "p2"}),
+        BattleEvent(type="status_applied", message="Nail", turn_number=1, payload={"status": "nail", "source_player_id": "p2", "source_skill_id": "fc_nobara_kugisaki_nail_barrage"}),
+        BattleEvent(type="status_applied", message="Scent", turn_number=1, payload={"status": "scent", "source_player_id": "p2", "source_skill_id": "fc_megumi_fushiguro_divine_dogs"}),
     ])
     state.winner_id = "p1"
 

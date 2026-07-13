@@ -182,6 +182,12 @@ def test_mission_settlement_happens_from_surrender_with_no_broadcast_at_all(monk
             turn_number=1,
             payload={"player_id": "p1", "skill_id": skill_id},
         ))
+    state.event_log.append(BattleEvent(
+        type="status_applied",
+        message="Momentum",
+        turn_number=1,
+        payload={"status": "momentum", "source_player_id": "p1", "source_skill_id": "fc_yuji_itadori_black_flash_attempt"},
+    ))
 
     before = web_app.runtime_store.analytics_summary()["missions_completed"].get("welcome_to_jujutsu_high", 0)
     web_app.battle_v2_manager.surrender("mission-no-broadcast-room", "p2")  # p2 surrenders, p1 wins
@@ -207,6 +213,12 @@ def _finish_first_creation_match_for_p1(room_id: str) -> None:
             turn_number=1,
             payload={"player_id": "p1", "skill_id": skill_id},
         ))
+    state.event_log.append(BattleEvent(
+        type="status_applied",
+        message="Momentum",
+        turn_number=1,
+        payload={"status": "momentum", "source_player_id": "p1", "source_skill_id": "fc_yuji_itadori_black_flash_attempt"},
+    ))
     state.winner_id = "p1"
     state.result_type = "WIN"
     state.phase = BattlePhase.FINISHED

@@ -42,13 +42,29 @@ def _skill_uses(events: list[BattleEvent], player_id: str) -> list[str]:
     return skills
 
 
-def _status_applications(events: list[BattleEvent], status: str, source_player_id: str | None = None) -> int:
+def _status_applications(
+    events: list[BattleEvent],
+    status: str,
+    source_player_id: str | None = None,
+    source_skill_id: str | None = None,
+) -> int:
+    """Count status_applied events matching `status`, optionally filtered by
+    the player who caused it and/or the exact skill that applied it.
+
+    `source_skill_id` should be passed whenever a mission objective names a
+    specific skill (e.g. "Apply Blood Mark with Noritoshi's Blood-Tipped
+    Arrow") rather than just the resulting status, so a different skill that
+    happened to grant the same-named status could never satisfy it.
+    """
+
     total = 0
     for event in events:
         payload = _event_payload(event)
         if _event_type(event) != "status_applied" or payload.get("status") != status:
             continue
         if source_player_id is not None and payload.get("source_player_id") != source_player_id:
+            continue
+        if source_skill_id is not None and payload.get("source_skill_id") != source_skill_id:
             continue
         total += 1
     return total
@@ -98,34 +114,50 @@ def evaluate_first_creation_progress(
     story_team = list(by_id[MISSION_STORY]["recommended_team"])
     story_eligible = _team_matches(team, story_team)
     story_skill_count = len(skills_used)
+    yuji_black_flash_landed = _status_applications(
+        events, "momentum", player_id, "fc_yuji_itadori_black_flash_attempt"
+    ) > 0
     entries.append(_mission_entry(by_id[MISSION_STORY], story_eligible, [
         _objective("Win one first-creation match", story_eligible and winner_is_player, 1 if winner_is_player else 0),
         _objective("Resolve at least three queued skills", story_eligible and story_skill_count >= 3, story_skill_count, 3),
+        _objective("Land a Black Flash with Yuji", story_eligible and yuji_black_flash_landed, 1 if yuji_black_flash_landed else 0),
     ]))
 
     hidden_team = list(by_id[MISSION_HIDDEN]["recommended_team"])
     hidden_eligible = _team_matches(team, hidden_team)
-    hidden_payoff = any(
+    # Gojo's read payoff and Geto's stock payoff are independently required —
+    # they previously shared one objective satisfied by either, so completing
+    # only one of the two teammates' signature payoffs still finished the
+    # mission.
+    gojo_read_payoff = any(
         _event_type(event) == "energy_gained" and _event_payload(event).get("player_id") == player_id
         for event in events
-    ) or any(skill_id.endswith("compressed_uzumaki") for skill_id in skills_used)
+    )
+    geto_stock_payoff = any(
+        skill_id.endswith("compressed_uzumaki") for skill_id in skills_used
+    )
+    shoko_healed_ally = any(
+        skill_id.endswith("reverse_cursed_treatment") for skill_id in skills_used
+    )
     low_ally_alive = any(character.alive and 0 < character.hp < 50 for character in state.players[player_id].team)
     entries.append(_mission_entry(by_id[MISSION_HIDDEN], hidden_eligible, [
         _objective("Win the match", hidden_eligible and winner_is_player, 1 if winner_is_player else 0),
-        _objective("Trigger a read or stock payoff", hidden_eligible and hidden_payoff, 1 if hidden_payoff else 0),
+        _objective("Trigger Gojo's Six Eyes Read payoff", hidden_eligible and gojo_read_payoff, 1 if gojo_read_payoff else 0),
+        _objective("Consume Curse Stock with Geto's Compressed Uzumaki", hidden_eligible and geto_stock_payoff, 1 if geto_stock_payoff else 0),
+        _objective("Heal an ally with Shoko's Reverse Cursed Treatment", hidden_eligible and shoko_healed_ally, 1 if shoko_healed_ally else 0),
         _objective("Keep one ally alive below 50 HP", hidden_eligible and low_ally_alive, 1 if low_ally_alive else 0),
     ]))
 
     yuta_team = list(by_id[MISSION_YUTA]["recommended_team"])
     yuta_eligible = _team_matches(team, yuta_team)
-    rika_activated = any(
-        _event_type(event) == "status_applied"
-        and _event_payload(event).get("status") == "rikas_curse"
-        for event in events
-    )
+    rika_activated = _status_applications(
+        events, "rikas_curse", player_id, "fc_yuta_okkotsu_jjk0_rikas_curse"
+    ) > 0
     replacement_used = any("cursed_speech_megaphone" in skill_id for skill_id in skills_used)
-    weapon_specialist_active = _status_applications(events, "weapon_specialist", player_id) > 0
-    toge_stop_triggered = _status_applications(events, "stopped", player_id) > 0
+    weapon_specialist_active = _status_applications(
+        events, "weapon_specialist", player_id, "fc_maki_zenin_weapon_specialist"
+    ) > 0
+    toge_stop_triggered = _status_applications(events, "stopped", player_id, "fc_toge_inumaki_stop") > 0
     entries.append(_mission_entry(by_id[MISSION_YUTA], yuta_eligible, [
         _objective("Win the match", yuta_eligible and winner_is_player, 1 if winner_is_player else 0),
         _objective("Activate Rika's Curse", yuta_eligible and rika_activated, 1 if rika_activated else 0),
@@ -138,8 +170,8 @@ def evaluate_first_creation_progress(
     outsider_eligible = _team_matches(team, outsider_team)
     poison_count = _status_applications(events, "poison", player_id)
     junpei_alive = any(character.character_id == "junpei_yoshino" and character.alive for character in state.players[player_id].team)
-    nail_applied = _status_applications(events, "nail", player_id) > 0
-    scent_applied = _status_applications(events, "scent", player_id) > 0
+    nail_applied = _status_applications(events, "nail", player_id, "fc_nobara_kugisaki_nail_barrage") > 0
+    scent_applied = _status_applications(events, "scent", player_id, "fc_megumi_fushiguro_divine_dogs") > 0
     entries.append(_mission_entry(by_id[MISSION_OUTSIDER], outsider_eligible, [
         _objective("Apply poison twice", outsider_eligible and poison_count >= 2, poison_count, 2),
         _objective("Win with Junpei alive", outsider_eligible and winner_is_player and junpei_alive, 1 if winner_is_player and junpei_alive else 0),
@@ -149,9 +181,9 @@ def evaluate_first_creation_progress(
 
     kyoto_team = list(by_id[MISSION_KYOTO]["recommended_team"])
     kyoto_eligible = _team_matches(team, kyoto_team)
-    blood_mark_applied = _status_applications(events, "blood_mark", player_id) > 0
+    blood_mark_applied = _status_applications(events, "blood_mark", player_id, "fc_noritoshi_kamo_blood_tipped_arrow") > 0
     revolver_shot_used = any(skill_id.endswith("revolver_shot") for skill_id in skills_used)
-    boogie_woogie_active = _status_applications(events, "boogie_woogie_redirect", player_id) > 0
+    boogie_woogie_active = _status_applications(events, "boogie_woogie_redirect", player_id, "fc_aoi_todo_boogie_woogie") > 0
     entries.append(_mission_entry(by_id[MISSION_KYOTO], kyoto_eligible, [
         _objective("Win the match", kyoto_eligible and winner_is_player, 1 if winner_is_player else 0),
         _objective("Apply Blood Mark with Noritoshi's Blood-Tipped Arrow", kyoto_eligible and blood_mark_applied, 1 if blood_mark_applied else 0),
@@ -161,9 +193,9 @@ def evaluate_first_creation_progress(
 
     defensive_team = list(by_id[MISSION_DEFENSIVE]["recommended_team"])
     defensive_eligible = _team_matches(team, defensive_team)
-    quick_draw_stun_triggered = _status_applications(events, "quick_draw_stun", player_id) > 0
-    aerial_scout_revealed = _status_applications(events, "revealed", player_id) > 0
-    remote_puppet_net_active = _status_applications(events, "remote_puppet_net", player_id) > 0
+    quick_draw_stun_triggered = _status_applications(events, "quick_draw_stun", player_id, "fc_kasumi_miwa_new_shadow_quick_draw") > 0
+    aerial_scout_revealed = _status_applications(events, "revealed", player_id, "fc_momo_nishimiya_aerial_scout") > 0
+    remote_puppet_net_active = _status_applications(events, "remote_puppet_net", player_id, "fc_kokichi_muta_mechamaru_remote_puppet_net") > 0
     entries.append(_mission_entry(by_id[MISSION_DEFENSIVE], defensive_eligible, [
         _objective("Win the match", defensive_eligible and winner_is_player, 1 if winner_is_player else 0),
         _objective("Trigger Quick Draw Stun with Miwa's New Shadow Quick Draw", defensive_eligible and quick_draw_stun_triggered, 1 if quick_draw_stun_triggered else 0),
@@ -173,9 +205,9 @@ def evaluate_first_creation_progress(
 
     reserves_team = list(by_id[MISSION_RESERVES]["recommended_team"])
     reserves_eligible = _team_matches(team, reserves_team)
-    gorilla_core_active = _status_applications(events, "gorilla_core", player_id) > 0
-    crow_mark_applied = _status_applications(events, "crow_mark", player_id) > 0
-    solo_solo_kinku_active = _status_applications(events, "solo_solo_kinku", player_id) > 0
+    gorilla_core_active = _status_applications(events, "gorilla_core", player_id, "fc_panda_gorilla_core") > 0
+    crow_mark_applied = _status_applications(events, "crow_mark", player_id, "fc_mei_mei_young_crow_scout") > 0
+    solo_solo_kinku_active = _status_applications(events, "solo_solo_kinku", player_id, "fc_utahime_iori_young_solo_solo_kinku") > 0
     entries.append(_mission_entry(by_id[MISSION_RESERVES], reserves_eligible, [
         _objective("Win the match", reserves_eligible and winner_is_player, 1 if winner_is_player else 0),
         _objective("Enter Gorilla Core with Panda", reserves_eligible and gorilla_core_active, 1 if gorilla_core_active else 0),

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 560" role="img" aria-label="Original replaceable unit poster for Toge Inumaki">
+  <defs>
+    <radialGradient id="toge_inumaki_svg_sun" cx="52%" cy="18%" r="78%">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="0.32" stop-color="#ff6a76" stop-opacity="0.46"/>
+      <stop offset="1" stop-color="#3a2538" stop-opacity="1"/>
+    </radialGradient>
+    <linearGradient id="toge_inumaki_svg_coat" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#ff6a76" stop-opacity="0.98"/>
+      <stop offset="0.52" stop-color="#26304f" stop-opacity="0.96"/>
+      <stop offset="1" stop-color="#0f172a" stop-opacity="0.98"/>
+    </linearGradient>
+    <linearGradient id="toge_inumaki_svg_glass" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.58"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.05"/>
+    </linearGradient>
+    <filter id="toge_inumaki_svg_glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="7" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="420" height="560" rx="34" fill="url(#toge_inumaki_svg_sun)"/>
+  <path d="M26 94 C88 38 332 38 394 94 L362 142 C278 96 142 96 58 142 Z" fill="#ffffff" opacity="0.2"/>
+  <path d="M38 126 C128 70 292 70 382 126" fill="none" stroke="#ff6a76" stroke-width="18" opacity="0.28"/>
+  <path d="M32 388 M78 324 C150 292 270 292 342 324" fill="none" stroke="#ffffff" stroke-width="9" stroke-linecap="round" opacity="0.26"/>
+  <path d="M64 498 L356 498" stroke="#ff6a76" stroke-width="4" opacity="0.85"/>
+  <path d="M88 456 C102 342 134 276 204 262 C276 276 314 342 332 456 Z" fill="url(#toge_inumaki_svg_coat)"/>
+  <path d="M126 454 C142 354 166 304 210 296 C254 304 278 354 294 454 Z" fill="#ffffff" opacity="0.08"/>
+  <path d="M110 244 C134 186 170 154 210 154 C250 154 286 186 310 244 C286 274 252 292 210 292 C168 292 134 274 110 244 Z" fill="#ff6a76" opacity="0.26"/>
+  <circle cx="210" cy="176" r="67" fill="#0f172a" opacity="0.9"/>
+  <path d="M158 170 C172 120 248 120 262 170 C238 156 182 156 158 170 Z" fill="#ff6a76" opacity="0.42"/>
+  <path d="M116 356 L82 438 M304 356 L338 438" stroke="#ffffff" stroke-width="15" stroke-linecap="round" opacity="0.18"/>
+  <path d="M118 426 C154 392 266 392 302 426" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" opacity="0.3"/>
+  <path d="M84 84 L336 84 L306 114 L114 114 Z" fill="#ff6a76" opacity="0.22"/>
+  <rect x="42" y="32" width="336" height="486" rx="26" fill="none" stroke="#ffffff" stroke-width="3" opacity="0.34"/>
+  <path d="M48 38 L372 38 L342 72 L78 72 Z" fill="url(#toge_inumaki_svg_glass)" opacity="0.66"/>
+  <text x="210" y="190" text-anchor="middle" dominant-baseline="middle" font-family="Georgia, serif" font-size="56" font-weight="900" fill="#ffffff" filter="url(#toge_inumaki_svg_glow)">TI</text>
+  <text x="210" y="482" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="900" letter-spacing="1.6" fill="#ffffff">TOGE INUMAKI</text>
+  <text x="210" y="510" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" font-weight="800" letter-spacing="2" fill="#ffffff" opacity="0.78">SPEECH UNIT</text>
+</svg>

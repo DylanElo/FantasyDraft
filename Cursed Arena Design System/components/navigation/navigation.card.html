@@ -1,0 +1,31 @@
+<!-- @dsCard group="Components" viewport="700x160" name="Navigation / Tab Bar" subtitle="Bottom app tab bar with elevated Battle hero slot" -->
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{margin:0;background:var(--surface-app);}</style>
+</head>
+<body>
+<div id="root" style="max-width:420px;margin:0 auto;"></div>
+<script type="text/babel">
+const { TabBar } = window.CursedArenaDesignSystem_845983;
+function Demo() {
+  const [active, setActive] = React.useState('home');
+  return (
+    <TabBar activeId={active} onChange={setActive} tabs={[
+      { id: 'home', label: 'Home', icon: '🏠' },
+      { id: 'roster', label: 'Roster', icon: '🗂' },
+      { id: 'battle', label: 'Battle', icon: '⚔', hero: true },
+      { id: 'missions', label: 'Missions', icon: '🗺' },
+      { id: 'profile', label: 'Profile', icon: '👤' },
+    ]} />
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+</script>
+</body>
+</html>

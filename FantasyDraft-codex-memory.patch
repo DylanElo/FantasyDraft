@@ -1,0 +1,1344 @@
+diff -ruN '--exclude=.git' '--exclude=.pytest_cache_runtime' '--exclude=__pycache__' a/AGENTS.md b/AGENTS.md
+--- a/AGENTS.md	1970-01-01 00:00:00.000000000 +0000
++++ b/AGENTS.md	2026-07-12 11:47:52.587228230 +0000
+@@ -0,0 +1,187 @@
++# JJK Arena — Codex Project Instructions
++
++These instructions are persistent project memory. Codex must read and follow them before changing the repository.
++
++## Start every task this way
++
++1. Read `docs/CODEX_PROJECT_MEMORY.md`.
++2. Read the canonical documents relevant to the task:
++   - Battle rules: `docs/battle_system_v2_design.md`
++   - Kit grammar: `docs/jjk_kit_grammar.md`
++   - Starter roster: `docs/first_character_creation.md`
++   - Shipping starter contract: `docs/first_creation_gameplay_contract.md`
++   - Timing/targeting contract: `docs/first_creation_temporal_targeting_correctness.md`
++   - Mobile product direction: `docs/mobile_phaser_ui_ux_brief.md`
++3. State in the implementation plan which locked decisions and invariants the task touches.
++4. If the user request, docs, tests, and code disagree, stop and report the conflict. Do not silently reinterpret the design.
++
++## Source-of-truth order
++
++Use this precedence when resolving ambiguity:
++
++1. The user’s current explicit request.
++2. The nearest applicable `AGENTS.md` or `AGENTS.override.md`.
++3. Locked decisions in `docs/CODEX_PROJECT_MEMORY.md`.
++4. Canonical design documents listed above.
++5. Executable tests and socket contracts.
++6. Existing implementation details.
++
++Existing code is not automatically correct merely because it exists. Conversely, do not change a locked design decision merely to simplify implementation.
++
++## Product identity
++
++JJK Arena is a portrait-first mobile 3v3 tactical battler inspired by Naruto Arena’s readability, queue tension, energy economy, counters, reflects, hidden traps, and replacement skills.
++
++- Phaser is the maintained game client.
++- Flask-SocketIO is the delivery and networking layer.
++- Python Battle v2 is the authoritative rules engine.
++- The browser submits intent and renders viewer-specific state. It never decides legality, damage, hidden information, cooldowns, or victory.
++- Battle v2 is the only maintained gameplay engine. Do not reintroduce the removed v1 or Telegram-bot architecture.
++
++## Non-negotiable combat loop
++
++- Teams have three active characters, normally 100 HP each.
++- Each living character may queue at most one skill per turn.
++- Phases are `PLANNING -> QUEUE_REVIEW -> RESOLVING -> TURN_END -> FINISHED`.
++- Players choose skills and legal targets, review the queue, assign Wild costs, order actions left-to-right, then confirm.
++- Specific energy is paid first. `X` is a Wild/random cost paid by one of the four generated core energies during queue review.
++- `X` is not a fifth generated resource.
++- Resolution is server-authoritative and left-to-right.
++- The first player receives one random core energy. Later gains are random core energy equal to living active characters unless an explicit tested rule overrides this.
++
++## Core energy labels
++
++- `B` / Body: physical combat, weapons, cursed tools, reinforcement.
++- `T` / Technique: cursed techniques, shikigami, cursed speech, puppet output.
++- `F` / Focus: tactics, barriers, counters, reads, support.
++- `C` / Curse: volatile cursed energy, poison, blood, cursed-spirit effects, risky output.
++- `X` / Wild: cost placeholder only.
++
++## Core damage and defense rules
++
++- Normal damage is reduced by damage reduction and then absorbed by destructible defense.
++- Piercing damage ignores normal damage reduction but still hits destructible defense.
++- Soul/Affliction damage ignores normal damage reduction and destructible defense.
++- Health steal ignores normal damage reduction, still hits destructible defense, and heals only actual HP stolen.
++- Sure-hit is Domain-specific. Its anti-domain interaction must be explicit and tested; never improvise a global shortcut.
++- Helpful ally skills may target an ally who is invulnerable to harmful skills unless a status explicitly blocks helpful skills or all skills.
++- Targeting legality is determined before effects are applied.
++
++The exact choice between per-hit and turn-aggregate fixed damage reduction remains an open design decision. Do not change that model without explicit user approval and migration tests.
++
++## Hidden information and interaction rules
++
++- Counter negates the complete incoming counterable skill. “First skill” skips uncounterable skills.
++- Reflect redirects the complete harmful payload, not only the first effect.
++- Invisible effects are visible to their source/owner and hidden from opponents until their documented reveal condition.
++- Public event logs and serialization must not leak invisible skill use, target, queue details, or private statuses.
++- Replacement skills occupy the original skill slot. Copy/replacement semantics must preserve slot identity.
++- Duration clocks must be explicit: `source_turn`, `target_turn`, `round`, or deliberately documented `global_turn`.
++- Setup statuses must survive until their intended payoff window.
++- Cleanse is typed. It removes only the documented status families, not arbitrary hostile statuses.
++
++## Kit construction and balance
++
++- Kits are data-driven `SkillSpec` / `EffectSpec` / condition / transformation contracts.
++- Do not parse player-facing prose to create shipping effects.
++- Do not scatter display-name checks through the resolver.
++- Every shipping skill description must exactly match authoritative behavior and Phaser affordances.
++- Every first-pass character normally has four primary skills, zero to two replacements, one major named state, one payoff pattern, and one clear weakness.
++- Avoid full-canon simulation and unreadable piles of hidden flags.
++- No full-HP one-shot without at least one prior setup turn and meaningful counterplay.
++- Lore determines tactical identity, not permission to ignore action economy.
++- Large AoE, team stun, kill effects, and cinematic finishers require proportional setup, specific energy pressure, delay, cooldown, sacrifice, or replacement windows.
++- Jogo’s Maximum Meteor is not a normal base skill. If introduced later, it must be a visible, delayed, expensive setup/replacement payoff with major opportunity cost and counterplay.
++
++## First Creation is locked
++
++The account-creation roster is exactly these 19 entries unless the user explicitly changes it:
++
++1. Yuji Itadori
++2. Megumi Fushiguro
++3. Nobara Kugisaki
++4. Maki Zenin
++5. Toge Inumaki
++6. Panda
++7. Aoi Todo
++8. Noritoshi Kamo
++9. Momo Nishimiya
++10. Mai Zenin
++11. Kasumi Miwa
++12. Kokichi Muta / Mechamaru
++13. Junpei Yoshino
++14. Satoru Gojo (Young)
++15. Suguru Geto (Young)
++16. Shoko Ieiri (Young)
++17. Utahime Iori (Young)
++18. Mei Mei (Young)
++19. Yuta Okkotsu (JJK 0)
++
++Important consequences:
++
++- Junpei is included.
++- Young Gojo, Young Geto, Young Shoko, Young Utahime, and Young Mei Mei are included.
++- JJK0 Yuta is the only starter Yuta.
++- Sendai Yuta, Shinjuku/EOS Yuta, Yuta in Gojo’s body, adult/endgame Gojo, Sukuna variants, disaster curses, awakened forms, and other advanced variants are mission unlocks.
++- Later unlocks should be more complex, not strictly stronger. Starter characters must remain ladder-viable.
++- Multiple iterations of one identity are allowed only when the combat identity, era, technique access, role, or state machine is materially different. A portrait or stat bump is not a new character.
++
++## Mobile UI/UX constitution
++
++The current prototype layout is not sacred. A UI task may replace layouts from scratch while preserving rules and network contracts.
++
++- This is a total mobile game, not a desktop web app squeezed into a phone.
++- A redesign means rethinking hierarchy, navigation, interaction, buttons, skill presentation, targeting, queue review, feedback, and onboarding—not recoloring existing panels.
++- Primary target: 390x844 portrait. Also validate 360x800 and 430x932.
++- Respect safe areas and browser viewport resizing.
++- Keep primary actions thumb-reachable and use roughly 44–48 px minimum tap targets.
++- Never use three narrow roster columns that truncate names/roles on a 390 px screen.
++- Never use letter-only navigation, debug-looking panels, overlapping fixed CTAs, tiny walls of text, or unexplained icons.
++- Skill information uses progressive disclosure: compact combat card plus full detail bottom sheet/glossary.
++- The UI must expose all server decisions: adjusted cost, disabled reason, replacement skill, class/harmful stun, legal target, primary/secondary/alternate target, queued action, Wild payment, and hidden/reveal state.
++- The server remains authoritative; the UI previews and explains, never invents rule outcomes.
++
++Frontend-specific instructions are in `web/static/phaser/AGENTS.md`.
++Battle-engine-specific instructions are in `jjk_arena/battle_v2/AGENTS.md`.
++
++## Scope and delivery discipline
++
++- Keep correctness, roster expansion, progression, and visual redesign in separate focused PRs.
++- Do not add new characters while correcting starter contracts.
++- Do not add gameplay features during a UI-only redesign.
++- Do not rewrite UI during a timing/targeting correctness PR.
++- Do not add Node, npm, webpack, or a JS build pipeline without explicit approval.
++- Do not add production dependencies without explaining the need.
++- Do not claim checks passed unless they were run.
++
++## Required verification
++
++For Python/gameplay changes:
++
++```bash
++python -m pytest -q
++python -m compileall -q jjk_arena web/app.py
++```
++
++For Phaser changes, run syntax checks for every changed JavaScript file and perform live mobile browser QA when feasible. Capture at least 390x844 and 430x932 for major screen changes.
++
++Also run:
++
++```bash
++git diff --check
++```
++
++After a meaningful pass, update `docs/session_history.md` with changes, verification, remaining cautions, and commit/PR state.
++
++## Repository hygiene
++
++Never commit or package:
++
++- `.venv/`
++- `__pycache__/`
++- `.pytest_cache*`
++- logs
++- temporary screenshots unless intentionally placed under a documented QA path
++- nested `.git` data in release archives
++
++Deliver feature branches or PR-quality diffs, not entire dirty working directories.
+diff -ruN '--exclude=.git' '--exclude=.pytest_cache_runtime' '--exclude=__pycache__' a/docs/CODEX_PROJECT_MEMORY.md b/docs/CODEX_PROJECT_MEMORY.md
+--- a/docs/CODEX_PROJECT_MEMORY.md	1970-01-01 00:00:00.000000000 +0000
++++ b/docs/CODEX_PROJECT_MEMORY.md	2026-07-12 11:49:29.674386357 +0000
+@@ -0,0 +1,793 @@
++# JJK Arena — Canonical Codex Project Memory
++
++## Purpose
++
++This document is the durable product and design memory for Codex. It consolidates decisions made across design discussions so a new Codex task does not rediscover the product from scratch or drift toward a different game.
++
++This is not a task backlog and not a substitute for tests. It records the intended game, its non-negotiable rules, its roster/progression philosophy, its UI/UX bar, and the boundaries between engine, client, and delivery work.
++
++Codex must read this document before planning repository changes.
++
++---
++
++# 1. Product identity
++
++JJK Arena is a **portrait-first mobile 3v3 tactical battler** inspired by the strongest parts of Naruto Arena:
++
++- intentional three-character team construction
++- one skill per living character per turn
++- visible colored-resource tension
++- queue commitment before resolution
++- left-to-right action order
++- counters, reflects, hidden traps, replacement skills, and conditional payoffs
++- compact kits that function as small tactical state machines
++- mission-unlocked variants that increase complexity rather than invalidating starters
++
++It is not intended to become:
++
++- a real-time action game
++- a traditional turn-based JRPG
++- a MOBA
++- a generic card battler with JJK art
++- a lore simulator where stronger canon characters receive unrestricted numbers
++- a desktop web dashboard disguised as a mobile game
++
++The desired synthesis is:
++
++```text
++Naruto Arena tactical clarity
+++ JJK technique identities and rule-breaking conditions
+++ modern mobile-game UX
++```
++
++---
++
++# 2. Maintained architecture
++
++## Runtime
++
++- `jjk_arena/battle_v2/` is the maintained gameplay engine.
++- `web/app.py` is the Flask-SocketIO HTTP/socket bridge.
++- `web/static/phaser/` is the maintained mobile client.
++- The Flask template should remain a thin canvas/bootstrap host.
++- Python owns battle truth. Phaser owns presentation and input collection.
++
++## Authority boundary
++
++The server owns:
++
++- skill legality
++- target legality
++- adjusted cost
++- energy payment
++- queue validation
++- damage and healing
++- statuses and clocks
++- hidden information
++- counters and reflects
++- replacements
++- deaths and winner detection
++- CPU choices
++- profile/mission progression
++
++The client owns:
++
++- screen flow
++- selected UI state
++- animation and presentation
++- input collection
++- readable previews from serialized server state
++- temporary local interactions that do not mutate battle truth
++
++The client must never become a second resolver.
++
++## Removed architecture
++
++Do not restore:
++
++- Telegram bot identity/runtime
++- old v1 battle engine
++- obsolete DOM-first battle UI
++- old static Pages demo
++- name-based character special cases as the primary rules model
++
++---
++
++# 3. Canonical battle loop
++
++## Match shape
++
++- 3 active characters per team.
++- 100 HP per character unless an explicit future mode says otherwise.
++- A player wins when the opponent has no living active characters.
++
++## Turn phases
++
++```text
++PLANNING
++-> QUEUE_REVIEW
++-> RESOLVING
++-> TURN_END
++-> next player PLANNING
++-> FINISHED when a winner is decided
++```
++
++## Planning
++
++- Each living active character may choose at most one skill.
++- A skill selection includes all required target context.
++- The player can revise the plan before confirmation.
++- Known invalid skills and targets should be disabled/explained in the client, but the server validates again.
++
++## Queue Review
++
++- Queued actions are displayed left-to-right in final resolution order.
++- The player assigns payments for every Wild/random cost.
++- Specific energy is paid before Wild allocation.
++- The player may reorder and cancel before confirmation.
++- Confirm is unavailable while any action is invalid or underpaid.
++
++## Resolution
++
++- The server spends energy on final confirmation.
++- Actions resolve left-to-right.
++- Resolution creates authoritative events for playback.
++- Targeting is established before effects are applied unless a documented rule explicitly retargets.
++
++## Turn end
++
++- Status clocks tick according to their explicit clock owner.
++- Action/control effects apply according to their persistence rules.
++- Cooldowns update.
++- Deaths and victory are checked.
++- The correct player gains random core energy.
++- The next player enters planning.
++
++---
++
++# 4. Energy model
++
++JJK labels are used over Naruto labels, but the resource logic remains a four-color random economy.
++
++- `B` / Body — physical combat, martial arts, cursed tools, physical reinforcement.
++- `T` / Technique — cursed techniques, shikigami, cursed speech, puppet output.
++- `F` / Focus — tactics, barriers, counters, reads, support, controlled preparation.
++- `C` / Curse — volatile cursed energy, blood, poison, cursed-spirit effects, risky output.
++- `X` / Wild — a cost placeholder that can be paid by any generated core color in Queue Review.
++
++`X` is not generated, stored, drained, or displayed as a fifth resource pool.
++
++## Generation
++
++- Each generated pip has an equal chance among the four core colors unless an explicit skill changes it.
++- The first player receives one random core energy.
++- Subsequent normal gains equal the number of living active characters at the intended turn-end timing.
++- Random effects use battle RNG/seed injection for deterministic testing.
++
++## Opportunity cost
++
++Expensive skills consume the same shared pool that teammates need. A three-energy finisher can reasonably leave the rest of the team unable to act. Balance must account for that team-level opportunity cost.
++
++---
++
++# 5. Damage, defense, and invulnerability
++
++## Normal damage
++
++- Subject to normal fixed damage reduction.
++- Then absorbed by destructible defense.
++- Remaining damage removes HP.
++
++## Piercing damage
++
++- Ignores normal damage reduction.
++- Still hits destructible defense.
++- Does not automatically demolish defense.
++
++## Soul / Affliction damage
++
++- Ignores normal damage reduction.
++- Ignores destructible defense.
++- Used for poison, soul attacks, certain delayed curses, and explicitly categorized effects.
++
++## Health steal
++
++- Is not ordinary healing and not ordinary damage for all interactions.
++- Ignores normal damage reduction.
++- Does not bypass destructible defense.
++- Heals only for HP actually removed, never shield damage.
++
++## Sure-hit
++
++- Reserved for Domain/sure-hit contracts.
++- It is not a generic “ignore everything” flag.
++- Every anti-domain interaction must be explicit, readable, and tested.
++
++## Defense destruction
++
++“Destroy/demolish defense first” is a separate effect. It must execute before subsequent damage. Piercing alone does not imply defense destruction.
++
++## Invulnerability
++
++Default invulnerability means “not a valid target for new harmful enemy skills.”
++
++- It does not block helpful ally skills by default.
++- A status may explicitly block helpful skills or all skills.
++- Already-active instant effects may continue according to their persistence contract.
++- “Ignore” and “bypass” are distinct from invulnerability removal.
++
++## Open damage-reduction decision
++
++Naruto Arena aggregates fixed damage received during a turn before applying fixed reduction. The current project has historically used per-event reduction in places.
++
++This remains an explicit open design decision. Codex must not silently switch models. A change requires:
++
++- explicit user approval
++- migration notes
++- multi-hit tests
++- balance review for all reduction skills
++
++---
++
++# 6. Skill interaction grammar
++
++## Skill data
++
++A skill must expose and implement:
++
++- ID and name
++- concise player-facing text
++- explicit cost
++- cooldown
++- target rule
++- classes/tags
++- effects
++- conditions
++- duration clock
++- transformation/replacement behavior
++- counterplay
++
++Player-facing prose is not an engine parser. Shipping behavior is explicit structured data.
++
++## Condition context
++
++Conditions may intentionally reference:
++
++- caster
++- effect recipient
++- original selected target
++- primary target
++- secondary target
++- alternate redirect destination
++- all resolved targets
++- source/target status stacks
++- frozen state before prior effects mutate the board
++
++The implementation must name the context. Never use an ambiguous `target` variable to mean different things within one skill.
++
++## Counter
++
++- Negates the whole incoming counterable skill.
++- A “first skill” counter skips uncounterable skills and waits for the first valid one.
++- Existing effects are not retroactively countered.
++- Action skills are normally countered only when initially applied unless explicitly stated.
++
++## Reflect
++
++- Redirects the complete harmful skill payload.
++- It is evaluated once per skill, not once per effect.
++- Damage plus stun must both redirect together.
++- The reflected skill remains attributed to the original caster for costs/cooldown unless the explicit rule says otherwise.
++
++## Invisible
++
++- Source/owner sees the effect.
++- Opponents do not see the unrevealed effect, protected target, private event, or hidden queue data.
++- A hostile invisible status placed on an enemy is not visible merely because that enemy is the recipient.
++- Some future skills may reveal the fact of use but hide the target; this must be an explicit reveal mode.
++- Reveal/expiry events occur only at documented points.
++
++## Replace and copy
++
++- Replacement is slot-based.
++- The replacement occupies the base skill’s original slot.
++- When the replacement ends, the original skill returns.
++- Copy preserves documented original-slot transformation behavior; copying must not create accidental slot drift.
++
++## Persistence
++
++- `Instant`: applies once; ongoing duration is normally independent of caster contact.
++- `Action`: applies again over multiple turns and can fail for a tick if contact/ability is disrupted.
++- `Control`: requires continuing contact and ends when the controlling link is broken.
++
++## Duration clocks
++
++Every status must deliberately use one of:
++
++- `source_turn`
++- `target_turn`
++- `round`
++- explicitly justified `global_turn`
++
++A newly created setup must not lose a tick during the action that created it. Tests must model the full intended setup/payoff sequence.
++
++## Status families
++
++Where removal/cleanse matters, use typed families:
++
++- Affliction
++- Soul
++- Stun
++- Control
++- Mark
++- Buff
++- Debuff
++
++“Hostile” is not a cleanse family.
++
++---
++
++# 7. Kit design constitution
++
++## Normal shape
++
++A first-pass character normally has:
++
++1. Basic pressure.
++2. Signature technique.
++3. Setup, defense, counter, or utility.
++4. Payoff, transformation, Domain, Vow, or defining high-impact action.
++
++Allowed additions:
++
++- zero to two replacement skills
++- zero to one passive/achievement contract
++
++## Readability limits
++
++- One major named state per starter is preferred.
++- One main payoff pattern per starter is preferred.
++- Avoid full-canon simulation.
++- Avoid requiring players to memorize many private flags.
++- Avoid unconditional “does everything” skills.
++- Every kit has a meaningful weakness or pressure point.
++
++## Power budget philosophy
++
++Lore establishes fantasy and role, not free numeric superiority.
++
++A powerful canon character may receive:
++
++- higher ceiling
++- stronger rule manipulation
++- flexible targeting
++- unique state machine
++- expensive or specific costs
++- severe cooldowns
++- setup and burnout
++- a clear punish window
++
++It may not receive every advantage simultaneously.
++
++Approximate Arena-style expectations, not automatic formulas:
++
++- One-energy direct pressure: usually around 20–25 damage.
++- One-energy damage plus meaningful control: usually lower damage.
++- Two-energy burst: often around 30–40 depending on type and conditions.
++- Cheap AoE: chip, setup, or low numbers.
++- High AoE/team control: expensive, delayed, transformed, sacrificial, or heavily cooled down.
++- Kill effects: setup states, expensive payoff, and real counterplay.
++- Domains: field-rule pressure rather than simple enormous damage buttons.
++
++## Explicit anti-pattern: Maximum Meteor
++
++Jogo’s Maximum Meteor must not appear as a freely available ordinary skill with huge teamwide damage.
++
++If introduced later, it should resemble a high-commitment achievement/replacement:
++
++- prerequisite state or Domain/setup
++- visible warning/delay
++- high specific/Wild cost
++- major team action-economy sacrifice
++- interrupt/counter/defense routes
++- long cooldown or one-time use
++
++The comparison point is Naruto Arena’s transformed, setup-gated team finishers—not an anime cutscene translated directly into a button.
++
++---
++
++# 8. Character variants policy
++
++Multiple iterations of the same identity are a core roster tool, as in Naruto Arena, but each variant must justify a distinct roster slot.
++
++A variant is justified by material changes in:
++
++- era
++- body/vessel
++- technique access
++- Domain access
++- resource engine
++- tactical role
++- major state machine
++- counterplay pattern
++
++A portrait change, costume, or larger damage number is not enough.
++
++## Yuta roadmap
++
++Long-term Yuta variants are mechanically justified as separate characters:
++
++- Yuta Okkotsu (JJK 0): Rika curse, katana, healing, emotional burst/protection.
++- Yuta Okkotsu (Sendai): copy rotation and Sendai-era midrange kit.
++- Yuta Okkotsu (Shinjuku / EOS): Technique Extinguishment, precognition, barrier refinement, actual Domain use, advanced anti-technique play.
++- Yuta in Gojo’s body: late, extremely high-complexity special variant.
++
++Only **Yuta Okkotsu (JJK 0)** belongs in First Creation.
++
++---
++
++# 9. First Creation and progression
++
++## Product intent
++
++First Creation should feel like:
++
++```text
++Welcome to Jujutsu High.
++```
++
++It should not immediately feel like the end of the manga.
++
++The starter roster teaches fundamentals through students, early sorcerers, young mentors, Junpei, and JJK0 Yuta. Disaster curses, adult/endgame forms, and advanced variants arrive through missions.
++
++## Locked First Creation roster
++
++Exactly 19 account-creation entries:
++
++1. Yuji Itadori
++2. Megumi Fushiguro
++3. Nobara Kugisaki
++4. Maki Zenin
++5. Toge Inumaki
++6. Panda
++7. Aoi Todo
++8. Noritoshi Kamo
++9. Momo Nishimiya
++10. Mai Zenin
++11. Kasumi Miwa
++12. Kokichi Muta / Mechamaru
++13. Junpei Yoshino
++14. Satoru Gojo (Young)
++15. Suguru Geto (Young)
++16. Shoko Ieiri (Young)
++17. Utahime Iori (Young)
++18. Mei Mei (Young)
++19. Yuta Okkotsu (JJK 0)
++
++The user explicitly requires Junpei and all five listed young teachers/sorcerers. Do not remove them to make the pool “cleaner.”
++
++## Excluded from account creation
++
++Examples of mission-locked content:
++
++- adult Gojo and unsealed/Shinjuku Gojo
++- Sendai and Shinjuku/EOS Yuta
++- Yuta in Gojo’s body
++- Sukuna variants
++- disaster curses
++- adult/endgame Geto/Kenjaku
++- Awakened Maki
++- Awakened Yuji
++- Hakari, Higuruma, Kashimo, Takaba, Angel
++- Toji and other advanced/high-complexity units
++
++## Progression philosophy
++
++- Later characters are more complex, not strictly stronger.
++- Starter characters stay ladder-viable forever.
++- Missions unlock characters, variants, titles, icons, and advanced paths.
++- Progression must not become pay-to-win or linear numeric obsolescence.
++
++Suggested narrative tiers remain:
++
++- Enrollment / early story
++- Goodwill Event
++- Origin of Obedience
++- JJK0
++- Shibuya Incident
++- Culling Game
++- Shinjuku Showdown
++
++---
++
++# 10. Locked starter mechanical identities
++
++The detailed numeric contracts live in `docs/first_character_creation.md` and `starter_roster.py`. These identity statements prevent drift when balancing:
++
++- Yuji: readable bruiser/finisher; sequencing, Momentum/Soul Bruise; honest and predictable.
++- Megumi: shikigami setup/control; marks and soft control; no starter Mahoraga or completed Domain apocalypse.
++- Nobara: Nail mark into Resonance/Hairpin payoff; scary after setup, not instant burst.
++- Maki: starter weapon specialist and anti-defense unit; not Awakened Maki and not universal anti-Domain assassin.
++- Toge: strong control paid with recoil/self-risk; tempo, not free lockdown.
++- Panda: simple reliable stance tank through Gorilla Core.
++- Todo: controlled prediction and redirect; not random casino redirection.
++- Kamo: disciplined blood mark and fair resource pressure; drain requires setup and correct timing.
++- Momo: information, exposure, rescue, and resource smoothing; low damage by design.
++- Mai: precision setup through Hidden Bullet; threat should be readable and counterable.
++- Miwa: genuinely useful fundamentals/counter unit; no “useless” joke baked into mechanics.
++- Mechamaru: protected artillery/backline threat; starter is not named Ultimate Mechamaru.
++- Junpei: fragile poison/shikigami control; delayed pressure and protection.
++- Young Gojo: expensive high-ceiling control/read; no starter Unlimited Void or Hollow Purple button.
++- Young Geto: Curse Stock/summon scaling; earned replacement payoff.
++- Young Shoko: healer/cleanse, very low offensive carry potential.
++- Young Utahime: modest team amplifier whose value comes from timing and survival.
++- Young Mei Mei: scouting, Crow Mark, efficient conditional payoff; no lore one-shot.
++- Yuta JJK0: Rika protection, katana, healing, simple cursed-speech replacement; not Domain/copy-master Yuta.
++
++---
++
++# 11. Mobile UI/UX constitution
++
++## Quality bar
++
++The intended UI should feel designed by a veteran mobile game UI/UX team, not a university prototype.
++
++A redesign request means a full interaction and information-architecture redesign. It does not mean:
++
++- recolor the old layout
++- add neon borders
++- add more gradients
++- add more particles
++- rename existing buttons
++- preserve crowded panels because they already exist
++
++## Device targets
++
++- Primary: 390x844.
++- Small: 360x800.
++- Large: 430x932.
++- Desktop/tablet presents a centered mobile game surface rather than stretching into a dashboard.
++
++## Mobile standards
++
++- Safe-area aware.
++- Dynamic browser chrome resilient.
++- Primary actions in thumb reach.
++- Roughly 44–48 px minimum tap targets.
++- No critical text clipped or truncated.
++- No primary CTA covering pagination/content.
++- No letter-only bottom navigation.
++- No three narrow roster columns on a normal phone.
++- No debug panels or giant text walls.
++- No unexplained icon-only decisions.
++
++## Screen separation
++
++The experience should have distinct flows for:
++
++1. Boot/Splash
++2. Lobby/Home
++3. First Creation/Roster
++4. Mission Map
++5. Matchup
++6. Combat Planning
++7. Queue Review
++8. Resolution Playback
++9. Results
++10. Records/Profile
++
++Do not combine all progression and onboarding concepts into one giant scroll.
++
++## Combat layout
++
++Preferred mobile hierarchy:
++
++- Top HUD: phase, turn, energy, settings.
++- Enemy row: three readable fighter tokens/cards.
++- Center field: prompts, attack playback, damage/reveal/domain feedback.
++- Ally row: three readable fighter tokens/cards.
++- Bottom command dock: selected fighter and four skills, then queue/confirm actions.
++
++## Skill presentation
++
++Compact skill card:
++
++- skill name
++- core/Wild cost
++- cooldown
++- target type
++- concise effect summary
++- key tags
++- disabled reason
++
++Full details appear in a bottom sheet/hold interaction with glossary support.
++
++The player should not need to read a dense paragraph every turn. The compact summary and state chips should communicate the actionable rule.
++
++## Queue Review
++
++Must communicate:
++
++- exact left-to-right order
++- caster
++- skill
++- primary/secondary/alternate target
++- cost and Wild allocation
++- remaining energy
++- invalid reason
++- touch-friendly reorder
++- clear Confirm and Cancel
++
++## State language
++
++Distinct visual states are required for:
++
++- available
++- selected caster
++- selected skill
++- legal target
++- primary/secondary target
++- queued
++- acted
++- cooldown
++- insufficient energy
++- harmful/class stun
++- protected/invulnerable
++- destructible defense
++- countered
++- reflected
++- invisible reveal
++- dead
++- Domain/field active
++
++## Visual direction
++
++- Ink-black surfaces.
++- Talisman paper/gold for selection and commitment.
++- Teal for legal target feedback.
++- Blood red for danger/damage.
++- Violet only for Domain/cinematic moments.
++- Controlled effects and strong spacing rather than constant glow.
++- One coherent portrait/art treatment.
++
++## Component architecture
++
++Maintain reusable equivalents of:
++
++- GameButton
++- IconButton
++- Panel
++- BottomSheet
++- FighterToken
++- SkillCard
++- EnergyOrb
++- StatusChip
++- QueueActionCard
++- CharacterRosterCard
++- CharacterDetailSheet
++- Toast
++- DamageNumber
++- PhaseBanner
++
++Scenes own flow; components own rendering/interaction; store owns client state; socket layer owns communication; theme/tokens own visual constants.
++
++## Client/server parity
++
++The UI must truthfully expose server contracts:
++
++- replacement in original slot
++- authoritative adjusted cost
++- known disabled reason
++- helpful vs harmful target legality
++- class/harmful stuns
++- primary/secondary/alternate targets
++- queue order
++- viewer-specific hidden data
++
++If the client and server disagree, improve the serialized parity contract rather than copying the Python resolver into JavaScript.
++
++---
++
++# 12. Delivery and PR discipline
++
++## Separate concerns
++
++Use separate focused PRs for:
++
++- engine correctness
++- starter kit changes
++- progression
++- socket payloads
++- mobile UI redesign
++- visual effects
++- roster expansion
++
++Do not use a UI redesign PR to change balance. Do not use a timing-correctness PR to rewrite scenes.
++
++## Correctness before breadth
++
++Before adding new characters:
++
++- all 19 starters and 78 skills must have explicit behavior
++- text, engine, serialization, and UI must agree
++- setup/payoff timing must work across real turn sequences
++- high-risk mechanics must have named regressions
++
++## No false completion
++
++Codex must distinguish:
++
++- implemented
++- documented
++- unit-tested
++- integration-tested
++- manually browser-verified
++- not verified
++
++Do not call a mobile redesign complete because components were renamed. Do not call a skill implemented because it enters cooldown or causes any state mutation.
++
++## Verification baseline
++
++```bash
++python -m pytest -q
++python -m compileall -q jjk_arena web/app.py
++git diff --check
++```
++
++For changed JavaScript, run `node --check` on every changed module. For significant UI changes, run the local server and capture mobile screenshots at 390x844 and 430x932, checking console errors and interaction flow.
++
++## Repository cleanliness
++
++Never deliver `.venv`, caches, bytecode, logs, nested Git metadata, or arbitrary dirty-worktree archives as product changes.
++
++---
++
++# 13. Current work ordering
++
++Unless the user explicitly changes priority, use this order:
++
++1. Keep temporal/targeting/status semantics correct and tested.
++2. Keep all starter text, server behavior, serialization, and Phaser behavior aligned.
++3. Perform the real from-scratch mobile UI/UX redesign as a separate branch/PR.
++4. Only then expand advanced missions/variants and cinematic effects.
++5. Add more characters only after starter gameplay and mobile UX are trustworthy.
++
++---
++
++# 14. Open decisions — ask, do not assume
++
++These topics are intentionally not locked and require user confirmation before a broad change:
++
++- fixed damage reduction: per-hit versus Naruto-style turn aggregate
++- exact universal anti-domain conversion rule versus per-skill anti-domain contracts
++- final monetization/commercial/IP strategy
++- final ranked timer and timeout behavior
++- final number of launch mission unlocks beyond First Creation
++- whether Draft remains a major mode beside Classic Arena after the core mobile release
++
++When a task touches one of these, present options and consequences instead of choosing silently.
++
++---
++
++# 15. Anti-drift checklist
++
++Before submitting any plan or PR, Codex should answer internally:
++
++- Does this preserve 3v3 queued tactical combat?
++- Does it preserve the four-color economy and Wild cost semantics?
++- Is the server still authoritative?
++- Does the skill text exactly match behavior?
++- Is the mechanic data-driven and reusable?
++- Does the setup survive long enough for its payoff?
++- Are hidden details protected per viewer?
++- Is the power budget respecting action and team energy opportunity cost?
++- Is First Creation still the locked 19-character pool?
++- Is JJK0 Yuta still the only starter Yuta?
++- Are young Gojo/Geto/Shoko/Utahime/Mei Mei and Junpei still present?
++- Are advanced variants more complex rather than strictly stronger?
++- Is this a real mobile interaction improvement rather than a recolor?
++- Are UI and server contracts in parity?
++- Did the task stay within its PR scope?
++- Were the claimed checks actually run?
++
++If any answer is “no” or uncertain, stop and address it before completion.
+diff -ruN '--exclude=.git' '--exclude=.pytest_cache_runtime' '--exclude=__pycache__' a/docs/session_history.md b/docs/session_history.md
+--- a/docs/session_history.md	2026-07-12 11:08:26.000000000 +0000
++++ b/docs/session_history.md	2026-07-12 11:49:29.681785379 +0000
+@@ -167,3 +167,27 @@
+ Superseded by later work:
+ 
+ - The July 8 pass removed remaining legacy/v1 surfaces and made Battle v2 the only maintained path.
++
++## 2026-07-12 - Persistent Codex project memory
++
++What changed:
++
++- Added root `AGENTS.md` with cross-project product, gameplay, roster, UI/UX, scope, and verification rules.
++- Added `jjk_arena/battle_v2/AGENTS.md` with authoritative engine invariants and high-risk starter regressions.
++- Added `web/static/phaser/AGENTS.md` with the mobile redesign constitution and client/server parity rules.
++- Added `docs/CODEX_PROJECT_MEMORY.md` as the canonical durable record of decisions agreed across design sessions.
++
++Purpose:
++
++- Ensure Codex reloads the project’s agreed constraints on every task instead of relying on chat history.
++- Reduce design drift, repeated rediscovery, and accidental scope expansion.
++
++Verification:
++
++- Instruction file byte sizes were checked against Codex’s default combined project-instruction limit.
++- The repository instruction chain can be verified with `codex --ask-for-approval never "Summarize the current instructions."` from the repository root and from the relevant nested directory.
++
++Caution:
++
++- `AGENTS.md` is the enforceable concise layer; `docs/CODEX_PROJECT_MEMORY.md` is the detailed canonical memory.
++- Open decisions in the memory document still require explicit user approval rather than autonomous resolution.
+diff -ruN '--exclude=.git' '--exclude=.pytest_cache_runtime' '--exclude=__pycache__' a/jjk_arena/battle_v2/AGENTS.md b/jjk_arena/battle_v2/AGENTS.md
+--- a/jjk_arena/battle_v2/AGENTS.md	1970-01-01 00:00:00.000000000 +0000
++++ b/jjk_arena/battle_v2/AGENTS.md	2026-07-12 11:47:52.599178799 +0000
+@@ -0,0 +1,140 @@
++# Battle v2 — Codex Instructions
++
++These rules apply to work under `jjk_arena/battle_v2/` and override broader instructions only where more specific.
++
++## Read before editing
++
++Read:
++
++- `../../docs/CODEX_PROJECT_MEMORY.md`
++- `../../docs/battle_system_v2_design.md`
++- `../../docs/jjk_kit_grammar.md`
++- `../../docs/first_character_creation.md`
++- `../../docs/first_creation_gameplay_contract.md`
++- `../../docs/first_creation_temporal_targeting_correctness.md`
++
++## Engine contract
++
++- Python is the authority for legality, energy, targets, effects, queues, cooldowns, hidden information, deaths, and victory.
++- Keep models, energy, conditions, targeting, effects, resolution, serialization, and room orchestration separated.
++- Prefer reusable structured grammar over character-name branches.
++- Shipping First Creation content has 19 characters and 78 explicit skill contracts. Do not reintroduce text inference or empty placeholder effects.
++- Every player-facing clause must correspond to explicit engine state and tests.
++
++## Queue and energy invariants
++
++- One queued skill per living active character per turn.
++- Validate without mutating state.
++- Reserve/pay specific costs first and assign `X` payments during queue review.
++- Spend energy only when the final queue is confirmed.
++- Resolve confirmed actions left-to-right.
++- Use injected/seeded RNG for tests and random energy effects.
++- Effects saying “random energy” must not deterministically prefer the first color.
++
++## Effect context
++
++Every effect/condition that needs it must have explicit access to:
++
++- caster
++- effect recipient
++- original selected target
++- primary selected target
++- secondary selected target
++- alternate redirect target
++- all resolved targets
++- frozen pre-effect status snapshots where ordering would otherwise mutate the condition
++
++Do not overload “target” to mean different entities in different effects.
++
++## Timing
++
++Use explicit clocks:
++
++- `source_turn`: expires on source-owner turn boundaries.
++- `target_turn`: expires on target-owner turn boundaries.
++- `round`: expires after both players receive the intended window.
++- `global_turn`: only when the design deliberately means every player turn.
++
++Newly applied statuses must not immediately lose a duration tick during their creation action. Test setup across the complete sequence:
++
++```text
++caster action -> opponent cleanup/turn -> caster next turn
++```
++
++Immediate-resolution tests alone are insufficient for setup/payoff mechanics.
++
++## Damage and defense
++
++- Normal: apply fixed damage reduction, then destructible defense, then HP.
++- Piercing: ignore normal damage reduction, still hit destructible defense.
++- Soul/Affliction: ignore normal damage reduction and destructible defense.
++- Health steal: ignore normal damage reduction, hit destructible defense, heal only HP actually removed.
++- Sure-hit: only according to explicit Domain/anti-domain contracts.
++- Defense destruction is a distinct effect performed before damage when text says so.
++- Helpful effects are not blocked by harmful-only invulnerability.
++
++Do not change per-hit versus turn-aggregate fixed damage reduction until the user resolves that open decision.
++
++## Counter, reflect, invisible, replace
++
++- Counter consumes/negates the entire incoming counterable skill.
++- “First counterable skill” skips uncounterable skills.
++- Reflect redirects the entire harmful payload once; it must not consume on the first effect and leave later effects on the original target.
++- Unrevealed invisible statuses are source-private by default, including hostile traps on enemy targets.
++- Private events and pending plans must never leak through viewer serialization.
++- Reveal events occur only at documented trigger/expiry points.
++- Replacements are slot-based. When a replacement ends, the original slot returns.
++- Copied skills preserve original-slot replacement semantics as defined by the project grammar.
++
++## Status semantics
++
++Use typed families where cleanse/removal matters:
++
++- `AFFLICTION`
++- `SOUL`
++- `STUN`
++- `CONTROL`
++- `MARK`
++- `BUFF`
++- `DEBUFF`
++
++A cleanse removes only the documented families. It must not remove an arbitrary hostile status merely because its source is an enemy.
++
++Exact-skill one-shot modifiers must identify the empowered skill and be consumed only after the whole skill resolves. Multi-effect skills must not consume a modifier on their first effect and corrupt later effects.
++
++## Locked high-risk starter mechanics
++
++Preserve these outcomes and regression tests:
++
++- Yuji: Black Flash conditions evaluate the original enemy target; Momentum applies correctly. Divergent Fist delayed damage cannot double-dip an existing Soul Bruise.
++- Megumi: Scent survives the intended setup window; shikigami payoff is caster/target correct.
++- Maki: Weapon Specialist empowers only the next Cursed Tool Combo; defense destruction happens before damage.
++- Panda: Gorilla Core is a caster-side state, never a target requirement.
++- Todo: Boogie Woogie uses a chosen watched enemy and chosen alternate destination, not an automatic self-redirect.
++- Kamo: Blood Mark drain uses seeded random available core energy and triggers exactly once at the documented target-turn timing.
++- Momo, Young Gojo, Young Mei Mei: watchers bind to the selected enemy character slot. A future bonus becomes a separate buff before watcher consumption.
++- Mai: Hidden Bullet produces the documented split damage, then consumes the state after the entire skill.
++- Miwa: Simple Domain punishment/counter is restricted to the documented melee family.
++- Mechamaru: “not damaged last turn” uses tracked authoritative history.
++- Junpei: Venom Bloom has a selected primary poisoned target and secondary spread target; weak team poison occurs only when nobody is poisoned.
++- Young Geto: stack-unlocked replacement is revoked immediately below its threshold.
++- Yuta JJK0 and Young Shoko: RCT/cleanse removes only documented Affliction/Soul families.
++
++## Testing standard
++
++- Every shipping skill needs execution coverage for cost, target legality, cooldown, meaningful state mutation, duration, and conditional branches.
++- Test both prepared and unprepared branches.
++- Add named regressions for multi-step/high-risk mechanics.
++- Add serialization tests for hidden/private information.
++- Add manager/socket parity tests when payloads or target fields change.
++- A test that only proves “something changed” is not sufficient when exact numbers or branches are part of the contract.
++
++## Scope guardrails
++
++During correctness work:
++
++- Do not add new characters.
++- Do not redesign Phaser scenes.
++- Do not introduce lore-only exceptions to bypass grammar.
++- Do not weaken tests to match a bug.
++- Update canonical docs when behavior intentionally changes.
+diff -ruN '--exclude=.git' '--exclude=.pytest_cache_runtime' '--exclude=__pycache__' a/web/static/phaser/AGENTS.md b/web/static/phaser/AGENTS.md
+--- a/web/static/phaser/AGENTS.md	1970-01-01 00:00:00.000000000 +0000
++++ b/web/static/phaser/AGENTS.md	2026-07-12 11:47:52.610004338 +0000
+@@ -0,0 +1,177 @@
++# Phaser Mobile Client — Codex Instructions
++
++These instructions apply to `web/static/phaser/`.
++
++## Read before editing
++
++Read:
++
++- `../../../docs/CODEX_PROJECT_MEMORY.md`
++- `../../../docs/mobile_phaser_ui_ux_brief.md`
++- `../../../docs/mobile_screen_inventory.md`
++- `../../../docs/first_creation_visual_qa.md`
++- `../../../docs/battle_v2_socket_contract.md`
++
++## Design mandate
++
++The target is a veteran-quality portrait mobile tactics game. The current UI is a prototype, not a sacred foundation.
++
++A redesign must rethink the experience from first principles. Do not satisfy a redesign request with a palette swap, extra glow, more gradients, or minor panel reshuffling.
++
++## Required screen architecture
++
++Maintain clear, separate flows for:
++
++1. Boot / Splash
++2. Home / Lobby
++3. First Creation / Roster Select
++4. Mission Map
++5. Matchup
++6. Combat Planning
++7. Queue Review
++8. Resolution Playback
++9. Results
++10. Records / Profile
++
++Do not combine onboarding, locked progression, presets, roster browsing, team confirmation, and mission explanation into one overloaded scrolling scene.
++
++## Mobile layout standards
++
++- Primary viewport: 390x844.
++- Also test 360x800 and 430x932.
++- Respect top/bottom safe areas and dynamic browser chrome.
++- Keep primary actions in the lower thumb-reachable region whenever practical.
++- Use minimum tap targets around 44–48 px.
++- Never allow the primary CTA to overlap pagination or scrollable content.
++- Do not truncate primary character names, skill names, or button labels.
++- Do not use letter-only navigation such as `H`, `R`, `X`, `M`, `P`.
++- Do not use three cramped roster columns on a 390 px phone. Prefer a readable two-column grid, full-width cards, or an intentional carousel/detail split.
++- Avoid tiny text, excessive all-caps, walls of prose, and multiple equal-weight outlined panels.
++
++## Visual hierarchy
++
++- Use dark ink surfaces and restrained talisman/cursed-energy accents.
++- Gold indicates current selection/commitment.
++- Teal indicates legal targets.
++- Red indicates danger/damage.
++- Violet is reserved for Domain/cinematic states, not routine chrome.
++- Decoration must support hierarchy. Do not cover weak information architecture with smoke, borders, or particles.
++- Portraits must use one coherent production system; placeholders must look intentionally temporary and must not define the final layout.
++
++## Combat interaction model
++
++The player must always understand:
++
++- current turn and phase
++- available core energy
++- selected fighter
++- selected skill
++- adjusted cost
++- legal targets
++- primary/secondary/alternate target requirements
++- queued actions
++- remaining Wild payments
++- disabled reason
++- resolution result
++
++Recommended structure:
++
++- Top HUD: turn, phase, energy, settings.
++- Enemy row: three fighter tokens/cards with HP, defense, statuses, target states.
++- Center field: prompts, attack playback, damage numbers, reveals, Domain/field state.
++- Ally row: three fighter tokens/cards with ready/selected/queued/acted/dead states.
++- Bottom command dock: selected fighter, four skill slots, confirm/cancel/end controls.
++
++## Skill presentation
++
++Combat skill cards are compact and scannable. They must show:
++
++- name
++- energy cost icons
++- cooldown
++- target type
++- concise effect summary
++- relevant class/status tags
++- concrete disabled reason
++
++Do not put the full rules paragraph on every combat card. Use progressive disclosure:
++
++- tap/hold opens a full detail bottom sheet
++- glossary/tooltips explain Pierce, Soul/Affliction, Counter, Reflect, Invisible, Destructible Defense, Invulnerable, Domain, Wild cost, and status clocks
++
++Replacement skills render in the original slot and keep original queue-slot identity.
++
++## Queue Review
++
++Queue Review must clearly show:
++
++- actions left-to-right
++- caster, skill, target(s), cost, and slot
++- reorder controls suitable for touch
++- Wild payment assignment
++- current and remaining energy
++- validation errors adjacent to the relevant action
++- disabled Confirm until valid
++- obvious Back/Cancel path
++
++Do not hide important validation solely in a toast.
++
++## Rule parity
++
++The client previews authoritative rules but never owns them.
++
++- Use serialized adjusted costs, replacements, cooldowns, stuns, hidden/reveal state, and disabled reasons.
++- Construct and preserve primary, secondary, and alternate-target fields.
++- Do not show a skill as usable if the server will reject it for a known serialized reason.
++- Do not infer hidden opponent data.
++- Helpful targeting and harmful-only invulnerability must match server semantics.
++- Viewer-specific state must remain viewer-specific.
++
++When client and server disagree, fix the parity contract; do not duplicate more resolver logic in JavaScript.
++
++## Reusable component requirement
++
++Prefer reusable components/services over scene-specific drawing blocks. The maintained component vocabulary should include equivalents of:
++
++- `GameButton`
++- `IconButton`
++- `Panel`
++- `BottomSheet`
++- `FighterToken`
++- `SkillCard`
++- `EnergyOrb`
++- `StatusChip`
++- `QueueActionCard`
++- `CharacterRosterCard`
++- `CharacterDetailSheet`
++- `Toast`
++- `DamageNumber`
++- `PhaseBanner`
++
++Scenes own flow. Components own rendering and interaction. Store owns client state. Socket layer owns communication. Tokens/theme own visual constants.
++
++## UI-only scope
++
++For a UI/UX PR:
++
++- Do not add characters.
++- Do not change damage numbers, costs, conditions, or battle semantics.
++- Do not invent new server fields without documenting the contract and coordinating a focused backend change.
++- Do not add unrelated progression systems.
++
++## Acceptance criteria for a major redesign
++
++A redesign is not complete until:
++
++- screenshots exist at 390x844 and 430x932 for every changed major screen
++- no clipping, overlap, hidden CTA, or truncated primary label exists
++- navigation is understandable without a legend
++- combat can be operated one-handed
++- skill details are understandable without leaving combat
++- queue and Wild payment are understandable to a new player
++- all important states have distinct visual treatment
++- the browser console has no new errors
++- JavaScript syntax checks pass
++- applicable Python/socket tests pass
++
++Do not describe a scene as redesigned unless its information architecture and interaction model changed materially.

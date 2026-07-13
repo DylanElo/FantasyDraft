@@ -57,9 +57,9 @@
       black: 0x181715,
     },
     type: {
-      display: 'Cinzel, Inter, serif',
-      ui: 'Inter, Arial, sans-serif',
-      mono: '"JetBrains Mono", monospace',
+      display: '"Shippori Mincho B1", "Noto Serif JP", Georgia, serif',
+      ui: '"Zen Kaku Gothic New", Inter, Arial, sans-serif',
+      mono: '"IBM Plex Mono", "JetBrains Mono", monospace',
     },
     radius: {
       panelMin: 18,

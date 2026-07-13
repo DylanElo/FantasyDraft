@@ -1,0 +1,509 @@
+{
+  "plugins": [
+    "react",
+    "import"
+  ],
+  "rules": {
+    "react/forbid-elements": [
+      "warn",
+      {
+        "forbid": []
+      }
+    ],
+    "no-restricted-imports": [
+      "warn",
+      {
+        "patterns": [
+          {
+            "group": [
+              "components/cards/**",
+              "components/core/**",
+              "components/feedback/**",
+              "components/game-hud/**",
+              "components/navigation/**",
+              "components/overlay/**",
+              "exports/**",
+              "ui_kits/mobile-app-v2/**",
+              "ui_kits/mobile-app/**"
+            ],
+            "message": "Import design-system components from 'index.js', not component internals."
+          }
+        ]
+      }
+    ],
+    "no-restricted-syntax": [
+      "warn",
+      {
+        "selector": "Literal[value=/#[0-9a-fA-F]{3,8}\\b/]",
+        "message": "Raw hex color — use a design-system color token via var()."
+      },
+      {
+        "selector": "Literal[value=/\\b\\d+px\\b/]",
+        "message": "Raw px value — use a design-system spacing token via var()."
+      },
+      {
+        "selector": "Literal[value=/font-family\\s*:\\s*(?!['\\\"]?(?:Lilita One|Inter|JetBrains Mono|Yuji Mai))/i]",
+        "message": "Font not provided by the design system. Available: Lilita One, Inter, JetBrains Mono, Yuji Mai."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Badge'] > JSXAttribute > JSXIdentifier[name!=/^(?:children|tone|key|ref|className|style|children)$/]",
+        "message": "<Badge> doesn't accept that prop. Declared props: children, tone."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Badge'] > JSXAttribute[name.name='tone'] > Literal[value!=/^(?:neutral|curse|gold|teal|red)$/]",
+        "message": "<Badge> tone must be one of 'neutral' | 'curse' | 'gold' | 'teal' | 'red'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Button'] > JSXAttribute > JSXIdentifier[name!=/^(?:children|variant|size|disabled|icon|fullWidth|onClick|style|key|ref|className|style|children)$/]",
+        "message": "<Button> doesn't accept that prop. Declared props: children, variant, size, disabled, icon, fullWidth, onClick, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Button'] > JSXAttribute[name.name='variant'] > Literal[value!=/^(?:primary|gold|secondary|ghost|danger)$/]",
+        "message": "<Button> variant must be one of 'primary' | 'gold' | 'secondary' | 'ghost' | 'danger'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Button'] > JSXAttribute[name.name='size'] > Literal[value!=/^(?:sm|md|lg)$/]",
+        "message": "<Button> size must be one of 'sm' | 'md' | 'lg'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Card'] > JSXAttribute > JSXIdentifier[name!=/^(?:name|faction|rarity|portraitUrl|selected|onClick|key|ref|className|style|children)$/]",
+        "message": "<Card> doesn't accept that prop. Declared props: name, faction, rarity, portraitUrl, selected, onClick."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Card'] > JSXAttribute[name.name='rarity'] > Literal[value!=/^(?:common|rare|epic|legendary|mythic)$/]",
+        "message": "<Card> rarity must be one of 'common' | 'rare' | 'epic' | 'legendary' | 'mythic'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='CurrencyPill'] > JSXAttribute > JSXIdentifier[name!=/^(?:kind|amount|onAdd|key|ref|className|style|children)$/]",
+        "message": "<CurrencyPill> doesn't accept that prop. Declared props: kind, amount, onAdd."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='CurrencyPill'] > JSXAttribute[name.name='kind'] > Literal[value!=/^(?:gold|gem)$/]",
+        "message": "<CurrencyPill> kind must be one of 'gold' | 'gem'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='EnergyPip'] > JSXAttribute > JSXIdentifier[name!=/^(?:type|filled|size|key|ref|className|style|children)$/]",
+        "message": "<EnergyPip> doesn't accept that prop. Declared props: type, filled, size."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='EnergyPip'] > JSXAttribute[name.name='type'] > Literal[value!=/^(?:B|T|F|C|X)$/]",
+        "message": "<EnergyPip> type must be one of 'B' | 'T' | 'F' | 'C' | 'X'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='IconButton'] > JSXAttribute > JSXIdentifier[name!=/^(?:children|size|active|onClick|style|key|ref|className|style|children)$/]",
+        "message": "<IconButton> doesn't accept that prop. Declared props: children, size, active, onClick, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='ProgressBar'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|max|tone|lagValue|height|key|ref|className|style|children)$/]",
+        "message": "<ProgressBar> doesn't accept that prop. Declared props: value, max, tone, lagValue, height."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='ProgressBar'] > JSXAttribute[name.name='tone'] > Literal[value!=/^(?:hp|danger|xp|energy)$/]",
+        "message": "<ProgressBar> tone must be one of 'hp' | 'danger' | 'xp' | 'energy'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Sheet'] > JSXAttribute > JSXIdentifier[name!=/^(?:open|title|children|onClose|key|ref|className|style|children)$/]",
+        "message": "<Sheet> doesn't accept that prop. Declared props: open, title, children, onClose."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='SkillCard'] > JSXAttribute > JSXIdentifier[name!=/^(?:name|cost|cooldown|effect|state|onClick|key|ref|className|style|children)$/]",
+        "message": "<SkillCard> doesn't accept that prop. Declared props: name, cost, cooldown, effect, state, onClick."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='SkillCard'] > JSXAttribute[name.name='state'] > Literal[value!=/^(?:ready|cooldown|energy|stunned)$/]",
+        "message": "<SkillCard> state must be one of 'ready' | 'cooldown' | 'energy' | 'stunned'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='TabBarTab'] > JSXAttribute > JSXIdentifier[name!=/^(?:id|label|icon|hero|key|ref|className|style|children)$/]",
+        "message": "<TabBarTab> doesn't accept that prop. Declared props: id, label, icon, hero."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Toast'] > JSXAttribute > JSXIdentifier[name!=/^(?:message|tone|key|ref|className|style|children)$/]",
+        "message": "<Toast> doesn't accept that prop. Declared props: message, tone."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Toast'] > JSXAttribute[name.name='tone'] > Literal[value!=/^(?:info|success|warning|danger)$/]",
+        "message": "<Toast> tone must be one of 'info' | 'success' | 'warning' | 'danger'."
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/index.js"
+      ],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ],
+  "x-omelette": {
+    "components": {
+      "Badge": {
+        "replaces": []
+      },
+      "Button": {
+        "replaces": []
+      },
+      "Card": {
+        "replaces": []
+      },
+      "CurrencyPill": {
+        "replaces": []
+      },
+      "EnergyPip": {
+        "replaces": []
+      },
+      "IconButton": {
+        "replaces": []
+      },
+      "ProgressBar": {
+        "replaces": []
+      },
+      "Sheet": {
+        "replaces": []
+      },
+      "SkillCard": {
+        "replaces": []
+      },
+      "TabBarTab": {
+        "replaces": []
+      },
+      "Toast": {
+        "replaces": []
+      }
+    },
+    "tokens": [
+      "--aura-curse",
+      "--aura-gold",
+      "--aura-red",
+      "--aura-teal",
+      "--bevel-plate",
+      "--border-hairline",
+      "--border-hairline-hi",
+      "--border-keyline",
+      "--clip-banner",
+      "--clip-blade",
+      "--clip-blade-both",
+      "--clip-tag",
+      "--cls-bruiser",
+      "--cls-control",
+      "--cls-defender",
+      "--cls-domain",
+      "--cls-support",
+      "--curse-200",
+      "--curse-300",
+      "--curse-400",
+      "--curse-500",
+      "--curse-600",
+      "--curse-700",
+      "--curse-900",
+      "--curse-glow",
+      "--danger",
+      "--dock-h",
+      "--dur-base",
+      "--dur-cine",
+      "--dur-fast",
+      "--dur-slow",
+      "--dur-tap",
+      "--e-body",
+      "--e-curse",
+      "--e-focus",
+      "--e-technique",
+      "--e-wild",
+      "--ease-impact",
+      "--ease-out-back",
+      "--ease-press",
+      "--ease-snap",
+      "--f-kyoto",
+      "--f-sorcerer",
+      "--f-tokyo",
+      "--f-villain",
+      "--font-display",
+      "--font-kanji",
+      "--font-mono",
+      "--font-ui",
+      "--frame-large-h",
+      "--frame-large-w",
+      "--frame-primary-h",
+      "--frame-primary-w",
+      "--frame-small-h",
+      "--frame-small-w",
+      "--fs-2xl",
+      "--fs-3xl",
+      "--fs-4xl",
+      "--fs-5xl",
+      "--fs-6xl",
+      "--fs-base",
+      "--fs-lg",
+      "--fs-md",
+      "--fs-sm",
+      "--fs-xl",
+      "--fs-xs",
+      "--fs-xxs",
+      "--fw-black",
+      "--fw-bold",
+      "--fw-heavy",
+      "--fw-medium",
+      "--fw-regular",
+      "--fw-semi",
+      "--gold-300",
+      "--gold-400",
+      "--gold-500",
+      "--gold-600",
+      "--gold-800",
+      "--gold-glow",
+      "--hud-h",
+      "--info",
+      "--ink-100",
+      "--ink-200",
+      "--ink-300",
+      "--ink-400",
+      "--ink-50",
+      "--ink-500",
+      "--ink-600",
+      "--ink-700",
+      "--ink-800",
+      "--ink-900",
+      "--ink-950",
+      "--keyline",
+      "--keyline-thin",
+      "--lh-normal",
+      "--lh-relaxed",
+      "--lh-snug",
+      "--lh-tight",
+      "--ls-caps",
+      "--ls-normal",
+      "--ls-tight",
+      "--ls-tracked",
+      "--ls-wide",
+      "--paper",
+      "--r-2xl",
+      "--r-lg",
+      "--r-md",
+      "--r-pill",
+      "--r-sm",
+      "--r-xl",
+      "--r-xs",
+      "--rar-common",
+      "--rar-epic",
+      "--rar-legendary",
+      "--rar-mythic",
+      "--rar-rare",
+      "--red-400",
+      "--red-500",
+      "--red-600",
+      "--red-700",
+      "--red-glow",
+      "--safe-b",
+      "--safe-t",
+      "--shadow-inset-well",
+      "--shadow-lg",
+      "--shadow-md",
+      "--shadow-sm",
+      "--sp-1",
+      "--sp-10",
+      "--sp-11",
+      "--sp-12",
+      "--sp-2",
+      "--sp-3",
+      "--sp-4",
+      "--sp-5",
+      "--sp-6",
+      "--sp-7",
+      "--sp-8",
+      "--sp-9",
+      "--success",
+      "--surface-app",
+      "--surface-app-grad",
+      "--surface-card",
+      "--surface-card-ink",
+      "--surface-overlay",
+      "--surface-panel",
+      "--surface-panel-2",
+      "--surface-sunken",
+      "--tabbar-h",
+      "--teal-400",
+      "--teal-500",
+      "--teal-600",
+      "--teal-glow",
+      "--text-link",
+      "--text-link-hover",
+      "--text-on-dark",
+      "--text-on-dark-dim",
+      "--text-on-dark-muted",
+      "--text-on-light",
+      "--text-on-light-dim",
+      "--warning"
+    ],
+    "tokenKinds": {
+      "--ink-950": "color",
+      "--ink-900": "color",
+      "--ink-800": "color",
+      "--ink-700": "color",
+      "--ink-600": "color",
+      "--ink-500": "color",
+      "--ink-400": "color",
+      "--ink-300": "color",
+      "--ink-200": "color",
+      "--ink-100": "color",
+      "--ink-50": "color",
+      "--paper": "color",
+      "--curse-900": "color",
+      "--curse-700": "color",
+      "--curse-600": "color",
+      "--curse-500": "color",
+      "--curse-400": "color",
+      "--curse-300": "color",
+      "--curse-200": "color",
+      "--curse-glow": "color",
+      "--gold-800": "color",
+      "--gold-600": "color",
+      "--gold-500": "color",
+      "--gold-400": "color",
+      "--gold-300": "color",
+      "--gold-glow": "color",
+      "--teal-600": "color",
+      "--teal-500": "color",
+      "--teal-400": "color",
+      "--teal-glow": "color",
+      "--red-700": "color",
+      "--red-600": "color",
+      "--red-500": "color",
+      "--red-400": "color",
+      "--red-glow": "color",
+      "--e-body": "color",
+      "--e-technique": "color",
+      "--e-focus": "color",
+      "--e-curse": "color",
+      "--e-wild": "color",
+      "--cls-bruiser": "color",
+      "--cls-control": "color",
+      "--cls-support": "color",
+      "--cls-defender": "color",
+      "--cls-domain": "color",
+      "--rar-common": "color",
+      "--rar-rare": "color",
+      "--rar-epic": "color",
+      "--rar-legendary": "color",
+      "--rar-mythic": "other",
+      "--f-tokyo": "color",
+      "--f-kyoto": "color",
+      "--f-sorcerer": "color",
+      "--f-villain": "color",
+      "--success": "color",
+      "--warning": "color",
+      "--danger": "color",
+      "--info": "color",
+      "--text-on-dark": "font",
+      "--text-on-dark-dim": "font",
+      "--text-on-dark-muted": "font",
+      "--text-on-light": "font",
+      "--text-on-light-dim": "font",
+      "--text-link": "font",
+      "--text-link-hover": "font",
+      "--surface-app": "color",
+      "--surface-app-grad": "color",
+      "--surface-panel": "color",
+      "--surface-panel-2": "color",
+      "--surface-card": "color",
+      "--surface-card-ink": "color",
+      "--surface-sunken": "color",
+      "--surface-overlay": "color",
+      "--border-hairline": "color",
+      "--border-hairline-hi": "color",
+      "--border-keyline": "color",
+      "--font-display": "font",
+      "--font-ui": "font",
+      "--font-mono": "font",
+      "--font-kanji": "font",
+      "--fs-xxs": "spacing",
+      "--fs-xs": "spacing",
+      "--fs-sm": "spacing",
+      "--fs-md": "spacing",
+      "--fs-base": "spacing",
+      "--fs-lg": "spacing",
+      "--fs-xl": "spacing",
+      "--fs-2xl": "spacing",
+      "--fs-3xl": "spacing",
+      "--fs-4xl": "spacing",
+      "--fs-5xl": "spacing",
+      "--fs-6xl": "spacing",
+      "--fw-regular": "other",
+      "--fw-medium": "other",
+      "--fw-semi": "other",
+      "--fw-bold": "other",
+      "--fw-heavy": "other",
+      "--fw-black": "other",
+      "--ls-tight": "spacing",
+      "--ls-normal": "other",
+      "--ls-wide": "spacing",
+      "--ls-tracked": "spacing",
+      "--ls-caps": "spacing",
+      "--lh-tight": "other",
+      "--lh-snug": "other",
+      "--lh-normal": "other",
+      "--lh-relaxed": "other",
+      "--sp-1": "spacing",
+      "--sp-2": "spacing",
+      "--sp-3": "spacing",
+      "--sp-4": "spacing",
+      "--sp-5": "spacing",
+      "--sp-6": "spacing",
+      "--sp-7": "spacing",
+      "--sp-8": "spacing",
+      "--sp-9": "spacing",
+      "--sp-10": "spacing",
+      "--sp-11": "spacing",
+      "--sp-12": "spacing",
+      "--r-xs": "spacing",
+      "--r-sm": "spacing",
+      "--r-md": "spacing",
+      "--r-lg": "spacing",
+      "--r-xl": "spacing",
+      "--r-2xl": "spacing",
+      "--r-pill": "spacing",
+      "--shadow-sm": "shadow",
+      "--shadow-md": "shadow",
+      "--shadow-lg": "shadow",
+      "--shadow-inset-well": "shadow",
+      "--bevel-plate": "shadow",
+      "--aura-curse": "color",
+      "--aura-gold": "color",
+      "--aura-teal": "color",
+      "--aura-red": "color",
+      "--keyline": "color",
+      "--keyline-thin": "color",
+      "--ease-press": "other",
+      "--ease-out-back": "other",
+      "--ease-snap": "other",
+      "--ease-impact": "other",
+      "--dur-tap": "other",
+      "--dur-fast": "other",
+      "--dur-base": "other",
+      "--dur-slow": "other",
+      "--dur-cine": "other",
+      "--frame-small-w": "spacing",
+      "--frame-small-h": "spacing",
+      "--frame-primary-w": "spacing",
+      "--frame-primary-h": "spacing",
+      "--frame-large-w": "spacing",
+      "--frame-large-h": "spacing",
+      "--safe-b": "color",
+      "--safe-t": "color",
+      "--hud-h": "spacing",
+      "--tabbar-h": "spacing",
+      "--dock-h": "spacing",
+      "--clip-blade": "other",
+      "--clip-blade-both": "other",
+      "--clip-banner": "other",
+      "--clip-tag": "other"
+    },
+    "fontFamilies": [
+      "Inter",
+      "JetBrains Mono",
+      "Lilita One",
+      "Yuji Mai"
+    ]
+  }
+}

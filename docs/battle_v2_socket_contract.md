@@ -2,6 +2,26 @@
 
 Battle v2 SocketIO events are the maintained gameplay surface. The server owns match state, validation, queue resolution, private serialization, and CPU responses.
 
+## Versioned command envelope
+
+Every mutating command after match creation includes the last authoritative
+`state_revision` received by the client and a non-empty, per-player
+`client_action_nonce`:
+
+```json
+{
+  "state_revision": 12,
+  "client_action_nonce": "1712345678901-7"
+}
+```
+
+The server rejects stale revisions before gameplay mutation. A retry using the
+same nonce, command, and sanitized payload is idempotent and returns current
+viewer state without applying the command again. Reusing a nonce for a
+different command or payload is rejected. Successful commands and automatic
+authoritative continuations advance `state_revision`; rejected commands leave
+state, energy, cooldowns, queues, RNG, and logs unchanged.
+
 ## Client Events
 
 ### `battle_v2_start_classic`
@@ -45,12 +65,33 @@ already-started Battle v2 match.
 }
 ```
 
+### `battle_v2_resume`
+
+Reattaches a new socket/browser session to an existing human player identity.
+The opaque token was previously delivered through `battle_v2_session` and is
+rotated after every successful resume.
+
+```json
+{
+  "room_id": "private-room",
+  "player_id": "player-session-id",
+  "resume_token": "opaque-room-scoped-token"
+}
+```
+
+Successful resume joins the original private socket room, emits a rotated
+`battle_v2_session`, and then emits a viewer-specific `battle_v2_update` with
+the current phase, revision, pending queue, and remaining time. Invalid,
+cross-room, cross-player, and already-rotated tokens are rejected.
+
 ### `battle_v2_submit_plan`
 
 Stores pending actions for queue review without spending energy.
 
 ```json
 {
+  "state_revision": 0,
+  "client_action_nonce": "1712345678901-1",
   "actions": [
     {
       "id": "a1",
@@ -69,6 +110,8 @@ Sets queue order and wildcard payments. This validates the full queue.
 
 ```json
 {
+  "state_revision": 1,
+  "client_action_nonce": "1712345678901-2",
   "queue_order": ["a1"],
   "wildcard_pays": {
     "a1": ["green"]
@@ -81,7 +124,7 @@ Sets queue order and wildcard payments. This validates the full queue.
 Confirms and resolves the current player's queued actions.
 
 ```json
-{}
+{"state_revision": 2, "client_action_nonce": "1712345678901-3"}
 ```
 
 ### `battle_v2_cancel_queue`
@@ -89,7 +132,7 @@ Confirms and resolves the current player's queued actions.
 Clears the current player's pending queue and returns to planning.
 
 ```json
-{}
+{"state_revision": 1, "client_action_nonce": "1712345678901-4"}
 ```
 
 ### `battle_v2_end_turn`
@@ -105,7 +148,21 @@ defensive utility, payoff skills with conditions, and higher-impact damage
 families such as soul or piercing damage.
 
 ```json
-{}
+{"state_revision": 0, "client_action_nonce": "1712345678901-5"}
+```
+
+### `battle_v2_convert_energy`
+
+Converts two matching core energy into one different core energy once during
+the current turn.
+
+```json
+{
+  "state_revision": 0,
+  "client_action_nonce": "1712345678901-6",
+  "source": "green",
+  "target": "red"
+}
 ```
 
 ### `battle_v2_surrender`
@@ -113,10 +170,29 @@ families such as soul or piercing damage.
 Concedes the v2 match for the current player.
 
 ```json
-{}
+{"state_revision": 0, "client_action_nonce": "1712345678901-7"}
 ```
 
 ## Server Events
+
+### `battle_v2_session`
+
+Privately delivers the room/player resume credential after match creation or a
+successful resume. The token is never included in battle serialization or
+broadcast to the opponent.
+
+```json
+{
+  "room_id": "private-room",
+  "player_id": "player-session-id",
+  "resume_token": "opaque-room-scoped-token"
+}
+```
+
+### `battle_v2_resume_rejected`
+
+Indicates that a resume credential is missing, invalid, scoped to another
+room/player, rotated, or belongs to a room that no longer exists.
 
 ### `battle_v2_lobby`
 
@@ -136,6 +212,12 @@ Also confirms when a waiting player cancels the lobby.
 Emitted to each human player in the room through that player's private socket
 room. Every payload is serialized for its viewer, so invisible statuses,
 private events, and pending queues do not leak to opponents.
+
+The payload includes authoritative `state_revision` and
+`phase_seconds_remaining`. Remaining time is a display value derived from the
+server's monotonic deadline. The server independently wakes the room and emits
+a new viewer-specific update when Planning or Queue Review expires; the client
+must not perform the timeout transition itself.
 
 ### `battle_v2_error`
 
@@ -163,3 +245,18 @@ or surrender produces a winner.
   "winner_id": "player-session-id"
 }
 ```
+
+## Matchmaking identity and lifecycle
+
+- A human player may own one waiting lobby or one active match, never both.
+- Private lobby codes are social identifiers. A successful pairing creates a distinct authoritative `match_id`.
+- Waiting membership is removed on cancel, successful start, disconnect, and lobby TTL cleanup.
+- Pairing validates compatibility and creates the match before consuming the waiting lobby. Failed joins leave the original waiter intact and notify that player.
+- Finished state may remain retained for replay/history while result acknowledgement releases its lobby code for immediate reuse.
+- Internal Socket.IO rooms are namespaced as `player:{player_id}`, `match:{match_id}`, or `lobby:{lobby_code}`.
+
+## Rematch and terminal results
+
+`battle_v2_rematch` requires the completed match's authoritative `state_revision` and a non-empty `client_action_nonce`. A locked `old_match_id -> new_match_id` registry makes CPU retries and requests from either PvP participant return the same rematch.
+
+Terminal state serializes `result_type` (`WIN`, `FORFEIT`, `DRAW`, or `NO_CONTEST`) and `result_reason`. Every terminal path clears pause metadata and the phase deadline. Result clients summarize the current authoritative match rather than reusing a previous local record.

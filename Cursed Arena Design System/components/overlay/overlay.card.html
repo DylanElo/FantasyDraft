@@ -1,0 +1,27 @@
+<!-- @dsCard group="Components" viewport="700x420" name="Overlay / Bottom Sheet" subtitle="Sheet overlay for queue review and character detail" -->
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{margin:0;background:var(--surface-app);}</style>
+</head>
+<body>
+<div id="root" style="position:relative;max-width:420px;height:400px;margin:0 auto;overflow:hidden;"></div>
+<script type="text/babel">
+const { Sheet, Button } = window.CursedArenaDesignSystem_845983;
+function Demo() {
+  return (
+    <Sheet open title="Queue Review">
+      <p className="ca-body-sm" style={{marginBottom:12}}>3 actions queued. Assign wildcard energy before confirming.</p>
+      <Button variant="primary" fullWidth>Confirm Queue</Button>
+    </Sheet>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+</script>
+</body>
+</html>

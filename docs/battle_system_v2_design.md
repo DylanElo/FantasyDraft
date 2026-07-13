@@ -18,6 +18,11 @@ Battle v2 is the only maintained battle engine in this repository.
 8. Cooldowns, statuses, deaths, domains, and energy update at turn end.
 9. The next player acts unless a winner has been decided.
 
+Action intents identify one declared base skill slot. The server resolves any
+active replacement from that slot; replacement-only and foreign skill IDs are
+never valid client submissions. Action IDs and queue order are exact,
+non-empty, unique identities, and selected target slots cannot be duplicated.
+
 ## Design Pillars
 
 ### Tactical clarity first
@@ -42,6 +47,11 @@ Character kits should be declared as `SkillSpec` data with `EffectSpec`, `Condit
 ### Server authoritative
 
 The client submits intent only. The server owns legality, damage, cooldowns, targeting, hidden effects, queue resolution, and winner detection.
+
+Mutating client intents carry an authoritative state revision and a per-player
+nonce. Stale intents and conflicting nonce reuse are rejected atomically;
+identical retries do not execute twice. Rejected commands do not consume RNG or
+change battle state.
 
 ## Runtime Flag
 
@@ -77,9 +87,60 @@ The resolver implements these rule families:
 - Sure-hit damage is for Domain effects and ignores normal target protection unless anti-domain effects apply.
 - Health steal heals the user only for actual HP damage dealt.
 
+`Physical` describes a damage/technique family, not reach. `Melee` and `Ranged`
+are explicit independent tags used by counters and punishments.
+
+## Authoritative phase timers
+
+Planning and Queue Review have server-owned deadlines. Timing policy is
+isolated in `jjk_arena/battle_v2/timers.py`; the manager owns timeout
+transitions. Planning timeout skips the turn. A valid Queue Review timeout
+resolves the submitted queue; an invalid queue is discarded before advancing.
+Internal deadlines use a monotonic clock. A stale-safe background scheduler
+wakes idle rooms, runs the authoritative transition under the room lock, then
+broadcasts viewer-specific state. Re-arming or deleting a room invalidates old
+wakeups. Clients receive whole `phase_seconds_remaining` values for display but
+do not decide when expiration occurs.
+
 ## Hidden Information
 
 Invisible statuses must be visible to their owner, hidden from opponents, revealed when triggered, and never leak protected targets through public serialization.
+
+## Session continuity
+
+Each human player receives an opaque, room-scoped resume token over their
+private socket room. The server stores only its hash and rotates the token after
+successful use. Resume reattaches the socket to the original player identity
+and emits a fresh viewer-specific snapshot containing the authoritative phase,
+revision, pending queue, and remaining time without exposing opponent-private
+state. Tokens live with the process-owned room and are revoked on room cleanup.
+Disconnect expiry, automatic surrender, and ranked penalties remain explicit
+product-policy decisions and are not inferred by the transport layer.
+
+## Deterministic replay
+
+Versioned replay documents reconstruct a seeded match and execute the original
+versioned commands through the authoritative manager. A canonical SHA-256 hash
+covers complete public and private battle state after initialization and every
+command. Only the process-local monotonic deadline is excluded. Unsupported
+format/rules versions and any hash mismatch fail closed. The detailed schema is
+defined in `docs/battle_v2_replay_contract.md`.
+
+## Headless simulation
+
+Seeded CPU-vs-CPU batches reuse the authoritative legal-action and resolution
+path and emit privacy-safe aggregate match summaries for diagnostics. A turn
+cap is explicit and never converted into an invented draw/winner rule. The
+schema and limitations are defined in
+`docs/battle_v2_simulation_contract.md`; heuristic results are not treated as a
+substitute for human balance testing.
+
+## Canonical resolver ordering
+
+Cross-mechanic commitment, counter, reflect, frozen context, effects,
+one-shot consumption, cleanup, and victory ordering is locked by executable
+regressions and documented in
+`docs/battle_v2_resolution_order_contract.md`.
 
 ## Acceptance Criteria
 

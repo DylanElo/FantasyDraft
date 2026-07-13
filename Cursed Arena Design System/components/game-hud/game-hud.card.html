@@ -1,0 +1,33 @@
+<!-- @dsCard group="Components" viewport="700x260" name="Game HUD / Energy + Currency" subtitle="Energy pips and currency pills for the always-on HUD" -->
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{padding:20px;background:var(--surface-app);}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { EnergyPip, CurrencyPill } = window.CursedArenaDesignSystem_845983;
+function Demo() {
+  return (
+    <div style={{display:'flex', flexDirection:'column', gap:18}}>
+      <div style={{display:'flex', gap:6}}>
+        {['B','T','F','C','X'].map(t => <EnergyPip key={t} type={t} />)}
+        {['B','T'].map(t => <EnergyPip key={t+'off'} type={t} filled={false} />)}
+      </div>
+      <div style={{display:'flex', gap:10}}>
+        <CurrencyPill kind="gold" amount={4820} onAdd={() => {}} />
+        <CurrencyPill kind="gem" amount={128} onAdd={() => {}} />
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+</script>
+</body>
+</html>

@@ -42,13 +42,17 @@ export class DraftRosterScene extends BaseScene {
 
     renderDetailSkillRow(skill, x, y, w) {
       this.graphics.fillStyle(COLORS.surfaceRaised, 0.82);
-      this.graphics.fillRoundedRect(x, y, w, 47, 12);
+      this.graphics.fillRoundedRect(x, y, w, 54, 12);
       this.graphics.lineStyle(1, COLORS.line, 0.44);
-      this.graphics.strokeRoundedRect(x, y, w, 47, 12);
-      this.text(x + 10, y + 7, shortText(skill.name, 24), { fontSize: '11px', fontStyle: '900' });
+      this.graphics.strokeRoundedRect(x, y, w, 54, 12);
+      this.text(x + 10, y + 7, skill.name, {
+        fontSize: '11px',
+        fontStyle: '900',
+        wordWrap: { width: w - 98 },
+      });
       this.costPips(x + w - 78, y + 15, skill.cost || [], 12);
       const tags = (skill.classes || []).slice(0, 2).map((tag) => titleize(tag)).join(' / ');
-      this.mono(x + 10, y + 27, `${titleize((skill.target_rule && skill.target_rule.kind) || 'enemy')} - ${shortText(tags || 'Technique', 26)}`, {
+      this.mono(x + 10, y + 36, `${titleize((skill.target_rule && skill.target_rule.kind) || 'enemy')} - ${shortText(tags || 'Technique', 34)}`, {
         color: COLORS.text,
         fontSize: '8px',
       });
@@ -57,7 +61,7 @@ export class DraftRosterScene extends BaseScene {
     renderCharacterDetailSheet(frame, teamKey) {
       const character = this.store.detailCharacterId ? this.store.character(this.store.detailCharacterId) : null;
       if (!character || !character.id) return;
-      const sheetH = Math.min(410, frame.height - 132);
+      const sheetH = Math.min(500, frame.height - 96);
       const x = frame.x + 14;
       const y = frame.height - sheetH - 12;
       const w = frame.width - 28;
@@ -69,7 +73,7 @@ export class DraftRosterScene extends BaseScene {
       this.graphics.fillRoundedRect(x, y, w, sheetH, 18);
       this.cardPanel(x, y, w, sheetH, tone, 1);
       this.portrait(character, x + 16, y + 20, 76, { tone, selected });
-      this.text(x + 104, y + 20, shortText(character.name, 24), {
+      this.text(x + 104, y + 20, character.name, {
         fontFamily: 'Cinzel, Inter, serif',
         fontSize: '18px',
         fontStyle: '900',
@@ -90,7 +94,7 @@ export class DraftRosterScene extends BaseScene {
 
       this.mono(x + 16, y + 140, 'TECHNIQUE DOSSIER', { color: COLORS.paperText, fontSize: '9px' });
       (character.skills || []).slice(0, 4).forEach((skill, index) => {
-        this.renderDetailSkillRow(skill, x + 16, y + 156 + index * 51, w - 32);
+        this.renderDetailSkillRow(skill, x + 16, y + 156 + index * 58, w - 32);
       });
 
       const buttonY = y + sheetH - 54;
@@ -117,12 +121,12 @@ export class DraftRosterScene extends BaseScene {
       const tone = selected ? COLORS.selection : this.store.assets.toneFor(character.id);
       this.cardPanel(x, y, w, h, tone, selected ? 0.94 : 0.72);
       this.portrait(character, x + 10, y + 12, 50, { tone, selected });
-      this.text(x + 68, y + 10, shortText(character.name, 17), {
-        fontSize: '12px',
+      this.text(x + 68, y + 8, character.name, {
+        fontSize: '11px',
         fontStyle: '900',
-        wordWrap: { width: w - 78 },
+        wordWrap: { width: w - 76 },
       });
-      this.mono(x + 68, y + 38, shortText(character.role || 'Starter', 24), { color: COLORS.text, fontSize: '8px' });
+      this.mono(x + 68, y + 43, shortText(character.role || 'Starter', 24), { color: COLORS.text, fontSize: '8px' });
       this.costPips(x + 18, y + h - 16, (((character.skills || [])[0] || {}).cost || []), 11);
       this.mono(x + 68, y + h - 22, shortText(((character.skills || [])[0] || {}).name || 'Technique', 21), {
         color: selected ? COLORS.paperText : COLORS.muted,

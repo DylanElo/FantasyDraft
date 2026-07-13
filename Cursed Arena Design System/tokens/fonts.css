@@ -1,0 +1,12 @@
+/* ──────────────────────────────────────────────────────────────────────
+   FONTS
+   Display: Lilita One — chunky rounded slab, the "collectible tactics
+   game" voice (Clash Royale / Brawl Stars register). Used for screen
+   titles, big numerals, CTA labels, character name plates.
+   UI: Inter — all body copy, labels, descriptions.
+   Mono: JetBrains Mono — stat readouts, cooldowns, energy costs, timers.
+   A single calligraphic accent (Yuji Mai) is kept ONLY for the kanji
+   glyph in the wordmark — never for UI text.
+   ────────────────────────────────────────────────────────────────────── */
+
+@import url('https://fonts.googleapis.com/css2?family=Lilita+One&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700;800&family=Yuji+Mai&display=swap');

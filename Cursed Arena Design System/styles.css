@@ -1,0 +1,7 @@
+/* Cursed Arena — root style entry. Imports only; no inline rules here. */
+@import url('tokens/fonts.css');
+@import url('tokens/colors.css');
+@import url('tokens/typography.css');
+@import url('tokens/spacing.css');
+@import url('tokens/fx.css');
+@import url('tokens/base.css');

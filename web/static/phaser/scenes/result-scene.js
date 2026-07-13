@@ -15,23 +15,26 @@ export class ResultScene extends BaseScene {
       const state = this.store.state;
       const mine = this.store.mineId();
       const victory = state && state.winner_id === mine;
-      this.topBar(frame, victory ? 'Victory' : 'Defeat', () => this.store.resetToLobby());
+      const resultType = String((state && state.result_type) || (state && state.winner_id ? 'WIN' : 'DRAW')).toUpperCase();
+      const neutral = resultType === 'DRAW' || resultType === 'NO_CONTEST';
+      const heading = resultType === 'NO_CONTEST' ? 'No Contest' : (resultType === 'DRAW' ? 'Draw' : (victory ? 'Victory' : 'Defeat'));
+      this.topBar(frame, heading, () => this.store.resetToLobby());
       const x = frame.x + frame.gutter;
       const compact = frame.height < 730;
       const heroY = compact ? 84 : 108;
       const heroH = compact ? 144 : 180;
       this.cardPanel(x, heroY, frame.width - 32, heroH, victory ? COLORS.selection : COLORS.enemy, 0.84);
-      this.text(frame.x + frame.width / 2, heroY + (compact ? 22 : 26), victory ? 'DOMAIN WON' : 'DOMAIN LOST', {
+      this.text(frame.x + frame.width / 2, heroY + (compact ? 22 : 26), neutral ? heading.toUpperCase() : (victory ? 'DOMAIN WON' : 'DOMAIN LOST'), {
         fontFamily: 'Cinzel, Inter, serif',
         fontSize: compact ? '27px' : '32px',
         fontStyle: '900',
         color: victory ? COLORS.paperText : '#f1a0a0',
       }).setOrigin(0.5, 0);
-      const winner = state && state.players && state.players[state.winner_id] ? state.players[state.winner_id].name : 'Unknown';
-      const last = this.store.records[0] || {};
-      this.mono(frame.x + frame.width / 2, heroY + (compact ? 69 : 76), `${winner} controls the domain`, { color: COLORS.text }).setOrigin(0.5, 0);
-      this.mono(x + 22, heroY + heroH - 52, `Turns: ${last.turns || (state && state.turn_number) || 0}`, { color: COLORS.text });
-      this.mono(x + 160, heroY + heroH - 52, `Damage: ${last.damage || 0}`, { color: COLORS.text });
+      const winner = state && state.winner_id && state.players && state.players[state.winner_id] ? state.players[state.winner_id].name : null;
+      const damage = ((state && state.event_log) || []).reduce((total, event) => total + eventAmount(event), 0);
+      this.mono(frame.x + frame.width / 2, heroY + (compact ? 69 : 76), winner ? `${winner} controls the domain` : safeText((state && state.result_reason) || heading), { color: COLORS.text }).setOrigin(0.5, 0);
+      this.mono(x + 22, heroY + heroH - 52, `Turns: ${(state && state.turn_number) || 0}`, { color: COLORS.text });
+      this.mono(x + 160, heroY + heroH - 52, `Damage: ${damage}`, { color: COLORS.text });
       this.mono(x + 22, heroY + heroH - 29, victory ? 'Route clear registered.' : 'Route remains uncleared.', {
         color: victory ? '#b7dbc0' : '#f1a0a0',
         fontSize: '9px',
@@ -40,7 +43,7 @@ export class ResultScene extends BaseScene {
       const strikesH = compact ? 118 : 150;
       this.cardPanel(x, strikesY, frame.width - 32, strikesH, COLORS.line, 0.72);
       this.mono(x + 16, strikesY + 18, 'BIGGEST STRIKES', { color: COLORS.paperText });
-      const strikes = (last.biggest && last.biggest.length ? last.biggest : ((state && state.event_log) || [])
+      const strikes = ((state && state.event_log) || [])
         .map((event) => ({ message: event.message || event.type, amount: eventAmount(event) }))
         .filter((event) => event.amount > 0)
         .sort((a, b) => b.amount - a.amount)
@@ -70,7 +73,7 @@ export class ResultScene extends BaseScene {
       const unlocks = mission && mission.unlocks && mission.unlocks.length ? `Unlocks: ${mission.unlocks.join(' / ')}` : 'Progress saved to your profile.';
       this.mono(x + 16, missionY + 78, 'REWARD CHECK', { color: COLORS.paperText, fontSize: '8px' });
       this.mono(x + 16, missionY + 94, shortText(victory ? unlocks : 'Replay the route to clear the objective.', 58), { color: COLORS.text, fontSize: '9px' });
-      this.button(x, frame.height - 120, frame.width - 32, 44, 'Rematch', () => this.store.changeScene('DraftScene'), {
+      this.button(x, frame.height - 120, frame.width - 32, 44, 'Rematch', () => this.store.requestRematch(), {
         fill: COLORS.panel2,
         stroke: COLORS.ally,
       });

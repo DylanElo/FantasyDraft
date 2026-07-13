@@ -1,0 +1,57 @@
+/* ──────────────────────────────────────────────────────────────────────
+   SPACING, RADIUS, LAYOUT, MOTION, ELEVATION TOKENS
+   ────────────────────────────────────────────────────────────────────── */
+:root {
+  /* Spacing — base unit 4, mobile-game density */
+  --sp-1: 2px;  --sp-2: 4px;  --sp-3: 6px;  --sp-4: 8px;
+  --sp-5: 12px; --sp-6: 16px; --sp-7: 20px; --sp-8: 24px;
+  --sp-9: 32px; --sp-10: 40px; --sp-11: 56px; --sp-12: 72px;
+
+  /* Radius — chunky and rounded (Clash-Royale-register), not sharp/ink-formal */
+  --r-xs:  8px;
+  --r-sm:  12px;
+  --r-md:  16px;
+  --r-lg:  22px;
+  --r-xl:  28px;
+  --r-2xl: 34px;
+  --r-pill: 999px;
+
+  /* Elevation — chunky "sticker" plates: heavy dark keyline + a bright
+     bottom highlight ledge that reads as 3D bevel, not a soft drop shadow */
+  --shadow-sm:  0 2px 0 rgba(0,0,0,0.35), 0 4px 10px rgba(0,0,0,0.28);
+  --shadow-md:  0 4px 0 rgba(0,0,0,0.35), 0 10px 24px rgba(0,0,0,0.32);
+  --shadow-lg:  0 6px 0 rgba(0,0,0,0.38), 0 18px 40px rgba(0,0,0,0.36);
+  --shadow-inset-well: inset 0 2px 6px rgba(0,0,0,0.45), inset 0 -1px 0 rgba(255,255,255,0.05);
+  --bevel-plate: inset 0 1.5px 0 rgba(255,255,255,0.28), inset 0 -3px 0 rgba(0,0,0,0.22); /* @kind shadow */
+
+  --aura-curse: 0 0 24px var(--curse-glow), 0 0 60px rgba(139,63,240,0.18);
+  --aura-gold:  0 0 24px var(--gold-glow), 0 0 60px rgba(240,168,46,0.16);
+  --aura-teal:  0 0 18px var(--teal-glow);
+  --aura-red:   0 0 18px var(--red-glow);
+
+  --keyline: 3px solid var(--border-keyline);
+  --keyline-thin: 2px solid var(--border-keyline);
+
+  /* Motion — bouncy, tactile, "game-feel" curves. No lazy linear fades. */
+  --ease-press:     cubic-bezier(0.4, 0, 0.2, 1); /* @kind other */
+  --ease-out-back:  cubic-bezier(0.34, 1.56, 0.64, 1); /* @kind other */ /* card/chest/reward entrance */
+  --ease-snap:      cubic-bezier(0.22, 0.9, 0.25, 1); /* @kind other */ /* sheet / drawer settle */
+  --ease-impact:    cubic-bezier(0.65, 0, 0.35, 1); /* @kind other */ /* screen transitions */
+
+  --dur-tap:    80ms; /* @kind other */
+  --dur-fast:   150ms; /* @kind other */
+  --dur-base:   240ms; /* @kind other */
+  --dur-slow:   380ms; /* @kind other */
+  --dur-cine:   700ms; /* @kind other */
+
+  /* Mobile layout targets — portrait-first, phone-shaped canvas */
+  --frame-small-w:   360px; --frame-small-h:   800px;
+  --frame-primary-w: 390px; --frame-primary-h: 844px;
+  --frame-large-w:   430px; --frame-large-h:   932px;
+
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+  --hud-h:       64px;
+  --tabbar-h:    76px;
+  --dock-h:      104px;
+}

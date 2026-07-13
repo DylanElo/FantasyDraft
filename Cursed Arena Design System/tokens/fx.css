@@ -1,0 +1,91 @@
+/* ──────────────────────────────────────────────────────────────────────
+   FX LAYER — angular geometry + signature motion
+   The "edge" of the system: blade-cut plates, shine sweeps, breathing
+   CTAs, target pulses, burst rays. All gated on prefers-reduced-motion.
+   ────────────────────────────────────────────────────────────────────── */
+:root {
+  --clip-blade:       polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%); /* @kind other */
+  --clip-blade-both:  polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px); /* @kind other */
+  --clip-banner:      polygon(0 0, 100% 0, calc(100% - 22px) 100%, 22px 100%); /* @kind other */
+  --clip-tag:         polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%); /* @kind other */
+}
+
+/* Shine sweep — run across gold/CTA plates every few seconds */
+.fx-shine { position: relative; overflow: hidden; }
+.fx-shine::after {
+  content: '';
+  position: absolute; top: -20%; bottom: -20%; width: 46px;
+  left: -80px;
+  background: linear-gradient(105deg, transparent, rgba(255,255,255,0.55), transparent);
+  transform: skewX(-18deg);
+  animation: fx-shine-sweep 3.2s var(--ease-impact) infinite;
+  pointer-events: none;
+}
+@keyframes fx-shine-sweep {
+  0%, 62% { left: -80px; }
+  100% { left: calc(100% + 40px); }
+}
+
+/* Breathing glow — primary CTA at rest */
+.fx-breathe { animation: fx-breathe 2.4s ease-in-out infinite; }
+@keyframes fx-breathe {
+  0%, 100% { box-shadow: var(--bevel-plate), 0 4px 0 var(--curse-900), 0 0 18px rgba(139,63,240,0.35); }
+  50%      { box-shadow: var(--bevel-plate), 0 4px 0 var(--curse-900), 0 0 38px rgba(139,63,240,0.65); }
+}
+
+/* Legal-target pulse ring */
+.fx-target-pulse { animation: fx-target 1.2s ease-in-out infinite; }
+@keyframes fx-target {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(56,217,190,0.55); }
+  50%      { box-shadow: 0 0 0 9px rgba(56,217,190,0); }
+}
+
+/* Reward / card entrance */
+.fx-pop-in { animation: fx-pop 0.38s var(--ease-out-back) both; }
+@keyframes fx-pop {
+  from { transform: scale(0.55) translateY(18px); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+
+/* Victory burst rays — apply to a full-bleed conic layer */
+.fx-rays {
+  background: repeating-conic-gradient(from 0deg,
+    rgba(240,168,46,0.14) 0deg 9deg, transparent 9deg 24deg);
+  animation: fx-rays-spin 24s linear infinite;
+}
+@keyframes fx-rays-spin { to { transform: rotate(360deg); } }
+
+/* Drifting ember particles (give each child a --d delay + --x offset) */
+.fx-ember {
+  position: absolute; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--curse-300); opacity: 0;
+  animation: fx-ember-rise 5.5s linear infinite;
+  animation-delay: var(--d, 0s); left: var(--x, 50%);
+  filter: blur(0.5px);
+}
+@keyframes fx-ember-rise {
+  0%   { transform: translateY(0) scale(1); opacity: 0; }
+  12%  { opacity: 0.7; }
+  100% { transform: translateY(-340px) scale(0.4); opacity: 0; }
+}
+
+/* Scanline texture — very subtle, on top of poster art */
+.fx-scanlines {
+  background: repeating-linear-gradient(0deg,
+    rgba(255,255,255,0.02) 0 1px, transparent 1px 4px);
+  pointer-events: none;
+}
+
+/* Oversized kanji watermark */
+.fx-kanji-wm {
+  font-family: var(--font-kanji);
+  color: rgba(139,63,240,0.06);
+  pointer-events: none; user-select: none;
+  line-height: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-shine::after, .fx-breathe, .fx-target-pulse, .fx-pop-in, .fx-rays, .fx-ember {
+    animation: none !important;
+  }
+}

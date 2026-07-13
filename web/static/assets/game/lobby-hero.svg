@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1200" role="img" aria-label="Bright anime tactics academy courtyard">
+  <defs>
+    <linearGradient id="sky" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#BFE8FF"/>
+      <stop offset=".45" stop-color="#FFF4D8"/>
+      <stop offset="1" stop-color="#FFCB9C"/>
+    </linearGradient>
+    <linearGradient id="path" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#FFF8E8"/>
+      <stop offset=".55" stop-color="#F3D089"/>
+      <stop offset="1" stop-color="#9DD7FF"/>
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+  </defs>
+  <rect width="900" height="1200" fill="url(#sky)"/>
+  <circle cx="708" cy="176" r="94" fill="#FFF0A9" opacity=".95"/>
+  <circle cx="708" cy="176" r="154" fill="#FFF0A9" opacity=".18" filter="url(#soft)"/>
+  <path d="M0 468 C180 390 292 420 442 342 C594 262 732 294 900 226 L900 1200 L0 1200 Z" fill="#FFFFFF" opacity=".34"/>
+  <path d="M0 536 C158 462 308 512 456 430 C612 344 754 372 900 318 L900 1200 L0 1200 Z" fill="#E7F7FF" opacity=".74"/>
+  <path d="M90 670 L292 414 L342 418 L156 720 Z" fill="#FFFFFF" opacity=".62"/>
+  <path d="M660 420 L782 632 L732 668 L606 448 Z" fill="#FFFFFF" opacity=".58"/>
+  <path d="M212 770 C330 630 568 624 686 770 L900 1200 L0 1200 Z" fill="url(#path)"/>
+  <path d="M376 692 C386 624 430 578 454 532 C474 584 520 628 526 696 C496 688 410 688 376 692 Z" fill="#142033" opacity=".88"/>
+  <path d="M418 540 C418 500 490 500 490 540 C490 586 418 586 418 540 Z" fill="#142033" opacity=".9"/>
+  <path d="M338 698 C308 612 326 548 366 494 C390 586 430 636 458 704 Z" fill="#42B8FF" opacity=".45"/>
+  <path d="M486 702 C520 618 586 570 662 548 C620 636 570 698 486 702 Z" fill="#F05DA8" opacity=".38"/>
+  <path d="M276 812 C392 762 512 760 624 812" fill="none" stroke="#142033" stroke-width="10" stroke-linecap="round" opacity=".22"/>
+  <path d="M170 895 C348 822 552 820 732 895" fill="none" stroke="#FFFFFF" stroke-width="22" stroke-linecap="round" opacity=".52"/>
+  <g opacity=".35">
+    <path d="M82 206 C202 156 256 180 332 122" fill="none" stroke="#FFFFFF" stroke-width="18" stroke-linecap="round"/>
+    <path d="M574 304 C672 262 738 280 822 224" fill="none" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round"/>
+  </g>
+</svg>

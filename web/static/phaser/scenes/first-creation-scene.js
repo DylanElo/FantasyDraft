@@ -15,18 +15,19 @@ export class FirstCreationScene extends DraftScene {
       [0, 1, 2].forEach((index) => {
         const id = this.store.playerTeam[index];
         const sx = x + index * (slotW + 8);
-        this.cardPanel(sx, y, slotW, 62, id ? COLORS.ally : COLORS.line, id ? 0.84 : 0.52);
+        this.cardPanel(sx, y, slotW, 76, id ? COLORS.ally : COLORS.line, id ? 0.84 : 0.52);
         this.mono(sx + 8, y + 7, `S${index + 1}`, { color: id ? COLORS.text : COLORS.dim, fontSize: '8px' });
         if (id) {
           const character = this.store.character(id);
-          this.portrait(character, sx + 7, y + 9, 38, { tone: COLORS.ally });
-          this.text(sx + 49, y + 12, shortText(character.name, 14), {
-            fontSize: '10px',
+          this.portrait(character, sx + slotW / 2 - 19, y + 7, 38, { tone: COLORS.ally });
+          this.text(sx + slotW / 2, y + 48, character.name, {
+            fontSize: '9px',
             fontStyle: '800',
-            wordWrap: { width: slotW - 54 },
-          });
+            align: 'center',
+            wordWrap: { width: slotW - 12 },
+          }).setOrigin(0.5, 0);
         } else {
-          this.mono(sx + 28, y + 21, 'OPEN SLOT', { color: COLORS.dim, fontSize: '8px' });
+          this.mono(sx + slotW / 2, y + 31, 'OPEN SLOT', { color: COLORS.dim, fontSize: '8px' }).setOrigin(0.5, 0);
         }
       });
     }
@@ -81,6 +82,11 @@ export class FirstCreationScene extends DraftScene {
       this.clearSurface();
       this.drawAppBg(frame);
       this.topBar(frame, 'First Creation', () => this.store.resetToLobby());
+      if (this.store.detailCharacterId) {
+        this.renderCharacterDetailSheet(frame, 'playerTeam');
+        this.toast(frame);
+        return;
+      }
       const x = frame.x + frame.gutter;
       let y = 86;
 

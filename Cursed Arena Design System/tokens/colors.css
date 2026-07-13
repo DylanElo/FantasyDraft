@@ -1,0 +1,115 @@
+/* ──────────────────────────────────────────────────────────────────────
+   COLOR TOKENS — Cursed Arena
+   Direction: a vibrant, saturated "collectible tactics" palette (the
+   Clash Royale / Brawl Stars register) carrying the game's cursed-energy
+   identity — violet is the brand voltage, ink is the neutral floor,
+   parchment-gold is currency/rarity. Screens are colour-blocked, not
+   uniformly dark: lobby/menu surfaces run on a warm ink-plum gradient
+   field, cards and plates are bright and high-contrast, chrome carries
+   a heavy black keyline the way stickers do.
+   ────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* ── 1. INK NEUTRALS — the floor everything sits on ─────────────────── */
+  --ink-950: #0E0B16;
+  --ink-900: #171223;
+  --ink-800: #211A31;
+  --ink-700: #2C2340;
+  --ink-600: #3B2F53;
+  --ink-500: #4E4169;
+  --ink-400: #6B5C87;
+  --ink-300: #9285A9;
+  --ink-200: #C3B9D2;
+  --ink-100: #E6E0EE;
+  --ink-50:  #F6F3FA;
+  --paper:   #FFFDF7;   /* card face white — warm, not clinical */
+
+  /* ── 2. CURSE VIOLET — brand voltage, primary CTA, selection ────────── */
+  --curse-900: #2E1065;
+  --curse-700: #4C1D95;
+  --curse-600: #6D28D9;
+  --curse-500: #8B3FF0;   /* primary brand */
+  --curse-400: #A855F7;
+  --curse-300: #C084FC;
+  --curse-200: #E3C6FF;
+  --curse-glow: rgba(139, 63, 240, 0.55);
+
+  /* ── 3. TALISMAN GOLD — currency, rarity, victory ────────────────────── */
+  --gold-800: #8A5A12;
+  --gold-600: #C9861E;
+  --gold-500: #F0A82E;
+  --gold-400: #FBBF42;
+  --gold-300: #FFD873;
+  --gold-glow: rgba(240, 168, 46, 0.55);
+
+  /* ── 4. CURSED TEAL — legal target, positive tactical signal ─────────── */
+  --teal-600: #0E8C79;
+  --teal-500: #17B39B;
+  --teal-400: #38D9BE;
+  --teal-glow: rgba(23, 179, 155, 0.5);
+
+  /* ── 5. BLOOD RED — enemy threat, damage, danger only ────────────────── */
+  --red-700: #A3172B;
+  --red-600: #D8203B;
+  --red-500: #F03A52;
+  --red-400: #FF6B7E;
+  --red-glow: rgba(216, 32, 59, 0.5);
+
+  /* ── 6. ENERGY TYPES (Body / Technique / Focus / Curse / Wild) ───────── */
+  --e-body:      #3FBE6B;   /* physical / cursed tools */
+  --e-technique: #3D7BFF;   /* cursed technique output */
+  --e-focus:     #FBBF42;   /* tactics / barriers / reads (gold, not ivory) */
+  --e-curse:     #D8203B;   /* volatility / risk */
+  --e-wild:      #4E4169;   /* paid from any of the above at queue review */
+
+  /* ── 7. CLASS / RARITY ────────────────────────────────────────────────── */
+  --cls-bruiser:  #F03A52;
+  --cls-control:  #3D7BFF;
+  --cls-support:  #FBBF42;
+  --cls-defender: #38D9BE;
+  --cls-domain:   #A855F7;
+
+  --rar-common:    #9285A9;
+  --rar-rare:      #3D7BFF;
+  --rar-epic:      #A855F7;
+  --rar-legendary: #F0A82E;
+  --rar-mythic:    linear-gradient(135deg, #FF6B7E, #FBBF42, #38D9BE, #A855F7); /* @kind other */
+
+  /* ── 8. FACTIONS (in-fiction allegiance) ──────────────────────────────── */
+  --f-tokyo:    #3D7BFF;
+  --f-kyoto:    #17B39B;
+  --f-sorcerer: #A855F7;
+  --f-villain:  #D8203B;
+
+  /* ── 9. SEMANTIC ──────────────────────────────────────────────────────── */
+  --success: #3FBE6B;
+  --warning: #FBBF42;
+  --danger:  #D8203B;
+  --info:    #3D7BFF;
+
+  /* ── 10. TEXT ─────────────────────────────────────────────────────────── */
+  --text-on-dark:       #FBF8FF;
+  --text-on-dark-dim:   #C3B9D2;
+  --text-on-dark-muted: #9285A9;
+  --text-on-light:      #211A31;
+  --text-on-light-dim:  #5C4E77;
+  --text-link:          var(--curse-400);
+  --text-link-hover:    var(--curse-300);
+
+  /* ── 11. SURFACES (semantic aliases) ─────────────────────────────────── */
+  --surface-app:      var(--ink-950);
+  --surface-app-grad: radial-gradient(ellipse 120% 80% at 50% -10%, var(--curse-900) 0%, var(--ink-950) 55%);
+  --surface-panel:    var(--ink-800);
+  --surface-panel-2:  var(--ink-700);
+  --surface-card:     var(--paper);
+  --surface-card-ink: var(--ink-800);
+  --surface-sunken:   var(--ink-900);
+  --surface-overlay:  rgba(14, 11, 22, 0.72);
+
+  --border-hairline:  rgba(255,255,255,0.08);
+  --border-hairline-hi: rgba(255,255,255,0.16);
+  --border-keyline:   var(--ink-950);   /* heavy sticker-style outline */
+}
+
+a { color: var(--text-link); text-decoration: none; }
+a:hover { color: var(--text-link-hover); text-decoration: underline; }

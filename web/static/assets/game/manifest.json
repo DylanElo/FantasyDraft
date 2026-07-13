@@ -1,0 +1,38 @@
+[
+  {
+    "id": "lobby_hero",
+    "kind": "lobbyHero",
+    "src": "/static/assets/game/lobby-hero.svg",
+    "fallbackColor": "#BFE8FF",
+    "fallbackLabel": "Academy Courtyard",
+    "licenseStatus": "original_fallback",
+    "sourceNote": "Original replaceable game backplate, not scraped canon art."
+  },
+  {
+    "id": "battlefield_courtyard",
+    "kind": "battlefield",
+    "src": "/static/assets/game/battlefield-courtyard.svg",
+    "fallbackColor": "#FFF3D5",
+    "fallbackLabel": "Training Courtyard",
+    "licenseStatus": "original_fallback",
+    "sourceNote": "Original replaceable game backplate, not scraped canon art."
+  },
+  {
+    "id": "result_victory",
+    "kind": "resultPoster",
+    "src": "/static/assets/game/result-victory.svg",
+    "fallbackColor": "#FFE08F",
+    "fallbackLabel": "Victory Poster",
+    "licenseStatus": "original_fallback",
+    "sourceNote": "Original replaceable result backplate, not scraped canon art."
+  },
+  {
+    "id": "result_defeat",
+    "kind": "resultPoster",
+    "src": "/static/assets/game/result-defeat.svg",
+    "fallbackColor": "#F7A7A5",
+    "fallbackLabel": "Defeat Poster",
+    "licenseStatus": "original_fallback",
+    "sourceNote": "Original replaceable result backplate, not scraped canon art."
+  }
+]

@@ -1,0 +1,126 @@
+/* ──────────────────────────────────────────────────────────────────────
+   TYPE TOKENS
+   ────────────────────────────────────────────────────────────────────── */
+:root {
+  --font-display: 'Lilita One', 'Baloo 2', system-ui, sans-serif;
+  --font-ui:      'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-kanji:   'Yuji Mai', serif; /* wordmark glyph only */
+
+  --fs-xxs: 11px;
+  --fs-xs:  12px;
+  --fs-sm:  13px;
+  --fs-md:  15px;
+  --fs-base:16px;
+  --fs-lg:  18px;
+  --fs-xl:  22px;
+  --fs-2xl: 28px;
+  --fs-3xl: 36px;
+  --fs-4xl: 48px;
+  --fs-5xl: 64px;
+  --fs-6xl: 88px;
+
+  --fw-regular: 400; /* @kind other */
+  --fw-medium:  500; /* @kind other */
+  --fw-semi:    600; /* @kind other */
+  --fw-bold:    700; /* @kind other */
+  --fw-heavy:   800; /* @kind other */
+  --fw-black:   900; /* @kind other */
+
+  --ls-tight:  -0.5px; /* @kind spacing */
+  --ls-normal: 0; /* @kind other */
+  --ls-wide:   0.4px; /* @kind spacing */
+  --ls-tracked:1.4px; /* @kind spacing */
+  --ls-caps:   2px; /* @kind spacing */
+
+  --lh-tight:   1.0; /* @kind other */
+  --lh-snug:    1.15; /* @kind other */
+  --lh-normal:  1.4; /* @kind other */
+  --lh-relaxed: 1.6; /* @kind other */
+}
+
+.ca-display-hero {   /* full-screen numeral / victory reveal */
+  font-family: var(--font-display);
+  font-weight: var(--fw-regular);
+  font-size: clamp(56px, 12vw, var(--fs-6xl));
+  line-height: var(--lh-tight);
+  letter-spacing: var(--ls-normal);
+  color: var(--text-on-dark);
+  text-transform: uppercase;
+}
+.ca-h1 {              /* screen title */
+  font-family: var(--font-display);
+  font-weight: var(--fw-regular);
+  font-size: var(--fs-3xl);
+  line-height: var(--lh-tight);
+  color: var(--text-on-dark);
+  text-transform: uppercase;
+}
+.ca-h2 {              /* section header */
+  font-family: var(--font-display);
+  font-weight: var(--fw-regular);
+  font-size: var(--fs-xl);
+  line-height: var(--lh-snug);
+  color: var(--text-on-dark);
+  text-transform: uppercase;
+}
+.ca-h3 {              /* card/plate name */
+  font-family: var(--font-ui);
+  font-weight: var(--fw-black);
+  font-size: var(--fs-md);
+  line-height: var(--lh-snug);
+  color: var(--text-on-dark);
+}
+.ca-eyebrow {
+  font-family: var(--font-ui);
+  font-weight: var(--fw-black);
+  font-size: var(--fs-xxs);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--text-on-dark-muted);
+}
+.ca-label {
+  font-family: var(--font-ui);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-tracked);
+  text-transform: uppercase;
+  color: var(--text-on-dark-dim);
+}
+.ca-body {
+  font-family: var(--font-ui);
+  font-weight: var(--fw-regular);
+  font-size: var(--fs-md);
+  line-height: var(--lh-relaxed);
+  color: var(--text-on-dark);
+}
+.ca-body-sm {
+  font-family: var(--font-ui);
+  font-weight: var(--fw-medium);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-relaxed);
+  color: var(--text-on-dark-dim);
+}
+.ca-button-label {
+  font-family: var(--font-ui);
+  font-weight: var(--fw-black);
+  font-size: var(--fs-md);
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+}
+.ca-stat {             /* HP / cost / cooldown numerals */
+  font-family: var(--font-mono);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-on-dark);
+}
+.ca-text-gradient-gold {
+  background: linear-gradient(135deg, #fff 10%, var(--gold-300) 45%, var(--gold-500) 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+.ca-text-gradient-curse {
+  background: linear-gradient(135deg, #fff 10%, var(--curse-300) 45%, var(--curse-500) 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}

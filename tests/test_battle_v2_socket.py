@@ -1,18 +1,44 @@
 import pytest
+from copy import deepcopy
+from itertools import count
 
 from jjk_arena.battle_v2.models import EnergyType, SkillClass, StatusEffect
+from jjk_arena.battle_v2.timers import BattleTimerPolicy
 from web import app as web_app
+
+
+COMMAND_NONCES = count(1)
+
+
+def command_payload(state, payload=None, *, revision_offset=0):
+    return {
+        **(payload or {}),
+        "state_revision": state.state_revision + revision_offset,
+        "client_action_nonce": f"test-{next(COMMAND_NONCES)}",
+    }
 
 
 @pytest.fixture(autouse=True)
 def clear_v2_rooms():
+    for room_id in list(web_app.battle_v2_manager.rooms):
+        web_app.battle_v2_timer_scheduler.cancel(room_id)
     web_app.battle_v2_manager.rooms.clear()
     web_app.battle_v2_manager.rngs.clear()
+    web_app.battle_v2_manager.command_receipts.clear()
+    web_app.battle_v2_manager.room_locks.clear()
+    web_app.battle_v2_sessions.clear()
     web_app.v2_pvp_lobbies.clear()
+    web_app.rate_limits.clear()
     yield
+    for room_id in list(web_app.battle_v2_manager.rooms):
+        web_app.battle_v2_timer_scheduler.cancel(room_id)
     web_app.battle_v2_manager.rooms.clear()
     web_app.battle_v2_manager.rngs.clear()
+    web_app.battle_v2_manager.command_receipts.clear()
+    web_app.battle_v2_manager.room_locks.clear()
+    web_app.battle_v2_sessions.clear()
     web_app.v2_pvp_lobbies.clear()
+    web_app.rate_limits.clear()
 
 
 def socket_client():
@@ -38,6 +64,10 @@ def received_payload(client, event_name):
     return None
 
 
+def received_payloads(client):
+    return {message["name"]: message["args"][0] for message in client.get_received()}
+
+
 def test_battle_v2_socket_events_are_feature_flagged(monkeypatch):
     monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v1")
     client = socket_client()
@@ -46,6 +76,132 @@ def test_battle_v2_socket_events_are_feature_flagged(monkeypatch):
 
     payload = received_payload(client, "battle_v2_error")
     assert payload["message"].startswith("Battle v2 is disabled")
+
+
+def test_battle_v2_socket_requires_command_revision_and_nonce(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    client = socket_client()
+    client.emit("battle_v2_start_classic", {"room_id": "versioned-v2"})
+    received_payload(client, "battle_v2_update")
+
+    client.emit("battle_v2_end_turn", {})
+
+    error = received_payload(client, "battle_v2_error")
+    assert error == {"message": "state_revision is required"}
+    assert web_app.battle_v2_manager.get_state("versioned-v2").turn_number == 1
+
+
+def test_background_planning_timeout_broadcasts_and_runs_cpu(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    monkeypatch.setattr(
+        web_app.battle_v2_manager,
+        "timer_policy",
+        BattleTimerPolicy(planning_seconds=0.03, queue_review_seconds=0.03),
+    )
+    client = socket_client()
+    client.emit("battle_v2_start_classic", {"room_id": "scheduled-timeout"})
+    start = received_payload(client, "battle_v2_update")
+    player_id = start["turn_player_id"]
+
+    web_app.socketio.sleep(0.12)
+    timed_out = received_payload(client, "battle_v2_update")
+
+    assert timed_out["turn_player_id"] == player_id
+    assert timed_out["state_revision"] >= 2
+    assert any(event["type"] == "phase_timeout" for event in timed_out["event_log"])
+    assert any(event["type"] == "skill_resolved" for event in timed_out["event_log"])
+
+
+def test_resume_rebinds_socket_and_restores_viewer_specific_queue_without_hidden_leak(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    original = socket_client_with_player("original")
+    original.emit("battle_v2_start_classic", {"room_id": "resume-v2"})
+    started = received_payloads(original)
+    grant = started["battle_v2_session"]
+    state = web_app.battle_v2_manager.get_state("resume-v2")
+    state.players["original"].energy[EnergyType.GREEN] = 1
+    state.players["original"].team[0].statuses.append(
+        StatusEffect("enemy_secret", "Enemy Secret", "__cpu_v2__", 0, "original", 0, 2, invisible=True)
+    )
+    original.emit("battle_v2_submit_plan", command_payload(state, {"actions": [{
+        "id": "resume-action",
+        "caster_slot": 0,
+        "skill_id": "divergent_fist",
+        "target_player_id": "__cpu_v2__",
+        "target_slot": 0,
+    }]}))
+    received_payload(original, "battle_v2_update")
+    original.disconnect()
+
+    resumed = socket_client_with_player("different-browser-session")
+    resumed.emit("battle_v2_resume", grant)
+    messages = received_payloads(resumed)
+    snapshot = messages["battle_v2_update"]
+
+    assert messages["battle_v2_session"]["resume_token"] != grant["resume_token"]
+    assert snapshot["pending_actions"]["original"][0]["id"] == "resume-action"
+    assert snapshot["phase"] == "queue_review"
+    assert snapshot["phase_seconds_remaining"] > 0
+    assert snapshot["players"]["original"]["team"][0]["statuses"] == []
+
+
+def test_invalid_or_rotated_resume_token_is_rejected(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    original = socket_client_with_player("original")
+    original.emit("battle_v2_start_classic", {"room_id": "resume-reject"})
+    grant = received_payloads(original)["battle_v2_session"]
+
+    first_resume = socket_client_with_player("new-session")
+    first_resume.emit("battle_v2_resume", grant)
+    received_payloads(first_resume)
+    replay = socket_client_with_player("attacker")
+    replay.emit("battle_v2_resume", grant)
+
+    rejected = received_payloads(replay)
+    assert rejected == {"battle_v2_resume_rejected": {"message": "Battle session could not be resumed."}}
+
+
+def test_battle_v2_socket_retry_does_not_repeat_energy_conversion(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    client = socket_client()
+    client.emit("battle_v2_start_classic", {"room_id": "retry-v2"})
+    start = received_payload(client, "battle_v2_update")
+    state = web_app.battle_v2_manager.get_state("retry-v2")
+    player_id = start["turn_player_id"]
+    state.players[player_id].energy[EnergyType.GREEN] = 2
+    command = {
+        "source": "green",
+        "target": "red",
+        "state_revision": 0,
+        "client_action_nonce": "socket-retry",
+    }
+
+    client.emit("battle_v2_convert_energy", command)
+    first = received_payload(client, "battle_v2_update")
+    client.emit("battle_v2_convert_energy", command)
+    second = received_payload(client, "battle_v2_update")
+
+    assert second == first
+    assert second["state_revision"] == 1
+    assert [event["type"] for event in second["event_log"]].count("energy_converted") == 1
+
+
+def test_battle_v2_socket_rejects_stale_revision_without_mutation(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    client = socket_client()
+    client.emit("battle_v2_start_classic", {"room_id": "stale-v2"})
+    start = received_payload(client, "battle_v2_update")
+    state = web_app.battle_v2_manager.get_state("stale-v2")
+    before = deepcopy(web_app.battle_v2_manager.serialize_for_player("stale-v2", start["turn_player_id"]))
+
+    client.emit("battle_v2_end_turn", {
+        "state_revision": 12,
+        "client_action_nonce": "stale-command",
+    })
+
+    error = received_payload(client, "battle_v2_error")
+    assert "stale state revision" in error["message"]
+    assert web_app.battle_v2_manager.serialize_for_player("stale-v2", start["turn_player_id"]) == before
 
 
 def test_battle_v2_socket_start_submit_confirm(monkeypatch):
@@ -70,7 +226,7 @@ def test_battle_v2_socket_start_submit_confirm(monkeypatch):
 
     client.emit(
         "battle_v2_submit_plan",
-        {
+        command_payload(state, {
             "actions": [
                 {
                     "id": "a1",
@@ -80,11 +236,11 @@ def test_battle_v2_socket_start_submit_confirm(monkeypatch):
                     "target_slot": 0,
                 }
             ]
-        },
+        }),
     )
     assert "battle_v2_update" in received_names(client)
 
-    client.emit("battle_v2_confirm_queue", {})
+    client.emit("battle_v2_confirm_queue", command_payload(state))
     resolved_state = received_payload(client, "battle_v2_update")
 
     assert resolved_state["turn_player_id"] == player_id
@@ -110,7 +266,7 @@ def test_battle_v2_socket_convert_energy(monkeypatch):
     state.players[player_id].energy[EnergyType.GREEN] = 2
     state.players[player_id].energy[EnergyType.RED] = 0
 
-    client.emit("battle_v2_convert_energy", {"source": "green", "target": "red"})
+    client.emit("battle_v2_convert_energy", command_payload(state, {"source": "green", "target": "red"}))
     converted = received_payload(client, "battle_v2_update")
 
     assert converted["players"][player_id]["energy"]["green"] == 0
@@ -123,9 +279,10 @@ def test_battle_v2_socket_surrender_finishes_match(monkeypatch):
     monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
     client = socket_client()
     client.emit("battle_v2_start_classic", {"room_id": "socket-v2"})
-    client.get_received()
+    received_payload(client, "battle_v2_update")
+    state = web_app.battle_v2_manager.get_state("socket-v2")
 
-    client.emit("battle_v2_surrender", {})
+    client.emit("battle_v2_surrender", command_payload(state))
 
     finished = received_payload(client, "battle_v2_finished")
     assert finished == {"winner_id": "__cpu_v2__"}
@@ -160,7 +317,8 @@ def test_battle_v2_socket_end_turn_runs_cpu_response(monkeypatch):
     start_state = received_payload(client, "battle_v2_update")
     player_id = start_state["turn_player_id"]
 
-    client.emit("battle_v2_end_turn", {})
+    state = web_app.battle_v2_manager.get_state("socket-v2")
+    client.emit("battle_v2_end_turn", command_payload(state))
 
     resolved_state = received_payload(client, "battle_v2_update")
     assert resolved_state["turn_player_id"] == player_id
@@ -189,7 +347,7 @@ def test_battle_v2_socket_resolves_ally_target_skill(monkeypatch):
 
     client.emit(
         "battle_v2_submit_plan",
-        {
+        command_payload(state, {
             "actions": [
                 {
                     "id": "heal-ally",
@@ -200,11 +358,11 @@ def test_battle_v2_socket_resolves_ally_target_skill(monkeypatch):
                     "wildcard_pays": ["green"],
                 }
             ]
-        },
+        }),
     )
     assert "battle_v2_update" in received_names(client)
 
-    client.emit("battle_v2_confirm_queue", {})
+    client.emit("battle_v2_confirm_queue", command_payload(state))
     resolved_state = received_payload(client, "battle_v2_update")
 
     heal_events = [event for event in resolved_state["event_log"] if event["type"] == "heal"]
@@ -240,10 +398,10 @@ def test_battle_v2_socket_broadcasts_viewer_specific_private_state(monkeypatch):
             invisible=True,
         )
     )
-    p2_client.emit("battle_v2_cancel_queue", {"room_id": "human-v2"})
+    p2_client.emit("battle_v2_cancel_queue", command_payload(state, {"room_id": "human-v2"}))
     p2_client.get_received()
 
-    p1_client.emit("battle_v2_cancel_queue", {"room_id": "human-v2"})
+    p1_client.emit("battle_v2_cancel_queue", command_payload(state, {"room_id": "human-v2"}))
     p1_update = received_payload(p1_client, "battle_v2_update")
     p2_update = received_payload(p2_client, "battle_v2_update")
 
@@ -397,7 +555,7 @@ def test_battle_v2_human_confirm_does_not_run_cpu_turn(monkeypatch):
 
     p1_client.emit(
         "battle_v2_submit_plan",
-        {
+        command_payload(state, {
             "actions": [
                 {
                     "id": "a1",
@@ -407,11 +565,11 @@ def test_battle_v2_human_confirm_does_not_run_cpu_turn(monkeypatch):
                     "target_slot": 0,
                 }
             ]
-        },
+        }),
     )
     p1_client.get_received()
 
-    p1_client.emit("battle_v2_confirm_queue", {})
+    p1_client.emit("battle_v2_confirm_queue", command_payload(state))
     update = received_payload(p1_client, "battle_v2_update")
 
     assert update["turn_player_id"] == "p2"
@@ -455,3 +613,102 @@ def test_battle_v2_socket_start_first_creation_mode_uses_first_creation_catalog(
     assert "satoru_gojo_young" in state["skill_catalog"]
     assert "mahito" not in state["skill_catalog"]
     assert state["players"]["__cpu_v2__"]["team"][0]["character_id"] == "yuta_okkotsu_jjk0"
+
+
+def test_todo_alternate_redirect_survives_socket_cleaner_manager_and_resolver(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    monkeypatch.setattr(web_app, "allow_event", lambda *args, **kwargs: True)
+    monkeypatch.setattr(web_app, "battle_v2_has_cpu", lambda room_id: False)
+    client = socket_client()
+    client.emit(
+        "battle_v2_start_classic",
+        {
+            "room_id": "todo-socket",
+            "roster_mode": "first_creation",
+            "player_team": ["aoi_todo", "yuji_itadori", "maki_zenin"],
+            "enemy_team": ["mai_zenin", "panda", "megumi_fushiguro"],
+        },
+    )
+    start = received_payload(client, "battle_v2_update")
+    player_id = start["turn_player_id"]
+    state = web_app.battle_v2_manager.get_state("todo-socket")
+    state.players[player_id].energy[EnergyType.BLUE] = 1
+    state.players[player_id].energy[EnergyType.WHITE] = 1
+
+    client.emit(
+        "battle_v2_submit_plan",
+        command_payload(state, {"actions": [{
+            "id": "todo",
+            "caster_slot": 0,
+            "skill_id": "fc_aoi_todo_boogie_woogie",
+            "target_player_id": "__cpu_v2__",
+            "target_slot": 0,
+            "alternate_target_player_id": player_id,
+            "alternate_target_slot": 1,
+        }]}),
+    )
+    queued = received_payload(client, "battle_v2_update")
+    action = queued["pending_actions"][player_id][0]
+    assert action["alternate_target_player_id"] == player_id
+    assert action["alternate_target_slot"] == 1
+
+    client.emit("battle_v2_confirm_queue", command_payload(state))
+    received_payload(client, "battle_v2_update")
+    redirect = next(status for status in state.players["__cpu_v2__"].team[0].statuses if status.id == "boogie_woogie_redirect")
+    assert redirect.payload["redirect_to_player_id"] == player_id
+    assert redirect.payload["redirect_to_slot"] == 1
+
+
+def test_venom_bloom_secondary_target_survives_socket_cleaner_manager_and_resolver(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    monkeypatch.setattr(web_app, "allow_event", lambda *args, **kwargs: True)
+    client = socket_client()
+    client.emit(
+        "battle_v2_start_classic",
+        {
+            "room_id": "venom-socket",
+            "roster_mode": "first_creation",
+            "player_team": ["junpei_yoshino", "yuji_itadori", "maki_zenin"],
+            "enemy_team": ["mai_zenin", "panda", "megumi_fushiguro"],
+        },
+    )
+    start = received_payload(client, "battle_v2_update")
+    player_id = start["turn_player_id"]
+    state = web_app.battle_v2_manager.get_state("venom-socket")
+    state.players[player_id].energy[EnergyType.RED] = 1
+    state.players[player_id].energy[EnergyType.GREEN] = 1
+    state.players["__cpu_v2__"].team[0].statuses.append(
+        StatusEffect("poison", "Poison", player_id, 0, "__cpu_v2__", 0, 2)
+    )
+
+    client.emit(
+        "battle_v2_submit_plan",
+        command_payload(state, {"actions": [{
+            "id": "venom",
+            "caster_slot": 0,
+            "skill_id": "fc_junpei_yoshino_venom_bloom",
+            "target_player_id": "__cpu_v2__",
+            "target_slot": 0,
+            "target_slots": [0, 1],
+            "secondary_target_slot": 1,
+        }]}),
+    )
+    queued = received_payload(client, "battle_v2_update")
+    action = queued["pending_actions"][player_id][0]
+    assert action["target_slots"] == [0, 1]
+    assert action["secondary_target_slot"] == 1
+
+    client.emit(
+        "battle_v2_update_queue",
+        command_payload(state, {"queue_order": ["venom"], "wildcard_pays": {"venom": ["green"]}}),
+    )
+    received_payload(client, "battle_v2_update")
+    client.emit("battle_v2_confirm_queue", command_payload(state))
+    received_payload(client, "battle_v2_update")
+    spread = next(
+        event for event in state.event_log
+        if event.type == "status_applied"
+        and event.payload.get("status") == "poison"
+        and event.payload.get("target_slot") == 1
+    )
+    assert spread.payload["target_player_id"] == "__cpu_v2__"

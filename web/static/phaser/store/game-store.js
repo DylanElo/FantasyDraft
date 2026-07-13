@@ -19,6 +19,9 @@ export class GameStore {
       this.lobbyStatus = null;
       this.selectedCasterSlot = null;
       this.selectedSkillId = null;
+      this.detailSkillId = null;
+      this.targetingStage = null;
+      this.pendingPrimaryTarget = null;
       this.actions = [];
       this.actionWildPays = {};
       this.queueReviewOpen = false;
@@ -33,6 +36,9 @@ export class GameStore {
       this.playbackEvents = [];
       this.recentEvents = [];
       this.lastActionPayloads = [];
+      this.commandNonceCounter = 0;
+      this.resumeSession = this.loadResumeSession();
+      this.ignoreBattleUpdates = false;
       this.records = this.loadRecords();
       this.playerTeam = preset('story_tutorial', ['yuji_itadori', 'megumi_fushiguro', 'nobara_kugisaki']);
       this.enemyTeam = preset('jjk0_beginner_special', ['yuta_okkotsu_jjk0', 'maki_zenin', 'toge_inumaki']);
@@ -44,6 +50,7 @@ export class GameStore {
           actionCount: this.actions.length,
           selectedCasterSlot: this.selectedCasterSlot,
           selectedSkillId: this.selectedSkillId,
+          detailSkillId: this.detailSkillId,
           queueReviewOpen: this.queueReviewOpen,
           detailCharacterId: this.detailCharacterId,
           hasBattle: !!this.state,
@@ -56,7 +63,15 @@ export class GameStore {
     bindSocket() {
       this.socketClient.on('connect', () => {
         this.setStatus('Connected');
+        if (this.resumeSession) {
+          this.socketClient.emit('battle_v2_resume', { ...this.resumeSession });
+        }
         this.notify();
+      });
+      this.socketClient.on('battle_v2_session', (data) => this.saveResumeSession(data));
+      this.socketClient.on('battle_v2_resume_rejected', (data) => {
+        this.clearResumeSession();
+        this.showToast(data && data.message ? data.message : 'Battle session expired.');
       });
       this.socketClient.on('battle_v2_update', (data) => this.receiveBattleState(data));
       this.socketClient.on('battle_v2_lobby', (data) => this.receiveLobbyState(data));
@@ -95,6 +110,40 @@ export class GameStore {
           this.notify();
         }
       }, 2200);
+    }
+
+    commandPayload(payload = {}, revisionOffset = 0) {
+      this.commandNonceCounter += 1;
+      const revision = Number((this.state && this.state.state_revision) || 0) + revisionOffset;
+      return {
+        ...payload,
+        state_revision: revision,
+        client_action_nonce: `${Date.now()}-${this.commandNonceCounter}`,
+      };
+    }
+
+    loadResumeSession() {
+      try {
+        const value = JSON.parse(readStorage('jjk_battle_resume', '{}'));
+        return value && value.room_id && value.player_id && value.resume_token ? value : null;
+      } catch (error) {
+        return null;
+      }
+    }
+
+    saveResumeSession(data) {
+      if (!data || !data.room_id || !data.player_id || !data.resume_token) return;
+      this.resumeSession = {
+        room_id: data.room_id,
+        player_id: data.player_id,
+        resume_token: data.resume_token,
+      };
+      writeStorage('jjk_battle_resume', JSON.stringify(this.resumeSession));
+    }
+
+    clearResumeSession() {
+      this.resumeSession = null;
+      writeStorage('jjk_battle_resume', '{}');
     }
 
     changeScene(sceneName) {
@@ -157,10 +206,11 @@ export class GameStore {
     }
 
     rememberResult(state) {
-      if (!state || !state.winner_id || state.__recorded) return;
+      if (!state || state.phase !== 'finished' || state.__recorded) return;
       state.__recorded = true;
       const mine = this.mineId();
-      const iWon = state.winner_id === mine;
+      const iWon = Boolean(state.winner_id) && state.winner_id === mine;
+      const resultType = String(state.result_type || (state.winner_id ? 'WIN' : 'DRAW')).toUpperCase();
       const damage = (state.event_log || []).reduce((total, event) => total + eventAmount(event), 0);
       const biggest = (state.event_log || [])
         .map((event) => ({ message: event.message || event.type, amount: eventAmount(event), type: event.type }))
@@ -169,11 +219,14 @@ export class GameStore {
         .slice(0, 3);
       this.records.unshift({
         at: new Date().toISOString(),
-        result: iWon ? 'Victory' : 'Defeat',
-        winner: state.players && state.players[state.winner_id] ? state.players[state.winner_id].name : state.winner_id,
+        result: resultType === 'DRAW' ? 'Draw' : (resultType === 'NO_CONTEST' ? 'No Contest' : (iWon ? 'Victory' : 'Defeat')),
+        resultType,
+        reason: state.result_reason || '',
+        winner: state.winner_id && state.players && state.players[state.winner_id] ? state.players[state.winner_id].name : null,
         turns: state.turn_number || 0,
         damage,
         biggest,
+        teams: Object.fromEntries(Object.entries(state.players || {}).map(([id, player]) => [id, (player.team || []).map((fighter) => fighter.name || fighter.character_id)])),
       });
       this.records = this.records.slice(0, 12);
       this.saveRecords();
@@ -246,6 +299,16 @@ export class GameStore {
       this.notify();
     }
 
+    openSkillDetail(skillId) {
+      this.detailSkillId = skillId;
+      this.notify();
+    }
+
+    closeSkillDetail() {
+      this.detailSkillId = null;
+      this.notify();
+    }
+
     setDraftTarget(teamKey) {
       this.draftTarget = teamKey === 'enemyTeam' && this.matchMode === 'cpu' ? 'enemyTeam' : 'playerTeam';
       this.notify();
@@ -261,6 +324,7 @@ export class GameStore {
         return;
       }
       this.state = null;
+      this.clearResumeSession();
       this.actions = [];
       this.actionWildPays = {};
       this.queueReviewOpen = false;
@@ -271,6 +335,7 @@ export class GameStore {
       this.eventCursor = 0;
       this.playbackEvents = [];
       this.recentEvents = [];
+      this.ignoreBattleUpdates = false;
       const payload = {
         room_id: this.matchMode === 'pvp' ? this.roomId : `classic_v2_${Math.random().toString(36).slice(2, 8)}`,
         player_name: this.playerName,
@@ -296,6 +361,7 @@ export class GameStore {
     }
 
     receiveBattleState(data) {
+      if (this.ignoreBattleUpdates) return;
       const log = data && Array.isArray(data.event_log) ? data.event_log : [];
       const nextEvents = log.slice(this.eventCursor);
       this.eventCursor = log.length;
@@ -317,7 +383,7 @@ export class GameStore {
         this.queueReviewOpen = false;
       }
       this.ensureSelectedCaster();
-      if (data.winner_id) {
+      if (data.phase === 'finished') {
         this.rememberResult(data);
         this.changeScene('ResultScene');
       } else {
@@ -382,13 +448,64 @@ export class GameStore {
       const catalog = this.state && this.state.skill_catalog ? this.state.skill_catalog[character.character_id] : null;
       const roster = this.character(character.character_id);
       const skills = (catalog && catalog.skills) || (roster && roster.skills) || [];
-      return skills.find((skill) => skill.id === skillId || skill.original_slot_id === skillId) || null;
+      const replacementId = (character.skill_replacements && character.skill_replacements[skillId]) || skillId;
+      const effective = skills.find((skill) => skill.id === replacementId || skill.original_slot_id === replacementId) || null;
+      return effective && replacementId !== skillId
+        ? { ...effective, id: skillId, effective_skill_id: replacementId, original_slot_id: skillId }
+        : effective;
     }
 
     skillsFor(character) {
       const catalog = this.state && this.state.skill_catalog ? this.state.skill_catalog[character.character_id] : null;
       const roster = this.character(character.character_id);
-      return (catalog && catalog.skills) || (roster && roster.skills) || [];
+      const skills = (catalog && catalog.skills) || (roster && roster.skills) || [];
+      const replacements = character.skill_replacements || {};
+      const replacementIds = new Set(Object.values(replacements));
+      return skills.filter((skill) => !replacementIds.has(skill.id)).map((skill) => this.skillFor(character, skill.id));
+    }
+
+    skillCooldown(character, skill) {
+      if (!character || !skill) return 0;
+      return (character.cooldowns && character.cooldowns[skill.effective_skill_id || skill.id]) || 0;
+    }
+
+    adjustedCost(character, skill) {
+      const cost = [...((skill && skill.cost) || [])];
+      const delta = ((character && character.statuses) || []).reduce((total, status) => Number(status.duration || 0) !== 0 ? total + Number((status.payload && status.payload.black_cost_delta) || 0) : total, 0);
+      if (delta > 0) return cost.concat(Array(delta).fill('black'));
+      let discount = Math.max(0, -delta);
+      return cost.filter((color) => color !== 'black' || discount-- <= 0);
+    }
+
+    skillIsHarmful(skill) {
+      const kind = (skill && skill.target_rule && skill.target_rule.kind) || 'enemy';
+      const effects = (skill && skill.effects) || [];
+      if (kind === 'enemy' || kind === 'enemy_team') return effects.some((effect) => effect.target !== 'self') || (skill.classes || []).includes('Control');
+      return effects.some((effect) => effect.target !== 'self' && ['damage', 'health_steal', 'drain_energy', 'remove_status', 'counter'].includes(effect.type));
+    }
+
+    statusBlocksSkill(character, skill) {
+      const classes = (skill && skill.classes) || [];
+      for (const status of ((character && character.statuses) || [])) {
+        if (Number(status.duration || 0) === 0) continue;
+        const payload = status.payload || {};
+        const stunned = payload.stun_classes || [];
+        if (stunned.includes('all') || classes.some((skillClass) => stunned.includes(skillClass))) return `Blocked by ${status.name || 'stun'}`;
+        if (payload.stun_harmful && this.skillIsHarmful(skill)) return `Harmful skills blocked by ${status.name || 'stun'}`;
+        if (payload.block_non_damaging_skills && !(skill.effects || []).some((effect) => effect.target !== 'self' && ['damage', 'health_steal'].includes(effect.type))) return `Non-damaging skills blocked by ${status.name || 'control'}`;
+        if (payload.block_counters && (skill.effects || []).some((effect) => effect.payload && effect.payload.counter)) return `Counters blocked by ${status.name || 'control'}`;
+      }
+      return '';
+    }
+
+    skillDisabledReason(character, skill) {
+      const cooldown = this.skillCooldown(character, skill);
+      if (cooldown > 0) return `Cooldown ${cooldown}`;
+      return this.statusBlocksSkill(character, skill) || this.skillFit(skill, character).reason;
+    }
+
+    hasEffectFlag(skill, key, value = true) {
+      return ((skill && skill.effects) || []).some((effect) => effect.payload && effect.payload[key] === value);
     }
 
     selectedSkill() {
@@ -419,6 +536,10 @@ export class GameStore {
     canTarget(character, slot, side) {
       if (!character || !character.alive || this.controlsLocked() || this.selectedCasterSlot === null || !this.selectedSkillId) return false;
       const skill = this.selectedSkill();
+      const playerId = side === 'enemy' ? this.enemyId() : this.mineId();
+      if (this.targetingStage === 'alternate') return !(this.pendingPrimaryTarget && this.pendingPrimaryTarget.playerId === playerId && this.pendingPrimaryTarget.slot === slot);
+      if (this.targetingStage === 'venom_secondary') return side === 'enemy' && (!this.pendingPrimaryTarget || this.pendingPrimaryTarget.slot !== slot);
+      if (this.targetingStage === 'venom_primary') return side === 'enemy' && (character.statuses || []).some((status) => status.id === 'poison' && Number(status.duration || 0) !== 0);
       const kind = (skill && skill.target_rule && skill.target_rule.kind) || 'enemy';
       if (this.targetBlocksSkill(character, skill)) return false;
       if (kind === 'enemy') return side === 'enemy';
@@ -468,7 +589,11 @@ export class GameStore {
     }
 
     targetBlocksSkill(character, skill) {
-      return this.targetHasInvulnerability(character) && !this.skillBypassesInvulnerability(skill, character);
+      if (!this.targetHasInvulnerability(character) || this.skillBypassesInvulnerability(skill, character)) return false;
+      const statuses = (character && character.statuses) || [];
+      if (statuses.some((status) => status.payload && status.payload.invulnerable_to_all)) return true;
+      if (this.skillIsHarmful(skill)) return true;
+      return statuses.some((status) => status.payload && status.payload.invulnerable_to_helpful);
     }
 
     hasManualTargetForSkill(skill, side) {
@@ -496,10 +621,17 @@ export class GameStore {
       }
       this.selectedCasterSlot = slot;
       this.selectedSkillId = null;
+      this.detailSkillId = null;
+      this.targetingStage = null;
+      this.pendingPrimaryTarget = null;
       this.notify();
     }
 
     selectSkill(skillId) {
+      if (this.selectedSkillId === skillId) {
+        this.openSkillDetail(skillId);
+        return;
+      }
       if (this.controlsLocked()) return;
       const me = this.me();
       const foe = this.foe();
@@ -509,10 +641,15 @@ export class GameStore {
         this.showToast('Select a ready fighter first.');
         return;
       }
-      const cooldown = (caster.cooldowns && caster.cooldowns[skill.id]) || 0;
-      const fit = this.skillFit(skill);
+      const cooldown = this.skillCooldown(caster, skill);
+      const fit = this.skillFit(skill, caster);
+      const blocked = this.statusBlocksSkill(caster, skill);
       if (cooldown > 0) {
         this.showToast(`Cooldown ${cooldown} turns.`);
+        return;
+      }
+      if (blocked) {
+        this.showToast(blocked);
         return;
       }
       if (!fit.ok) {
@@ -521,6 +658,20 @@ export class GameStore {
       }
       const kind = (skill.target_rule && skill.target_rule.kind) || 'enemy';
       this.selectedSkillId = skill.id;
+      this.detailSkillId = null;
+      this.targetingStage = null;
+      this.pendingPrimaryTarget = null;
+      if (this.hasEffectFlag(skill, 'conditional_targeting', 'venom_bloom')) {
+        const poisoned = this.livingSlots(foe).filter((slot) => (foe.team[slot].statuses || []).some((status) => status.id === 'poison' && Number(status.duration || 0) !== 0));
+        if (!poisoned.length) {
+          this.addAction(this.selectedCasterSlot, skill.id, this.enemyId(), null, this.livingSlots(foe));
+          return;
+        }
+        this.targetingStage = 'venom_primary';
+        this.showToast('Choose a poisoned primary target.');
+        this.notify();
+        return;
+      }
       if (kind === 'self') {
         this.addAction(this.selectedCasterSlot, skill.id, this.mineId(), this.selectedCasterSlot, []);
         return;
@@ -565,10 +716,36 @@ export class GameStore {
         this.showToast('Illegal target for that skill.');
         return;
       }
+      const skill = this.selectedSkill();
+      const playerId = side === 'enemy' ? this.enemyId() : this.mineId();
+      if (this.targetingStage === 'alternate') {
+        const primary = this.pendingPrimaryTarget;
+        this.addAction(this.selectedCasterSlot, this.selectedSkillId, primary.playerId, primary.slot, [], { alternate_target_player_id: playerId, alternate_target_slot: slot });
+        return;
+      }
+      if (this.targetingStage === 'venom_primary') {
+        this.pendingPrimaryTarget = { playerId, slot };
+        this.targetingStage = 'venom_secondary';
+        this.showToast('Choose a different secondary spread target.');
+        this.notify();
+        return;
+      }
+      if (this.targetingStage === 'venom_secondary') {
+        const primary = this.pendingPrimaryTarget;
+        this.addAction(this.selectedCasterSlot, this.selectedSkillId, primary.playerId, primary.slot, [primary.slot, slot], { secondary_target_slot: slot });
+        return;
+      }
+      if (this.hasEffectFlag(skill, 'controlled_redirect')) {
+        this.pendingPrimaryTarget = { playerId, slot };
+        this.targetingStage = 'alternate';
+        this.showToast('Choose the alternate redirect destination.');
+        this.notify();
+        return;
+      }
       this.addAction(this.selectedCasterSlot, this.selectedSkillId, side === 'enemy' ? this.enemyId() : this.mineId(), slot, []);
     }
 
-    addAction(casterSlot, skillId, targetPlayerId, targetSlot, targetSlots) {
+    addAction(casterSlot, skillId, targetPlayerId, targetSlot, targetSlots, extras = {}) {
       const id = `phaser_${Date.now()}_${casterSlot}`;
       this.actions = this.actions.filter((action) => Number(action.caster_slot) !== Number(casterSlot));
       this.actionWildPays = Object.fromEntries(Object.entries(this.actionWildPays).filter(([actionId]) => this.actions.some((action) => action.id === actionId)));
@@ -579,21 +756,25 @@ export class GameStore {
         target_player_id: targetPlayerId,
         target_slot: targetSlot,
         target_slots: targetSlots || [],
+        ...extras,
       });
       this.selectedSkillId = null;
+      this.detailSkillId = null;
+      this.targetingStage = null;
+      this.pendingPrimaryTarget = null;
       this.ensureSelectedCaster();
       this.ensureWildcardPayments();
       this.lastActionPayloads = this.pendingActionPayloads();
-      this.socketClient.emit('battle_v2_submit_plan', { actions: this.lastActionPayloads });
+      this.socketClient.emit('battle_v2_submit_plan', this.commandPayload({ actions: this.lastActionPayloads }));
       this.notify();
     }
 
-    skillFit(skill) {
+    skillFit(skill, caster = null) {
       const me = this.me();
       const summary = this.energySummary(me, this.actions);
       const remaining = { ...summary.remaining };
       let wildcardNeeded = summary.wildcardNeeded;
-      (skill.cost || []).forEach((color) => {
+      this.adjustedCost(caster, skill).forEach((color) => {
         if (color === 'black') wildcardNeeded += 1;
         else remaining[color] = (remaining[color] || 0) - 1;
       });
@@ -616,7 +797,7 @@ export class GameStore {
       (actions || []).forEach((action) => {
         const caster = player && player.team ? player.team[action.caster_slot] : null;
         const skill = caster ? this.skillFor(caster, action.skill_id) : null;
-        (skill && skill.cost ? skill.cost : []).forEach((color) => {
+        this.adjustedCost(caster, skill).forEach((color) => {
           if (color === 'black') wildcardNeeded += 1;
           else remaining[color] = (remaining[color] || 0) - 1;
         });
@@ -638,7 +819,7 @@ export class GameStore {
         const wildcardPays = [];
         const preferredPays = this.actionWildPays[action.id] || [];
         let preferredIndex = 0;
-        (skill && skill.cost ? skill.cost : []).forEach((color) => {
+        this.adjustedCost(caster, skill).forEach((color) => {
           if (color === 'black') {
             const preferred = preferredPays[preferredIndex];
             preferredIndex += 1;
@@ -674,6 +855,28 @@ export class GameStore {
       this.notify();
     }
 
+    queueReviewFit() {
+      if (!this.actions.length) return { ok: false, reason: 'Queue is empty.' };
+      const me = this.me();
+      const energy = { green: 0, blue: 0, white: 0, red: 0, ...((me && me.energy) || {}) };
+      for (const action of this.actions) {
+        const caster = me && me.team ? me.team[action.caster_slot] : null;
+        const skill = caster ? this.skillFor(caster, action.skill_id) : null;
+        if (!caster || !skill) return { ok: false, reason: 'Queued action is no longer available.' };
+        const pays = this.actionWildPays[action.id] || [];
+        let wildIndex = 0;
+        for (const color of this.adjustedCost(caster, skill)) {
+          const pay = color === 'black' ? pays[wildIndex++] : color;
+          if (!CORE_ENERGY.includes(pay) || Number(energy[pay] || 0) <= 0) {
+            return { ok: false, reason: color === 'black' ? 'Assign every Wild payment.' : `Not enough ${pay} energy.` };
+          }
+          energy[pay] -= 1;
+        }
+        if (pays.length !== wildIndex) return { ok: false, reason: 'Wild payment count changed.' };
+      }
+      return { ok: true, reason: '' };
+    }
+
     closeQueueReview() {
       this.queueReviewOpen = false;
       this.notify();
@@ -702,10 +905,10 @@ export class GameStore {
       for (const action of this.actions) {
         const caster = me && me.team ? me.team[action.caster_slot] : null;
         const skill = caster ? this.skillFor(caster, action.skill_id) : null;
-        (skill && skill.cost ? skill.cost : []).forEach((color) => {
+        this.adjustedCost(caster, skill).forEach((color) => {
           if (color !== 'black') energy[color] = (energy[color] || 0) - 1;
         });
-        const wildCount = (skill && skill.cost ? skill.cost : []).filter((color) => color === 'black').length;
+        const wildCount = this.adjustedCost(caster, skill).filter((color) => color === 'black').length;
         for (let index = 0; index < wildCount; index += 1) {
           if (action.id === actionId && index === wildcardIndex) {
             return CORE_ENERGY.filter((color) => (energy[color] || 0) > 0);
@@ -741,15 +944,19 @@ export class GameStore {
     }
 
     confirmQueue() {
-      if (this.controlsLocked() || !this.actions.length) return;
+      const fit = this.queueReviewFit();
+      if (this.controlsLocked() || !fit.ok) {
+        if (!fit.ok) this.showToast(fit.reason);
+        return;
+      }
       this.queueSubmitting = true;
       this.queueReviewOpen = false;
       const payloads = this.pendingActionPayloads();
-      this.socketClient.emit('battle_v2_update_queue', {
+      this.socketClient.emit('battle_v2_update_queue', this.commandPayload({
         queue_order: payloads.map((action) => action.id),
         wildcard_pays: Object.fromEntries(payloads.map((action) => [action.id, action.wildcard_pays || []])),
-      });
-      this.socketClient.emit('battle_v2_confirm_queue', {});
+      }));
+      this.socketClient.emit('battle_v2_confirm_queue', this.commandPayload({}, 1));
       this.notify();
     }
 
@@ -758,9 +965,10 @@ export class GameStore {
       this.actions = [];
       this.actionWildPays = {};
       this.selectedSkillId = null;
+      this.detailSkillId = null;
       this.queueSubmitting = false;
       this.queueReviewOpen = false;
-      this.socketClient.emit('battle_v2_cancel_queue', {});
+      this.socketClient.emit('battle_v2_cancel_queue', this.commandPayload());
       this.notify();
     }
 
@@ -770,7 +978,7 @@ export class GameStore {
       this.actionWildPays = {};
       this.queueSubmitting = true;
       this.queueReviewOpen = false;
-      this.socketClient.emit('battle_v2_end_turn', {});
+      this.socketClient.emit('battle_v2_end_turn', this.commandPayload());
       this.notify();
     }
 
@@ -789,15 +997,36 @@ export class GameStore {
       const target = colors
         .filter((color) => color !== source)
         .sort((a, b) => Number((me.energy || {})[a] || 0) - Number((me.energy || {})[b] || 0))[0];
-      this.socketClient.emit('battle_v2_convert_energy', { source, target });
+      this.socketClient.emit('battle_v2_convert_energy', this.commandPayload({ source, target }));
       this.showToast(`Converting ${source} to ${target}.`);
+    }
+
+    requestRematch() {
+      if (!this.state || this.state.phase !== 'finished') return;
+      this.socketClient.emit('battle_v2_rematch', {
+        old_match_id: this.state.match_id,
+        state_revision: this.state.state_revision,
+        client_action_nonce: this.commandPayload().client_action_nonce,
+      });
+      this.showToast('Rematch requested.');
     }
 
     resetToLobby() {
       if (!this.state && this.lobbyStatus && this.lobbyStatus.status === 'waiting') {
         this.socketClient.emit('battle_v2_leave_pvp', { room_id: this.lobbyStatus.room_id });
       }
+      if (this.state && !this.state.winner_id) {
+        if (this.state.phase === 'finished') {
+          this.socketClient.emit('battle_v2_ack_result', { match_id: this.state.match_id });
+        } else {
+          this.ignoreBattleUpdates = true;
+          this.socketClient.emit('battle_v2_surrender', this.commandPayload());
+        }
+      } else if (this.state && this.state.phase === 'finished') {
+        this.socketClient.emit('battle_v2_ack_result', { match_id: this.state.match_id });
+      }
       this.state = null;
+      this.clearResumeSession();
       this.lobbyStatus = null;
       this.actions = [];
       this.actionWildPays = {};

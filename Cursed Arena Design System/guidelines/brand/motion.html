@@ -1,0 +1,21 @@
+<!-- @dsCard group="Brand" viewport="700x190" name="Motion" subtitle="Bouncy game-feel curves — press, snap, overshoot, impact" -->
+<!DOCTYPE html><html><head><link rel="stylesheet" href="../../styles.css">
+<style>
+body{padding:20px;background:var(--surface-app);display:flex;gap:22px;align-items:center;}
+.demo{display:flex;flex-direction:column;align-items:center;gap:10px;font-family:var(--font-mono);font-size:10px;color:var(--text-on-dark-muted);}
+.ball{width:52px;height:52px;border-radius:var(--r-sm);background:linear-gradient(180deg,var(--curse-400),var(--curse-600));border:2px solid var(--ink-950);box-shadow:var(--bevel-plate),0 3px 0 var(--curse-900);}
+.a1{animation:press 1.6s var(--ease-press) infinite;}
+.a2{animation:pop 1.6s var(--ease-out-back) infinite;}
+.a3{animation:snapin 1.6s var(--ease-snap) infinite;}
+.a4{animation:impact 1.6s var(--ease-impact) infinite;}
+@keyframes press{0%,100%{transform:none}50%{transform:translateY(4px) scale(0.95)}}
+@keyframes pop{0%,100%{transform:scale(0.7);opacity:0.4}50%{transform:scale(1.1);opacity:1}}
+@keyframes snapin{0%,100%{transform:translateX(-26px)}50%{transform:translateX(0)}}
+@keyframes impact{0%,100%{transform:translateY(-18px)}50%{transform:translateY(0)}}
+@media (prefers-reduced-motion: reduce){.ball{animation:none!important}}
+</style></head><body>
+<div class="demo"><div class="ball a1"></div>press 80ms</div>
+<div class="demo"><div class="ball a2"></div>out-back · rewards</div>
+<div class="demo"><div class="ball a3"></div>snap · sheets</div>
+<div class="demo"><div class="ball a4"></div>impact · transitions</div>
+</body></html>

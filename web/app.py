@@ -86,6 +86,7 @@ rate_limits = defaultdict(deque)
 room_last_activity: dict[str, float] = {}
 lobby_last_activity: dict[str, float] = {}
 archived_replays: set[str] = set()
+analytics_recorded_matches: set[str] = set()
 operational_counters = defaultdict(int)
 last_runtime_prune_at = 0.0
 CPU_V2_PLAYER_ID = "__cpu_v2__"
@@ -251,6 +252,7 @@ def runtime_status():
             "waiting_lobbies": len(v2_pvp_lobbies),
             "rate_limit_keys": len(rate_limits),
             "counters": dict(operational_counters),
+            "analytics": runtime_store.analytics_summary(),
         }
     )
 
@@ -281,6 +283,11 @@ def battle_v2_roster_mode(data: dict) -> str:
     return "first_creation" if mode == "first_creation" else "classic"
 
 
+def battle_v2_cpu_difficulty(data: dict) -> str:
+    difficulty = CONTROL_RE.sub("", str(data.get("difficulty", "normal")).strip().lower())[:16]
+    return difficulty if difficulty in {"easy", "normal", "hard"} else "normal"
+
+
 def battle_v2_default_team(mode: str, preset: str = "story_tutorial") -> list[str]:
     if mode == "first_creation":
         team = FIRST_CREATION_PRESETS.get(preset) or FIRST_CREATION_PRESETS["story_tutorial"]
@@ -309,12 +316,12 @@ def remember_first_creation_team(player_id: str, team: list[str]) -> None:
     update_first_creation_profile(player_id, remember)
 
 
-def start_battle_v2_match_for_mode(room_id: str, players: list[dict], mode: str) -> dict:
+def start_battle_v2_match_for_mode(room_id: str, players: list[dict], mode: str, difficulty: str = "normal") -> dict:
     try:
         if mode == "first_creation":
-            payload = battle_v2_manager.start_first_creation_match(room_id, players)
+            payload = battle_v2_manager.start_first_creation_match(room_id, players, difficulty=difficulty)
         else:
-            payload = battle_v2_manager.start_classic_match(room_id, players)
+            payload = battle_v2_manager.start_classic_match(room_id, players, difficulty=difficulty)
     except Exception:
         if room_id in battle_v2_manager.rooms:
             remove_battle_v2_room(room_id)
@@ -342,6 +349,56 @@ def archive_finished_replay(room_id: str) -> None:
         return
     archived_replays.add(room_id)
     operational_counters["replays_archived"] += 1
+
+
+def _player_outcome(state, player_id: str) -> str:
+    if state.winner_id:
+        return "win" if state.winner_id == player_id else "loss"
+    if (state.result_type or "").upper() == "DRAW":
+        return "draw"
+    return "no_contest"
+
+
+def record_match_finished_analytics(room_id: str) -> None:
+    if room_id in analytics_recorded_matches:
+        return
+    state = battle_v2_manager.rooms.get(room_id)
+    if state is None or state.phase.value != "finished":
+        return
+    vs_cpu = CPU_V2_PLAYER_ID in state.players
+    try:
+        runtime_store.record_analytics_event(
+            "match_finished",
+            {
+                "roster_mode": match_roster_mode.get(room_id, "classic"),
+                "vs_cpu": vs_cpu,
+                "cpu_difficulty": battle_v2_manager.room_cpu_difficulty.get(room_id, "normal") if vs_cpu else None,
+                "result_type": state.result_type,
+                "finish_reason": state.finish_reason,
+            },
+            match_id=room_id,
+            event_key=f"match_finished:{room_id}",
+        )
+        for player_id in state.players:
+            if player_id == CPU_V2_PLAYER_ID:
+                continue
+            runtime_store.record_analytics_event(
+                "match_player_result",
+                {"outcome": _player_outcome(state, player_id)},
+                match_id=room_id,
+                player_id=player_id,
+                event_key=f"match_player_result:{room_id}:{player_id}",
+            )
+    except Exception:
+        operational_counters["analytics_write_errors"] += 1
+        return
+    analytics_recorded_matches.add(room_id)
+
+
+# Recorded at the authoritative terminal state transition (manager._finish_match),
+# not from the emit_battle_v2_update broadcast path — a repeated broadcast/reconnect
+# refresh must not be the thing deciding whether a match-finished event exists.
+battle_v2_manager.on_match_finished = record_match_finished_analytics
 
 
 def clamp_int(value, minimum: int, maximum: int, default: int = 0) -> int:
@@ -491,6 +548,8 @@ def emit_battle_v2_update(room_id: str, viewer_id: str | None = None):
     state = battle_v2_manager.get_state(room_id)
     room_last_activity[room_id] = time.monotonic()
     if state.phase.value == "finished":
+        # Match-finished analytics are recorded by battle_v2_manager.on_match_finished
+        # at the authoritative _finish_match transition, not here.
         archive_finished_replay(room_id)
     viewer_ids = [player_id for player_id in state.players if player_id != CPU_V2_PLAYER_ID]
     if viewer_id and viewer_id not in viewer_ids and viewer_id in state.players:
@@ -500,11 +559,15 @@ def emit_battle_v2_update(room_id: str, viewer_id: str | None = None):
     for target_viewer_id in viewer_ids:
         payload = battle_v2_manager.serialize_for_player(room_id, target_viewer_id)
         if payload.get("roster_mode") == "first_creation":
-            profile = (
-                merge_first_creation_progress(target_viewer_id, payload.get("first_creation_progress"))
-                if payload.get("winner_id")
-                else load_first_creation_profile(target_viewer_id)
-            )
+            if payload.get("winner_id"):
+                profile = merge_first_creation_progress(
+                    target_viewer_id,
+                    payload.get("first_creation_progress"),
+                    match_id=room_id,
+                    analytics_store=runtime_store,
+                )
+            else:
+                profile = load_first_creation_profile(target_viewer_id)
             payload["first_creation_account"] = first_creation_profile_payload(profile)
         payload["match_id"] = room_id
         payload["lobby_code"] = lobby_code_by_match.get(room_id)
@@ -591,11 +654,13 @@ def remove_battle_v2_room(room_id: str) -> None:
         battle_v2_manager.room_skill_maps.pop(room_id, None)
         battle_v2_manager.room_catalogs.pop(room_id, None)
         battle_v2_manager.room_roster_modes.pop(room_id, None)
+        battle_v2_manager.room_cpu_difficulty.pop(room_id, None)
         battle_v2_manager.room_first_creation_progress.pop(room_id, None)
         battle_v2_manager.room_replays.pop(room_id, None)
         battle_v2_sessions.remove_room(room_id)
         room_last_activity.pop(room_id, None)
         archived_replays.discard(room_id)
+        analytics_recorded_matches.discard(room_id)
         rematch_receipts.pop(room_id, None)
         rematch_by_old_match.pop(room_id, None)
         for old_match_id, new_match in list(rematch_by_old_match.items()):
@@ -749,6 +814,7 @@ def on_battle_v2_start_classic(data=None):
     room_id = new_match_id()
     player_name = clean_player_name(data.get("player_name", ""), f"Player_{player_session[:4]}")
     roster_mode = battle_v2_roster_mode(data)
+    difficulty = battle_v2_cpu_difficulty(data)
     player_team = clean_v2_team(data.get("player_team") or data.get("team"), battle_v2_default_team(roster_mode))
     enemy_team = clean_v2_team(data.get("enemy_team"), battle_v2_default_enemy_team(roster_mode))
     try:
@@ -768,7 +834,7 @@ def on_battle_v2_start_classic(data=None):
                 {"id": player_session, "name": player_name, "team": player_team},
                 {"id": CPU_V2_PLAYER_ID, "name": "CPU V2", "team": enemy_team},
             ]
-            start_battle_v2_match_for_mode(room_id, players, roster_mode)
+            start_battle_v2_match_for_mode(room_id, players, roster_mode, difficulty=difficulty)
             active_match_by_player[player_session] = room_id
             match_players[room_id] = players
             match_roster_mode[room_id] = roster_mode
@@ -998,7 +1064,8 @@ def on_battle_v2_rematch(data=None):
                         )
                 new_id = new_match_id()
                 mode = match_roster_mode.get(old_match_id, "classic")
-                start_battle_v2_match_for_mode(new_id, players, mode)
+                difficulty = battle_v2_manager.room_cpu_difficulty.get(old_match_id, "normal")
+                start_battle_v2_match_for_mode(new_id, players, mode, difficulty=difficulty)
                 rematch_by_old_match[old_match_id] = new_id
                 match_players[new_id] = players
                 match_roster_mode[new_id] = mode

@@ -33,12 +33,18 @@ authoritative match id. For local/dev testing the client may provide both teams:
 {
   "player_name": "Player",
   "player_team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"],
-  "enemy_team": ["satoru_gojo", "ryomen_sukuna", "mahito"]
+  "enemy_team": ["satoru_gojo", "ryomen_sukuna", "mahito"],
+  "difficulty": "hard"
 }
 ```
 
 If `player_team` is omitted, the starter trio Yuji/Nobara/Megumi is used. If
-`enemy_team` is omitted, Gojo/Sukuna/Mahito is used.
+`enemy_team` is omitted, Gojo/Sukuna/Mahito is used. `difficulty` is optional
+(`easy`, `normal`, or `hard`); an omitted or invalid value falls back to
+`normal`. It only affects the CPU opponent's play (Easy plays closer to
+"always basic-attack", Hard leans harder into kill-securing/control plays and
+is less cost-averse) and has no effect on legality — the CPU only ever
+selects among validated legal actions at every difficulty.
 
 ### `battle_v2_join_pvp`
 
@@ -114,7 +120,8 @@ requests (including concurrent ones) resolve to that same new match id rather
 than creating additional rooms. Reusing a nonce with a different revision is
 rejected as replay. On success the server emits `battle_v2_rematch` with
 `old_match_id`/`new_match_id`, followed by a viewer-specific `battle_v2_update`
-for the new match.
+for the new match. For a CPU practice rematch, the new match reuses the
+original match's `difficulty` (it no longer silently resets to `normal`).
 
 Before creating a new match, the server verifies that every original human
 participant is not already live in a different match (for example, one

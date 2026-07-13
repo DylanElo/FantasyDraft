@@ -406,6 +406,204 @@ def test_cpu_turn_can_choose_ally_heal_for_wounded_teammate():
     assert any(event["message"] == "Yuta Okkotsu used Reverse Cursed Technique" for event in serialized["event_log"])
 
 
+def test_start_classic_match_defaults_to_normal_difficulty():
+    manager, _ = start_manager()
+
+    assert manager.room_cpu_difficulty["room"] == "normal"
+
+
+def test_start_classic_match_rejects_unknown_difficulty_string():
+    manager = BattleV2Manager(rng_seed=1)
+    manager.start_classic_match("room", [player_one(), player_two()], difficulty="lunatic")
+
+    assert manager.room_cpu_difficulty["room"] == "normal"
+
+
+def test_hard_difficulty_still_prefers_lethal_payoff_over_basic_attack():
+    manager = BattleV2Manager(rng_seed=1)
+    manager.start_classic_match(
+        "room",
+        [
+            {"id": "p1", "name": "Player One", "team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]},
+            {"id": "p2", "name": "CPU", "team": ["yuta_okkotsu", "aoi_todo", "maki_zenin"]},
+        ],
+        difficulty="hard",
+    )
+    state = manager.get_state("room")
+    state.turn_player_id = "p2"
+    state.players["p2"].energy = {energy: 0 for energy in EnergyType}
+    state.players["p2"].energy[EnergyType.GREEN] = 1
+    state.players["p2"].energy[EnergyType.BLUE] = 3
+    state.players["p2"].team[0].statuses.append(
+        StatusEffect("rika_manifested", "Rika Manifested", "p2", 0, "p2", 0, duration=2)
+    )
+    state.players["p1"].team[0].hp = 45
+
+    serialized = manager.take_cpu_turn("room", "p2")
+
+    assert serialized["players"]["p1"]["team"][0]["alive"] is False
+    assert any(event["message"] == "Yuta Okkotsu used Pure Love Beam" for event in serialized["event_log"])
+
+
+def test_easy_difficulty_cpu_still_only_selects_legal_actions():
+    manager = BattleV2Manager(rng_seed=1)
+    manager.start_classic_match(
+        "room",
+        [
+            {"id": "p1", "name": "Player One", "team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]},
+            {"id": "p2", "name": "CPU", "team": ["yuta_okkotsu", "aoi_todo", "maki_zenin"]},
+        ],
+        difficulty="easy",
+    )
+    state = manager.get_state("room")
+    state.turn_player_id = "p2"
+    state.players["p2"].energy = {energy: 0 for energy in EnergyType}
+    state.players["p2"].energy[EnergyType.WHITE] = 2
+    state.players["p2"].team[1].hp = 35
+
+    serialized = manager.take_cpu_turn("room", "p2")
+
+    assert serialized["turn_player_id"] == "p1"
+    assert serialized["pending_actions"]["p2"] == []
+
+
+def test_cpu_action_score_hard_and_easy_scale_the_lethal_bonus_in_opposite_directions():
+    from jjk_arena.battle_v2.manager import _cpu_action_score
+    from jjk_arena.battle_v2.models import (
+        BattleState,
+        CharacterState,
+        EffectSpec,
+        PendingAction,
+        PlayerState,
+        SkillSpec,
+        TargetRule,
+    )
+
+    caster = CharacterState(character_id="attacker", name="Attacker")
+    target = CharacterState(character_id="target", name="Target", hp=10, max_hp=100)
+    state = BattleState(
+        players={
+            "p1": PlayerState(id="p1", name="P1", team=[caster]),
+            "p2": PlayerState(id="p2", name="P2", team=[target]),
+        },
+        turn_player_id="p1",
+    )
+    skill = SkillSpec(
+        id="lethal_strike",
+        name="Lethal Strike",
+        text="",
+        cost=[EnergyType.GREEN, EnergyType.GREEN, EnergyType.GREEN],
+        cooldown=0,
+        target_rule=TargetRule(kind="enemy"),
+        classes=[],
+        effects=[EffectSpec(type="damage", amount=20)],
+    )
+    action = PendingAction(
+        id="p1:test", player_id="p1", caster_slot=0, skill_id=skill.id, target_player_id="p2", target_slot=0
+    )
+
+    hard_score = _cpu_action_score(state, "p1", action, skill, difficulty="hard")
+    normal_score = _cpu_action_score(state, "p1", action, skill, difficulty="normal")
+    easy_score = _cpu_action_score(state, "p1", action, skill, difficulty="easy")
+    unknown_score = _cpu_action_score(state, "p1", action, skill, difficulty="lunatic")
+
+    assert hard_score > normal_score > easy_score
+    assert unknown_score == normal_score
+
+
+def test_cpu_action_score_hard_differs_from_normal_without_a_lethal_opportunity():
+    """Hard must diverge from Normal even when no kill is on the table.
+
+    The Milestone C audit found Hard and Normal picked identically in
+    400/400 non-lethal tactical states because the only difference between
+    them was the (never-triggered) lethal bonus. Hard now also weighs
+    tactical setup (stuns/control) and heal urgency more heavily.
+    """
+
+    from jjk_arena.battle_v2.manager import _cpu_action_score
+    from jjk_arena.battle_v2.models import (
+        BattleState,
+        CharacterState,
+        EffectSpec,
+        PendingAction,
+        PlayerState,
+        SkillSpec,
+        TargetRule,
+    )
+
+    caster = CharacterState(character_id="attacker", name="Attacker")
+    target = CharacterState(character_id="target", name="Target", hp=90, max_hp=100)
+    state = BattleState(
+        players={
+            "p1": PlayerState(id="p1", name="P1", team=[caster]),
+            "p2": PlayerState(id="p2", name="P2", team=[target]),
+        },
+        turn_player_id="p1",
+    )
+    skill = SkillSpec(
+        id="control_strike",
+        name="Control Strike",
+        text="",
+        cost=[EnergyType.GREEN],
+        cooldown=0,
+        target_rule=TargetRule(kind="enemy"),
+        classes=[],
+        effects=[
+            EffectSpec(type="damage", amount=5),
+            EffectSpec(type="apply_status", status="stunned", payload={"stun_classes": ["all"]}),
+        ],
+    )
+    action = PendingAction(
+        id="p1:test", player_id="p1", caster_slot=0, skill_id=skill.id, target_player_id="p2", target_slot=0
+    )
+
+    hard_score = _cpu_action_score(state, "p1", action, skill, difficulty="hard")
+    normal_score = _cpu_action_score(state, "p1", action, skill, difficulty="normal")
+    easy_score = _cpu_action_score(state, "p1", action, skill, difficulty="easy")
+
+    assert hard_score > normal_score > easy_score
+
+
+def test_cpu_action_score_hard_reacts_to_heal_urgency_earlier_than_normal():
+    """Hard should value topping off a mid-HP ally sooner than Normal does."""
+
+    from jjk_arena.battle_v2.manager import _cpu_action_score
+    from jjk_arena.battle_v2.models import (
+        BattleState,
+        CharacterState,
+        EffectSpec,
+        PendingAction,
+        PlayerState,
+        SkillSpec,
+        TargetRule,
+    )
+
+    caster = CharacterState(character_id="healer", name="Healer")
+    ally = CharacterState(character_id="ally", name="Ally", hp=50, max_hp=100)
+    state = BattleState(
+        players={"p1": PlayerState(id="p1", name="P1", team=[caster, ally])},
+        turn_player_id="p1",
+    )
+    skill = SkillSpec(
+        id="mend",
+        name="Mend",
+        text="",
+        cost=[EnergyType.GREEN],
+        cooldown=0,
+        target_rule=TargetRule(kind="ally"),
+        classes=[],
+        effects=[EffectSpec(type="heal", amount=10)],
+    )
+    action = PendingAction(
+        id="p1:test", player_id="p1", caster_slot=0, skill_id=skill.id, target_player_id="p1", target_slot=1
+    )
+
+    hard_score = _cpu_action_score(state, "p1", action, skill, difficulty="hard")
+    normal_score = _cpu_action_score(state, "p1", action, skill, difficulty="normal")
+
+    assert hard_score > normal_score
+
+
 def test_start_first_creation_match_uses_student_era_catalog_and_rejects_locked_variants():
     manager = BattleV2Manager(rng_seed=1)
     serialized = manager.start_first_creation_match(

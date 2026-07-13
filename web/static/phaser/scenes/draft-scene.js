@@ -61,9 +61,20 @@ export class DraftScene extends DraftRosterScene {
             mono: true,
           });
         });
+        this.mono(x, y + 100, 'CPU DIFFICULTY', { color: '#f1a0a0' });
+        const diffW = (frame.width - 44 - 16) / 3;
+        ['easy', 'normal', 'hard'].forEach((level, index) => {
+          const active = this.store.difficulty === level;
+          this.button(x + index * (diffW + 8), y + 116, diffW, 30, level.toUpperCase(), () => this.store.setDifficulty(level), {
+            fill: active ? COLORS.selection : COLORS.surfaceRaised,
+            stroke: active ? COLORS.selection : COLORS.line,
+            fontSize: '10px',
+            mono: true,
+          });
+        });
       }
 
-      y += this.store.matchMode === 'cpu' ? 130 : 94;
+      y += this.store.matchMode === 'cpu' ? 176 : 94;
       this.renderTeamDock(frame, y);
       y += this.store.matchMode === 'cpu' ? 166 : 88;
 

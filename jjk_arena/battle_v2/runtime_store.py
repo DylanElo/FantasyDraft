@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 4
 
 
 def runtime_database_path() -> Path:
@@ -59,7 +59,43 @@ class SQLiteRuntimeStore:
                 );
                 CREATE INDEX IF NOT EXISTS idx_battle_replays_expires_at
                     ON battle_replays(expires_at);
+                CREATE TABLE IF NOT EXISTS analytics_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    event_type TEXT NOT NULL,
+                    match_id TEXT,
+                    player_id TEXT,
+                    payload_json TEXT NOT NULL,
+                    created_at REAL NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_analytics_events_type_created
+                    ON analytics_events(event_type, created_at);
                 """
+            )
+            existing_columns = {
+                row["name"] for row in connection.execute("PRAGMA table_info(analytics_events)")
+            }
+            if "event_key" not in existing_columns:
+                connection.execute("ALTER TABLE analytics_events ADD COLUMN event_key TEXT")
+            connection.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_analytics_events_event_key ON analytics_events(event_key)"
+            )
+            # Typed dimension columns so /ops/runtime aggregates with SQL GROUP BY
+            # instead of decoding every row's payload_json in Python. payload_json
+            # stays as the full detail record; these columns are query-only mirrors
+            # of a few fields already inside it.
+            for column in ("result_type", "finish_reason", "cpu_difficulty", "outcome", "mission_id"):
+                if column not in existing_columns:
+                    connection.execute(f"ALTER TABLE analytics_events ADD COLUMN {column} TEXT")
+            if "vs_cpu" not in existing_columns:
+                connection.execute("ALTER TABLE analytics_events ADD COLUMN vs_cpu INTEGER")
+            connection.execute(
+                "CREATE INDEX IF NOT EXISTS idx_analytics_events_type_result ON analytics_events(event_type, result_type)"
+            )
+            connection.execute(
+                "CREATE INDEX IF NOT EXISTS idx_analytics_events_type_outcome ON analytics_events(event_type, outcome)"
+            )
+            connection.execute(
+                "CREATE INDEX IF NOT EXISTS idx_analytics_events_type_mission ON analytics_events(event_type, mission_id)"
             )
             connection.execute(
                 "INSERT OR REPLACE INTO runtime_meta(key, value) VALUES('schema_version', ?)",
@@ -165,6 +201,140 @@ class SQLiteRuntimeStore:
                 (float(self.clock()),),
             )
         return int(cursor.rowcount)
+
+    def record_analytics_event(
+        self,
+        event_type: str,
+        payload: dict[str, Any],
+        *,
+        match_id: str | None = None,
+        player_id: str | None = None,
+        event_key: str | None = None,
+    ) -> bool:
+        """Append a durable analytics event row (match-finished / mission-completed).
+
+        `event_key` must be stable and unique per logical business event
+        (e.g. ``match_finished:{match_id}``); a UNIQUE index on the column
+        guarantees at most one row per key even under concurrent emits,
+        reconnect retries, or process restarts. Returns True if a new row
+        was inserted, False if an existing row with the same key already
+        won the race.
+
+        A handful of well-known payload keys (``result_type``,
+        ``finish_reason``, ``cpu_difficulty``, ``vs_cpu``, ``outcome``,
+        ``mission_id``) are additionally mirrored into typed columns, so
+        `analytics_summary` can aggregate with SQL `GROUP BY` instead of
+        decoding every row's JSON payload in Python. `payload_json` remains
+        the full detail record.
+        """
+
+        encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        vs_cpu = payload.get("vs_cpu")
+        with self._connect() as connection:
+            cursor = connection.execute(
+                """
+                INSERT OR IGNORE INTO analytics_events(
+                    event_type, match_id, player_id, payload_json, created_at, event_key,
+                    result_type, finish_reason, cpu_difficulty, vs_cpu, outcome, mission_id
+                )
+                VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    str(event_type),
+                    match_id,
+                    player_id,
+                    encoded,
+                    float(self.clock()),
+                    event_key,
+                    payload.get("result_type"),
+                    payload.get("finish_reason"),
+                    payload.get("cpu_difficulty"),
+                    None if vs_cpu is None else int(bool(vs_cpu)),
+                    payload.get("outcome"),
+                    payload.get("mission_id"),
+                ),
+            )
+        return cursor.rowcount > 0
+
+    def analytics_summary(self, *, since: float | None = None) -> dict[str, Any]:
+        """Return small aggregate counters suitable for /ops surfacing.
+
+        Aggregates entirely in SQL via typed columns (`result_type`,
+        `cpu_difficulty`, `outcome`, `mission_id`) rather than loading every
+        row's `payload_json` into Python — this stays cheap regardless of
+        how many events the table accumulates.
+        """
+
+        time_clause = "AND created_at >= ?" if since is not None else ""
+        params: tuple = (float(since),) if since is not None else ()
+
+        with self._connect() as connection:
+            total = connection.execute(
+                f"SELECT COUNT(*) AS n FROM analytics_events WHERE event_type = 'match_finished' {time_clause}",
+                params,
+            ).fetchone()["n"]
+            vs_cpu_total = connection.execute(
+                f"SELECT COUNT(*) AS n FROM analytics_events WHERE event_type = 'match_finished' AND vs_cpu = 1 {time_clause}",
+                params,
+            ).fetchone()["n"]
+            by_result_type = {
+                str(row["result_type"] or "unknown"): row["n"]
+                for row in connection.execute(
+                    f"""
+                    SELECT COALESCE(result_type, 'unknown') AS result_type, COUNT(*) AS n
+                    FROM analytics_events WHERE event_type = 'match_finished' {time_clause}
+                    GROUP BY result_type
+                    """,
+                    params,
+                )
+            }
+            by_difficulty = {
+                str(row["cpu_difficulty"] or "normal"): row["n"]
+                for row in connection.execute(
+                    f"""
+                    SELECT COALESCE(cpu_difficulty, 'normal') AS cpu_difficulty, COUNT(*) AS n
+                    FROM analytics_events WHERE event_type = 'match_finished' AND vs_cpu = 1 {time_clause}
+                    GROUP BY cpu_difficulty
+                    """,
+                    params,
+                )
+            }
+            outcome_rows = connection.execute(
+                f"""
+                SELECT outcome, COUNT(*) AS n FROM analytics_events
+                WHERE event_type = 'match_player_result' {time_clause}
+                GROUP BY outcome
+                """,
+                params,
+            ).fetchall()
+            missions_completed = {
+                str(row["mission_id"]): row["n"]
+                for row in connection.execute(
+                    f"""
+                    SELECT mission_id, COUNT(*) AS n FROM analytics_events
+                    WHERE event_type = 'mission_completed' AND mission_id IS NOT NULL {time_clause}
+                    GROUP BY mission_id
+                    """,
+                    params,
+                )
+                if row["mission_id"]
+            }
+
+        player_results = {"wins": 0, "losses": 0, "draws": 0, "no_contests": 0}
+        outcome_key = {"win": "wins", "loss": "losses", "draw": "draws", "no_contest": "no_contests"}
+        for row in outcome_rows:
+            key = outcome_key.get(row["outcome"])
+            if key:
+                player_results[key] = row["n"]
+
+        match_finished = {
+            "total": total,
+            "vs_cpu": vs_cpu_total,
+            "by_difficulty": by_difficulty,
+            "by_result_type": by_result_type,
+            **player_results,
+        }
+        return {"match_finished": match_finished, "missions_completed": missions_completed}
 
     def healthcheck(self) -> dict[str, Any]:
         with self._connect() as connection:

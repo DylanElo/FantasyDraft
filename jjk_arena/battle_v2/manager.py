@@ -280,8 +280,35 @@ def _target_slots_from_payload(target_payload: dict[str, Any]) -> list[int]:
     return []
 
 
-def _cpu_action_score(state: BattleState, player_id: str, action: PendingAction, skill: SkillSpec) -> int:
+def _cpu_action_score(
+    state: BattleState,
+    player_id: str,
+    action: PendingAction,
+    skill: SkillSpec,
+    *,
+    difficulty: str = "normal",
+) -> int:
+    """Heuristic value of a candidate CPU action.
+
+    `difficulty` only scales the "smart" tactical bonuses (kill-securing,
+    status control, heal urgency) and the cost aversion, not the raw
+    damage/heal numbers — Hard leans harder into kills/control and is less
+    cost-averse, Easy leans closer to "always basic-attack".
+
+    Hard and Normal must not collapse to the same ranking whenever a lethal
+    opportunity happens to be absent: Hard also weighs tactical setup
+    (stuns, counters, damage modifiers, conditions) more heavily than
+    Normal, and reserves energy more aggressively when no kill or control
+    payoff is on the table. Easy applies none of that extra weighting.
+    """
+
+    if difficulty not in {"easy", "normal", "hard"}:
+        difficulty = "normal"
     score = 0
+    smart_bonus = 0
+    lethal_bonus_amount = 650 if difficulty == "hard" else 500
+    smart_bonus_weight = {"easy": 0.5, "normal": 1.0, "hard": 1.35}[difficulty]
+    condition_weight = {"easy": 1.0, "normal": 1.0, "hard": 1.6}[difficulty]
     target_player = state.players.get(action.target_player_id)
     target_slots = _target_slots_from_payload(
         {
@@ -302,38 +329,40 @@ def _cpu_action_score(state: BattleState, player_id: str, action: PendingAction,
                     if 0 <= slot < len(target_player.team):
                         target = target_player.team[slot]
                         if target.alive and (effect.amount or 0) >= target.hp:
-                            score += 500
+                            smart_bonus += lethal_bonus_amount
                         score += max(0, target.max_hp - target.hp) // 5
         elif effect.type == "heal":
+            heal_urgency_threshold = 55 if difficulty == "hard" else 40
             if target_player:
                 for slot in target_slots:
                     if 0 <= slot < len(target_player.team):
                         target = target_player.team[slot]
                         missing = max(0, target.max_hp - target.hp)
                         score += min(effect.amount or 0, missing) * 3
-                        if target.hp <= 40:
-                            score += 60
+                        if target.hp <= heal_urgency_threshold:
+                            smart_bonus += 60
         elif effect.type == "apply_status":
             payload = effect.payload
             if payload.get("stun_classes"):
-                score += 90
+                smart_bonus += 90
             if payload.get("counter") or payload.get("reflect"):
-                score += 70
+                smart_bonus += 70
             if payload.get("damage_bonus"):
-                score += 45
+                smart_bonus += 45
             if payload.get("damage_reduction"):
-                score += 25
+                smart_bonus += 25
             if int(payload.get("damage_output_delta", 0)) < 0:
-                score += 35
+                smart_bonus += 35
             if payload.get("turn_end_damage"):
-                score += int(payload["turn_end_damage"]) * 2
+                smart_bonus += int(payload["turn_end_damage"]) * 2
             if effect.status:
                 score += 10
         elif effect.type == "remove_status":
             score += 20
     if skill.conditions:
-        score += 35
-    score -= len(skill.cost) * 2
+        score += int(35 * condition_weight)
+    score += int(smart_bonus * smart_bonus_weight)
+    score -= len(skill.cost) * (1 if difficulty == "hard" else 2)
     return score
 
 
@@ -356,6 +385,7 @@ class BattleV2Manager:
         self.room_skill_maps: dict[str, dict[str, SkillSpec]] = {}
         self.room_catalogs: dict[str, dict[str, Any]] = {}
         self.room_roster_modes: dict[str, str] = {}
+        self.room_cpu_difficulty: dict[str, str] = {}
         self.room_first_creation_progress: dict[str, dict[str, dict[str, Any]]] = {}
         self.command_receipts: dict[str, dict[str, OrderedDict[str, str]]] = {}
         self.room_locks: dict[str, RLock] = {}
@@ -363,6 +393,11 @@ class BattleV2Manager:
         self.capture_replays = capture_replays
         self.timer_policy = timer_policy or BattleTimerPolicy()
         self.clock = clock
+        # Optional hook invoked exactly once, at the authoritative terminal
+        # state transition in `_finish_match` — not from any broadcast path.
+        # Lets callers (e.g. web/app.py) record match-finished analytics at
+        # the true source of truth instead of a viewer-serialization side effect.
+        self.on_match_finished: Callable[[str], None] | None = None
 
     def start_classic_match(
         self,
@@ -372,6 +407,7 @@ class BattleV2Manager:
         roster: dict[str, CharacterSpec] | None = None,
         skills: dict[str, SkillSpec] | None = None,
         catalog: dict[str, Any] | None = None,
+        difficulty: str = "normal",
     ) -> dict:
         """Start a Classic Arena match and return serialized state for player one."""
 
@@ -403,6 +439,7 @@ class BattleV2Manager:
             players=player_states,
             turn_player_id=turn_player_id,
             rng_seed=seed,
+            room_id=room_id,
             disconnect_seconds_used={config.id: 0 for config in configs},
             timeout_total={config.id: 0 for config in configs},
             timeout_consecutive={config.id: 0 for config in configs},
@@ -419,6 +456,7 @@ class BattleV2Manager:
         self.room_skill_maps[room_id] = skills
         self.room_catalogs[room_id] = catalog
         self.room_roster_modes[room_id] = "classic"
+        self.room_cpu_difficulty[room_id] = difficulty if difficulty in {"easy", "normal", "hard"} else "normal"
         self.room_first_creation_progress.pop(room_id, None)
         if self.capture_replays:
             from .replay import REPLAY_FORMAT_VERSION, RULES_VERSION, authoritative_state_hash
@@ -444,6 +482,7 @@ class BattleV2Manager:
         self,
         room_id: str,
         players: list[BattlePlayerConfig | dict[str, Any]],
+        difficulty: str = "normal",
     ) -> dict:
         """Start a match restricted to the first-character-creation roster."""
 
@@ -458,6 +497,7 @@ class BattleV2Manager:
             roster=FIRST_CREATION_ROSTER,
             skills=FIRST_CREATION_SKILLS_BY_ID,
             catalog=first_creation_catalog(),
+            difficulty=difficulty,
         )
         self.room_roster_modes[room_id] = "first_creation"
         if room_id in self.room_replays:
@@ -470,6 +510,9 @@ class BattleV2Manager:
 
     def _roster_for_room(self, room_id: str) -> dict[str, CharacterSpec]:
         return self.room_rosters.get(room_id, STARTER_ROSTER)
+
+    def _cpu_difficulty_for_room(self, room_id: str) -> str:
+        return self.room_cpu_difficulty.get(room_id, "normal")
 
     def get_state(self, room_id: str) -> BattleState:
         room_id = self.room_aliases.get(room_id, room_id)
@@ -641,6 +684,11 @@ class BattleV2Manager:
             state.turn_number,
             {"winner_id": winner_id, "result_type": result_type, "reason": reason},
         ))
+        if self.on_match_finished is not None and state.room_id is not None:
+            try:
+                self.on_match_finished(state.room_id)
+            except Exception:
+                pass
 
     def _finish_by_tiebreak(self, state: BattleState, reason: str) -> None:
         scores = {}
@@ -932,6 +980,7 @@ class BattleV2Manager:
         state = self.get_state(room_id)
         self._ensure_turn_player(state, player_id)
         player = state.players[player_id]
+        difficulty = self._cpu_difficulty_for_room(room_id)
         actions: list[PendingAction] = []
         for slot in player.active_slots:
             if slot < 0 or slot >= len(player.team):
@@ -973,7 +1022,7 @@ class BattleV2Manager:
                             validate_queue(trial_state, player_id, self._skills_for_room(room_id))
                         except ResolverError:
                             continue
-                        score = _cpu_action_score(state, player_id, candidate, resolved_skill)
+                        score = _cpu_action_score(state, player_id, candidate, resolved_skill, difficulty=difficulty)
                         if best is None or score > best[0]:
                             best = (score, candidate)
             if best is not None:

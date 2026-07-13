@@ -822,3 +822,377 @@ Caution / next work:
   `resource` works) or a `psutil` dependency.
 - Did not attempt the full 1,000-match stress run from the audit's exit
   gate in this pass; 200 matches completed cleanly in ~12s.
+
+## 2026-07-13 - Milestone C: AI difficulty, mission coverage, analytics
+
+Three of the four remaining agent-doable Milestone C deliverables (per the
+roadmap: AI difficulty, First Creation mission coverage, durable
+instrumentation; audio/haptics needs real assets and stays out of scope).
+Planned via EnterPlanMode first — researched the actual CPU heuristic,
+mission/progression, and runtime-store code before writing anything, since
+this touched three separate subsystems in one pass.
+
+**AI difficulty (Easy/Normal/Hard).** `jjk_arena/battle_v2/manager.py`:
+added `room_cpu_difficulty` (per-room dict, same pattern as
+`room_roster_modes`), threaded an optional `difficulty` kwarg through
+`start_classic_match`/`start_first_creation_match` (default `"normal"`,
+normalized to one of the three valid values). `_cpu_action_score` now
+splits its bonuses into `score` (raw damage/heal, untouched) and
+`smart_bonus` (kill-securing, status-control, heal-urgency bonuses): Hard
+raises the lethal bonus (500→650) and halves the cost penalty; Easy halves
+`smart_bonus`. At `difficulty="normal"` the arithmetic is unchanged from
+before (same totals, different code shape), so all 3 existing CPU-behavior
+tests and the chunk1 CPU-legal-action stress test needed zero changes.
+`web/app.py`: added `battle_v2_cpu_difficulty(data)`, threaded through
+`on_battle_v2_start_classic` only (the only CPU entry point — PvP/rematch
+paths don't pass it, default is harmless there). Client
+(`game-store.js`/`draft-scene.js`): added an Easy/Normal/Hard button row on
+the draft screen next to the existing CPU-preset buttons, sent as
+`difficulty` in the `battle_v2_start_classic` payload. Updated
+`docs/battle_v2_socket_contract.md`. Verified live in the browser: selected
+Hard, confirmed `store.difficulty === 'hard'` client-side and
+`battle_v2_manager.room_cpu_difficulty[room_id] == "hard"` server-side via
+`/ops/runtime`.
+
+**First Creation mission coverage (10/19 characters → 19/19).** Added 3
+missions to `jjk_arena/battle_v2/first_creation_missions.py` —
+`kyoto_pressure_gauntlet` (Todo/Kamo/Mai), `defensive_artillery_drill`
+(Miwa/Momo/Mechamaru), `student_reserves_trial` (Panda/Utahime/Mei Mei,
+the one trio with no existing named preset since their natural teammates
+were already claimed by other missions) — covering the remaining 9
+characters. Every skill/status id referenced in the objectives (`blood_mark`,
+`revolver_shot`, `quick_draw_stun`, `aerial_scout`, `gorilla_core`,
+`crow_mark`) was verified against `starter_roster.py` before writing the
+mission data, not guessed. Added matching objective-check blocks in
+`first_creation_progression.py` (same single-condition-per-objective style
+as the 4 existing missions) and 3 new cosmetic badge unlocks in
+`first_creation_unlocks.py` (no new character-variant unlocks — building
+gojo_adult/geto_jjk0 kits is roster expansion, explicitly out of scope
+until Phase 13). Fixed one incidental fragile test
+(`tests/test_first_creation_roster.py` asserted `payload["missions"][-1]`,
+which broke once there were more than 4 missions — switched to lookup by
+mission id).
+
+**Durable analytics.** `jjk_arena/battle_v2/runtime_store.py`: added an
+`analytics_events` table (bumped `SCHEMA_VERSION` to 2, additive-only
+migration) plus `record_analytics_event`/`analytics_summary` methods,
+following the exact style of the existing `save_replay`/`load_replay`
+methods. Hooked entirely inside `web/app.py`'s `emit_battle_v2_update` —
+deliberately did *not* touch `manager.py`'s constructor or `_finish_match`
+(6 call sites, no `room_id` on `BattleState`) for this: match-finished
+recording reuses the exact `archived_replays`-set-guard pattern (a new
+`analytics_recorded_matches` set) right next to the existing
+`archive_finished_replay` call; mission-completed recording snapshots a
+player's `completed_missions` before `merge_first_creation_progress` and
+diffs after, reusing that function's own dedup rather than adding a new
+one. Both wrapped in try/except + an `analytics_write_errors` counter, same
+defensive pattern as replay archiving — analytics can never break a battle.
+Extended `/ops/runtime` (same bearer-token auth, no new auth surface) with
+an `analytics` key: match-finished counts by outcome/vs_cpu/cpu_difficulty,
+mission-completion counts per mission id.
+
+**Test isolation follow-up.** Discovered mid-pass that `web_app.runtime_store`
+is a module-level singleton constructed once at import — a per-test
+`monkeypatch` of its `.path` has no effect on background scheduler threads
+that can still be mid-write after that test's teardown reverts the patch.
+Fixed by redirecting `.path` once, session-scoped, in `tests/conftest.py`.
+Traced every `sqlite3.connect` call across a full suite run to confirm:
+exactly one hit on the real `data/jjk_arena.sqlite3` (the pre-existing
+one-time schema-init write at module import, unrelated to this pass), zero
+per-test leakage after the fix.
+
+**Known issue introduced and only partially cleaned up:** before the
+session-scoped isolation fix above was in place, one earlier full `pytest`
+run in this pass *did* write real rows into `data/jjk_arena.sqlite3`'s new
+`analytics_events` table (confirmed 242 contaminated rows). Attempted to
+clear just that table's rows (not the whole file, which also holds real
+profile/replay data) but the destructive-action classifier correctly
+blocked an unpredicated `DELETE FROM analytics_events` with no explicit
+user direction. **Left unresolved for the user to clear** (either
+`DELETE FROM analytics_events;` in that file, or just note that
+`/ops/runtime`'s analytics numbers are inflated until then — it's additive
+only, so nothing is corrupted, just noisy).
+
+Verification:
+- `python -m pytest -q` — 356 passed, 1 skipped, both normal and reverse
+  file order.
+- `python -m compileall -q jjk_arena web run_server.py`; `node --check` on
+  every non-vendor file under `web/static`.
+- Ran the First Creation skill audit (`python -m jjk_arena.battle_v2.skill_audit`)
+  — 0 structural/coverage issues, same pre-existing doc-gap findings as
+  before (not a regression).
+- Live browser verification: started a CPU match, selected Hard difficulty,
+  confirmed it threaded through client → server; hit `/ops/runtime` and
+  confirmed the `analytics` key populates.
+- Did not live-browser-verify the mission-coverage or Easy-difficulty paths
+  specifically (covered by the new unit/socket tests instead) — only Hard
+  was clicked through manually.
+
+Remaining for Milestone C: AI difficulty scaffolding is done, but this was
+scoring-level tuning, not a new search/lookahead algorithm — if Hard/Easy
+don't feel distinct enough after human playtesting, the constants
+(`lethal_bonus_amount`, the `smart_bonus` halving) are the tuning knobs.
+Progression and instrumentation deliverables are functionally complete.
+Audio/haptics remains the one deliverable that needs real assets and
+can't be done by an agent.
+
+## 2026-07-13 - Milestone C corrective pass: difficulty distinctness, mission semantics, analytics integrity
+
+Source: an external audit of the previous uncommitted pass (same session,
+same worktree) found the scaffolding above was real but semantically
+incomplete in ways that would have produced convincing-but-wrong dashboards
+and unearned mission completions. This pass addresses every P1 finding.
+
+**CPU difficulty.**
+- `web/app.py`'s `on_battle_v2_rematch` now threads
+  `battle_v2_manager.room_cpu_difficulty.get(old_match_id, "normal")` into
+  `start_battle_v2_match_for_mode` instead of always defaulting to
+  `"normal"` — a CPU rematch keeps the difficulty the player picked.
+- `manager.py`'s `_cpu_action_score`: the audit found Hard and Normal picked
+  identically in 400/400 sampled non-lethal states because the only
+  difference was a lethal bonus that rarely triggers. Hard now also scales
+  the tactical `smart_bonus` (stuns, counters, damage modifiers, condition
+  bonuses) by 1.35x and reacts to ally heal-urgency 15 HP earlier (55 vs 40)
+  than Normal; Easy still halves `smart_bonus`. Added
+  `test_cpu_action_score_hard_differs_from_normal_without_a_lethal_opportunity`
+  and a heal-urgency test to cover this without a full 400-state corpus.
+
+**First Creation missions.**
+- Kyoto Pressure Gauntlet / Defensive Artillery Drill / Student Reserves
+  Trial descriptions all said "Win with..." but their objectives never
+  checked `winner_is_player` — a forced loss still completed them and
+  unlocked the badge. Added an explicit "Win the match" objective (and
+  static objective-text entry) to all three.
+- `status_applied` events (`effects.py`, both emit sites in `resolver.py`)
+  now carry `source_player_id`/`source_slot`/`source_skill_id`.
+  `_status_applications()` in `first_creation_progression.py` takes an
+  optional `source_player_id` filter, and every status-based mission
+  objective (Blood Mark, Quick Draw Stun, Gorilla Core, Crow Mark, poison)
+  now filters by the evaluated player — a mirror-matched opponent applying
+  the same status can no longer satisfy your objective.
+- "Reveal an enemy with Aerial Scout" previously checked only that the
+  skill was used/queued (`skill_id.endswith("aerial_scout")`), so a
+  countered Aerial Scout still satisfied it. It now checks that the
+  `revealed` status actually applied, filtered by source player.
+- Added regression tests for all of the above (loss-path, mirror-opponent,
+  countered-reveal) in `tests/test_first_creation_progression.py`.
+
+**Analytics integrity.**
+- `_match_outcome` in `web/app.py` only ever checked
+  `winner_id == CPU_V2_PLAYER_ID` for "loss", so every decisive PvP match
+  (no CPU player present) recorded as a "win" with no paired loss — this
+  matched the audit's finding of 238/238 PvP matches logged as "win" in the
+  shipped dev database. Replaced it with a per-player `_player_outcome`
+  and split analytics into two event types: `match_finished` (match-level:
+  `roster_mode`, `vs_cpu`, `cpu_difficulty`, `result_type`, `finish_reason`
+  — reusing `BattleState.result_type`/`finish_reason`, which already
+  existed) and one `match_player_result` event per non-CPU player
+  (`outcome`: win/loss/draw/no_contest). A decisive PvP match now always
+  produces exactly one win and one loss.
+- `runtime_store.py`: bumped `SCHEMA_VERSION` to 3, added a nullable
+  `event_key TEXT` column (additive `ALTER TABLE`, safe on an existing v2
+  database) with a `UNIQUE` index, and switched `record_analytics_event`
+  to `INSERT OR IGNORE` keyed on it (returns whether a row was actually
+  inserted). Event keys: `match_finished:{match_id}`,
+  `match_player_result:{match_id}:{player_id}`,
+  `mission_completed:{match_id}:{player_id}:{mission_id}`. This makes
+  dedup a database guarantee instead of the in-memory
+  `analytics_recorded_matches` set the prior pass relied on alone (that
+  set stays as a fast-path, not the only guard) — covers concurrent
+  duplicate emits, reconnect-triggered re-broadcasts, and process
+  restarts. Added thread-race and restart-survival tests in
+  `tests/test_battle_v2_runtime_store.py`.
+- `analytics_summary()` updated to aggregate `by_result_type` and
+  `by_difficulty` from `match_finished` rows and `wins`/`losses`/`draws`/
+  `no_contests` from `match_player_result` rows.
+- Did not touch: analytics writes still happen inside
+  `emit_battle_v2_update` (the broadcast path) rather than at the
+  authoritative state transition in `manager.py`, and `/ops/runtime`'s
+  `analytics_summary()` still loads every row into Python instead of
+  using SQL `GROUP BY`. Both are P2s in the audit and lower-risk than the
+  P1 correctness bugs above; moving match-finish recording into
+  `manager._finish_match` touches 6 call sites and `BattleState` has no
+  `room_id` today, so that's a deliberately separate follow-up rather than
+  something to fold into this pass.
+- Left unresolved, flagged for the user rather than acted on: the prior
+  pass's 242 contaminated test rows are still in
+  `data/jjk_arena.sqlite3`'s `analytics_events` table (confirmed same
+  242-row count and ~75s timestamp window the audit found). Not deleted
+  here — it's a real local data file with other tables (3 real
+  `first_creation_profiles` rows) alongside it, and clearing rows from a
+  live SQLite file is a destructive action outside what this pass was
+  asked to do.
+
+Verification:
+- `python -m pytest -q` — 368 passed, 1 skipped, both normal and reverse
+  file order (added 1 CPU-rematch-difficulty test, 2 CPU-score
+  differentiation tests, 1 PvP win/loss-split test, 6 mission
+  regression tests, 4 analytics idempotency/model tests — net +11 vs. the
+  356 from the prior pass, after also fixing the one pre-existing test
+  that asserted the old single-event-type analytics shape).
+- `python -m compileall -q jjk_arena web run_server.py`; `node --check
+  web/static/phaser-shell.js`.
+- Re-ran `python -m jjk_arena.battle_v2.skill_audit` — identical
+  pre-existing findings, no new regressions.
+- Did not live-browser-verify this pass; covered entirely by the new/
+  updated unit and socket-level tests above.
+
+Remaining for Milestone C: the two P2 analytics items noted above
+(authoritative recording location, SQL-aggregated `/ops/runtime`) are still
+open. Mission "19/19 mastery coverage" (as opposed to team-presence
+coverage) is unchanged from the prior pass — Todo, Mechamaru, Utahime,
+Maki/Toge, and Nobara/Megumi still have no dedicated per-character
+objective; out of scope for this corrective pass, which targeted semantics
+bugs, not new content.
+
+## 2026-07-13 - Milestone C: the two remaining P2 analytics items
+
+Source: same session, after PR #55 (the P1 corrective pass) was opened.
+Tackled both deferred P2s: analytics recorded from the broadcast path
+instead of the authoritative state transition, and `/ops/runtime` decoding
+every row's JSON payload in Python instead of aggregating in SQL.
+
+**Authoritative recording location.**
+- `models.py`: added `BattleState.room_id: str | None = None`; set once in
+  `manager.py`'s `start_classic_match` at construction (inherited by
+  `start_first_creation_match`, which delegates to it) — no other
+  `BattleState(...)` construction site exists.
+- `manager.py`: added `BattleV2Manager.on_match_finished: Callable[[str],
+  None] | None`, invoked (wrapped in try/except so a hook failure can never
+  break a battle) at the end of `_finish_match` — the single choke point
+  all 6 finish call sites (`_finish_by_tiebreak`, `expire_disconnects` x2,
+  `_complete_player_turn`, `surrender`) already funnel through, and which
+  is already idempotency-guarded (`if phase == FINISHED and result_type is
+  not None: return` at the top). This was the actual authoritative
+  terminal transition Codex's original pass avoided touching because it
+  "touches 6 call sites" — turns out only one of those (`_finish_match`
+  itself) needed a change, not all 6.
+- `web/app.py`: registered `battle_v2_manager.on_match_finished =
+  record_match_finished_analytics` once at module load (right after the
+  function is defined), and removed the call to it from
+  `emit_battle_v2_update`. A repeated/delayed broadcast can no longer be
+  the thing that creates or skips the event.
+- `replay.py`: adding `room_id` to `BattleState` changed
+  `authoritative_state_hash()`'s output (it hashes every dataclass field),
+  breaking the checked-in golden replay fixture. Added `"room_id"` to the
+  existing `HASH_EXCLUDED_FIELDS` set alongside `"phase_deadline"` — it's
+  routing metadata, not battle-authoritative content, so excluding it (not
+  re-baselining the golden hash) is the correct fix.
+- Mission-completed analytics moved the same way: `first_creation_profile.py`'s
+  `merge_first_creation_progress` now computes `newly_completed` itself
+  (inside the same closure that mutates `completed_missions`) and records
+  the analytics event right after the durable profile merge succeeds,
+  instead of `web/app.py` diffing before/after profile snapshots around
+  the broadcast. Added an `analytics_store` parameter so callers with their
+  own long-lived `SQLiteRuntimeStore` (like `web/app.py`'s singleton, whose
+  `.path` tests redirect) can pass it in — a naive `SQLiteRuntimeStore()`
+  constructed fresh inside `first_creation_profile.py` would have silently
+  written to the real default database path during tests instead of the
+  test-isolated one (caught this via a failing test, not by inspection).
+- Added `test_match_finished_analytics_are_recorded_without_any_broadcast`
+  (calls `battle_v2_manager.surrender()` directly, zero socket/broadcast
+  calls, confirms the event still lands) in `tests/test_battle_v2_socket.py`.
+
+**SQL-aggregated `/ops/runtime`.**
+- `runtime_store.py`: bumped `SCHEMA_VERSION` to 4. Added typed columns
+  (`result_type`, `finish_reason`, `cpu_difficulty`, `vs_cpu`, `outcome`,
+  `mission_id`) to `analytics_events`, populated automatically from
+  whichever of those keys happen to be present in the event's `payload`
+  dict at write time (no call-site changes needed) — `payload_json` still
+  stores the full record for detail/debugging, but is no longer read by
+  the summary path. Added indexes on `(event_type, result_type)`,
+  `(event_type, outcome)`, `(event_type, mission_id)`.
+- `analytics_summary()` rewritten as five small `SELECT ... GROUP BY`
+  queries instead of `SELECT * ... ` + a Python loop decoding every row's
+  JSON. Same public return shape as before (no caller changes needed).
+- Added `test_analytics_summary_uses_sql_aggregation_not_python_payload_decoding`,
+  which corrupts a row's `payload_json` directly via a raw `sqlite3`
+  connection (bypassing the store's own write path) while leaving the
+  typed columns intact, and confirms the summary is still correct —
+  proving the aggregation genuinely reads the typed columns, not the JSON.
+
+Verification:
+- `python -m pytest -q` — 370 passed, 1 skipped, both normal and reverse
+  file order (added 3 tests net: the no-broadcast regression, the
+  SQL-aggregation regression, and the schema-version bump to 4 fixed one
+  existing assertion).
+- `python -m compileall -q jjk_arena web run_server.py`; `node --check
+  web/static/phaser-shell.js`.
+- Re-ran `python -m jjk_arena.battle_v2.skill_audit` — identical
+  pre-existing findings, no new regressions.
+- Did not live-browser-verify; covered by the new/updated tests above.
+
+Remaining for Milestone C: mission "19/19 mastery coverage" (per-character
+objectives, not just team presence) is still open — same 5 characters as
+before (Todo, Mechamaru, Utahime, Maki/Toge, Nobara/Megumi). Both original
+P2 analytics items are now closed. Audio/haptics remains the one Milestone C
+deliverable that isn't agent-doable.
+
+## 2026-07-13 - Milestone C: mission mastery coverage (the last of the 5 gap characters)
+
+Source: same session, after the two P2 analytics items closed. Closed the
+remaining "19/19 team presence but not 19/19 mastery" gap: Todo, Mechamaru,
+Utahime, Maki, Toge, Nobara, and Megumi (7 characters across 5 missions —
+"Maki/Toge" and "Nobara/Megumi" were each 2 separate gaps, not 1) had no
+mission objective naming their own skill; they only showed up in a
+recommended team whose objectives were all some other teammate's.
+
+Verified each addition against `starter_roster.py` before writing (not
+guessed), same discipline as the original mission-coverage pass:
+- **Todo** (`kyoto_pressure_gauntlet`): "Set up a redirect with Todo's
+  Boogie Woogie" — status `boogie_woogie_redirect` (`fc_aoi_todo_boogie_woogie`).
+- **Mechamaru** (`defensive_artillery_drill`): "Lock down an enemy with
+  Mechamaru's Remote Puppet Net" — status `remote_puppet_net`.
+- **Utahime** (`student_reserves_trial`): "Activate Utahime's Solo Solo
+  Kinku" — status `solo_solo_kinku`. (Deliberately not her `ritual_rhythm`
+  skill: that one emits a `team_status_applied` event via `apply_team_status`,
+  a different event type the mission-objective checker doesn't read.)
+- **Maki** (`cursed_child_bond`): "Buff up with Maki's Weapon Specialist" —
+  status `weapon_specialist`. **Toge** (same mission): "Stun an enemy with
+  Toge's Stop." — status `stopped`. Both objectives on this mission had
+  previously been Yuta's alone, despite Maki/Toge being on the recommended
+  team.
+- **Nobara** (`outsider_poison_path`): "Apply Nail with Nobara's Nail
+  Barrage" — status `nail`. **Megumi** (same mission): "Apply Scent with
+  Megumi's Divine Dogs" — status `scent`. Both objectives on this mission
+  had previously been Junpei's alone.
+
+All new objectives reuse the existing `_status_applications(events, status,
+source_player_id)` helper (source-filtered, from the P1 corrective pass),
+so a mirror-matched opponent can't satisfy these either. Mission
+descriptions and static objective text in `first_creation_missions.py`
+updated to match. Updated the 3 existing tests that asserted the old
+lower objective counts (`test_kyoto_pressure_gauntlet_completes_...`,
+`test_defensive_artillery_drill_completes_...`,
+`test_student_reserves_trial_completes_...`, and
+`test_yuta_route_tracks_rika_state_and_replacement_skill`) to also satisfy
+the new objective, and added one "is_incomplete_without_X's_objective"
+regression test per newly-covered character (7 new tests total, including
+a fresh `outsider_poison_path` test file section since that mission had no
+dedicated tests before this pass at all) in
+`tests/test_first_creation_progression.py`.
+
+Tried a blanket "every character's name appears somewhere in a mission
+objective" heuristic test first — dropped it. It false-flagged Yuji, Yuta,
+Gojo, Geto, and Shoko as "uncovered" because their existing objectives
+(e.g. "Activate Rika's Curse") are genuinely character-specific in
+substance but don't literally contain the character's name string. The
+per-mission regression tests are the actual proof; a generic name-matching
+heuristic added noise, not signal.
+
+Verification:
+- Manually cross-checked all 19 First Creation characters against a
+  curated per-mission objective-index mapping (each character → which
+  mission and which objective is theirs) — 19/19 covered, 0 missing.
+- `python -m pytest -q` — 377 passed, 1 skipped, both normal and reverse
+  file order (net +7 tests).
+- `python -m compileall -q jjk_arena web run_server.py`; `node --check
+  web/static/phaser-shell.js`.
+- Re-ran `python -m jjk_arena.battle_v2.skill_audit` — identical
+  pre-existing findings, no new regressions.
+- Did not live-browser-verify; covered by the new/updated tests above.
+
+Milestone C status: CPU difficulty, mission coverage (team-level and now
+mastery-level), and analytics (P1 correctness + both P2 architecture items)
+are all done. Audio/haptics remains the only Milestone C deliverable left,
+and it isn't agent-doable.

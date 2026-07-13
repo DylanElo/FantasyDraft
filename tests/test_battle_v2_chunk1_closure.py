@@ -95,3 +95,31 @@ def test_cpu_legal_action_stress_covers_all_first_creation_characters():
             assert state.pending_actions.get(state.turn_player_id, []) == []
 
     assert seen == set(FIRST_CREATION_ROSTER)
+
+
+@pytest.mark.parametrize("difficulty", ["easy", "hard"])
+def test_cpu_legal_action_stress_covers_all_first_creation_characters_at_every_difficulty(difficulty):
+    roster_ids = list(FIRST_CREATION_ROSTER)
+    seen = set()
+    for index in range(0, len(roster_ids), 3):
+        team_a = (roster_ids[index:index + 3] + roster_ids[:3])[:3]
+        team_b = (roster_ids[index + 3:index + 6] + roster_ids[3:6])[:3]
+        seen.update(team_a)
+        seen.update(team_b)
+        manager = BattleV2Manager(rng_seed=index + 1, clock=lambda: 0.0)
+        manager.start_first_creation_match(
+            f"cpu-{difficulty}-{index}",
+            [
+                {"id": "p1", "name": "P1", "team": team_a},
+                {"id": "p2", "name": "P2", "team": team_b},
+            ],
+            difficulty=difficulty,
+        )
+        for _ in range(12):
+            state = manager.get_state(f"cpu-{difficulty}-{index}")
+            if state.winner_id:
+                break
+            manager.take_cpu_turn(f"cpu-{difficulty}-{index}", state.turn_player_id)
+            assert state.pending_actions.get(state.turn_player_id, []) == []
+
+    assert seen == set(FIRST_CREATION_ROSTER)

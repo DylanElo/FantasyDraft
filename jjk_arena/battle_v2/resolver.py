@@ -347,6 +347,9 @@ def _apply_post_skill_punish(
                 "status": punishment.id,
                 "target_player_id": action.player_id,
                 "target_slot": action.caster_slot,
+                "source_player_id": status.source_player_id,
+                "source_slot": status.source_slot,
+                "source_skill_id": None,
             },
         )
         _append_event(events, state, event)
@@ -655,7 +658,7 @@ def finish_turn(state: BattleState, player_id: str) -> list[BattleEvent]:
                     source = state.players.get(status.source_player_id)
                     if source and 0 <= status.source_slot < len(source.team) and source.team[status.source_slot].alive:
                         source.team[status.source_slot].statuses.append(StatusEffect("boogie_woogie_guard", "Boogie Woogie Guard", status.source_player_id, status.source_slot, status.source_player_id, status.source_slot, 2, payload={"destructible_defense": 15}))
-                        _append_event(events, state, BattleEvent("status_applied", "Boogie Woogie granted 15 defense after no redirect", state.turn_number, {"status": "boogie_woogie_guard", "target_player_id": status.source_player_id, "target_slot": status.source_slot}))
+                        _append_event(events, state, BattleEvent("status_applied", "Boogie Woogie granted 15 defense after no redirect", state.turn_number, {"status": "boogie_woogie_guard", "target_player_id": status.source_player_id, "target_slot": status.source_slot, "source_player_id": status.source_player_id, "source_slot": status.source_slot, "source_skill_id": None}))
                 if status.payload.get("ends_if_source_dies"):
                     source = state.players.get(status.source_player_id)
                     if not source or not (0 <= status.source_slot < len(source.team)) or not source.team[status.source_slot].alive:

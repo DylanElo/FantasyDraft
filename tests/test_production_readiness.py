@@ -43,7 +43,29 @@ def test_ops_runtime_is_hidden_without_configured_bearer(monkeypatch):
     assert client.get("/ops/runtime").status_code == 404
     response = client.get("/ops/runtime", headers={"Authorization": "Bearer secret-token"})
     assert response.status_code == 200
-    assert set(response.get_json()) == {"active_rooms", "waiting_lobbies", "rate_limit_keys", "counters"}
+    assert set(response.get_json()) == {"active_rooms", "waiting_lobbies", "rate_limit_keys", "counters", "analytics"}
+    assert set(response.get_json()["analytics"]) == {"match_finished", "missions_completed"}
+
+
+def test_ops_runtime_analytics_reflects_a_finished_cpu_match(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    monkeypatch.setenv("JJK_OPS_TOKEN", "secret-token")
+    http_client = web_app.app.test_client()
+    socket_client = web_app.socketio.test_client(web_app.app, flask_test_client=http_client)
+
+    socket_client.emit("battle_v2_start_classic", {"room_id": "ops-analytics-room", "difficulty": "normal"})
+    updates = [message for message in socket_client.get_received() if message["name"] == "battle_v2_update"]
+    match_id = updates[-1]["args"][0]["match_id"]
+    state = web_app.battle_v2_manager.get_state(match_id)
+    socket_client.emit(
+        "battle_v2_surrender",
+        {"state_revision": state.state_revision, "client_action_nonce": "ops-analytics-nonce"},
+    )
+
+    response = http_client.get("/ops/runtime", headers={"Authorization": "Bearer secret-token"})
+
+    assert response.status_code == 200
+    assert response.get_json()["analytics"]["match_finished"]["total"] >= 1
 
 
 def test_stale_runtime_prunes_finished_rooms_lobbies_and_rate_limits(monkeypatch):

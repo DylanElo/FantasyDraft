@@ -292,3 +292,4 @@ class BattleState:
     rng_seed: int | None = None
     phase_deadline: float | None = None
     state_revision: int = 0
+    room_id: str | None = None

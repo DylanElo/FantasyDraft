@@ -107,11 +107,32 @@ def update_first_creation_profile(player_id: str, updater) -> dict[str, Any]:
     return save_first_creation_profile(player_id, updater(load_first_creation_profile(player_id)))
 
 
-def merge_first_creation_progress(player_id: str, progress: dict[str, Any] | None) -> dict[str, Any]:
-    """Merge a completed room progress payload into durable player progress."""
+def merge_first_creation_progress(
+    player_id: str,
+    progress: dict[str, Any] | None,
+    *,
+    match_id: str | None = None,
+    analytics_store: "SQLiteRuntimeStore | None" = None,
+) -> dict[str, Any]:
+    """Merge a completed room progress payload into durable player progress.
+
+    Mission-completed analytics are recorded here, at the point the
+    completion is actually persisted, rather than by a caller diffing
+    before/after profile snapshots around a broadcast — a repeated
+    broadcast or reconnect-triggered refresh calls this again with the
+    same `progress`, but `newly_completed` is only ever non-empty the one
+    time a mission first crosses into `completed_missions`.
+
+    `analytics_store` lets a caller pass its own long-lived
+    `SQLiteRuntimeStore` (e.g. `web/app.py`'s process-wide singleton, whose
+    `.path` tests redirect) instead of constructing a fresh one bound to
+    the default database path.
+    """
 
     if not progress:
         return load_first_creation_profile(player_id)
+
+    newly_completed: list[str] = []
 
     def merge(profile: dict[str, Any]) -> dict[str, Any]:
         now = datetime.now(timezone.utc).isoformat()
@@ -122,6 +143,7 @@ def merge_first_creation_progress(player_id: str, progress: dict[str, Any] | Non
             if mission_id and mission_id not in completed:
                 completed.add(mission_id)
                 first_completed_at[mission_id] = now
+                newly_completed.append(mission_id)
         unlocked = set(profile["unlocked"])
         unlocked.update(str(unlock_id) for unlock_id in progress.get("unlocked", []) if str(unlock_id))
         profile["completed_missions"] = sorted(completed)
@@ -131,7 +153,21 @@ def merge_first_creation_progress(player_id: str, progress: dict[str, Any] | Non
             profile["selected_starter_team"] = [str(character_id) for character_id in progress.get("team", [])[:3]]
         return profile
 
-    return update_first_creation_profile(player_id, merge)
+    updated = update_first_creation_profile(player_id, merge)
+    if newly_completed and match_id:
+        store = analytics_store if analytics_store is not None else SQLiteRuntimeStore()
+        for mission_id in newly_completed:
+            try:
+                store.record_analytics_event(
+                    "mission_completed",
+                    {"mission_id": mission_id},
+                    match_id=match_id,
+                    player_id=player_id,
+                    event_key=f"mission_completed:{match_id}:{player_id}:{mission_id}",
+                )
+            except Exception:
+                pass
+    return updated
 
 
 def first_creation_profile_payload(profile: dict[str, Any]) -> dict[str, Any]:

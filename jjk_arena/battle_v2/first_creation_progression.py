@@ -11,6 +11,9 @@ MISSION_STORY = "welcome_to_jujutsu_high"
 MISSION_HIDDEN = "hidden_inventory_echoes"
 MISSION_YUTA = "cursed_child_bond"
 MISSION_OUTSIDER = "outsider_poison_path"
+MISSION_KYOTO = "kyoto_pressure_gauntlet"
+MISSION_DEFENSIVE = "defensive_artillery_drill"
+MISSION_RESERVES = "student_reserves_trial"
 
 
 def _team_ids(state: BattleState, player_id: str) -> list[str]:
@@ -39,12 +42,15 @@ def _skill_uses(events: list[BattleEvent], player_id: str) -> list[str]:
     return skills
 
 
-def _status_applications(events: list[BattleEvent], status: str) -> int:
+def _status_applications(events: list[BattleEvent], status: str, source_player_id: str | None = None) -> int:
     total = 0
     for event in events:
         payload = _event_payload(event)
-        if _event_type(event) == "status_applied" and payload.get("status") == status:
-            total += 1
+        if _event_type(event) != "status_applied" or payload.get("status") != status:
+            continue
+        if source_player_id is not None and payload.get("source_player_id") != source_player_id:
+            continue
+        total += 1
     return total
 
 
@@ -117,18 +123,62 @@ def evaluate_first_creation_progress(
         for event in events
     )
     replacement_used = any("cursed_speech_megaphone" in skill_id for skill_id in skills_used)
+    weapon_specialist_active = _status_applications(events, "weapon_specialist", player_id) > 0
+    toge_stop_triggered = _status_applications(events, "stopped", player_id) > 0
     entries.append(_mission_entry(by_id[MISSION_YUTA], yuta_eligible, [
         _objective("Activate Rika's Curse", yuta_eligible and rika_activated, 1 if rika_activated else 0),
         _objective("Use a replacement skill", yuta_eligible and replacement_used, 1 if replacement_used else 0),
+        _objective("Buff up with Maki's Weapon Specialist", yuta_eligible and weapon_specialist_active, 1 if weapon_specialist_active else 0),
+        _objective("Stun an enemy with Toge's Stop.", yuta_eligible and toge_stop_triggered, 1 if toge_stop_triggered else 0),
     ]))
 
     outsider_team = list(by_id[MISSION_OUTSIDER]["recommended_team"])
     outsider_eligible = _team_matches(team, outsider_team)
-    poison_count = _status_applications(events, "poison")
+    poison_count = _status_applications(events, "poison", player_id)
     junpei_alive = any(character.character_id == "junpei_yoshino" and character.alive for character in state.players[player_id].team)
+    nail_applied = _status_applications(events, "nail", player_id) > 0
+    scent_applied = _status_applications(events, "scent", player_id) > 0
     entries.append(_mission_entry(by_id[MISSION_OUTSIDER], outsider_eligible, [
         _objective("Apply poison twice", outsider_eligible and poison_count >= 2, poison_count, 2),
         _objective("Win with Junpei alive", outsider_eligible and winner_is_player and junpei_alive, 1 if winner_is_player and junpei_alive else 0),
+        _objective("Apply Nail with Nobara's Nail Barrage", outsider_eligible and nail_applied, 1 if nail_applied else 0),
+        _objective("Apply Scent with Megumi's Divine Dogs", outsider_eligible and scent_applied, 1 if scent_applied else 0),
+    ]))
+
+    kyoto_team = list(by_id[MISSION_KYOTO]["recommended_team"])
+    kyoto_eligible = _team_matches(team, kyoto_team)
+    blood_mark_applied = _status_applications(events, "blood_mark", player_id) > 0
+    revolver_shot_used = any(skill_id.endswith("revolver_shot") for skill_id in skills_used)
+    boogie_woogie_active = _status_applications(events, "boogie_woogie_redirect", player_id) > 0
+    entries.append(_mission_entry(by_id[MISSION_KYOTO], kyoto_eligible, [
+        _objective("Win the match", kyoto_eligible and winner_is_player, 1 if winner_is_player else 0),
+        _objective("Apply Blood Mark with Noritoshi's Blood-Tipped Arrow", kyoto_eligible and blood_mark_applied, 1 if blood_mark_applied else 0),
+        _objective("Fire Mai's Revolver Shot", kyoto_eligible and revolver_shot_used, 1 if revolver_shot_used else 0),
+        _objective("Set up a redirect with Todo's Boogie Woogie", kyoto_eligible and boogie_woogie_active, 1 if boogie_woogie_active else 0),
+    ]))
+
+    defensive_team = list(by_id[MISSION_DEFENSIVE]["recommended_team"])
+    defensive_eligible = _team_matches(team, defensive_team)
+    quick_draw_stun_triggered = _status_applications(events, "quick_draw_stun", player_id) > 0
+    aerial_scout_revealed = _status_applications(events, "revealed", player_id) > 0
+    remote_puppet_net_active = _status_applications(events, "remote_puppet_net", player_id) > 0
+    entries.append(_mission_entry(by_id[MISSION_DEFENSIVE], defensive_eligible, [
+        _objective("Win the match", defensive_eligible and winner_is_player, 1 if winner_is_player else 0),
+        _objective("Trigger Quick Draw Stun with Miwa's New Shadow Quick Draw", defensive_eligible and quick_draw_stun_triggered, 1 if quick_draw_stun_triggered else 0),
+        _objective("Reveal an enemy with Momo's Aerial Scout", defensive_eligible and aerial_scout_revealed, 1 if aerial_scout_revealed else 0),
+        _objective("Lock down an enemy with Mechamaru's Remote Puppet Net", defensive_eligible and remote_puppet_net_active, 1 if remote_puppet_net_active else 0),
+    ]))
+
+    reserves_team = list(by_id[MISSION_RESERVES]["recommended_team"])
+    reserves_eligible = _team_matches(team, reserves_team)
+    gorilla_core_active = _status_applications(events, "gorilla_core", player_id) > 0
+    crow_mark_applied = _status_applications(events, "crow_mark", player_id) > 0
+    solo_solo_kinku_active = _status_applications(events, "solo_solo_kinku", player_id) > 0
+    entries.append(_mission_entry(by_id[MISSION_RESERVES], reserves_eligible, [
+        _objective("Win the match", reserves_eligible and winner_is_player, 1 if winner_is_player else 0),
+        _objective("Enter Gorilla Core with Panda", reserves_eligible and gorilla_core_active, 1 if gorilla_core_active else 0),
+        _objective("Apply Crow Mark with Mei Mei's Crow Scout", reserves_eligible and crow_mark_applied, 1 if crow_mark_applied else 0),
+        _objective("Activate Utahime's Solo Solo Kinku", reserves_eligible and solo_solo_kinku_active, 1 if solo_solo_kinku_active else 0),
     ]))
 
     completed_ids = [entry["id"] for entry in entries if entry["complete"]]

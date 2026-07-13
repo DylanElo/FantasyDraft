@@ -10,6 +10,21 @@ def isolate_first_creation_profile_store(tmp_path, monkeypatch):
     monkeypatch.setenv("JJK_FIRST_CREATION_PROFILE_STORE", str(tmp_path / "first_creation_profiles.json"))
 
 
+@pytest.fixture(autouse=True, scope="session")
+def isolate_runtime_store_database(tmp_path_factory):
+    """Keep durable analytics/replay writes out of the real data/ directory during tests.
+
+    `web_app.runtime_store` is a module-level singleton constructed once at
+    import time, so redirecting `JJK_DATABASE_PATH` per test has no effect on
+    it. Repoint its `.path` directly instead. Session-scoped (not per-test)
+    because real background scheduler threads can still be mid-write to it
+    after a per-test monkeypatch would have already reverted the path.
+    """
+
+    web_app.runtime_store.path = tmp_path_factory.mktemp("runtime_store") / "runtime.sqlite3"
+    web_app.runtime_store._initialize()
+
+
 @pytest.fixture(autouse=True)
 def reset_battle_v2_runtime_state():
     """Reset every Battle v2 lifecycle global before and after each test.
@@ -27,6 +42,7 @@ def reset_battle_v2_runtime_state():
         "room_rosters",
         "room_skill_maps",
         "room_roster_modes",
+        "room_cpu_difficulty",
         "room_first_creation_progress",
         "command_receipts",
         "room_locks",
@@ -57,6 +73,7 @@ def reset_battle_v2_runtime_state():
         web_app.room_last_activity.clear()
         web_app.lobby_last_activity.clear()
         web_app.archived_replays.clear()
+        web_app.analytics_recorded_matches.clear()
 
     _reset()
     yield

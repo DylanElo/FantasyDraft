@@ -15,7 +15,7 @@ from .timers import BattleTimerPolicy
 
 
 REPLAY_FORMAT_VERSION = 2
-RULES_VERSION = "battle-v2-2026-07"
+RULES_VERSION = "battle-v2-2026-07-aggregate-dr"
 HASH_EXCLUDED_FIELDS = {"phase_deadline"}
 
 

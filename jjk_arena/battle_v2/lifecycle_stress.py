@@ -79,24 +79,46 @@ def _join(web_app, client, code: str, name: str, team: list[str] | None, roster_
     return _received(client)
 
 
-def _run_scenario(web_app, rng: random.Random, index: int) -> tuple[str, list[Softlock]]:
+def _live_match_memberships(web_app) -> dict[str, set[str]]:
+    """Real membership scan: which non-finished rooms each human player belongs to.
+
+    `active_match_by_player` is a dict with exactly one value per player, so it
+    can never expose a player bound to two rooms at once. This scans the
+    manager's actual room rosters instead, which is the only source that can
+    reveal that corruption.
+    """
+
+    memberships: dict[str, set[str]] = {}
+    for match_id, state in web_app.battle_v2_manager.rooms.items():
+        if state.phase.value == "finished":
+            continue
+        for player_id in state.players:
+            if player_id == web_app.CPU_V2_PLAYER_ID:
+                continue
+            memberships.setdefault(player_id, set()).add(match_id)
+    return memberships
+
+
+def _run_scenario(web_app, rng: random.Random, index: int) -> tuple[str, list[Softlock], list[Any]]:
     findings: list[Softlock] = []
+    clients: list[Any] = []
     scenario = rng.choice(["clean_finish", "disconnect_reconnect", "disconnect_forfeit", "rematch_spam", "code_reuse_race"])
     code = f"stress-{index}-{uuid.uuid4().hex[:8]}"
     p1_id, p2_id = f"stress-p1-{index}", f"stress-p2-{index}"
     p1, p2 = _socket_client(web_app, p1_id), _socket_client(web_app, p2_id)
+    clients.extend([p1, p2])
 
     _join(web_app, p1, code, "P1", TEAM_A)
     p2_received = _join(web_app, p2, code, "P2", TEAM_B)
     update = _payload(p2_received, "battle_v2_update")
     if update is None:
         findings.append(Softlock(index, scenario, "second joiner never received battle_v2_update", {"code": code}))
-        return scenario, findings
+        return scenario, findings, clients
     match_id = update["match_id"]
     state = web_app.battle_v2_manager.rooms.get(match_id)
     if state is None:
         findings.append(Softlock(index, scenario, "match id missing from manager.rooms immediately after creation", {"match_id": match_id}))
-        return scenario, findings
+        return scenario, findings, clients
 
     def surrender_and_finish(client, player_id: str) -> bool:
         st = web_app.battle_v2_manager.rooms.get(match_id)
@@ -112,7 +134,7 @@ def _run_scenario(web_app, rng: random.Random, index: int) -> tuple[str, list[So
     if scenario == "clean_finish":
         if not surrender_and_finish(p1, p1_id):
             findings.append(Softlock(index, scenario, "surrender did not produce battle_v2_finished", {"match_id": match_id}))
-            return scenario, findings
+            return scenario, findings, clients
 
     elif scenario == "disconnect_reconnect":
         p1.disconnect()
@@ -121,11 +143,12 @@ def _run_scenario(web_app, rng: random.Random, index: int) -> tuple[str, list[So
             findings.append(Softlock(index, scenario, "match did not pause after disconnect", {"match_id": match_id}))
         grant = web_app.battle_v2_sessions.issue(match_id, p1_id)
         p1b = _socket_client(web_app, "reconnector-" + p1_id)
+        clients.append(p1b)
         p1b.emit("battle_v2_resume", {"room_id": match_id, "player_id": p1_id, "resume_token": grant.token})
         resumed = _payload(_received(p1b), "battle_v2_update")
         if resumed is None:
             findings.append(Softlock(index, scenario, "resume never produced battle_v2_update", {"match_id": match_id}))
-            return scenario, findings
+            return scenario, findings, clients
         if web_app.active_match_by_player.get(p1_id) != match_id:
             findings.append(Softlock(index, scenario, "active_match_by_player not reconciled after resume", {"match_id": match_id}))
         if not surrender_and_finish(p1b, p1_id):
@@ -143,14 +166,14 @@ def _run_scenario(web_app, rng: random.Random, index: int) -> tuple[str, list[So
                 break
         else:
             findings.append(Softlock(index, scenario, "disconnect budget exhaustion never forfeited the match", {"match_id": match_id}))
-            return scenario, findings
+            return scenario, findings, clients
         if st.winner_id != p2_id:
             findings.append(Softlock(index, scenario, "forfeit produced wrong winner", {"match_id": match_id, "winner_id": st.winner_id}))
 
     elif scenario == "rematch_spam":
         if not surrender_and_finish(p1, p1_id):
             findings.append(Softlock(index, scenario, "setup surrender failed before rematch", {"match_id": match_id}))
-            return scenario, findings
+            return scenario, findings, clients
         st = web_app.battle_v2_manager.rooms.get(match_id)
         nonce = _nonce()
         rematch_payload = {"old_match_id": match_id, "state_revision": st.state_revision, "client_action_nonce": nonce}
@@ -160,7 +183,7 @@ def _run_scenario(web_app, rng: random.Random, index: int) -> tuple[str, list[So
             result = _payload(_received(p1), "battle_v2_rematch")
             if result is None:
                 findings.append(Softlock(index, scenario, "rematch spam produced no response", {"match_id": match_id}))
-                return scenario, findings
+                return scenario, findings, clients
             new_ids.add(result["new_match_id"])
         if len(new_ids) != 1:
             findings.append(Softlock(index, scenario, "rematch spam created more than one new match", {"match_id": match_id, "new_ids": list(new_ids)}))
@@ -168,29 +191,62 @@ def _run_scenario(web_app, rng: random.Random, index: int) -> tuple[str, list[So
     elif scenario == "code_reuse_race":
         if not surrender_and_finish(p1, p1_id):
             findings.append(Softlock(index, scenario, "setup surrender failed before reuse race", {"match_id": match_id}))
-            return scenario, findings
+            return scenario, findings, clients
         p3 = _socket_client(web_app, f"stress-p3-{index}")
         p4 = _socket_client(web_app, f"stress-p4-{index}")
+        clients.extend([p3, p4])
         _join(web_app, p3, code, "P3", TEAM_A)
         reuse_received = _join(web_app, p4, code, "P4", TEAM_B)
         reuse_update = _payload(reuse_received, "battle_v2_update")
         if reuse_update is None:
             findings.append(Softlock(index, scenario, "finished match's code was not immediately reusable", {"code": code}))
-            return scenario, findings
+            return scenario, findings, clients
         if reuse_update["match_id"] == match_id:
             findings.append(Softlock(index, scenario, "reuse produced the same match id as the finished match", {"match_id": match_id}))
 
-    # Cross-scenario invariant: no player id maps to two different *live* matches.
-    live_by_player: dict[str, str] = {}
-    for player_id, mid in web_app.active_match_by_player.items():
-        st = web_app.battle_v2_manager.rooms.get(mid)
-        if st is None or st.phase.value == "finished":
-            continue
-        if player_id in live_by_player and live_by_player[player_id] != mid:
-            findings.append(Softlock(index, scenario, "player mapped to two different live matches", {"player_id": player_id}))
-        live_by_player[player_id] = mid
+    # Real invariant: scan actual room rosters, not active_match_by_player (which
+    # is a dict with one value per player and so can never reveal this corruption).
+    memberships = _live_match_memberships(web_app)
+    for player_id, match_ids in memberships.items():
+        if len(match_ids) > 1:
+            findings.append(
+                Softlock(
+                    index,
+                    scenario,
+                    "player appears in more than one live match",
+                    {"player_id": player_id, "match_ids": sorted(match_ids)},
+                )
+            )
+        recorded = web_app.active_match_by_player.get(player_id)
+        if recorded is not None and recorded not in match_ids:
+            findings.append(
+                Softlock(
+                    index,
+                    scenario,
+                    "active_match_by_player does not match real live membership",
+                    {"player_id": player_id, "recorded": recorded, "actual": sorted(match_ids)},
+                )
+            )
 
-    return scenario, findings
+    return scenario, findings, clients
+
+
+def _process_rss_bytes() -> int | None:
+    """Best-effort resident set size; returns None if unavailable on this platform."""
+
+    try:
+        import resource
+
+        ru_maxrss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        return ru_maxrss if sys.platform == "darwin" else ru_maxrss * 1024
+    except ImportError:
+        pass
+    try:
+        import psutil
+
+        return psutil.Process().memory_info().rss
+    except ImportError:
+        return None
 
 
 def run_stress_batch(*, matches: int, seed: int = 1, prune_every: int = 100) -> dict[str, Any]:
@@ -198,11 +254,18 @@ def run_stress_batch(*, matches: int, seed: int = 1, prune_every: int = 100) -> 
     rng = random.Random(seed)
     findings: list[Softlock] = []
     scenario_counts: dict[str, int] = {}
+    peak_rooms = 0
+    peak_scheduler_tasks = 0
     start = time.monotonic()
     for index in range(matches):
-        scenario, batch_findings = _run_scenario(web_app, rng, index)
+        scenario, batch_findings, clients = _run_scenario(web_app, rng, index)
         scenario_counts[scenario] = scenario_counts.get(scenario, 0) + 1
         findings.extend(batch_findings)
+        for client in clients:
+            if client.is_connected():
+                client.disconnect()
+        peak_rooms = max(peak_rooms, len(web_app.battle_v2_manager.rooms))
+        peak_scheduler_tasks = max(peak_scheduler_tasks, len(web_app.battle_v2_timer_scheduler._deadlines))
         if (index + 1) % prune_every == 0:
             web_app.prune_stale_runtime(now=time.monotonic() + web_app.ACTIVE_ROOM_TTL_SECONDS + 1)
     elapsed = time.monotonic() - start
@@ -213,6 +276,10 @@ def run_stress_batch(*, matches: int, seed: int = 1, prune_every: int = 100) -> 
         "seed": seed,
         "elapsed_seconds": round(elapsed, 2),
         "scenario_counts": scenario_counts,
+        "peak_rooms": peak_rooms,
+        "peak_scheduler_tasks": peak_scheduler_tasks,
+        "final_rooms": len(web_app.battle_v2_manager.rooms),
+        "process_rss_bytes": _process_rss_bytes(),
         "softlocks": [
             {"match_index": f.match_index, "scenario": f.scenario, "reason": f.reason, "detail": f.detail}
             for f in findings

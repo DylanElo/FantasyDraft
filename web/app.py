@@ -131,6 +131,24 @@ def _is_live_match(match_id: str | None) -> bool:
     return state is not None and state.phase.value != "finished"
 
 
+def live_match_memberships() -> dict[str, set[str]]:
+    """Scan every non-finished room's real player list.
+
+    Unlike `active_match_by_player` (one entry per player, so it can never
+    reveal a player who ended up bound to two rooms), this reflects the
+    authoritative membership state actually held by the manager.
+    """
+
+    memberships: dict[str, set[str]] = defaultdict(set)
+    for match_id, state in battle_v2_manager.rooms.items():
+        if state.phase.value == "finished":
+            continue
+        for player_id in state.players:
+            if player_id != CPU_V2_PLAYER_ID:
+                memberships[player_id].add(match_id)
+    return memberships
+
+
 def _timer_deadline(room_id: str) -> float | None:
     state = battle_v2_manager.rooms.get(room_id)
     if state is None:
@@ -444,10 +462,9 @@ def active_v2_context(data=None, *, require_membership: bool = True):
     requested_room_id = clean_room_id(data["room_id"]) if data.get("room_id") else None
     room_id = active_by_code.get(requested_room_id, requested_room_id) if requested_room_id else None
     room_id = room_id or session.get("match_id") or session.get("room_id") or "classic-v2"
-    if player_session in active_match_by_player:
-        active_match_id = active_match_by_player[player_session]
-        if room_id != active_match_id and active_match_id in battle_v2_manager.rooms:
-            room_id = active_match_id
+    active_match_id = active_match_by_player.get(player_session)
+    if active_match_id and room_id != active_match_id and _is_live_match(active_match_id):
+        room_id = active_match_id
     if require_membership:
         state = battle_v2_manager.rooms.get(room_id)
         if state is None or player_session not in state.players:
@@ -755,7 +772,8 @@ def on_battle_v2_start_classic(data=None):
             active_match_by_player[player_session] = room_id
             match_players[room_id] = players
             match_roster_mode[room_id] = roster_mode
-            battle_v2_manager.room_aliases[requested_code] = room_id
+            if requested_code != room_id and requested_code not in battle_v2_manager.rooms:
+                battle_v2_manager.room_aliases[requested_code] = room_id
         authorize_match_context(room_id, player_session)
         issue_battle_v2_resume_sessions(room_id)
         if roster_mode == "first_creation":
@@ -834,7 +852,8 @@ def on_battle_v2_join_pvp(data=None):
                 match_roster_mode[match_id] = roster_mode
                 v2_pvp_lobbies.pop(room_id, None)
                 lobby_last_activity.pop(room_id, None)
-                battle_v2_manager.room_aliases[room_id] = match_id
+                if room_id != match_id and room_id not in battle_v2_manager.rooms:
+                    battle_v2_manager.room_aliases[room_id] = match_id
                 session["room_id"] = match_id
                 session["match_id"] = match_id
 
@@ -969,6 +988,14 @@ def on_battle_v2_rematch(data=None):
                 players = [dict(entry) for entry in match_players.get(old_match_id, [])]
                 if len(players) != 2:
                     raise BattleV2Error("Original match configuration is unavailable.")
+                for entry in players:
+                    if entry["id"] == CPU_V2_PLAYER_ID:
+                        continue
+                    other_match = active_match_by_player.get(entry["id"])
+                    if other_match and other_match != old_match_id and _is_live_match(other_match):
+                        raise BattleV2Error(
+                            "A rematch participant is already in another active match."
+                        )
                 new_id = new_match_id()
                 mode = match_roster_mode.get(old_match_id, "classic")
                 start_battle_v2_match_for_mode(new_id, players, mode)

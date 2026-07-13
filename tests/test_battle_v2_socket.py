@@ -947,3 +947,62 @@ def test_opponent_is_immediately_notified_when_a_player_disconnects(monkeypatch)
     assert update is not None, "the connected opponent must learn about a disconnect immediately, not only on the next unrelated update"
     assert update["paused"] is True
     assert update["disconnect_grace_seconds_remaining"] == pytest.approx(90, abs=1)
+
+
+def test_rematch_is_rejected_when_a_participant_started_another_match(monkeypatch):
+    """Reproduces the P0 double-membership bug: P1/P2 finish a PvP match, P2
+    starts a CPU match, then P1 requests a rematch of the old PvP match. The
+    rematch must be rejected instead of silently binding P2 to two live
+    matches.
+    """
+
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    p1_client = socket_client_with_player("p0-p1")
+    p2_client = socket_client_with_player("p0-p2")
+    for client, player_id, team in [
+        (p1_client, "P1", ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]),
+        (p2_client, "P2", ["satoru_gojo", "ryomen_sukuna", "mahito"]),
+    ]:
+        client.emit(
+            "battle_v2_join_pvp",
+            {"room_id": "p0-code", "player_name": player_id, "player_team": team},
+        )
+    received_payload(p1_client, "battle_v2_update")
+    old_match_id = received_payload(p2_client, "battle_v2_update")["match_id"]
+    old_state = web_app.battle_v2_manager.get_state(old_match_id)
+
+    p1_client.emit("battle_v2_surrender", command_payload(old_state))
+    received_payload(p1_client, "battle_v2_finished")
+    received_payload(p2_client, "battle_v2_finished")
+
+    p2_client.emit("battle_v2_start_classic", {})
+    cpu_update = received_payload(p2_client, "battle_v2_update")
+    assert cpu_update is not None
+    cpu_match_id = cpu_update["match_id"]
+    assert cpu_match_id != old_match_id
+    assert web_app.active_match_by_player["p0-p2"] == cpu_match_id
+
+    # The old (finished) match's identity must not have been corrupted into
+    # an alias for the new CPU match.
+    assert web_app.battle_v2_manager.get_state(old_match_id) is old_state
+    assert web_app.battle_v2_manager.get_state(old_match_id).phase.value == "finished"
+
+    p1_client.emit(
+        "battle_v2_rematch",
+        {
+            "old_match_id": old_match_id,
+            "state_revision": old_state.state_revision,
+            "client_action_nonce": "p0-rematch-nonce",
+        },
+    )
+    error = received_payload(p1_client, "battle_v2_error")
+    assert error is not None
+    assert "already in another active match" in error["message"].lower()
+
+    # P2 must remain bound to exactly one live match: the CPU game.
+    live_rooms_for_p2 = {
+        match_id
+        for match_id, state in web_app.battle_v2_manager.rooms.items()
+        if state.phase.value != "finished" and "p0-p2" in state.players
+    }
+    assert live_rooms_for_p2 == {cpu_match_id}

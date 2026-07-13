@@ -116,6 +116,14 @@ rejected as replay. On success the server emits `battle_v2_rematch` with
 `old_match_id`/`new_match_id`, followed by a viewer-specific `battle_v2_update`
 for the new match.
 
+Before creating a new match, the server verifies that every original human
+participant is not already live in a different match (for example, one
+participant started a CPU practice match while the other requested the
+rematch). If any participant is live elsewhere, the request is rejected with
+`battle_v2_error` ("A rematch participant is already in another active
+match.") instead of silently rebinding that player's one-live-match identity
+to the new rematch room.
+
 ### `battle_v2_ack_result`
 
 Releases a finished match's identity/code bindings (active-match slot and

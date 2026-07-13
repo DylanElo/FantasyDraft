@@ -30,9 +30,7 @@ export class CombatScene extends CombatQueueReviewScene {
         fontStyle: '900',
       });
       const queueCount = this.store.actions.length;
-      const disconnectSeconds = state.paused && state.disconnect_grace_seconds_remaining != null
-        ? Math.max(0, Math.ceil(state.disconnect_grace_seconds_remaining))
-        : null;
+      const disconnectSeconds = this.store.disconnectSecondsRemaining();
       const connectionWarning = this.store.connectionState === 'disconnected'
         ? 'OFFLINE'
         : disconnectSeconds !== null

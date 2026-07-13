@@ -718,3 +718,107 @@ Added `test_disconnect_grace_seconds_remaining_is_serialized_and_counts_down`
 Verification: `python -m pytest -q` — 336 passed, 1 skipped;
 `python -m compileall -q jjk_arena web/app.py`; `node --check` on all three
 changed Phaser modules; live browser verification as described above.
+
+## 2026-07-13 - P0 lifecycle identity fixes + test-order isolation
+
+Source: a third-party audit of this branch (`FantasyDraft(4)` zip, tip
+`f0b1b6e`) found a real P0 bug and a test-isolation gap. Cross-checked every
+claim against the code on this branch before acting; all of them held up.
+
+The P0 bug: a player could end up bound to two live matches simultaneously.
+Repro: P1/P2 finish a PvP match -> P2 starts a CPU practice match -> P1
+requests a rematch of the old PvP match -> the server created the rematch
+with P2 even though P2 was already live in the CPU match. Three compounding
+causes in `web/app.py`:
+
+1. `active_v2_context` re-forced a session's remembered `active_match_id`
+   whenever that id was merely present in `battle_v2_manager.rooms`, not
+   checked against `_is_live_match` (a helper that already existed and is
+   used correctly elsewhere). Fixed to gate on `_is_live_match`.
+2. `on_battle_v2_start_classic` / `on_battle_v2_join_pvp` unconditionally
+   wrote `room_aliases[requested_code] = room_id`. Because finished matches
+   stay in `battle_v2_manager.rooms` until pruned, a stale finished match id
+   surfacing as `requested_code` (via bug #1, or just a session that still
+   remembers it) got permanently aliased to point at a new CPU match,
+   corrupting the old match's identity. Fixed by refusing to alias a code
+   that is already a real (live or finished) authoritative match id.
+3. `on_battle_v2_rematch` overwrote `active_match_by_player` for both
+   original participants with no check that either was already live
+   elsewhere. Fixed by checking `_is_live_match` for every non-CPU original
+   participant before creating the new match, raising `BattleV2Error` if one
+   is already live somewhere else.
+
+Also fixed the stress harness's invariant, which the audit correctly flagged
+as structurally unable to catch this class of bug: it only inspected
+`active_match_by_player` (a dict with one value per player, so it can never
+reveal a double-membership). `jjk_arena/battle_v2/lifecycle_stress.py` now
+scans real room membership (`_live_match_memberships`) and also disconnects
+every test client per scenario and reports `peak_rooms`,
+`peak_scheduler_tasks`, `final_rooms`, and best-effort `process_rss_bytes`
+(via stdlib `resource` on POSIX, falling back to `psutil` if present, else
+`None` — this repo's dev machine is Windows, where neither is available, so
+that field reads `None` here).
+
+Test-order dependency: `tests/conftest.py` previously only isolated
+First Creation profile storage. Any test that left a room/lobby behind
+(most socket tests didn't clean up) leaked into later tests that scan those
+globals wholesale, e.g. `test_stale_runtime_prunes_finished_rooms_lobbies_and_rate_limits`
+failed when run after other suites because it found rooms/lobbies from
+earlier tests, not just its own. Added an autouse
+`reset_battle_v2_runtime_state` fixture that clears every lifecycle global
+(rooms, aliases, RNGs, locks, receipts, sessions, lobbies, all index maps,
+rate limits, activity maps, archives) before and after each test, cancelling
+scheduler tasks first. It defensively uses `getattr`/`isinstance` checks so
+it doesn't choke on tests that temporarily monkeypatch `battle_v2_manager`
+to a bare `SimpleNamespace`.
+
+Other fixes from the same audit:
+- Bumped `RULES_VERSION` in `jjk_arena/battle_v2/replay.py` from
+  `battle-v2-2026-07` to `battle-v2-2026-07-aggregate-dr` (and updated the
+  checked-in golden replay fixture's `rules_version` field to match) — the
+  aggregate damage-reduction rule change had kept the old version string, so
+  a pre-change replay and a post-change replay were indistinguishable by
+  version and would only surface as a confusing hash mismatch instead of a
+  clean unsupported-version rejection.
+- `web/static/phaser/store/game-store.js`: `controlsLocked()` now also
+  checks `connectionState !== 'connected'` and `state.paused` /
+  `state.result_type`, so the client disables input immediately instead of
+  letting the player click and only then showing a server-rejection toast.
+- Reconnect countdown (`PAUSED <n>S`) now decrements locally: the store
+  computes a `disconnectDeadline` (`Date.now() + remaining*1000`) on each
+  server update and a 250ms ticker re-renders while it's set, instead of
+  freezing on whatever value the last server push happened to contain.
+- Added a regression test,
+  `test_rematch_is_rejected_when_a_participant_started_another_match`
+  (`tests/test_battle_v2_socket.py`), reproducing the exact P0 repro above.
+  Verified it fails without the `web/app.py` fixes (temporarily stashed the
+  file and reran) and passes with them.
+
+Verification:
+- `python -m pytest -q` — 337 passed, 1 skipped.
+- `python -m pytest -q $(find tests -name 'test_*.py' | sort -r)` (reverse
+  file order, per the audit's exact reproduction) — 337 passed, 1 skipped,
+  same result as normal order.
+- `python -m jjk_arena.battle_v2.lifecycle_stress --matches 200 --seed 3` —
+  0 softlocks, `final_rooms: 0`, `peak_rooms: 149` (bounded, not growing
+  unboundedly).
+- `python -m compileall -q jjk_arena web run_server.py`.
+- `node --check` on every non-vendor file under `web/static`.
+- Confirmed the new regression test both fails on the pre-fix code and
+  passes on the fixed code (not a vacuously-passing test).
+- Did not attempt a live browser check of the reconnect countdown ticker in
+  this pass (no running dev server was started); the JS changes are only
+  syntax-checked and covered by the existing server-side disconnect tests,
+  not exercised end-to-end in a browser.
+
+Caution / next work:
+
+- Human-vs-human rematch is still unilateral (whoever requests it starts it
+  for both players once eligible); the audit suggested a
+  request/accept/decline flow instead. Left as-is per scope — this pass only
+  closes the double-membership bug, not the UX-model question.
+- `process_rss_bytes` is `None` on this Windows dev machine; if a memory
+  ceiling gate is wanted in CI, it needs a Linux runner (where stdlib
+  `resource` works) or a `psutil` dependency.
+- Did not attempt the full 1,000-match stress run from the audit's exit
+  gate in this pass; 200 matches completed cleanly in ~12s.

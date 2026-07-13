@@ -120,6 +120,18 @@ and 180 cumulative seconds per player, restores the saved phase with at least
 no-progress tiebreaks, and the 72-player-turn hard cap are authoritative manager
 policy replayed through logical lifecycle time.
 
+A human player must appear in at most one live (non-finished) match at any
+time. This is enforced at every transition that can create or rebind a match
+identity: `active_v2_context` only re-forces a session's remembered match id
+when that match is still live, room aliases are never assigned to a code that
+already names a real (live or finished) authoritative match id, and
+`battle_v2_rematch` refuses to create a new match if either original
+participant is already live somewhere else. The lifecycle stress harness
+(`jjk_arena/battle_v2/lifecycle_stress.py`) verifies this by scanning every
+room's actual player membership rather than trusting the `active_match_by_player`
+index alone, since that index can only ever hold one value per player and so
+cannot reveal a player bound to two rooms.
+
 ## Deterministic replay
 
 Versioned replay documents reconstruct a seeded match and execute the original
@@ -127,7 +139,13 @@ versioned commands through the authoritative manager. A canonical SHA-256 hash
 covers complete public and private battle state after initialization and every
 command. Only the process-local monotonic deadline is excluded. Unsupported
 format/rules versions and any hash mismatch fail closed. The detailed schema is
-defined in `docs/battle_v2_replay_contract.md`.
+defined in `docs/battle_v2_replay_contract.md`. `RULES_VERSION` must be bumped
+whenever an authoritative rule changes in a way that would produce a different
+hash for the same commands (for example, moving damage reduction from a
+per-hit to an aggregated player-turn budget bumped it to
+`battle-v2-2026-07-aggregate-dr`), so that a replay captured under the old
+rule fails closed with an unsupported-version error instead of a confusing
+hash mismatch.
 
 ## Headless simulation
 

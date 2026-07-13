@@ -28,6 +28,7 @@ export class GameStore {
       this.queueSubmitting = false;
       this.toast = '';
       this.connectionState = 'connected';
+      this.disconnectDeadline = null;
       this.draftPage = 0;
       this.draftTarget = 'playerTeam';
       this.creationPresetPage = 0;
@@ -44,6 +45,9 @@ export class GameStore {
       this.playerTeam = preset('story_tutorial', ['yuji_itadori', 'megumi_fushiguro', 'nobara_kugisaki']);
       this.enemyTeam = preset('jjk0_beginner_special', ['yuta_okkotsu_jjk0', 'maki_zenin', 'toge_inumaki']);
       this.bindSocket();
+      window.setInterval(() => {
+        if (this.disconnectDeadline != null) this.notify();
+      }, 250);
       window.__phaserShellDebug = {
         store: this,
         getState: () => ({
@@ -338,6 +342,7 @@ export class GameStore {
         return;
       }
       this.state = null;
+      this.disconnectDeadline = null;
       this.clearResumeSession();
       this.actions = [];
       this.actionWildPays = {};
@@ -369,6 +374,7 @@ export class GameStore {
 
     receiveLobbyState(data) {
       this.state = null;
+      this.disconnectDeadline = null;
       this.lobbyStatus = data && data.status === 'cancelled' ? null : data;
       this.queueSubmitting = false;
       this.changeScene('DraftScene');
@@ -384,6 +390,9 @@ export class GameStore {
         this.recentEvents = log.slice(-8).reverse();
       }
       this.state = data;
+      this.disconnectDeadline = data.paused && data.disconnect_grace_seconds_remaining != null
+        ? Date.now() + Number(data.disconnect_grace_seconds_remaining) * 1000
+        : null;
       this.lobbyStatus = null;
       this.queueSubmitting = false;
       const ownPending = (data.pending_actions && data.pending_actions[this.mineId()]) || [];
@@ -434,7 +443,19 @@ export class GameStore {
 
     controlsLocked() {
       const me = this.me();
-      return !this.isMyTurn() || this.queueSubmitting || !!(me && me.queue_confirmed);
+      return (
+        this.connectionState !== 'connected'
+        || !!(this.state && this.state.paused)
+        || !!(this.state && this.state.result_type)
+        || !this.isMyTurn()
+        || this.queueSubmitting
+        || !!(me && me.queue_confirmed)
+      );
+    }
+
+    disconnectSecondsRemaining() {
+      if (this.disconnectDeadline == null) return null;
+      return Math.max(0, Math.ceil((this.disconnectDeadline - Date.now()) / 1000));
     }
 
     livingSlots(player) {
@@ -1024,6 +1045,7 @@ export class GameStore {
         this.socketClient.emit('battle_v2_surrender', this.commandPayload());
       }
       this.state = null;
+      this.disconnectDeadline = null;
       this.clearResumeSession();
       this.lobbyStatus = null;
       this.actions = [];

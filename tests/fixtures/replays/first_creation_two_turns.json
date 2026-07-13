@@ -1,6 +1,6 @@
 {
   "format_version": 2,
-  "rules_version": "battle-v2-2026-07",
+  "rules_version": "battle-v2-2026-07-aggregate-dr",
   "match_id": "golden-two-turns",
   "roster_mode": "first_creation",
   "rng_seed": 17,

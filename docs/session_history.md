@@ -1127,3 +1127,72 @@ objectives, not just team presence) is still open — same 5 characters as
 before (Todo, Mechamaru, Utahime, Maki/Toge, Nobara/Megumi). Both original
 P2 analytics items are now closed. Audio/haptics remains the one Milestone C
 deliverable that isn't agent-doable.
+
+## 2026-07-13 - Milestone C: mission mastery coverage (the last of the 5 gap characters)
+
+Source: same session, after the two P2 analytics items closed. Closed the
+remaining "19/19 team presence but not 19/19 mastery" gap: Todo, Mechamaru,
+Utahime, Maki, Toge, Nobara, and Megumi (7 characters across 5 missions —
+"Maki/Toge" and "Nobara/Megumi" were each 2 separate gaps, not 1) had no
+mission objective naming their own skill; they only showed up in a
+recommended team whose objectives were all some other teammate's.
+
+Verified each addition against `starter_roster.py` before writing (not
+guessed), same discipline as the original mission-coverage pass:
+- **Todo** (`kyoto_pressure_gauntlet`): "Set up a redirect with Todo's
+  Boogie Woogie" — status `boogie_woogie_redirect` (`fc_aoi_todo_boogie_woogie`).
+- **Mechamaru** (`defensive_artillery_drill`): "Lock down an enemy with
+  Mechamaru's Remote Puppet Net" — status `remote_puppet_net`.
+- **Utahime** (`student_reserves_trial`): "Activate Utahime's Solo Solo
+  Kinku" — status `solo_solo_kinku`. (Deliberately not her `ritual_rhythm`
+  skill: that one emits a `team_status_applied` event via `apply_team_status`,
+  a different event type the mission-objective checker doesn't read.)
+- **Maki** (`cursed_child_bond`): "Buff up with Maki's Weapon Specialist" —
+  status `weapon_specialist`. **Toge** (same mission): "Stun an enemy with
+  Toge's Stop." — status `stopped`. Both objectives on this mission had
+  previously been Yuta's alone, despite Maki/Toge being on the recommended
+  team.
+- **Nobara** (`outsider_poison_path`): "Apply Nail with Nobara's Nail
+  Barrage" — status `nail`. **Megumi** (same mission): "Apply Scent with
+  Megumi's Divine Dogs" — status `scent`. Both objectives on this mission
+  had previously been Junpei's alone.
+
+All new objectives reuse the existing `_status_applications(events, status,
+source_player_id)` helper (source-filtered, from the P1 corrective pass),
+so a mirror-matched opponent can't satisfy these either. Mission
+descriptions and static objective text in `first_creation_missions.py`
+updated to match. Updated the 3 existing tests that asserted the old
+lower objective counts (`test_kyoto_pressure_gauntlet_completes_...`,
+`test_defensive_artillery_drill_completes_...`,
+`test_student_reserves_trial_completes_...`, and
+`test_yuta_route_tracks_rika_state_and_replacement_skill`) to also satisfy
+the new objective, and added one "is_incomplete_without_X's_objective"
+regression test per newly-covered character (7 new tests total, including
+a fresh `outsider_poison_path` test file section since that mission had no
+dedicated tests before this pass at all) in
+`tests/test_first_creation_progression.py`.
+
+Tried a blanket "every character's name appears somewhere in a mission
+objective" heuristic test first — dropped it. It false-flagged Yuji, Yuta,
+Gojo, Geto, and Shoko as "uncovered" because their existing objectives
+(e.g. "Activate Rika's Curse") are genuinely character-specific in
+substance but don't literally contain the character's name string. The
+per-mission regression tests are the actual proof; a generic name-matching
+heuristic added noise, not signal.
+
+Verification:
+- Manually cross-checked all 19 First Creation characters against a
+  curated per-mission objective-index mapping (each character → which
+  mission and which objective is theirs) — 19/19 covered, 0 missing.
+- `python -m pytest -q` — 377 passed, 1 skipped, both normal and reverse
+  file order (net +7 tests).
+- `python -m compileall -q jjk_arena web run_server.py`; `node --check
+  web/static/phaser-shell.js`.
+- Re-ran `python -m jjk_arena.battle_v2.skill_audit` — identical
+  pre-existing findings, no new regressions.
+- Did not live-browser-verify; covered by the new/updated tests above.
+
+Milestone C status: CPU difficulty, mission coverage (team-level and now
+mastery-level), and analytics (P1 correctness + both P2 architecture items)
+are all done. Audio/haptics remains the only Milestone C deliverable left,
+and it isn't agent-doable.

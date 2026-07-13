@@ -414,3 +414,10 @@ Caution / external launch gates:
 - Replay capture requires approved consent/privacy and retention policy before enabling.
 - Legal/IP/commercial approval, licensed art/audio provenance, physical-device/accessibility QA, human balance, load/soak/failure exercises, and staffed live operations remain external sign-offs.
 - No roster, progression content, combat rule, balance number, Phaser layout, or visual effect changed.
+# 2026-07-13 - Lifecycle and matchmaking integration commit
+
+- Promoted the approved disconnect/reconnect, timeout-strike, no-progress, hard-cap, terminal-immutability, and replay-v2 policy onto the clean lifecycle base.
+- Added server-generated match ids, collision rejection, one waiting/active context per player, transactional PvP pairing, idempotent rematches, lobby-code release, authorization-before-room-join, and post-reconnect resume-token rotation.
+- Removed public HTTP/Socket.IO room reset surfaces and removed replay RNG seeds from public battle serialization while keeping a private integer seed in replay documents.
+- Added lifecycle and adversarial regressions. Normal-order verification at this commit: 313 passed, 1 opt-in visual test skipped.
+- No roster, kit, balance, mission, progression, or visual feature changed.

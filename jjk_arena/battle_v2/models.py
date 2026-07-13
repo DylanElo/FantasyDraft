@@ -273,6 +273,21 @@ class BattleState:
     queue_order: dict[str, list[str]] = field(default_factory=dict)
     event_log: list[BattleEvent] = field(default_factory=list)
     winner_id: str | None = None
+    result_type: str | None = None
+    finish_reason: str | None = None
+    paused: bool = False
+    paused_phase: BattlePhase | None = None
+    paused_seconds_remaining: float | None = None
+    disconnected_at: dict[str, float] = field(default_factory=dict)
+    disconnect_deadlines: dict[str, float] = field(default_factory=dict)
+    disconnect_seconds_used: dict[str, int] = field(default_factory=dict)
+    timeout_total: dict[str, int] = field(default_factory=dict)
+    timeout_consecutive: dict[str, int] = field(default_factory=dict)
+    no_progress_turns: int = 0
+    player_turns_completed: int = 0
+    damage_to_hp: dict[str, int] = field(default_factory=dict)
+    progress_event_cursor: int = 0
+    logical_time: int = 0
     rng_seed: int | None = None
     phase_deadline: float | None = None
     state_revision: int = 0

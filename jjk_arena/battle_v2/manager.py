@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+import secrets
 from collections import Counter
 from collections import OrderedDict
 from itertools import product
@@ -348,6 +349,7 @@ class BattleV2Manager:
         capture_replays: bool = False,
     ):
         self.rooms: dict[str, BattleState] = {}
+        self.room_aliases: dict[str, str] = {}
         self.rngs: dict[str, random.Random] = {}
         self.rng_seed = rng_seed
         self.room_rosters: dict[str, dict[str, CharacterSpec]] = {}
@@ -373,6 +375,9 @@ class BattleV2Manager:
     ) -> dict:
         """Start a Classic Arena match and return serialized state for player one."""
 
+        if room_id in self.rooms:
+            raise BattleV2Error("active match already exists")
+
         roster = roster or STARTER_ROSTER
         skills = skills or SKILLS_BY_ID
         catalog = catalog or _serialize_roster_catalog(roster)
@@ -393,12 +398,17 @@ class BattleV2Manager:
             player_states[config.id] = PlayerState(id=config.id, name=config.name, team=team)
 
         turn_player_id = configs[0].id
+        seed = self.rng_seed if isinstance(self.rng_seed, int) and not isinstance(self.rng_seed, bool) else secrets.randbits(63)
         state = BattleState(
             players=player_states,
             turn_player_id=turn_player_id,
-            rng_seed=self.rng_seed,
+            rng_seed=seed,
+            disconnect_seconds_used={config.id: 0 for config in configs},
+            timeout_total={config.id: 0 for config in configs},
+            timeout_consecutive={config.id: 0 for config in configs},
+            damage_to_hp={config.id: 0 for config in configs},
         )
-        rng = random.Random(self.rng_seed)
+        rng = random.Random(seed)
         self.rngs[room_id] = rng
         gain_turn_energy(state.players[turn_player_id], state.turn_number, True, rng)
         self.rooms[room_id] = state
@@ -417,12 +427,14 @@ class BattleV2Manager:
                 "rules_version": RULES_VERSION,
                 "match_id": room_id,
                 "roster_mode": "classic",
-                "rng_seed": self.rng_seed,
+                "rng_seed": seed,
+                "timer_policy": {"planning_seconds": self.timer_policy.planning_seconds, "queue_review_seconds": self.timer_policy.queue_review_seconds},
                 "players": [
                     {"id": config.id, "name": config.name, "team": list(config.team)}
                     for config in configs
                 ],
                 "commands": [],
+                "events": [],
                 "initial_state_hash": authoritative_state_hash(state),
                 "final_state_hash": authoritative_state_hash(state),
             }
@@ -460,6 +472,7 @@ class BattleV2Manager:
         return self.room_rosters.get(room_id, STARTER_ROSTER)
 
     def get_state(self, room_id: str) -> BattleState:
+        room_id = self.room_aliases.get(room_id, room_id)
         try:
             return self.rooms[room_id]
         except KeyError as exc:
@@ -519,6 +532,10 @@ class BattleV2Manager:
                 raise BattleV2Error("client_action_nonce was already used for a different command")
             player_receipts.move_to_end(nonce)
             return True
+        if state.phase == BattlePhase.FINISHED:
+            raise BattleV2Error("battle already finished")
+        if state.paused:
+            raise BattleV2Error("battle is paused for reconnect")
         if isinstance(state_revision, bool) or not isinstance(state_revision, int) or state_revision < 0:
             raise BattleV2Error("state_revision must be a non-negative integer")
         if state_revision != state.state_revision:
@@ -580,6 +597,11 @@ class BattleV2Manager:
                 "payload": deepcopy(payload),
                 "expected_state_hash": state_hash,
             })
+            self.room_replays[room_id]["events"].append({
+                "type": "command", "logical_time": self.rooms[room_id].logical_time,
+                "player_id": player_id, "command": command, "state_revision": state_revision,
+                "client_action_nonce": nonce, "payload": deepcopy(payload), "expected_state_hash": state_hash,
+            })
             self.room_replays[room_id]["final_state_hash"] = state_hash
         player_receipts[nonce] = fingerprint
         player_receipts.move_to_end(nonce)
@@ -587,10 +609,157 @@ class BattleV2Manager:
             player_receipts.popitem(last=False)
         return False
 
+    def _record_lifecycle(self, room_id: str, event_type: str, payload: dict[str, Any]) -> None:
+        if self.capture_replays and room_id in self.room_replays:
+            self.room_replays[room_id]["events"].append({
+                "type": event_type,
+                "logical_time": self.clock(),
+                "payload": deepcopy(payload),
+            })
+
     def replay_document(self, room_id: str) -> dict[str, Any]:
         if room_id not in self.room_replays:
             raise BattleV2Error("replay capture is not enabled for this room")
+        from .replay import authoritative_state_hash
+        self.room_replays[room_id]["final_state_hash"] = authoritative_state_hash(self.get_state(room_id))
         return deepcopy(self.room_replays[room_id])
+
+    def _finish_match(self, state: BattleState, result_type: str, winner_id: str | None, reason: str, *, event_type: str = "battle_finished") -> None:
+        if state.phase == BattlePhase.FINISHED and state.result_type is not None:
+            return
+        state.result_type = result_type
+        state.winner_id = winner_id
+        state.finish_reason = reason
+        state.phase = BattlePhase.FINISHED
+        state.paused = False
+        state.paused_phase = None
+        state.paused_seconds_remaining = None
+        state.phase_deadline = None
+        state.event_log.append(BattleEvent(
+            event_type,
+            f"{result_type}: {reason}",
+            state.turn_number,
+            {"winner_id": winner_id, "result_type": result_type, "reason": reason},
+        ))
+
+    def _finish_by_tiebreak(self, state: BattleState, reason: str) -> None:
+        scores = {}
+        for player_id, player in state.players.items():
+            living = sum(1 for slot in player.active_slots if player.team[slot].alive)
+            hp = sum(max(0, player.team[slot].hp) for slot in player.active_slots)
+            scores[player_id] = (living, hp, state.damage_to_hp.get(player_id, 0), -state.timeout_total.get(player_id, 0))
+        best = max(scores.values())
+        winners = [player_id for player_id, score in scores.items() if score == best]
+        winner = winners[0] if len(winners) == 1 else None
+        self._finish_match(state, "WIN" if winner else "DRAW", winner, reason)
+
+    def disconnect_player(self, room_id: str, player_id: str) -> None:
+        with self.room_locks.setdefault(room_id, RLock()):
+            state = self.get_state(room_id)
+            if state.phase == BattlePhase.FINISHED or player_id not in state.players:
+                return
+            now = self.clock()
+            if player_id in state.disconnected_at:
+                return
+            used = state.disconnect_seconds_used.get(player_id, 0)
+            remaining_budget = max(0, 180 - used)
+            state.disconnected_at[player_id] = now
+            state.disconnect_deadlines[player_id] = now + min(90, remaining_budget)
+            if not state.paused:
+                state.paused = True
+                state.paused_phase = state.phase
+                state.paused_seconds_remaining = phase_seconds_remaining(state, self.clock)
+                state.phase_deadline = None
+            self._record_lifecycle(room_id, "disconnect", {"player_id": player_id})
+
+    def reconnect_player(self, room_id: str, player_id: str) -> None:
+        with self.room_locks.setdefault(room_id, RLock()):
+            state = self.get_state(room_id)
+            if state.phase == BattlePhase.FINISHED or player_id not in state.disconnected_at:
+                raise BattleV2Error("reconnect rejected")
+            now = self.clock()
+            deadline = state.disconnect_deadlines.get(player_id, now)
+            if now >= deadline:
+                raise BattleV2Error("reconnect grace expired")
+            elapsed = max(0, int(now - state.disconnected_at.pop(player_id)))
+            state.disconnect_seconds_used[player_id] = min(180, state.disconnect_seconds_used.get(player_id, 0) + elapsed)
+            state.disconnect_deadlines.pop(player_id, None)
+            if not state.disconnected_at:
+                state.paused = False
+                state.phase = state.paused_phase or state.phase
+                state.paused_phase = None
+                remaining = max(15, int(state.paused_seconds_remaining or 0))
+                state.paused_seconds_remaining = None
+                state.phase_deadline = now + remaining
+            self._record_lifecycle(room_id, "reconnect", {"player_id": player_id})
+
+    def expire_disconnects(self, room_id: str) -> bool:
+        with self.room_locks.setdefault(room_id, RLock()):
+            state = self.get_state(room_id)
+            if state.phase == BattlePhase.FINISHED:
+                return False
+            now = self.clock()
+            expired = [player_id for player_id, deadline in state.disconnect_deadlines.items() if now >= deadline]
+            if not expired:
+                return False
+            for player_id in expired:
+                started = state.disconnected_at.get(player_id, now)
+                state.disconnect_seconds_used[player_id] = min(180, state.disconnect_seconds_used.get(player_id, 0) + max(0, int(now - started)))
+            connected = [player_id for player_id in state.players if player_id not in expired and player_id not in state.disconnected_at]
+            if connected:
+                self._finish_match(state, "FORFEIT", connected[0], "disconnect_budget" if any(state.disconnect_seconds_used.get(pid, 0) >= 180 for pid in expired) else "disconnect", event_type="forfeit")
+            elif len(expired) == len(state.players):
+                self._finish_match(state, "NO_CONTEST", None, "disconnect", event_type="no_contest")
+            self._record_lifecycle(room_id, "expire_disconnects", {})
+            return True
+
+    def _capture_turn_ledger(self, state: BattleState) -> bool:
+        events = state.event_log[state.progress_event_cursor:]
+        state.progress_event_cursor = len(state.event_log)
+        progress = False
+        for event in events:
+            amount = int(event.payload.get("actual_hp_damage", event.payload.get("amount", 0)) or 0)
+            source = event.payload.get("source_player_id")
+            target = event.payload.get("target_player_id")
+            if event.type in {"damage", "status_damage"} and amount > 0 and source and target:
+                credited = next((pid for pid in state.players if pid != source), source) if event.payload.get("is_reflected") else source
+                if source != target or event.payload.get("is_reflected"):
+                    state.damage_to_hp[credited] = state.damage_to_hp.get(credited, 0) + amount
+                progress = progress or source != target
+            elif event.type in {"energy_drained", "energy_stolen", "status_stack_changed", "status_consumed"}:
+                progress = progress or amount > 0
+            elif event.type == "status_applied":
+                families = set(event.payload.get("families") or [])
+                progress = progress or bool(families.intersection({"MARK", "STUN", "CONTROL", "AFFLICTION", "SOUL"})) or int(event.payload.get("stacks", 0) or 0) > 1
+            elif event.type in {"domain_ended", "replacement_revoked", "hostile_status_expired"}:
+                progress = True
+        return progress
+
+    def _complete_player_turn(self, state: BattleState, player_id: str, *, timeout: bool) -> None:
+        if state.phase == BattlePhase.FINISHED and state.result_type is None:
+            winner = state.winner_id
+            state.phase = BattlePhase.TURN_END
+            self._finish_match(state, "WIN" if winner else "DRAW", winner, "defeat")
+        state.player_turns_completed += 1
+        state.logical_time += 1
+        if timeout:
+            state.timeout_total[player_id] = state.timeout_total.get(player_id, 0) + 1
+            state.timeout_consecutive[player_id] = state.timeout_consecutive.get(player_id, 0) + 1
+        else:
+            state.timeout_consecutive[player_id] = 0
+        if self._capture_turn_ledger(state):
+            state.no_progress_turns = 0
+        else:
+            state.no_progress_turns += 1
+        opponents = [pid for pid in state.players if pid != player_id]
+        if timeout and (state.timeout_consecutive[player_id] >= 3 or state.timeout_total[player_id] >= 5):
+            self._finish_match(state, "FORFEIT", opponents[0] if opponents else None, "timeout", event_type="forfeit")
+        elif state.player_turns_completed >= 72:
+            self._finish_by_tiebreak(state, "hard_cap")
+        elif state.no_progress_turns >= 12:
+            self._finish_by_tiebreak(state, "no_progress")
+        elif state.no_progress_turns == 8:
+            state.event_log.append(BattleEvent("no_progress_warning", "No-progress tiebreak in four player turns", state.turn_number))
 
     def surrender(self, room_id: str, player_id: str) -> dict:
         """Finish a match by authoritative player surrender."""
@@ -601,14 +770,9 @@ class BattleV2Manager:
         winners = [pid for pid in state.players if pid != player_id]
         if not winners:
             raise BattleV2Error("no opponent to award surrender")
-        state.winner_id = winners[0]
-        state.phase = BattlePhase.FINISHED
-        state.event_log.append(BattleEvent(
-            type="battle_finished",
-            message=f"{state.winner_id} wins by surrender",
-            turn_number=state.turn_number,
-            payload={"winner_id": state.winner_id, "surrendered_id": player_id},
-        ))
+        if state.phase == BattlePhase.FINISHED:
+            raise BattleV2Error("battle already finished")
+        self._finish_match(state, "FORFEIT", winners[0], "surrender", event_type="forfeit")
         return self.serialize_for_player(room_id, player_id)
 
     def submit_plan(self, room_id: str, player_id: str, actions: list[dict[str, Any]]) -> dict:
@@ -619,11 +783,11 @@ class BattleV2Manager:
         self._ensure_turn_player(state, player_id)
         previous_actions = deepcopy(state.pending_actions.get(player_id, []))
         previous_order = list(state.queue_order.get(player_id, []))
+        original_deadline = state.phase_deadline
         parsed = [payload_to_action(player_id, index, payload) for index, payload in enumerate(actions)]
         state.pending_actions[player_id] = parsed
         state.queue_order[player_id] = [action.id for action in sorted(parsed, key=lambda item: item.queue_index)]
         state.phase = BattlePhase.QUEUE_REVIEW
-        arm_phase_timer(state, self.timer_policy, self.clock)
         try:
             if all(not action.wildcard_pays for action in parsed):
                 self._validate_non_wildcard_plan(room_id, state, player_id)
@@ -633,7 +797,7 @@ class BattleV2Manager:
             state.pending_actions[player_id] = previous_actions
             state.queue_order[player_id] = previous_order
             state.phase = BattlePhase.PLANNING
-            arm_phase_timer(state, self.timer_policy, self.clock)
+            state.phase_deadline = original_deadline
             raise BattleV2Error(str(exc)) from exc
         return self.serialize_for_player(room_id, player_id)
 
@@ -675,6 +839,7 @@ class BattleV2Manager:
         state = self.get_state(room_id)
         self._ensure_turn_player(state, player_id)
         resolve_queue(state, player_id, self._skills_for_room(room_id))
+        self._complete_player_turn(state, player_id, timeout=False)
         self._refresh_first_creation_progress(room_id)
         self._grant_next_turn_energy(room_id, player_id)
         return self.serialize_for_player(room_id, player_id)
@@ -688,7 +853,6 @@ class BattleV2Manager:
         state.pending_actions[player_id] = []
         state.queue_order[player_id] = []
         state.phase = BattlePhase.PLANNING
-        arm_phase_timer(state, self.timer_policy, self.clock)
         return self.serialize_for_player(room_id, player_id)
 
     def convert_energy(self, room_id: str, player_id: str, source: str, target: str) -> dict:
@@ -750,6 +914,7 @@ class BattleV2Manager:
         )
         finish_turn(state, player_id)
         check_winner(state)
+        self._complete_player_turn(state, player_id, timeout=False)
         self._refresh_first_creation_progress(room_id)
         self._grant_next_turn_energy(room_id, player_id)
         return self.serialize_for_player(room_id, player_id)
@@ -813,6 +978,7 @@ class BattleV2Manager:
         state.queue_order[player_id] = [action.id for action in actions]
         state.phase = BattlePhase.QUEUE_REVIEW
         resolve_queue(state, player_id, self._skills_for_room(room_id))
+        self._complete_player_turn(state, player_id, timeout=False)
         self._refresh_first_creation_progress(room_id)
         self._grant_next_turn_energy(room_id, player_id)
         return self.serialize_for_player(room_id, player_id)
@@ -827,32 +993,26 @@ class BattleV2Manager:
         """Locked implementation for authoritative timeout transitions."""
 
         state = self.get_state(room_id)
-        if not phase_timer_expired(state, self.clock) or state.phase == BattlePhase.FINISHED:
+        if state.paused or not phase_timer_expired(state, self.clock) or state.phase == BattlePhase.FINISHED:
             return False
         timed_out_player_id = state.turn_player_id
-        if state.phase == BattlePhase.QUEUE_REVIEW and state.pending_actions.get(timed_out_player_id):
-            try:
-                resolve_queue(state, timed_out_player_id, self._skills_for_room(room_id))
-            except ResolverError:
-                state.pending_actions[timed_out_player_id] = []
-                state.queue_order[timed_out_player_id] = []
-                finish_turn(state, timed_out_player_id)
-                check_winner(state)
-        else:
-            state.pending_actions[timed_out_player_id] = []
-            state.queue_order[timed_out_player_id] = []
-            finish_turn(state, timed_out_player_id)
-            check_winner(state)
+        state.pending_actions[timed_out_player_id] = []
+        state.queue_order[timed_out_player_id] = []
+        finish_turn(state, timed_out_player_id)
+        check_winner(state)
         state.event_log.append(BattleEvent(
             type="phase_timeout",
             message=f"{state.players[timed_out_player_id].name} ran out of time",
             turn_number=state.turn_number,
             payload={"player_id": timed_out_player_id},
         ))
+        state.event_log.append(BattleEvent("auto_pass", f"{state.players[timed_out_player_id].name} auto-passed", state.turn_number, {"player_id": timed_out_player_id}))
+        self._complete_player_turn(state, timed_out_player_id, timeout=True)
         self._refresh_first_creation_progress(room_id)
         self._grant_next_turn_energy(room_id, timed_out_player_id)
         arm_phase_timer(state, self.timer_policy, self.clock)
         state.state_revision += 1
+        self._record_lifecycle(room_id, "expire_phase", {})
         return True
 
     def serialize_for_player(self, room_id: str, viewer_id: str) -> dict:
@@ -885,10 +1045,12 @@ class BattleV2Manager:
     def _ensure_turn_player(self, state: BattleState, player_id: str) -> None:
         if player_id not in state.players:
             raise BattleV2Error(f"unknown player: {player_id}")
+        if state.phase == BattlePhase.FINISHED:
+            raise BattleV2Error("battle already finished")
+        if state.paused:
+            raise BattleV2Error("battle is paused for reconnect")
         if state.turn_player_id != player_id:
             raise BattleV2Error("not this player's turn")
-        if state.phase == BattlePhase.FINISHED:
-            raise BattleV2Error("battle is finished")
 
     def _advance_without_action(self, room_id: str, previous_player_id: str) -> None:
         state = self.get_state(room_id)

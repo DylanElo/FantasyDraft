@@ -14,26 +14,45 @@ export class ResultScene extends BaseScene {
       this.drawAppBg(frame);
       const state = this.store.state;
       const mine = this.store.mineId();
-      const victory = state && state.winner_id === mine;
-      this.topBar(frame, victory ? 'Victory' : 'Defeat', () => this.store.resetToLobby());
+      // WIN/FORFEIT both resolve to a decisive winner_id; DRAW/NO_CONTEST
+      // have none and must be shown as their own outcome, not defaulted to
+      // "Defeat".
+      const outcome = !state ? 'unknown'
+        : state.winner_id === mine ? 'win'
+        : state.winner_id ? 'loss'
+        : String(state.result_type || '').toUpperCase() === 'DRAW' ? 'draw'
+        : 'no_contest';
+      const victory = outcome === 'win';
+      const outcomeLabel = { win: 'Victory', loss: 'Defeat', draw: 'Draw', no_contest: 'No Contest', unknown: 'Result' }[outcome];
+      const heroLabel = { win: 'DOMAIN WON', loss: 'DOMAIN LOST', draw: 'DOMAIN CONTESTED', no_contest: 'NO CONTEST' }[outcome] || 'RESULT';
+      const heroColor = victory ? COLORS.selection : outcome === 'loss' ? COLORS.enemy : COLORS.line;
+      const heroTextColor = victory ? COLORS.paperText : outcome === 'loss' ? '#f1a0a0' : COLORS.text;
+      this.topBar(frame, outcomeLabel, () => this.store.resetToLobby());
       const x = frame.x + frame.gutter;
       const compact = frame.height < 730;
       const heroY = compact ? 84 : 108;
       const heroH = compact ? 144 : 180;
-      this.cardPanel(x, heroY, frame.width - 32, heroH, victory ? COLORS.selection : COLORS.enemy, 0.84);
-      this.text(frame.x + frame.width / 2, heroY + (compact ? 22 : 26), victory ? 'DOMAIN WON' : 'DOMAIN LOST', {
+      this.cardPanel(x, heroY, frame.width - 32, heroH, heroColor, 0.84);
+      this.text(frame.x + frame.width / 2, heroY + (compact ? 22 : 26), heroLabel, {
         fontFamily: 'Cinzel, Inter, serif',
         fontSize: compact ? '27px' : '32px',
         fontStyle: '900',
-        color: victory ? COLORS.paperText : '#f1a0a0',
+        color: heroTextColor,
       }).setOrigin(0.5, 0);
-      const winner = state && state.players && state.players[state.winner_id] ? state.players[state.winner_id].name : 'Unknown';
+      const winnerName = state && state.players && state.players[state.winner_id] ? state.players[state.winner_id].name : null;
+      const summaryLine = winnerName ? `${winnerName} controls the domain`
+        : outcome === 'draw' ? 'Neither side controls the domain'
+        : 'No result was recorded for this domain';
       const last = this.store.records[0] || {};
-      this.mono(frame.x + frame.width / 2, heroY + (compact ? 69 : 76), `${winner} controls the domain`, { color: COLORS.text }).setOrigin(0.5, 0);
+      this.mono(frame.x + frame.width / 2, heroY + (compact ? 69 : 76), summaryLine, { color: COLORS.text }).setOrigin(0.5, 0);
       this.mono(x + 22, heroY + heroH - 52, `Turns: ${last.turns || (state && state.turn_number) || 0}`, { color: COLORS.text });
       this.mono(x + 160, heroY + heroH - 52, `Damage: ${last.damage || 0}`, { color: COLORS.text });
-      this.mono(x + 22, heroY + heroH - 29, victory ? 'Route clear registered.' : 'Route remains uncleared.', {
-        color: victory ? '#b7dbc0' : '#f1a0a0',
+      const routeLine = victory ? 'Route clear registered.'
+        : outcome === 'loss' ? 'Route remains uncleared.'
+        : outcome === 'draw' ? 'Route contested — no clear registered.'
+        : 'No route progress registered.';
+      this.mono(x + 22, heroY + heroH - 29, routeLine, {
+        color: victory ? '#b7dbc0' : outcome === 'loss' ? '#f1a0a0' : COLORS.muted,
         fontSize: '9px',
       });
       const strikesY = heroY + heroH + (compact ? 16 : 26);
@@ -54,7 +73,7 @@ export class ResultScene extends BaseScene {
         });
       }
       const mission = this.store.activeMission();
-      const profile = (window.JJK_BOOTSTRAP && window.JJK_BOOTSTRAP.firstCreation && window.JJK_BOOTSTRAP.firstCreation.profile) || {};
+      const profile = this.store.firstCreationProfile();
       const completed = (profile.completed_missions || []).length;
       const total = this.store.missions().length || 1;
       const missionY = strikesY + strikesH + (compact ? 14 : 22);

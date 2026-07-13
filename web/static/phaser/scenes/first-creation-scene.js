@@ -53,7 +53,7 @@ export class FirstCreationScene extends DraftScene {
     renderMissionHeader(frame, y) {
       const x = frame.x + frame.gutter;
       const mission = this.store.activeMission();
-      const profile = (window.JJK_BOOTSTRAP && window.JJK_BOOTSTRAP.firstCreation && window.JJK_BOOTSTRAP.firstCreation.profile) || {};
+      const profile = this.store.firstCreationProfile();
       const completed = (profile.completed_missions || []).length;
       const total = this.store.missions().length || 1;
       const pct = clamp(completed / total, 0, 1);

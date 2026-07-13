@@ -194,3 +194,100 @@ console.log(JSON.stringify({ emitted, scene: store.scene, state: store.state, ig
     assert probe["scene"] == "LobbyScene"
     assert probe["state"] is None
     assert probe["ignored"] is True
+
+
+def test_every_terminal_outcome_routes_to_result_scene_not_just_a_decisive_winner():
+    """Regression: receiveBattleState previously routed to ResultScene only
+    when winner_id was truthy, so a DRAW or NO_CONTEST finish (winner_id
+    null) never left CombatScene client-side even though the match was
+    genuinely over server-side."""
+
+    script = r"""
+globalThis.window = { JJK_BOOT: {}, setTimeout: () => {}, __phaserShellDebug: null };
+globalThis.document = { getElementById: () => null };
+globalThis.localStorage = { getItem: () => null, setItem: () => {} };
+const { GameStore } = await import('./web/static/phaser/store/game-store.js');
+function freshStore() {
+  const store = Object.create(GameStore.prototype);
+  store.lobbyStatus = null; store.actions = []; store.actionWildPays = {}; store.selectedCasterSlot = 0;
+  store.selectedSkillId = null; store.queueSubmitting = false; store.queueReviewOpen = false;
+  store.playerId = 'p1'; store.eventCursor = 0; store.playbackEvents = []; store.recentEvents = [];
+  store.records = []; store.ignoreBattleUpdates = false;
+  store.changeScene = (scene) => { store.scene = scene; };
+  store.ensureSelectedCaster = () => {};
+  store.ensureWildcardPayments = () => {};
+  store.notify = () => {};
+  return store;
+}
+const outcomes = {};
+for (const [label, payload] of Object.entries({
+  win: { winner_id: 'p1', result_type: 'WIN', phase: 'finished', players: { p1: {} }, event_log: [], pending_actions: {} },
+  forfeit: { winner_id: 'p2', result_type: 'FORFEIT', phase: 'finished', players: { p2: {} }, event_log: [], pending_actions: {} },
+  draw: { winner_id: null, result_type: 'DRAW', phase: 'finished', players: {}, event_log: [], pending_actions: {} },
+  no_contest: { winner_id: null, result_type: 'NO_CONTEST', phase: 'finished', players: {}, event_log: [], pending_actions: {} },
+  ongoing: { winner_id: null, result_type: null, phase: 'planning', turn_player_id: 'p1', players: {}, event_log: [], pending_actions: {} },
+})) {
+  const store = freshStore();
+  store.receiveBattleState(payload);
+  outcomes[label] = store.scene;
+}
+console.log(JSON.stringify(outcomes));
+"""
+    result = subprocess.run(
+        ["node", "--experimental-default-type=module", "-"],
+        input=script,
+        text=True,
+        capture_output=True,
+        cwd=ROOT,
+        check=True,
+    )
+    outcomes = json.loads(result.stdout)
+    assert outcomes["win"] == "ResultScene"
+    assert outcomes["forfeit"] == "ResultScene"
+    assert outcomes["draw"] == "ResultScene"
+    assert outcomes["no_contest"] == "ResultScene"
+    assert outcomes["ongoing"] == "CombatScene"
+
+
+def test_first_creation_account_updates_live_from_battle_updates():
+    """Regression: mission counters/unlocks/active route were read only from
+    the page-load bootstrap profile snapshot, so they never changed after a
+    match finished without a full page reload. receiveBattleState must
+    store first_creation_account, and firstCreationProfile()/activeMission()
+    must prefer it over the stale bootstrap snapshot."""
+
+    script = r"""
+globalThis.JJK_BOOTSTRAP = { firstCreation: { profile: { completed_missions: [] }, missions: [
+  { id: 'mission_a' }, { id: 'mission_b' },
+] } };
+globalThis.window = { JJK_BOOT: {}, setTimeout: () => {}, __phaserShellDebug: null };
+globalThis.document = { getElementById: () => null };
+globalThis.localStorage = { getItem: () => null, setItem: () => {} };
+const { GameStore } = await import('./web/static/phaser/store/game-store.js');
+const store = Object.create(GameStore.prototype);
+store.lobbyStatus = null; store.actions = []; store.actionWildPays = {}; store.selectedCasterSlot = 0;
+store.selectedSkillId = null; store.queueSubmitting = false; store.queueReviewOpen = false;
+store.playerId = 'p1'; store.eventCursor = 0; store.playbackEvents = []; store.recentEvents = [];
+store.records = []; store.ignoreBattleUpdates = false; store.firstCreationAccount = null;
+store.changeScene = (scene) => { store.scene = scene; };
+store.ensureSelectedCaster = () => {}; store.ensureWildcardPayments = () => {}; store.notify = () => {};
+const beforeMission = store.activeMission();
+store.receiveBattleState({
+  winner_id: 'p1', result_type: 'WIN', phase: 'finished', players: { p1: {} }, event_log: [], pending_actions: {},
+  first_creation_account: { completed_missions: ['mission_a'] },
+});
+const afterMission = store.activeMission();
+console.log(JSON.stringify({ beforeMission, afterMission, live: store.firstCreationAccount }));
+"""
+    result = subprocess.run(
+        ["node", "--experimental-default-type=module", "-"],
+        input=script,
+        text=True,
+        capture_output=True,
+        cwd=ROOT,
+        check=True,
+    )
+    probe = json.loads(result.stdout)
+    assert probe["beforeMission"]["id"] == "mission_a"
+    assert probe["afterMission"]["id"] == "mission_b"
+    assert probe["live"]["completed_missions"] == ["mission_a"]

@@ -223,7 +223,13 @@ def test_index_exposes_first_creation_payload_when_battle_v2_enabled(monkeypatch
     assert "completed_missions" in html
     assert "unlock_registry" in html
     assert "first_creation_account" not in runtime_js
-    assert "first_creation_account" not in game_store_js
+    # Regression: mission counters/unlocks/active route previously only ever
+    # came from this page-load bootstrap payload, so they never updated
+    # after a match finished without a full reload. game-store.js must now
+    # store first_creation_account live from battle_v2_update and prefer it
+    # over the bootstrap snapshot.
+    assert "data.first_creation_account" in game_store_js
+    assert "firstCreationProfile" in game_store_js
 
 
 def test_v2_page_uses_phaser_container_css_not_stitch_bridge(monkeypatch):

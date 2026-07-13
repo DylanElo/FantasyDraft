@@ -42,6 +42,11 @@ export class GameStore {
       this.commandNonceCounter = 0;
       this.resumeSession = this.loadResumeSession();
       this.ignoreBattleUpdates = false;
+      // Live-updated from the most recent battle_v2_update's
+      // first_creation_account field; falls back to the page-load bootstrap
+      // profile only until the first update arrives, so mission counters,
+      // unlocks, and the active route reflect the server without a reload.
+      this.firstCreationAccount = null;
       this.records = this.loadRecords();
       this.playerTeam = preset('story_tutorial', ['yuji_itadori', 'megumi_fushiguro', 'nobara_kugisaki']);
       this.enemyTeam = preset('jjk0_beginner_special', ['yuta_okkotsu_jjk0', 'maki_zenin', 'toge_inumaki']);
@@ -201,9 +206,16 @@ export class GameStore {
       return ((BOOT.firstCreation && BOOT.firstCreation.missions) || []).slice();
     }
 
+    /* The live, socket-updated profile (mission counters, unlocks) once any
+       battle_v2_update with first_creation_account has arrived; falls back
+       to the page-load bootstrap snapshot only before that. */
+    firstCreationProfile() {
+      return this.firstCreationAccount || (BOOT.firstCreation && BOOT.firstCreation.profile) || {};
+    }
+
     activeMission() {
       const missions = this.missions();
-      const profile = (BOOT.firstCreation && BOOT.firstCreation.profile) || {};
+      const profile = this.firstCreationProfile();
       const completed = new Set(profile.completed_missions || []);
       return missions.find((mission) => !completed.has(mission.id)) || missions[0] || null;
     }
@@ -397,6 +409,9 @@ export class GameStore {
         this.recentEvents = log.slice(-8).reverse();
       }
       this.state = data;
+      if (data.first_creation_account) {
+        this.firstCreationAccount = data.first_creation_account;
+      }
       this.disconnectDeadline = data.paused && data.disconnect_grace_seconds_remaining != null
         ? Date.now() + Number(data.disconnect_grace_seconds_remaining) * 1000
         : null;
@@ -413,7 +428,10 @@ export class GameStore {
         this.queueReviewOpen = false;
       }
       this.ensureSelectedCaster();
-      if (data.winner_id) {
+      // Route every terminal result (WIN/FORFEIT/DRAW/NO_CONTEST) to
+      // ResultScene, not just a decisive winner_id -- a draw or no-contest
+      // still finishes the match and previously never left CombatScene.
+      if (data.phase === 'finished') {
         this.rememberResult(data);
         this.changeScene('ResultScene');
       } else {

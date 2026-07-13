@@ -1,34 +1,93 @@
-import { COLORS, ENERGY_COLORS } from '../core/runtime-config.js?v=17';
-import { clamp, shortText, titleize } from '../core/text.js?v=17';
+import { COLORS, ENERGY_COLORS, TOKEN_TYPE } from '../core/runtime-config.js?v=17';
+import { clamp, initials, shortText, titleize } from '../core/text.js?v=17';
 import { eventTone } from '../fx/event-metrics.js?v=17';
 import { CombatQueueReviewScene } from './combat-queue-review-scene.js?v=17';
+
+const WORLD_KEY = 'combat-underpass-night';
+const LOCATION_LINE = 'KASUMIGAOKA MUNICIPAL UNDERPASS';
 
 export class CombatScene extends CombatQueueReviewScene {
     constructor() {
       super('CombatScene');
     }
 
-    renderTopHud(frame, state, me) {
-      const x = frame.x + frame.gutter;
+    combatLayout(frame) {
+      const compact = frame.height < 830;
+      const dockH = clamp(Math.round(frame.height * 0.34), compact ? 270 : 286, 304);
+      const dockY = frame.height - dockH;
+      const cardH = compact ? 108 : frame.height > 900 ? 120 : 112;
+      const enemyY = compact ? 108 : 116;
+      const allyY = dockY - cardH - 28;
+      const fieldTop = enemyY + cardH + 12;
+      const fieldBottom = allyY - 12;
+      const contentX = frame.x + 14;
+      const contentW = frame.width - 28;
+      const gap = 8;
+      const cardW = (contentW - gap * 2) / 3;
+      return {
+        compact,
+        dockH,
+        dockY,
+        cardH,
+        enemyY,
+        allyY,
+        fieldTop,
+        fieldBottom,
+        fieldH: Math.max(116, fieldBottom - fieldTop),
+        contentX,
+        contentW,
+        gap,
+        cardW,
+      };
+    }
+
+    renderWorld(frame) {
+      if (this.textures.exists(WORLD_KEY)) {
+        const world = this.add.image(frame.x + frame.width / 2, frame.height / 2, WORLD_KEY);
+        world.setDisplaySize(frame.width, frame.height);
+        world.setDepth(-30);
+        this.nodes.push(world);
+      } else {
+        this.graphics.fillGradientStyle(0x07131c, 0x0b1820, 0x03070b, 0x020406, 1);
+        this.graphics.fillRect(frame.x, 0, frame.width, frame.height);
+      }
+
       const g = this.graphics;
-      const hud = this.layout.topHud();
-      g.fillStyle(COLORS.surfaceDeep, 0.96);
-      g.fillRoundedRect(hud.x, hud.y, hud.width, hud.height, 18);
-      g.fillStyle(this.store.isMyTurn() ? COLORS.talismanDim : COLORS.enemy, this.store.isMyTurn() ? 0.1 : 0.12);
-      g.fillRoundedRect(hud.x + 3, hud.y + 3, hud.width - 6, 17, 14);
-      g.lineStyle(2, this.store.isMyTurn() ? COLORS.selection : COLORS.enemy, 0.56);
-      g.strokeRoundedRect(hud.x, hud.y, hud.width, hud.height, 18);
-      g.lineStyle(1, COLORS.talismanDim, 0.22);
-      g.beginPath();
-      g.moveTo(hud.x + 14, hud.y + hud.height - 10);
-      g.lineTo(hud.x + hud.width - 14, hud.y + hud.height - 10);
-      g.strokePath();
-      this.mono(x, 23, `TURN ${state.turn_number || 1}`, { color: COLORS.paperText, fontSize: '10px' });
-      this.text(x, 37, this.store.isMyTurn() ? 'Your Domain' : 'Enemy Domain', {
-        fontFamily: 'Cinzel, Inter, serif',
-        fontSize: '19px',
-        fontStyle: '900',
+      // Local grading preserves the environment instead of burying it beneath a global panel.
+      // Canvas mode does not reliably preserve per-corner gradient alpha.
+      // Use explicit translucent local grades so the authored environment remains visible.
+      g.fillStyle(0x020507, 0.14);
+      g.fillRect(frame.x, 0, frame.width, frame.height);
+      g.fillStyle(0x071016, 0.12);
+      g.fillRect(frame.x, 0, frame.width, 94);
+      g.fillStyle(0x020506, 0.24);
+      g.fillRect(frame.x, frame.height - 332, frame.width, 332);
+
+      // Rain and cursed residue remain restrained and spatially tied to the location.
+      for (let index = 0; index < 22; index += 1) {
+        const x = frame.x + 10 + ((index * 47) % Math.max(40, frame.width - 20));
+        const y = 66 + ((index * 83) % Math.max(120, frame.height - 160));
+        const length = 14 + (index % 4) * 7;
+        g.lineStyle(index % 5 === 0 ? 1.4 : 1, 0xb7d5dc, index % 5 === 0 ? 0.18 : 0.09);
+        g.beginPath();
+        g.moveTo(x, y);
+        g.lineTo(x - 4, y + length);
+        g.strokePath();
+      }
+      [0.22, 0.48, 0.73].forEach((progress, index) => {
+        const cx = frame.x + frame.width * (0.28 + progress * 0.42);
+        const cy = frame.height * (0.26 + progress * 0.43);
+        g.fillStyle(COLORS.domain, 0.028 + index * 0.012);
+        g.fillCircle(cx, cy, 58 + index * 34);
       });
+    }
+
+    renderTopHud(frame, state, me) {
+      const g = this.graphics;
+      const x = frame.x + 10;
+      const y = 10;
+      const w = frame.width - 20;
+      const mine = this.store.isMyTurn();
       const queueCount = this.store.actions.length;
       const disconnectSeconds = this.store.disconnectSecondsRemaining();
       const connectionWarning = this.store.connectionState === 'disconnected'
@@ -40,33 +99,80 @@ export class CombatScene extends CombatQueueReviewScene {
         || (this.store.queueSubmitting
           ? 'RESOLVING'
           : this.store.queueReviewOpen
-            ? 'REVIEW'
+            ? 'QUEUE REVIEW'
             : this.store.controlsLocked()
-              ? 'LOCKED'
+              ? 'ENEMY CONTROL'
               : queueCount
-                ? 'PLANNING'
-                : 'READY');
-      const badgeFill = connectionWarning ? COLORS.enemy : queueCount ? COLORS.queued : COLORS.panel2;
-      const badgeAlpha = connectionWarning ? 0.9 : queueCount ? 0.86 : 0.72;
-      this.graphics.fillStyle(badgeFill, badgeAlpha);
-      this.graphics.fillRoundedRect(x + 144, 43, 86, 20, 10);
-      this.graphics.lineStyle(1, badgeFill, connectionWarning ? 0.95 : queueCount ? 0.78 : 0.5);
-      this.graphics.strokeRoundedRect(x + 144, 43, 86, 20, 10);
-      this.mono(x + 187, 48, `QUEUE ${queueCount}/3`, {
-        color: queueCount ? '#d8f0dc' : COLORS.muted,
+                ? 'ORDERS OPEN'
+                : 'YOUR MOVE');
+
+      g.fillStyle(0x05090d, 0.78);
+      g.fillPoints([
+        { x, y },
+        { x: x + w - 48, y },
+        { x: x + w, y: y + 22 },
+        { x: x + w, y: y + 68 },
+        { x: x + 18, y: y + 68 },
+        { x, y: y + 50 },
+      ], true);
+      g.fillStyle(mine ? COLORS.selection : COLORS.enemy, 0.12);
+      g.fillTriangle(x, y, x + 122, y, x, y + 58);
+      g.lineStyle(1.5, mine ? COLORS.selection : COLORS.enemy, 0.52);
+      g.strokePoints([
+        { x, y },
+        { x: x + w - 48, y },
+        { x: x + w, y: y + 22 },
+        { x: x + w, y: y + 68 },
+        { x: x + 18, y: y + 68 },
+        { x, y: y + 50 },
+      ], true);
+      g.lineStyle(1, 0xd8c28a, 0.18);
+      g.beginPath();
+      g.moveTo(x + 12, y + 21);
+      g.lineTo(x + w - 66, y + 21);
+      g.strokePath();
+
+      this.mono(x + 12, y + 7, LOCATION_LINE, {
+        color: COLORS.paperText,
+        fontSize: frame.width < 380 ? '6px' : '7px',
+        fontStyle: '700',
+      });
+      this.mono(x + w - 132, y + 7, '22:47 / HEAVY RAIN', {
+        color: COLORS.muted,
+        fontSize: '6px',
+      });
+      this.text(x + 12, y + 27, `Turn ${state.turn_number || 1}`, {
+        fontFamily: TOKEN_TYPE.display || 'Georgia, serif',
+        fontSize: '20px',
+        fontStyle: '700',
+      });
+      this.mono(x + 14, y + 52, statusLabel, {
+        color: connectionWarning ? '#ffb3b3' : mine ? COLORS.paperText : '#f1a0a0',
         fontSize: '7px',
-      }).setOrigin(0.5, 0);
-      this.mono(x + 144, 63, statusLabel, {
-        color: connectionWarning ? '#ffe0e0' : statusLabel === 'READY' ? '#b7dbc0' : COLORS.paperText,
+        fontStyle: '700',
+      });
+
+      this.renderEnergyMeter(x + w - 142, y + 35, me && me.energy);
+      this.mono(x + 151, y + 53, `QUEUE ${queueCount}/3`, {
+        color: queueCount ? '#b7dbc0' : COLORS.dim,
         fontSize: '7px',
       });
-      this.renderEnergyMeter(frame.x + frame.width - 150, 24, me && me.energy);
-      this.button(frame.x + frame.width - frame.gutter - 40, 26, 40, 32, 'Exit', () => this.store.resetToLobby(), {
-        fill: COLORS.surfaceRaised,
+      for (let index = 0; index < 3; index += 1) {
+        const active = index < queueCount;
+        const px = x + 217 + index * 14;
+        g.fillStyle(active ? COLORS.queued : COLORS.surfaceRaised, active ? 0.92 : 0.62);
+        g.fillTriangle(px, y + 54, px + 6, y + 48, px + 12, y + 54);
+        g.lineStyle(1, active ? COLORS.queued : COLORS.line, active ? 0.8 : 0.42);
+        g.strokeTriangle(px, y + 54, px + 6, y + 48, px + 12, y + 54);
+      }
+
+      this.button(x + w - 42, y + 23, 34, 34, 'II', () => this.store.resetToLobby(), {
+        fill: 0x0d1114,
         stroke: COLORS.enemy,
-        fontSize: '9px',
+        fontSize: '11px',
         mono: true,
-        radius: 16,
+        radius: 5,
+        strokeAlpha: 0.72,
       });
     }
 
@@ -79,207 +185,377 @@ export class CombatScene extends CombatQueueReviewScene {
       ];
       slots.forEach((slot, index) => {
         const count = Number((energy && energy[slot.color]) || 0);
-        const cx = x + index * 27;
-        this.graphics.fillStyle(COLORS.inkBlack, 0.9);
-        this.graphics.fillCircle(cx, y, 11);
-        this.graphics.fillStyle(ENERGY_COLORS[slot.color], count ? 0.95 : 0.14);
-        this.graphics.fillCircle(cx, y, 8);
-        this.graphics.lineStyle(1.5, slot.color === 'white' ? COLORS.talismanPaper : ENERGY_COLORS[slot.color], 0.82);
-        this.graphics.strokeCircle(cx, y, 10);
-        this.mono(cx, y - 3, slot.label, { color: slot.color === 'white' ? '#08080a' : COLORS.text, fontSize: '7px' }).setOrigin(0.5, 0);
-        this.mono(cx, y + 13, String(count), { color: COLORS.text, fontSize: '8px' }).setOrigin(0.5, 0);
+        const cx = x + index * 24;
+        this.graphics.fillStyle(0x030507, 0.86);
+        this.graphics.fillCircle(cx, y, 9);
+        this.graphics.fillStyle(ENERGY_COLORS[slot.color], count ? 0.94 : 0.14);
+        this.graphics.fillCircle(cx, y, 6.3);
+        this.graphics.lineStyle(1, slot.color === 'white' ? COLORS.talismanPaper : ENERGY_COLORS[slot.color], count ? 0.82 : 0.34);
+        this.graphics.strokeCircle(cx, y, 8.5);
+        this.mono(cx, y - 3.5, slot.label, {
+          color: slot.color === 'white' ? '#08080a' : COLORS.text,
+          fontSize: '6px',
+        }).setOrigin(0.5, 0);
+        this.mono(cx, y + 11, String(count), { color: COLORS.text, fontSize: '7px' }).setOrigin(0.5, 0);
       });
     }
 
-    fighterLayout(frame, dockY) {
-      const compact = frame.height < 730;
-      const token = compact ? 58 : 66;
-      const enemyY = compact ? 86 : 92;
-      const allyY = Math.max(enemyY + token + 128, dockY - token - (compact ? 44 : 54));
-      const centerY = enemyY + token + 42;
-      return {
-        token,
-        enemyY,
-        allyY,
-        centerY,
-        centerH: Math.max(88, allyY - centerY - 28),
-      };
+    renderPortraitPlate(character, x, y, w, h, options = {}) {
+      const dead = !character || !character.alive;
+      const id = character && (character.character_id || character.id);
+      const key = `${this.store.portraitKey(id)}-card`;
+      if (this.textures.exists(key)) {
+        const image = this.add.image(x + w / 2, y + h / 2, key);
+        image.setDisplaySize(w, h);
+        image.setAlpha(dead ? 0.28 : (options.alpha === undefined ? 0.9 : options.alpha));
+        image.setDepth(-1);
+        this.nodes.push(image);
+      } else {
+        const tone = this.store.assets.toneFor(id || (character && character.name));
+        const mark = initials((character && character.name) || 'Down');
+        this.graphics.fillStyle(0x071016, dead ? 0.48 : 0.9);
+        this.graphics.fillRect(x, y, w, h);
+        this.graphics.fillStyle(tone, dead ? 0.05 : 0.18);
+        this.graphics.fillTriangle(x, y, x + w, y, x, y + h);
+        this.graphics.fillStyle(0x020508, dead ? 0.26 : 0.78);
+        this.graphics.fillPoints([
+          { x: x + w * 0.30, y: y + h },
+          { x: x + w * 0.38, y: y + h * 0.45 },
+          { x: x + w * 0.48, y: y + h * 0.30 },
+          { x: x + w * 0.60, y: y + h * 0.44 },
+          { x: x + w * 0.72, y: y + h },
+        ], true);
+        this.graphics.lineStyle(1, tone, dead ? 0.16 : 0.44);
+        this.graphics.beginPath();
+        this.graphics.moveTo(x + 8, y + h - 9);
+        this.graphics.lineTo(x + w - 8, y + 8);
+        this.graphics.strokePath();
+        this.text(x + w - 10, y + 7, mark, {
+          fontFamily: TOKEN_TYPE.display || 'Georgia, serif',
+          fontSize: `${Math.max(14, Math.round(w * 0.18))}px`,
+          fontStyle: '700',
+          color: dead ? COLORS.dim : COLORS.text,
+        }).setOrigin(1, 0);
+      }
     }
 
-    renderCombatantToken(character, side, slot, x, y, size) {
+    renderIdentitySeal(character, x, y, w, h) {
+      const tone = this.store.assets.toneFor(character && character.character_id);
+      const mark = initials((character && character.name) || '?');
+      this.graphics.fillStyle(0x05090c, 0.94);
+      this.graphics.fillPoints([
+        { x: x + 7, y },
+        { x: x + w, y },
+        { x: x + w, y: y + h - 7 },
+        { x: x + w - 7, y: y + h },
+        { x, y: y + h },
+        { x, y: y + 7 },
+      ], true);
+      this.graphics.fillStyle(tone, 0.22);
+      this.graphics.fillTriangle(x, y, x + w, y, x, y + h);
+      this.graphics.lineStyle(1, tone, 0.72);
+      this.graphics.strokePoints([
+        { x: x + 7, y },
+        { x: x + w, y },
+        { x: x + w, y: y + h - 7 },
+        { x: x + w - 7, y: y + h },
+        { x, y: y + h },
+        { x, y: y + 7 },
+      ], true);
+      this.text(x + w / 2, y + h / 2 - 10, mark, {
+        fontFamily: TOKEN_TYPE.display || 'Georgia, serif',
+        fontSize: '17px',
+        fontStyle: '700',
+        color: COLORS.text,
+      }).setOrigin(0.5, 0);
+    }
+
+    renderFighterPlate(character, side, slot, x, y, w, h) {
       const store = this.store;
       const selected = side === 'mine' && store.selectedCasterSlot === slot;
       const queuedIndex = side === 'mine' ? store.actions.findIndex((action) => Number(action.caster_slot) === slot) : -1;
       const targetable = store.canTarget(character, slot, side);
-      const protectedTarget = store.targetHasInvulnerability(character) && !store.skillBypassesInvulnerability(store.selectedSkill(), character);
+      const selectedSkill = store.selectedSkill();
+      const protectedTarget = !!selectedSkill && store.targetBlocksSkill(character, selectedSkill);
       const dead = !character || !character.alive;
-      const tone = targetable ? COLORS.target : protectedTarget ? COLORS.protected : selected ? COLORS.selection : queuedIndex >= 0 ? COLORS.queued : side === 'enemy' ? COLORS.enemy : COLORS.ally;
-      const cx = x + size / 2;
-      const cy = y + size / 2;
+      const baseTone = side === 'enemy' ? COLORS.enemy : COLORS.ally;
+      const tone = targetable
+        ? COLORS.target
+        : protectedTarget
+          ? COLORS.protected
+          : selected
+            ? COLORS.selection
+            : queuedIndex >= 0
+              ? COLORS.queued
+              : baseTone;
+      const portraitH = h - 35;
+      const cx = x + w / 2;
+      const cy = y + portraitH / 2;
       const playerId = side === 'mine' ? store.mineId() : store.enemyId();
       if (playerId) {
         this.playbackTargets = this.playbackTargets || {};
-        this.playbackTargets[`${playerId}:${slot}`] = { x: cx, y: cy, side, slot, size, tone };
+        this.playbackTargets[`${playerId}:${slot}`] = { x: cx, y: cy, side, slot, size: Math.min(w, portraitH), tone };
       }
-      this.graphics.fillStyle(COLORS.inkBlack, 0.9);
-      this.graphics.fillCircle(cx, cy, size / 2 + 10);
-      this.graphics.lineStyle(selected || targetable ? 3 : 1.5, tone, dead ? 0.28 : 0.82);
-      this.graphics.strokeCircle(cx, cy, size / 2 + 8);
-      if (targetable) {
-        this.graphics.lineStyle(2, COLORS.target, 0.86);
-        this.graphics.beginPath();
-        this.graphics.moveTo(cx - size / 2 - 16, cy);
-        this.graphics.lineTo(cx - size / 2 - 2, cy);
-        this.graphics.moveTo(cx + size / 2 + 2, cy);
-        this.graphics.lineTo(cx + size / 2 + 16, cy);
-        this.graphics.moveTo(cx, cy - size / 2 - 16);
-        this.graphics.lineTo(cx, cy - size / 2 - 2);
-        this.graphics.moveTo(cx, cy + size / 2 + 2);
-        this.graphics.lineTo(cx, cy + size / 2 + 16);
-        this.graphics.strokePath();
-      }
-      this.portrait(character || { name: 'Down' }, x + 4, y + 4, size - 8, { tone, dead, selected, targetable, noRing: true });
+
+      // World-anchored dossier plate: hard cuts, a single local scrim, no floating circle.
+      this.graphics.fillStyle(0x030609, targetable || selected ? 0.34 : 0.18);
+      this.graphics.fillPoints([
+        { x: x + 7, y },
+        { x: x + w, y },
+        { x: x + w, y: y + h - 9 },
+        { x: x + w - 9, y: y + h },
+        { x, y: y + h },
+        { x, y: y + 7 },
+      ], true);
+      this.renderPortraitPlate(character, x + 4, y + 4, w - 8, portraitH - 5, { alpha: dead ? 0.3 : targetable ? 1 : 0.96 });
+      this.graphics.fillStyle(0x020405, 0.72);
+      this.graphics.fillRect(x + 4, y + portraitH - 31, w - 8, 30);
+      this.graphics.fillStyle(0x030609, 0.95);
+      this.graphics.fillRect(x, y + portraitH, w, h - portraitH);
+      this.graphics.fillStyle(tone, dead ? 0.16 : (targetable || selected ? 0.82 : 0.46));
+      this.graphics.fillRect(x, y, selected || targetable ? 4 : 2, h);
+      this.graphics.lineStyle(selected || targetable ? 2 : 1, tone, dead ? 0.22 : (targetable ? 0.94 : 0.56));
+      this.graphics.strokePoints([
+        { x: x + 7, y },
+        { x: x + w, y },
+        { x: x + w, y: y + h - 9 },
+        { x: x + w - 9, y: y + h },
+        { x, y: y + h },
+        { x, y: y + 7 },
+      ], true);
+
       const hp = Number(character && character.hp ? character.hp : 0);
       const maxHp = Math.max(1, Number(character && character.max_hp ? character.max_hp : 1));
       const hpPct = clamp(hp / maxHp, 0, 1);
-      const barY = y + size + 10;
-      const barW = size + 20;
-      this.graphics.fillStyle(COLORS.inkBlack, 0.92);
-      this.graphics.fillRoundedRect(cx - barW / 2, barY, barW, 7, 4);
-      this.graphics.fillStyle(hpPct <= 0.3 ? COLORS.enemy : hpPct <= 0.6 ? COLORS.selection : COLORS.queued, dead ? 0.35 : 1);
-      this.graphics.fillRoundedRect(cx - barW / 2, barY, barW * hpPct, 7, 4);
-      this.text(cx, barY + 9, (character && character.name) || 'Down', {
-        fontSize: '8px',
-        fontStyle: '900',
-        align: 'center',
-        wordWrap: { width: size + 40 },
-      }).setOrigin(0.5, 0);
-      this.mono(cx, barY + 31, dead ? 'DOWN' : `${hp}/${maxHp}`, {
-        color: dead ? COLORS.dim : targetable ? COLORS.paperText : COLORS.text,
-        fontSize: '8px',
-      }).setOrigin(0.5, 0);
-      if (queuedIndex >= 0 || targetable || selected || protectedTarget) {
-        const chip = queuedIndex >= 0 ? `Q${queuedIndex + 1}` : targetable ? 'TARGET' : protectedTarget ? 'INVULN' : 'READY';
-        const chipW = targetable ? 52 : protectedTarget ? 50 : 36;
-        this.graphics.fillStyle(queuedIndex >= 0 ? COLORS.queued : targetable ? COLORS.target : protectedTarget ? COLORS.protected : COLORS.selection, 0.95);
-        this.graphics.fillRoundedRect(cx - chipW / 2, y - 10, chipW, 18, 9);
-        this.mono(cx, y - 5, chip, { color: protectedTarget ? COLORS.text : '#08080a', fontSize: '8px' }).setOrigin(0.5, 0);
-      }
-      (character && character.statuses ? character.statuses : []).slice(0, 2).forEach((status, index) => {
-        this.graphics.fillStyle(COLORS.domain, 0.82);
-        this.graphics.fillCircle(x + size - 3 - index * 14, y + 6, 6);
-        this.mono(x + size - 3 - index * 14, y + 1, shortText(status.name || status.id, 1).toUpperCase(), {
-          color: '#ffffff',
+      const hpTone = hpPct <= 0.3 ? COLORS.enemy : hpPct <= 0.6 ? COLORS.selection : COLORS.queued;
+      const barX = x + 7;
+      const barY = y + h - 13;
+      const barW = w - 14;
+      this.graphics.fillStyle(0x020405, 0.96);
+      this.graphics.fillRect(barX, barY, barW, 5);
+      this.graphics.fillStyle(hpTone, dead ? 0.28 : 0.96);
+      this.graphics.fillRect(barX, barY, barW * hpPct, 5);
+
+      this.text(x + 7, y + portraitH - 25, shortText((character && character.name) || 'Down', w < 110 ? 14 : 17), {
+        fontSize: w < 110 ? '8px' : '9px',
+        fontStyle: '800',
+        color: dead ? COLORS.dim : COLORS.text,
+      });
+      this.mono(x + 7, y + portraitH - 10, dead ? 'DOWN' : `${hp}/${maxHp}`, {
+        color: dead ? COLORS.dim : COLORS.paperText,
+        fontSize: '7px',
+      });
+
+      const stateLabel = queuedIndex >= 0
+        ? `Q${queuedIndex + 1}`
+        : targetable
+          ? 'LEGAL'
+          : protectedTarget
+            ? 'WARD'
+            : selected
+              ? 'ACTIVE'
+              : '';
+      if (stateLabel) {
+        const chipW = stateLabel.length * 5 + 14;
+        this.graphics.fillStyle(tone, targetable || selected || queuedIndex >= 0 ? 0.94 : 0.72);
+        this.graphics.fillPoints([
+          { x: x + 5, y: y - 8 },
+          { x: x + chipW, y: y - 8 },
+          { x: x + chipW - 5, y: y + 8 },
+          { x: x + 5, y: y + 8 },
+        ], true);
+        this.mono(x + 9, y - 3, stateLabel, {
+          color: protectedTarget ? COLORS.text : '#07090a',
           fontSize: '7px',
+          fontStyle: '700',
+        });
+      }
+
+      if (targetable) {
+        const bracket = 12;
+        const pad = 4;
+        this.graphics.lineStyle(2, COLORS.target, 0.94);
+        [
+          [x - pad, y - pad, x - pad + bracket, y - pad, x - pad, y - pad + bracket],
+          [x + w + pad, y - pad, x + w + pad - bracket, y - pad, x + w + pad, y - pad + bracket],
+          [x - pad, y + h + pad, x - pad + bracket, y + h + pad, x - pad, y + h + pad - bracket],
+          [x + w + pad, y + h + pad, x + w + pad - bracket, y + h + pad, x + w + pad, y + h + pad - bracket],
+        ].forEach((points) => {
+          this.graphics.beginPath();
+          this.graphics.moveTo(points[0], points[1]);
+          this.graphics.lineTo(points[2], points[3]);
+          this.graphics.moveTo(points[0], points[1]);
+          this.graphics.lineTo(points[4], points[5]);
+          this.graphics.strokePath();
+        });
+      }
+
+      (character && character.statuses ? character.statuses : []).slice(0, 2).forEach((status, index) => {
+        const sx = x + w - 9 - index * 14;
+        this.graphics.fillStyle(COLORS.domain, 0.86);
+        this.graphics.fillRect(sx - 5, y + 7, 10, 10);
+        this.mono(sx, y + 7.5, shortText(status.name || status.id, 1).toUpperCase(), {
+          color: '#ffffff',
+          fontSize: '6px',
         }).setOrigin(0.5, 0);
       });
-      this.buttons.push({ x: x - 10, y: y - 12, w: size + 20, h: size + 58, label: `${side} ${slot}`, onClick: () => store.target(side, slot), disabled: false });
+
+      this.buttons.push({
+        x: x - 3,
+        y: y - 10,
+        w: w + 6,
+        h: h + 18,
+        label: `${side} ${slot}`,
+        onClick: () => store.target(side, slot),
+        disabled: false,
+      });
     }
 
-    renderTokenRow(team, side, frame, y, size) {
-      const x = frame.x + frame.gutter;
-      const laneW = frame.width - 32;
-      const gap = (laneW - size * 3) / 2;
-      this.talismanLabel(x, y - 26, side === 'enemy' ? 'ENEMY FIELD' : 'YOUR FIELD', side === 'enemy' ? COLORS.enemy : COLORS.ally);
+    renderFighterLane(team, side, frame, layout) {
+      const y = side === 'enemy' ? layout.enemyY : layout.allyY;
+      const label = side === 'enemy' ? 'HOSTILE SIGNATURES' : 'YOUR FIELD';
+      const tone = side === 'enemy' ? COLORS.enemy : COLORS.ally;
+      this.mono(layout.contentX + 2, y - 20, label, {
+        color: side === 'enemy' ? '#e9a0a0' : '#9fe0d4',
+        fontSize: '7px',
+        fontStyle: '700',
+      });
+      this.graphics.lineStyle(1, tone, 0.42);
+      this.graphics.beginPath();
+      this.graphics.moveTo(layout.contentX + 102, y - 15);
+      this.graphics.lineTo(layout.contentX + layout.contentW, y - 15);
+      this.graphics.strokePath();
       (team || []).forEach((character, slot) => {
-        this.renderCombatantToken(character, side, slot, x + slot * (size + gap), y, size);
+        const x = layout.contentX + slot * (layout.cardW + layout.gap);
+        this.renderFighterPlate(character, side, slot, x, y, layout.cardW, layout.cardH);
       });
     }
 
     renderBattlefield(frame, layout, prompt) {
-      const x = frame.x + frame.gutter;
-      const y = layout.centerY;
-      const w = frame.width - 32;
-      const h = layout.centerH;
-      this.graphics.fillStyle(COLORS.inkBlack, 0.78);
-      this.graphics.fillRoundedRect(x, y, w, h, 20);
-      this.graphics.fillStyle(COLORS.talismanDim, 0.055);
-      this.graphics.fillRoundedRect(x + 4, y + 4, w - 8, Math.max(20, h * 0.28), 16);
-      this.graphics.fillStyle(COLORS.domain, 0.035);
-      this.graphics.fillCircle(x + w / 2, y + h / 2, Math.min(w, h) * 0.42);
-      [0.34, 0.52, 0.72].forEach((scale, index) => {
-        this.graphics.lineStyle(index === 1 ? 1.5 : 1, index === 1 ? COLORS.talismanDim : COLORS.surfaceLine, index === 1 ? 0.2 : 0.12);
-        this.graphics.strokeCircle(x + w / 2, y + h / 2, Math.min(w, h) * scale);
-      });
-      this.graphics.lineStyle(1.5, COLORS.line, 0.65);
-      this.graphics.strokeRoundedRect(x, y, w, h, 18);
-      for (let i = 0; i < 5; i += 1) {
-        const laneY = y + 18 + i * Math.max(14, h / 5);
-        this.graphics.lineStyle(1, i === 2 ? COLORS.talismanDim : 0xffffff, i === 2 ? 0.22 : 0.035);
-        this.graphics.beginPath();
-        this.graphics.moveTo(x + 16, laneY);
-        this.graphics.lineTo(x + w - 16, laneY + (i % 2 ? -12 : 12));
-        this.graphics.strokePath();
-      }
-      this.text(x + w / 2, y + 16, prompt, {
-        fontSize: frame.height < 730 ? '15px' : '17px',
-        fontStyle: '900',
-        align: 'center',
-        wordWrap: { width: w - 52 },
+      const g = this.graphics;
+      const centerX = frame.x + frame.width / 2;
+      const centerY = layout.fieldTop + layout.fieldH * 0.42;
+      const selectedSkill = this.store.selectedSkill();
+
+      // The directive floats inside the place; it is not a full battlefield card.
+      g.fillStyle(0x020507, 0.58);
+      g.fillPoints([
+        { x: centerX - 126, y: layout.fieldTop + 7 },
+        { x: centerX + 108, y: layout.fieldTop + 7 },
+        { x: centerX + 126, y: layout.fieldTop + 25 },
+        { x: centerX + 110, y: layout.fieldTop + 43 },
+        { x: centerX - 126, y: layout.fieldTop + 43 },
+      ], true);
+      g.lineStyle(1, selectedSkill ? COLORS.target : COLORS.talismanDim, selectedSkill ? 0.72 : 0.34);
+      g.strokePoints([
+        { x: centerX - 126, y: layout.fieldTop + 7 },
+        { x: centerX + 108, y: layout.fieldTop + 7 },
+        { x: centerX + 126, y: layout.fieldTop + 25 },
+        { x: centerX + 110, y: layout.fieldTop + 43 },
+        { x: centerX - 126, y: layout.fieldTop + 43 },
+      ], true);
+      this.mono(centerX, layout.fieldTop + 15, selectedSkill ? 'TARGET ACQUISITION' : 'TACTICAL DIRECTIVE', {
+        color: selectedSkill ? '#9fe0d4' : COLORS.paperText,
+        fontSize: '7px',
+        fontStyle: '700',
       }).setOrigin(0.5, 0);
-      if (this.store.selectedSkillId && this.store.selectedCasterSlot !== null) {
-        const laneTone = COLORS.target;
+      this.text(centerX, layout.fieldTop + 27, prompt, {
+        fontSize: layout.compact ? '12px' : '13px',
+        fontStyle: '800',
+        align: 'center',
+        wordWrap: { width: 226 },
+      }).setOrigin(0.5, 0);
+
+      // Cursed cartography and selection line connect the UI to the environment.
+      g.lineStyle(1, COLORS.domain, 0.18);
+      g.strokeCircle(centerX, centerY, Math.min(62, layout.fieldH * 0.32));
+      g.lineStyle(1, COLORS.talismanDim, 0.19);
+      g.beginPath();
+      g.moveTo(centerX - 78, centerY + 6);
+      g.lineTo(centerX + 72, centerY - 11);
+      g.moveTo(centerX - 22, centerY - 56);
+      g.lineTo(centerX + 18, centerY + 61);
+      g.strokePath();
+      if (selectedSkill && this.store.selectedCasterSlot !== null) {
         const slot = Number(this.store.selectedCasterSlot);
-        const laneW = frame.width - 32;
-        const gap = (laneW - layout.token * 3) / 2;
-        const fromX = frame.x + frame.gutter + slot * (layout.token + gap) + layout.token / 2;
-        const fromY = layout.allyY + layout.token / 2;
-        const toY = y + h * 0.48;
-        this.graphics.lineStyle(2, laneTone, 0.44);
-        this.graphics.beginPath();
-        this.graphics.moveTo(fromX, fromY - 10);
-        this.graphics.lineTo(x + w / 2, toY);
-        this.graphics.strokePath();
-        this.graphics.fillStyle(laneTone, 0.18);
-        this.graphics.fillCircle(x + w / 2, toY, 22);
-        this.graphics.lineStyle(1.5, laneTone, 0.58);
-        this.graphics.strokeCircle(x + w / 2, toY, 28);
-        this.mono(x + w / 2, toY - 4, 'TARGETING', { color: COLORS.paperText, fontSize: '8px' }).setOrigin(0.5, 0);
+        const fromX = layout.contentX + slot * (layout.cardW + layout.gap) + layout.cardW / 2;
+        const fromY = layout.allyY - 4;
+        g.lineStyle(2, COLORS.target, 0.38);
+        g.beginPath();
+        g.moveTo(fromX, fromY);
+        g.lineTo(centerX, centerY + 22);
+        g.strokePath();
+        g.fillStyle(COLORS.target, 0.12);
+        g.fillCircle(centerX, centerY, 28);
+        g.lineStyle(1.5, COLORS.target, 0.68);
+        g.strokeCircle(centerX, centerY, 34);
       }
-      if (!this.store.queueReviewOpen) {
-        this.renderQueueChips(frame, y + h - 38);
-        this.renderReplayLine(frame, y + h - 66);
-      }
+
+      this.renderReplayLine(frame, layout.fieldBottom - 62);
+      this.renderQueueChips(frame, layout.fieldBottom - 30);
     }
 
-    renderSkillButton(skill, caster, x, y, w, h) {
+    renderSkillButton(skill, caster, index, x, y, w, h) {
       const cooldown = this.store.skillCooldown(caster, skill);
       const fit = this.store.skillFit(skill, caster);
       const ruleReason = this.store.statusBlocksSkill(caster, skill);
       const disabled = cooldown > 0 || !!ruleReason || !fit.ok || this.store.queuedSlots().has(Number(this.store.selectedCasterSlot)) || this.store.controlsLocked();
       const selected = this.store.selectedSkillId === skill.id;
-      const tone = selected ? COLORS.selection : (ENERGY_COLORS[(skill.cost || [])[0]] || COLORS.talismanDim);
-      this.graphics.fillStyle(selected ? 0x221a0c : COLORS.surfaceRaised, disabled ? 0.42 : 0.96);
-      this.graphics.fillRoundedRect(x, y, w, h, 14);
-      this.graphics.fillStyle(selected ? COLORS.talismanDim : COLORS.surfaceDeep, disabled ? 0.16 : 0.28);
-      this.graphics.fillRoundedRect(x + 4, y + 4, w - 8, 16, 10);
-      this.graphics.lineStyle(selected ? 3 : 1.5, tone, disabled ? 0.38 : 0.88);
-      this.graphics.strokeRoundedRect(x, y, w, h, 14);
-      this.graphics.fillStyle(tone, disabled ? 0.16 : 0.32);
-      this.graphics.fillRoundedRect(x + 8, y + 8, 36, h - 16, 10);
-      this.graphics.lineStyle(1, tone, disabled ? 0.28 : 0.65);
-      this.graphics.strokeRoundedRect(x + 8, y + 8, 36, h - 16, 10);
-      this.mono(x + 26, y + 15, this.store.targetLabel(skill).slice(0, 3).toUpperCase(), {
-        color: selected ? COLORS.paperText : COLORS.text,
-        fontSize: '8px',
-      }).setOrigin(0.5, 0);
-      this.store.adjustedCost(caster, skill).slice(0, 4).forEach((color, index) => {
-        const orbX = x + 15 + index * 8;
-        this.graphics.fillStyle(COLORS.inkBlack, 0.9);
-        this.graphics.fillCircle(orbX, y + h - 15, 4.5);
-        this.graphics.fillStyle(ENERGY_COLORS[color] || COLORS.selection, 0.98);
-        this.graphics.fillCircle(orbX, y + h - 15, 3.2);
+      const tone = selected ? COLORS.selection : (ENERGY_COLORS[(this.store.adjustedCost(caster, skill) || [])[0]] || COLORS.talismanDim);
+      const reason = cooldown > 0 ? `CD ${cooldown}` : ruleReason ? shortText(ruleReason, 23) : fit.ok ? shortText(this.store.effectLine(skill), 27) : shortText(fit.reason, 25);
+
+      this.graphics.fillStyle(0x080c0f, disabled ? 0.48 : 0.82);
+      this.graphics.fillPoints([
+        { x: x + 7, y },
+        { x: x + w, y },
+        { x: x + w, y: y + h - 7 },
+        { x: x + w - 7, y: y + h },
+        { x, y: y + h },
+        { x, y: y + 7 },
+      ], true);
+      this.graphics.fillStyle(tone, selected ? 0.22 : disabled ? 0.04 : 0.085);
+      this.graphics.fillTriangle(x, y, x + 54, y, x, y + h);
+      this.graphics.fillStyle(tone, disabled ? 0.22 : selected ? 0.96 : 0.62);
+      this.graphics.fillRect(x, y, selected ? 5 : 3, h);
+      this.graphics.lineStyle(selected ? 2 : 1, tone, disabled ? 0.3 : selected ? 0.9 : 0.56);
+      this.graphics.strokePoints([
+        { x: x + 7, y },
+        { x: x + w, y },
+        { x: x + w, y: y + h - 7 },
+        { x: x + w - 7, y: y + h },
+        { x, y: y + h },
+        { x, y: y + 7 },
+      ], true);
+
+      this.mono(x + 12, y + 8, `0${index + 1}`, {
+        color: selected ? COLORS.paperText : COLORS.muted,
+        fontSize: '7px',
+        fontStyle: '700',
       });
-      this.text(x + 52, y + 9, skill.name, {
-        fontSize: '11px',
-        fontStyle: '900',
-        wordWrap: { width: w - 58 },
+      this.mono(x + 12, y + h - 17, this.store.targetLabel(skill).slice(0, 5).toUpperCase(), {
+        color: disabled ? COLORS.dim : COLORS.text,
+        fontSize: '6px',
       });
-      if (selected) this.mono(x + w - 34, y + 8, 'INFO', { color: COLORS.paperText, fontSize: '7px' });
-      this.mono(x + 52, y + h - 19, cooldown > 0 ? `CD ${cooldown}` : ruleReason ? shortText(ruleReason, 23) : fit.ok ? shortText(this.store.effectLine(skill), 23) : shortText(fit.reason, 23), {
-        color: cooldown > 0 ? '#e6b84a' : disabled ? COLORS.muted : COLORS.paperText,
-        fontSize: '8px',
+      this.text(x + 40, y + 7, shortText(skill.name, w < 170 ? 20 : 23), {
+        fontSize: h < 52 ? '9px' : '10px',
+        fontStyle: '800',
+        wordWrap: { width: w - 48 },
       });
+      this.mono(x + 40, y + h - 18, reason, {
+        color: cooldown > 0 ? '#e6b84a' : disabled ? COLORS.dim : COLORS.paperText,
+        fontSize: '7px',
+      });
+      this.store.adjustedCost(caster, skill).slice(0, 4).forEach((color, costIndex) => {
+        const px = x + w - 13 - costIndex * 10;
+        this.graphics.fillStyle(0x020405, 0.9);
+        this.graphics.fillCircle(px, y + 13, 4.5);
+        this.graphics.fillStyle(ENERGY_COLORS[color] || COLORS.selection, color === 'white' ? 0.9 : 0.98);
+        this.graphics.fillCircle(px, y + 13, 3.1);
+      });
+      if (selected) {
+        this.mono(x + w - 35, y + h - 17, 'INFO', { color: COLORS.paperText, fontSize: '6px' });
+      }
+
       this.buttons.push({
         x,
         y,
@@ -292,162 +568,212 @@ export class CombatScene extends CombatQueueReviewScene {
     }
 
     renderSkillDetailSheet(frame, caster, skill) {
-      const x = frame.x + 14;
-      const y = 118;
-      const w = frame.width - 28;
-      const h = frame.height - y - 16;
       const adjusted = this.store.adjustedCost(caster, skill);
       const cooldown = this.store.skillCooldown(caster, skill);
       const blocked = this.store.statusBlocksSkill(caster, skill);
       const fit = this.store.skillFit(skill, caster);
       const reason = cooldown > 0 ? `Cooldown: ${cooldown} turns` : blocked || (!fit.ok ? fit.reason : 'Available now');
-      this.cardPanel(x, y, w, h, COLORS.selection, 0.98);
-      this.mono(x + 18, y + 18, 'TECHNIQUE DETAIL', { color: COLORS.paperText, fontSize: '9px' });
+      const x = frame.x + 12;
+      const y = Math.max(168, frame.height * 0.34);
+      const w = frame.width - 24;
+      const h = frame.height - y + 18;
+
+      this.graphics.fillStyle(0x010305, 0.5);
+      this.graphics.fillRect(frame.x, 0, frame.width, frame.height);
+      this.graphics.fillStyle(0x080c0f, 0.97);
+      this.graphics.fillPoints([
+        { x: x + 18, y },
+        { x: x + w, y },
+        { x: x + w, y: y + h },
+        { x, y: y + h },
+        { x, y: y + 18 },
+      ], true);
+      this.graphics.fillStyle(COLORS.selection, 0.12);
+      this.graphics.fillTriangle(x + 18, y, x + 178, y, x, y + 168);
+      this.graphics.lineStyle(2, COLORS.selection, 0.68);
+      this.graphics.strokePoints([
+        { x: x + 18, y },
+        { x: x + w, y },
+        { x: x + w, y: y + h },
+        { x, y: y + h },
+        { x, y: y + 18 },
+      ], true);
+
+      this.mono(x + 18, y + 18, 'TECHNIQUE DOSSIER / AUTHORITATIVE', { color: COLORS.paperText, fontSize: '8px' });
       this.text(x + 18, y + 40, skill.name, {
-        fontFamily: 'Cinzel, Inter, serif',
+        fontFamily: TOKEN_TYPE.display || 'Georgia, serif',
         fontSize: '22px',
-        fontStyle: '900',
-        wordWrap: { width: w - 78 },
+        fontStyle: '700',
+        wordWrap: { width: w - 88 },
       });
-      this.iconButton(x + w - 52, y + 18, 36, 34, 'x', () => this.store.closeSkillDetail(), { stroke: COLORS.enemy, fontSize: '13px' });
-      this.mono(x + 18, y + 96, `${titleize((skill.target_rule && skill.target_rule.kind) || 'enemy')} target`, { color: COLORS.text, fontSize: '10px' });
-      this.costPips(x + 22, y + 132, adjusted, 16);
-      this.mono(x + 18, y + 153, `ADJUSTED COST / BASE ${(skill.cost || []).length}`, { color: COLORS.paperText, fontSize: '8px' });
+      this.iconButton(x + w - 52, y + 16, 38, 36, '×', () => this.store.closeSkillDetail(), { stroke: COLORS.enemy, fontSize: '14px', radius: 5 });
+      this.mono(x + 18, y + 94, `${titleize((skill.target_rule && skill.target_rule.kind) || 'enemy')} target`, { color: COLORS.text, fontSize: '9px' });
+      this.costPips(x + 24, y + 126, adjusted, 15);
       const classLine = (skill.classes || []).map((value) => titleize(value)).join(' / ') || 'Technique';
-      this.mono(x + 18, y + 184, classLine, { color: COLORS.text, fontSize: '9px' });
-      this.graphics.fillStyle(reason === 'Available now' ? COLORS.queued : COLORS.enemy, 0.16);
-      this.graphics.fillRoundedRect(x + 16, y + 212, w - 32, 40, 12);
-      this.graphics.lineStyle(1, reason === 'Available now' ? COLORS.queued : COLORS.enemy, 0.62);
-      this.graphics.strokeRoundedRect(x + 16, y + 212, w - 32, 40, 12);
-      this.mono(x + 28, y + 226, reason.toUpperCase(), { color: reason === 'Available now' ? '#b7dbc0' : '#f1a0a0', fontSize: '9px' });
-      this.mono(x + 18, y + 278, 'AUTHORITATIVE EFFECT', { color: COLORS.paperText, fontSize: '9px' });
-      this.text(x + 18, y + 300, skill.description || this.store.effectLine(skill), {
-        fontSize: '13px',
+      this.mono(x + 18, y + 151, classLine, { color: COLORS.paperText, fontSize: '8px' });
+      this.graphics.fillStyle(reason === 'Available now' ? COLORS.queued : COLORS.enemy, 0.14);
+      this.graphics.fillRect(x + 18, y + 179, w - 36, 34);
+      this.graphics.fillStyle(reason === 'Available now' ? COLORS.queued : COLORS.enemy, 0.84);
+      this.graphics.fillRect(x + 18, y + 179, 4, 34);
+      this.mono(x + 30, y + 190, reason.toUpperCase(), { color: reason === 'Available now' ? '#b7dbc0' : '#f1a0a0', fontSize: '8px' });
+      this.mono(x + 18, y + 238, 'EFFECT', { color: COLORS.paperText, fontSize: '8px' });
+      this.text(x + 18, y + 260, skill.description || this.store.effectLine(skill), {
+        fontSize: '12px',
         color: COLORS.text,
-        lineSpacing: 6,
+        lineSpacing: 5,
         wordWrap: { width: w - 36 },
       });
-      this.mono(x + 18, y + h - 78, 'Tap Close, then select a legal target.', { color: COLORS.muted, fontSize: '9px' });
-      this.button(x + 16, y + h - 54, w - 32, 38, 'Close Detail', () => this.store.closeSkillDetail(), {
+      this.button(x + 18, frame.height - 54, w - 36, 40, 'Return to Battlefield', () => this.store.closeSkillDetail(), {
         fill: COLORS.selection,
         gradientTop: COLORS.talismanDim,
         stroke: COLORS.talismanPaper,
         color: '#08080a',
-        fontSize: '11px',
+        fontSize: '10px',
+        radius: 5,
       });
     }
 
     renderQueueChips(frame, y) {
-      const x = frame.x + frame.gutter;
-      const chipW = (frame.width - 44) / 3;
-      this.mono(x, y - 18, `QUEUE ${this.store.actions.length}/3`, {
-        color: this.store.actions.length ? '#b7dbc0' : COLORS.dim,
-        fontSize: '8px',
+      const x = frame.x + 16;
+      const count = this.store.actions.length;
+      this.mono(x, y - 14, `QUEUE ${this.store.actions.length}/3`, {
+        color: count ? '#b7dbc0' : COLORS.dim,
+        fontSize: '7px',
       });
-      if (!this.store.actions.length) {
-        this.mono(x + 10, y + 8, 'Queue empty: pick a fighter, technique, then target.', { color: COLORS.muted, fontSize: '9px' });
-        return;
-      }
       const me = this.store.me();
       [0, 1, 2].forEach((index) => {
         const action = this.store.actions[index];
-        const chipX = x + index * (chipW + 6);
-        this.graphics.fillStyle(action ? 0x111b13 : COLORS.inkBlack, action ? 0.9 : 0.52);
-        this.graphics.fillRoundedRect(chipX, y, chipW, 30, 12);
-        if (action) {
-          this.graphics.fillStyle(COLORS.queued, 0.18);
-          this.graphics.fillRoundedRect(chipX + 3, y + 3, chipW - 6, 9, 8);
-        }
-        this.graphics.lineStyle(1, action ? COLORS.queued : COLORS.line, action ? 0.72 : 0.4);
-        this.graphics.strokeRoundedRect(chipX, y, chipW, 30, 12);
+        const slotX = x + 78 + index * 88;
+        this.graphics.lineStyle(1, action ? COLORS.queued : COLORS.line, action ? 0.8 : 0.36);
+        this.graphics.beginPath();
+        this.graphics.moveTo(slotX, y);
+        this.graphics.lineTo(slotX + 72, y);
+        this.graphics.strokePath();
+        this.graphics.fillStyle(action ? COLORS.queued : COLORS.surfaceRaised, action ? 0.9 : 0.54);
+        this.graphics.fillTriangle(slotX, y, slotX + 7, y - 7, slotX + 14, y);
         if (!action) {
-          this.mono(chipX + chipW / 2, y + 9, `Q${index + 1}`, { color: COLORS.dim, fontSize: '8px' }).setOrigin(0.5, 0);
+          this.mono(slotX + 22, y - 10, `Q${index + 1}`, { color: COLORS.dim, fontSize: '6px' });
           return;
         }
         const caster = me && me.team ? me.team[action.caster_slot] : null;
         const skill = caster ? this.store.skillFor(caster, action.skill_id) : null;
-        this.mono(chipX + 8, y + 5, `Q${index + 1}`, { color: '#d8f0dc', fontSize: '8px' });
-        this.mono(chipX + 28, y + 5, shortText(skill ? skill.name : action.skill_id, 12), { color: COLORS.text, fontSize: '8px' });
+        this.mono(slotX + 20, y - 10, shortText(skill ? skill.name : action.skill_id, 9), { color: COLORS.text, fontSize: '6px' });
       });
     }
 
     renderReplayLine(frame, y) {
       const events = this.store.recentEvents.slice(0, 1);
       if (!events.length) return;
-      const x = frame.x + frame.gutter;
       const event = events[0];
       const tone = eventTone(event);
       const color = tone === 'damage' ? '#f1a0a0' : tone === 'heal' ? '#b7dbc0' : tone === 'status' ? '#cbbdff' : COLORS.text;
-      this.graphics.fillStyle(COLORS.inkBlack, 0.72);
-      this.graphics.fillRoundedRect(x + 14, y, frame.width - 60, 22, 11);
-      this.mono(x + 28, y + 6, shortText(event.message || event.type, 42), {
-        color,
-        fontSize: '8px',
-      });
+      const x = frame.x + 22;
+      const w = frame.width - 44;
+      this.graphics.fillStyle(0x020507, 0.62);
+      this.graphics.fillRect(x, y, w, 22);
+      this.graphics.fillStyle(tone === 'damage' ? COLORS.enemy : tone === 'status' ? COLORS.domain : COLORS.talismanDim, 0.82);
+      this.graphics.fillRect(x, y, 3, 22);
+      this.mono(x + 12, y + 6, shortText(event.message || event.type, 44), { color, fontSize: '7px' });
     }
 
-    renderCommandDeck(frame, dockY, selected) {
-      const x = frame.x + frame.gutter;
-      const h = frame.height - dockY;
-      this.graphics.fillStyle(COLORS.surfaceDeep, 0.99);
-      this.graphics.fillRoundedRect(frame.x, dockY, frame.width, h + 18, 26);
-      this.graphics.fillStyle(COLORS.surfaceRaised, 0.5);
-      this.graphics.fillRoundedRect(frame.x + 6, dockY + 6, frame.width - 12, 58, 22);
-      this.graphics.fillStyle(selected ? COLORS.selection : COLORS.talismanDim, selected ? 0.13 : 0.08);
-      this.graphics.fillRoundedRect(frame.x + 12, dockY + 8, frame.width - 24, 46, 18);
-      this.graphics.lineStyle(2, selected ? COLORS.selection : COLORS.line, 0.72);
-      this.graphics.strokeRoundedRect(frame.x + 1, dockY + 1, frame.width - 2, h + 16, 26);
-      this.graphics.fillStyle(0xffffff, 0.14);
-      this.graphics.fillRoundedRect(frame.x + frame.width / 2 - 28, dockY + 8, 56, 4, 3);
+    renderCommandDeck(frame, layout, selected) {
+      const g = this.graphics;
+      const x = frame.x;
+      const y = layout.dockY;
+      const w = frame.width;
+      const h = layout.dockH;
+      const contentX = frame.x + 14;
+
+      g.fillStyle(0x05080a, 0.94);
+      g.fillPoints([
+        { x: x + 42, y },
+        { x: x + w, y: y + 18 },
+        { x: x + w, y: y + h },
+        { x, y: y + h },
+        { x, y: y + 24 },
+      ], true);
+      g.fillStyle(0x1a2530, 0.34);
+      g.fillTriangle(x + 42, y, x + w, y + 18, x + w, y + 62);
+      g.lineStyle(2, selected ? COLORS.selection : COLORS.talismanDim, selected ? 0.72 : 0.38);
+      g.beginPath();
+      g.moveTo(x + 42, y);
+      g.lineTo(x + w, y + 18);
+      g.strokePath();
+      g.lineStyle(1, 0xd8c28a, 0.14);
+      g.beginPath();
+      g.moveTo(x + 14, y + 65);
+      g.lineTo(x + w - 14, y + 65);
+      g.strokePath();
+
+      const headerY = y + 12;
       if (selected) {
-        const tone = this.store.assets.toneFor(selected.character_id);
+        this.renderIdentitySeal(selected, contentX, headerY + 1, 44, 52);
+        this.text(contentX + 54, headerY + 1, shortText(selected.name, 24), {
+          fontFamily: TOKEN_TYPE.display || 'Georgia, serif',
+          fontSize: '16px',
+          fontStyle: '700',
+        });
         const skills = this.store.skillsFor(selected).slice(0, 4);
         const readyCount = skills.filter((skill) => {
           const cooldown = this.store.skillCooldown(selected, skill);
           return cooldown <= 0 && !this.store.statusBlocksSkill(selected, skill) && this.store.skillFit(skill, selected).ok && !this.store.queuedSlots().has(Number(this.store.selectedCasterSlot)) && !this.store.controlsLocked();
         }).length;
-        this.portrait(selected, x, dockY + 16, 54, { tone, selected: true });
-        this.text(x + 66, dockY + 15, shortText(selected.name, 24), { fontSize: '16px', fontStyle: '900' });
         const instruction = readyCount
-          ? (this.store.selectedSkillId ? 'Pick a glowing target' : 'Choose technique')
-          : 'No technique online';
-        this.mono(x + 66, dockY + 38, instruction.toUpperCase(), { color: COLORS.paperText, fontSize: '9px' });
-        this.mono(frame.x + frame.width - frame.gutter - 76, dockY + 38, `READY ${readyCount}/${skills.length}`, {
+          ? (this.store.selectedSkillId ? 'MARK A LEGAL TARGET' : 'SELECT A TECHNIQUE')
+          : 'NO TECHNIQUE ONLINE';
+        this.mono(contentX + 55, headerY + 26, instruction, {
+          color: this.store.selectedSkillId ? '#9fe0d4' : COLORS.paperText,
+          fontSize: '7px',
+          fontStyle: '700',
+        });
+        this.mono(contentX + 55, headerY + 42, `READY ${readyCount}/${skills.length}`, {
           color: readyCount ? '#b7dbc0' : '#f1a0a0',
-          fontSize: '8px',
-        }).setOrigin(0.5, 0);
-        const cardW = (frame.width - 44) / 2;
-        const cardH = frame.height < 730 ? 50 : 56;
+          fontSize: '7px',
+        });
+        this.mono(frame.x + frame.width - 96, headerY + 5, `ORDER ${this.store.actions.length + 1}`, {
+          color: COLORS.muted,
+          fontSize: '7px',
+        });
+
+        const cardW = (frame.width - 38) / 2;
+        const cardH = layout.compact ? 48 : frame.height > 900 ? 58 : 54;
+        const gridY = y + 74;
         skills.forEach((skill, index) => {
           const col = index % 2;
           const row = Math.floor(index / 2);
-          this.renderSkillButton(skill, selected, x + col * (cardW + 12), dockY + 82 + row * (cardH + 8), cardW, cardH);
+          this.renderSkillButton(skill, selected, index, contentX + col * (cardW + 10), gridY + row * (cardH + 8), cardW, cardH);
         });
       } else {
-        this.text(x, dockY + 22, 'Select A Fighter', { fontSize: '18px', fontStyle: '900' });
-        this.mono(x, dockY + 50, 'READY TOKENS GLOW IN YOUR FIELD', { color: COLORS.muted, fontSize: '9px' });
+        this.mono(contentX, headerY + 3, 'NO ACTIVE SIGNATURE', { color: COLORS.paperText, fontSize: '8px' });
+        this.text(contentX, headerY + 21, 'Choose a combatant', { fontSize: '17px', fontStyle: '800' });
+        this.mono(contentX, headerY + 47, 'TAP ONE OF THE THREE ALLY PLATES', { color: COLORS.muted, fontSize: '7px' });
       }
+
       const buttonY = frame.height - 48;
-      this.button(x, buttonY, 76, 34, 'Cancel', () => this.store.cancelQueue(), {
-        fill: COLORS.surfaceRaised,
+      this.button(contentX, buttonY, 82, 36, 'Withdraw', () => this.store.cancelQueue(), {
+        fill: 0x0a0e11,
         stroke: COLORS.line,
         mono: true,
-        fontSize: '10px',
+        fontSize: '8px',
+        radius: 5,
         disabled: !this.store.actions.length || this.store.controlsLocked(),
       });
-      this.button(x + 84, buttonY, 64, 34, 'End', () => this.store.endTurn(), {
-        fill: COLORS.surfaceRaised,
+      this.button(contentX + 90, buttonY, 62, 36, 'Pass', () => this.store.endTurn(), {
+        fill: 0x0a0e11,
         stroke: COLORS.line,
         mono: true,
-        fontSize: '10px',
+        fontSize: '8px',
+        radius: 5,
         disabled: this.store.controlsLocked(),
       });
-      this.button(frame.x + frame.width - frame.gutter - 106, buttonY, 106, 34, this.store.queueSubmitting ? 'Resolving' : `Review ${this.store.actions.length}/3`, () => this.store.openQueueReview(), {
-        fill: this.store.actions.length ? COLORS.selection : COLORS.surfaceRaised,
-        gradientTop: this.store.actions.length ? COLORS.talismanDim : COLORS.surfaceRaised,
+      this.button(frame.x + frame.width - 14 - 128, buttonY, 128, 36, this.store.queueSubmitting ? 'Resolving' : `Review ${this.store.actions.length}/3`, () => this.store.openQueueReview(), {
+        fill: this.store.actions.length ? COLORS.selection : 0x0a0e11,
+        gradientTop: this.store.actions.length ? COLORS.talismanDim : 0x0a0e11,
         stroke: this.store.actions.length ? COLORS.talismanPaper : COLORS.line,
+        color: this.store.actions.length ? '#08080a' : COLORS.dim,
         mono: true,
-        fontSize: '10px',
+        fontSize: '8px',
+        radius: 5,
         disabled: !this.store.actions.length || this.store.controlsLocked(),
       });
     }
@@ -455,7 +781,7 @@ export class CombatScene extends CombatQueueReviewScene {
     render() {
       const frame = this.layout.frame();
       this.clearSurface();
-      this.drawAppBg(frame);
+      this.renderWorld(frame);
       const state = this.store.state;
       if (!state) {
         this.topBar(frame, 'Opening Domain', () => this.store.resetToLobby());
@@ -466,45 +792,51 @@ export class CombatScene extends CombatQueueReviewScene {
         this.toast(frame);
         return;
       }
+
       const me = this.store.me();
       const foe = this.store.foe();
       const selected = me && me.team ? me.team[this.store.selectedCasterSlot] : null;
-      const dockH = frame.height < 730 ? 248 : 268;
-      const dockY = frame.height - dockH;
-      const layout = this.fighterLayout(frame, dockY);
+      const layout = this.combatLayout(frame);
       this.playbackTargets = {};
       this.renderTopHud(frame, state, me);
+
       if (this.store.detailSkillId && selected) {
         const detailSkill = this.store.skillFor(selected, this.store.detailSkillId);
         if (detailSkill) {
           this.renderSkillDetailSheet(frame, selected, detailSkill);
+          this.toast(frame);
           return;
         }
         this.store.detailSkillId = null;
       }
-      this.button(frame.x + frame.width - frame.gutter - 88, 72, 88, 28, 'Convert', () => this.store.convertEnergy(), {
-        fill: COLORS.surfaceRaised,
+
+      this.button(frame.x + frame.width - 106, 82, 92, 30, 'Transmute', () => this.store.convertEnergy(), {
+        fill: 0x071417,
         stroke: COLORS.ally,
-        fontSize: '10px',
+        color: '#bcebe2',
+        fontSize: '8px',
         mono: true,
+        radius: 4,
         disabled: this.store.controlsLocked() || !!this.store.actions.length || !!(me && me.energy_converted_this_turn),
       });
+
       const prompt = state.winner_id
         ? 'Battle finished'
         : this.store.queueReviewOpen
-          ? 'Review queued techniques'
+          ? 'Review the order of resolution'
           : this.store.controlsLocked()
-          ? 'Waiting for resolution'
-          : this.store.selectedSkillId
-            ? 'Tap a glowing target'
-          : this.store.selectedCasterSlot !== null
-              ? 'Choose technique'
-              : 'Tap an ally fighter';
-      this.renderTokenRow(foe && foe.team, 'enemy', frame, layout.enemyY, layout.token);
-      this.renderBattlefield(frame, layout, prompt);
+            ? 'Hold position — hostile action resolving'
+            : this.store.selectedSkillId
+              ? 'Mark a highlighted legal target'
+              : this.store.selectedCasterSlot !== null
+                ? 'Choose technique'
+                : 'Select one of your combatants';
+
+      this.renderFighterLane(foe && foe.team, 'enemy', frame, layout);
       if (!this.store.queueReviewOpen) {
-        this.renderTokenRow(me && me.team, 'mine', frame, layout.allyY, layout.token);
-        this.renderCommandDeck(frame, dockY, selected);
+        this.renderBattlefield(frame, layout, prompt);
+        this.renderFighterLane(me && me.team, 'mine', frame, layout);
+        this.renderCommandDeck(frame, layout, selected);
       }
       this.renderQueueReviewSheet(frame);
       this.toast(frame);

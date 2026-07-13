@@ -414,6 +414,36 @@ Caution / external launch gates:
 - Replay capture requires approved consent/privacy and retention policy before enabling.
 - Legal/IP/commercial approval, licensed art/audio provenance, physical-device/accessibility QA, human balance, load/soak/failure exercises, and staffed live operations remain external sign-offs.
 - No roster, progression content, combat rule, balance number, Phaser layout, or visual effect changed.
+## 2026-07-12 - Environment-integrated combat UI redesign
+
+What changed:
+
+- Rebuilt the real modular Phaser combat scene around an authored rain-darkened municipal underpass and old school courtyard rather than a near-black dashboard field.
+- Replaced floating circular combatants with world-anchored rectangular dossier plates and compact HP, selected, queued, status, and legal-target treatments.
+- Rebuilt the location/turn/energy HUD, tactical directive, selected-combatant command dock, technique cards, unavailable-skill dossier, target feedback, action queue rail, and Queue Review resolution sheet.
+- Added an original deterministic environment generator and PNG asset, taller portrait-card texture loading, CDN typography stacks, CSP support for Google Fonts and Phaser SVG blob textures, and a live Playwright combat-state capture tool.
+- Added before/after, responsive, state-suite, and machine-readable visual QA artifacts plus a detailed implementation handoff.
+
+Verification:
+
+- Live Phaser browser QA covered 360x800, 390x844, and 430x932 plus default, selected combatant, unavailable skill, legal targets, illegal target, queued action, and Queue Review states.
+- The live QA report found zero registered controls below 44x44 and zero controls outside the tested viewports; the final console contained no warnings or errors.
+- `tests/test_production_readiness.py` -> `8 passed` in an isolated process.
+- Remaining test suite -> `281 passed, 1 skipped` in an isolated process.
+- A monolithic run produced `288 passed, 1 skipped, 1 failed`; the same order-dependent stale-runtime failure reproduces in the untouched source archive and the affected test passes alone, so it is documented as a pre-existing test-isolation issue rather than a UI regression.
+- Changed JavaScript syntax checks, Python compilation, and `git diff --check` passed.
+
+Caution / next work:
+
+- The environment and current portrait SVGs are production-intent placeholders, not final licensed commercial illustration.
+- Google font binaries are not bundled; the runtime continues to use Google Fonts with declared fallbacks.
+- Physical-device, assistive-technology, localization, reduced-motion, and final art-provenance reviews remain external validation.
+- No Battle v2 rule, server contract, roster, progression, damage, targeting, cooldown, queue, or energy behavior changed.
+
+Commit / pushed state:
+
+- Delivered as a source archive for review; no remote push was performed in this pass.
+
 # 2026-07-13 - Lifecycle and matchmaking integration commit
 
 - Promoted the approved disconnect/reconnect, timeout-strike, no-progress, hard-cap, terminal-immutability, and replay-v2 policy onto the clean lifecycle base.

@@ -22,7 +22,6 @@ from jjk_arena.battle_v2.first_creation_profile import (
     save_first_creation_profile,
 )
 from jjk_arena.battle_v2.manager import BattleV2Error, BattleV2Manager, battle_v2_enabled, skill_catalog
-from jjk_arena.battle_v2.models import BattleEvent, BattlePhase
 from jjk_arena.battle_v2.starter_roster import FIRST_CREATION_PRESETS, first_creation_payload
 
 
@@ -176,6 +175,41 @@ def clean_v2_energy_color(value) -> str:
     return CONTROL_RE.sub("", str(value or "").strip().lower())[:8]
 
 
+def clean_v2_command_metadata(data: dict) -> tuple[int, str]:
+    if "state_revision" not in data:
+        raise BattleV2Error("state_revision is required")
+    if isinstance(data["state_revision"], bool):
+        raise BattleV2Error("state_revision must be a non-negative integer")
+    try:
+        state_revision = int(data["state_revision"])
+    except (TypeError, ValueError) as exc:
+        raise BattleV2Error("state_revision must be a non-negative integer") from exc
+    if state_revision < 0:
+        raise BattleV2Error("state_revision must be a non-negative integer")
+    nonce = CONTROL_RE.sub("", str(data.get("client_action_nonce", "")).strip())[:64]
+    if not nonce:
+        raise BattleV2Error("client_action_nonce is required")
+    return state_revision, nonce
+
+
+def execute_v2_player_command(
+    room_id: str,
+    player_id: str,
+    command: str,
+    data: dict,
+    payload: dict | None = None,
+) -> bool:
+    state_revision, nonce = clean_v2_command_metadata(data)
+    return battle_v2_manager.execute_player_command(
+        room_id,
+        player_id,
+        command,
+        state_revision,
+        nonce,
+        payload or {},
+    )
+
+
 def active_v2_context(data=None):
     if not battle_v2_enabled():
         emit("battle_v2_error", {"message": "Battle v2 is disabled. Set JJK_BATTLE_SYSTEM=v2."})
@@ -224,6 +258,7 @@ def run_battle_v2_cpu_turns(room_id: str):
         if state.winner_id or state.turn_player_id != CPU_V2_PLAYER_ID:
             return
         battle_v2_manager.take_cpu_turn(room_id, CPU_V2_PLAYER_ID)
+        battle_v2_manager.advance_state_revision(room_id)
 
 
 def battle_v2_has_cpu(room_id: str) -> bool:
@@ -279,6 +314,7 @@ def reset_room(room_id):
     room_id = clean_room_id(room_id)
     battle_v2_manager.rooms.pop(room_id, None)
     battle_v2_manager.rngs.pop(room_id, None)
+    battle_v2_manager.command_receipts.pop(room_id, None)
     v2_pvp_lobbies.pop(room_id, None)
     return f"Room '{room_id}' purged."
 
@@ -410,7 +446,13 @@ def on_battle_v2_submit_plan(data=None):
         return
     room_id, player_session = context
     try:
-        battle_v2_manager.submit_plan(room_id, player_session, clean_v2_actions(data.get("actions", [])))
+        execute_v2_player_command(
+            room_id,
+            player_session,
+            "submit_plan",
+            data,
+            {"actions": clean_v2_actions(data.get("actions", []))},
+        )
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
         emit_battle_v2_error(exc)
@@ -426,11 +468,15 @@ def on_battle_v2_update_queue(data=None):
         return
     room_id, player_session = context
     try:
-        battle_v2_manager.update_queue(
+        execute_v2_player_command(
             room_id,
             player_session,
-            clean_v2_queue_order(data.get("queue_order", [])),
-            clean_v2_wildcard_pays(data.get("wildcard_pays", {})),
+            "update_queue",
+            data,
+            {
+                "queue_order": clean_v2_queue_order(data.get("queue_order", [])),
+                "wildcard_pays": clean_v2_wildcard_pays(data.get("wildcard_pays", {})),
+            },
         )
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
@@ -441,13 +487,14 @@ def on_battle_v2_update_queue(data=None):
 def on_battle_v2_confirm_queue(data=None):
     if not allow_event("battle_v2_confirm_queue", limit=45, window_seconds=5):
         return
-    context = active_v2_context(data or {})
+    data = data or {}
+    context = active_v2_context(data)
     if not context:
         return
     room_id, player_session = context
     try:
-        battle_v2_manager.confirm_queue(room_id, player_session)
-        if battle_v2_has_cpu(room_id):
+        replayed = execute_v2_player_command(room_id, player_session, "confirm_queue", data)
+        if not replayed and battle_v2_has_cpu(room_id):
             run_battle_v2_cpu_turns(room_id)
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
@@ -458,12 +505,13 @@ def on_battle_v2_confirm_queue(data=None):
 def on_battle_v2_cancel_queue(data=None):
     if not allow_event("battle_v2_cancel_queue", limit=45, window_seconds=5):
         return
-    context = active_v2_context(data or {})
+    data = data or {}
+    context = active_v2_context(data)
     if not context:
         return
     room_id, player_session = context
     try:
-        battle_v2_manager.cancel_queue(room_id, player_session)
+        execute_v2_player_command(room_id, player_session, "cancel_queue", data)
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
         emit_battle_v2_error(exc)
@@ -479,11 +527,15 @@ def on_battle_v2_convert_energy(data=None):
         return
     room_id, player_session = context
     try:
-        battle_v2_manager.convert_energy(
+        execute_v2_player_command(
             room_id,
             player_session,
-            clean_v2_energy_color(data.get("source")),
-            clean_v2_energy_color(data.get("target")),
+            "convert_energy",
+            data,
+            {
+                "source": clean_v2_energy_color(data.get("source")),
+                "target": clean_v2_energy_color(data.get("target")),
+            },
         )
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
@@ -494,13 +546,14 @@ def on_battle_v2_convert_energy(data=None):
 def on_battle_v2_end_turn(data=None):
     if not allow_event("battle_v2_end_turn", limit=45, window_seconds=5):
         return
-    context = active_v2_context(data or {})
+    data = data or {}
+    context = active_v2_context(data)
     if not context:
         return
     room_id, player_session = context
     try:
-        battle_v2_manager.end_turn(room_id, player_session)
-        if battle_v2_has_cpu(room_id):
+        replayed = execute_v2_player_command(room_id, player_session, "end_turn", data)
+        if not replayed and battle_v2_has_cpu(room_id):
             run_battle_v2_cpu_turns(room_id)
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
@@ -511,27 +564,13 @@ def on_battle_v2_end_turn(data=None):
 def on_battle_v2_surrender(data=None):
     if not allow_event("battle_v2_surrender"):
         return
-    context = active_v2_context(data or {})
+    data = data or {}
+    context = active_v2_context(data)
     if not context:
         return
     room_id, player_session = context
     try:
-        state = battle_v2_manager.get_state(room_id)
-        if player_session not in state.players:
-            raise BattleV2Error(f"unknown player: {player_session}")
-        winners = [pid for pid in state.players if pid != player_session]
-        if not winners:
-            raise BattleV2Error("no opponent to award surrender")
-        state.winner_id = winners[0]
-        state.phase = BattlePhase.FINISHED
-        state.event_log.append(
-            BattleEvent(
-                type="battle_finished",
-                message=f"{state.winner_id} wins by surrender",
-                turn_number=state.turn_number,
-                payload={"winner_id": state.winner_id, "surrendered_id": player_session},
-            )
-        )
+        execute_v2_player_command(room_id, player_session, "surrender", data)
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
         emit_battle_v2_error(exc)
@@ -544,6 +583,7 @@ def on_reset_room():
         return
     battle_v2_manager.rooms.pop(room_id, None)
     battle_v2_manager.rngs.pop(room_id, None)
+    battle_v2_manager.command_receipts.pop(room_id, None)
     v2_pvp_lobbies.pop(room_id, None)
     session.pop("room_id", None)
     emit("room_reset", {}, room=room_id)

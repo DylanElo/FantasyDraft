@@ -2,6 +2,26 @@
 
 Battle v2 SocketIO events are the maintained gameplay surface. The server owns match state, validation, queue resolution, private serialization, and CPU responses.
 
+## Versioned command envelope
+
+Every mutating command after match creation includes the last authoritative
+`state_revision` received by the client and a non-empty, per-player
+`client_action_nonce`:
+
+```json
+{
+  "state_revision": 12,
+  "client_action_nonce": "1712345678901-7"
+}
+```
+
+The server rejects stale revisions before gameplay mutation. A retry using the
+same nonce, command, and sanitized payload is idempotent and returns current
+viewer state without applying the command again. Reusing a nonce for a
+different command or payload is rejected. Successful commands and automatic
+authoritative continuations advance `state_revision`; rejected commands leave
+state, energy, cooldowns, queues, RNG, and logs unchanged.
+
 ## Client Events
 
 ### `battle_v2_start_classic`
@@ -51,6 +71,8 @@ Stores pending actions for queue review without spending energy.
 
 ```json
 {
+  "state_revision": 0,
+  "client_action_nonce": "1712345678901-1",
   "actions": [
     {
       "id": "a1",
@@ -69,6 +91,8 @@ Sets queue order and wildcard payments. This validates the full queue.
 
 ```json
 {
+  "state_revision": 1,
+  "client_action_nonce": "1712345678901-2",
   "queue_order": ["a1"],
   "wildcard_pays": {
     "a1": ["green"]
@@ -81,7 +105,7 @@ Sets queue order and wildcard payments. This validates the full queue.
 Confirms and resolves the current player's queued actions.
 
 ```json
-{}
+{"state_revision": 2, "client_action_nonce": "1712345678901-3"}
 ```
 
 ### `battle_v2_cancel_queue`
@@ -89,7 +113,7 @@ Confirms and resolves the current player's queued actions.
 Clears the current player's pending queue and returns to planning.
 
 ```json
-{}
+{"state_revision": 1, "client_action_nonce": "1712345678901-4"}
 ```
 
 ### `battle_v2_end_turn`
@@ -105,7 +129,21 @@ defensive utility, payoff skills with conditions, and higher-impact damage
 families such as soul or piercing damage.
 
 ```json
-{}
+{"state_revision": 0, "client_action_nonce": "1712345678901-5"}
+```
+
+### `battle_v2_convert_energy`
+
+Converts two matching core energy into one different core energy once during
+the current turn.
+
+```json
+{
+  "state_revision": 0,
+  "client_action_nonce": "1712345678901-6",
+  "source": "green",
+  "target": "red"
+}
 ```
 
 ### `battle_v2_surrender`
@@ -113,7 +151,7 @@ families such as soul or piercing damage.
 Concedes the v2 match for the current player.
 
 ```json
-{}
+{"state_revision": 0, "client_action_nonce": "1712345678901-7"}
 ```
 
 ## Server Events

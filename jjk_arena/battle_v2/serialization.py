@@ -135,4 +135,5 @@ def serialize_battle_state(state: BattleState, viewer_id: str) -> dict:
         "winner_id": state.winner_id,
         "rng_seed": state.rng_seed,
         "phase_deadline": state.phase_deadline,
+        "state_revision": state.state_revision,
     }

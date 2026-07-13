@@ -165,6 +165,7 @@ def test_planning_timer_is_server_authoritative_and_advances_turn():
     now[0] = 105.0
     assert manager.expire_phase_if_needed("timer") is True
     assert manager.get_state("timer").turn_player_id == "p2"
+    assert manager.get_state("timer").state_revision == 1
     assert any(event.type == "phase_timeout" for event in manager.get_state("timer").event_log)
 
 

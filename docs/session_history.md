@@ -212,3 +212,26 @@ Caution / next work:
 
 - Timer deadlines are authoritative and serialized; production scheduling may poll `expire_phase_if_needed` or invoke it through normal manager/socket entry points.
 - No Phaser layout, roster, progression, damage-family aggregation, or anti-domain behavior changed.
+
+## 2026-07-12 - Battle v2 command versioning and idempotency
+
+What changed:
+
+- Added serialized authoritative `state_revision` values for Battle v2 state.
+- Required a non-negative revision and non-empty per-player `client_action_nonce` on every post-start mutating SocketIO command.
+- Added a bounded manager nonce ledger so identical retries do not execute twice and conflicting nonce reuse is rejected.
+- Added stale-intent rejection and transactional rollback of battle state, progression state, RNG state, queues, energy, cooldowns, and logs on command failure.
+- Updated Phaser command payloads without changing scenes, layout, interaction flow, or gameplay semantics.
+- Made timeout and CPU continuations advance the authoritative revision.
+
+Verification:
+
+- Manager regressions cover successful revision advance, identical retry, stale revision, nonce conflict, and atomic invalid-command rollback.
+- Socket integration covers missing metadata, retry idempotency, and stale-command rejection.
+- Full pytest, Python compilation, Phaser JavaScript syntax, and `git diff --check` passed in the focused branch.
+
+Caution / next work:
+
+- Nonce receipts are intentionally bounded and in-memory with the room; durable reconnect/resume and multi-process persistence remain separate networking work.
+- The client emits unique nonces but does not yet implement an automatic retransmission policy.
+- No timer scheduler, reconnect flow, roster, progression, balance, or visual layout changed.

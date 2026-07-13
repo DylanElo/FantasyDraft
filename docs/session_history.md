@@ -532,3 +532,37 @@ in this same window were handled.
 Verification: `python -m pytest -q` — 320 passed, 1 skipped (added a
 turn-aggregate budget-depletion unit test and a turn-boundary reset test);
 `python -m compileall -q jjk_arena web/app.py`.
+
+## 2026-07-13 - Milestone B: automated 78-skill audit
+
+Added `jjk_arena/battle_v2/skill_audit.py` (see
+`docs/battle_v2_first_creation_skill_audit_contract.md`) as the "automated
+audit pass" the user chose over a manual per-skill review, since the existing
+`test_every_first_creation_skill_executes_its_explicit_contract` blanket
+parametrized test already thoroughly covers cost/cooldown/positive-effect/
+condition-branching/duration for all 78 skills. The audit tool instead checks
+structural completeness, special-mechanic (counter/reflect/replacement/
+non-trivial-targeting) test coverage, and kit-grammar vocabulary drift.
+
+Findings:
+- Structural completeness: 0 flagged across all 78 skills.
+- Special-mechanic coverage: counter (Miwa) and both skill-replacement
+  mechanics (Geto Young, Yuta JJK0) already have dedicated test coverage. 11
+  skills using `ally`/`ally_team`/`enemy_team` targeting do not have a
+  dedicated test beyond the blanket one — reported as an open finding, not
+  auto-fixed.
+- **The documented `ConditionSpec`/`SkillSpec.conditions` mechanism in
+  `docs/jjk_kit_grammar.md` is used by zero of the 78 shipped skills.** All
+  real conditional behavior uses an undocumented parallel payload-key
+  convention on `EffectSpec` instead. This is a documentation gap, not an
+  engine bug — flagged for a future doc-grammar correction pass.
+- `cost_modifier`/`damage_modifier` don't exist anywhere in the engine.
+  `domain`/`health_steal`/`reflect`/`cooldown_increase` exist but are unused
+  by First Creation content (consistent with the anti-domain decision — no
+  First Creation character has a real Domain).
+
+Added `tests/test_first_creation_skill_audit.py` as a permanent regression
+guard (pins structural completeness at 0, guards counter/reflect/replacement
+coverage) without silently asserting away the open targeting-coverage finding.
+
+Verification: `python -m pytest -q` — 322 passed, 1 skipped.

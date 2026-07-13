@@ -924,3 +924,26 @@ def test_disconnect_grace_expiry_forfeits_through_live_scheduler(monkeypatch):
     finished = received_payload(p2_client, "battle_v2_update")
     assert finished["winner_id"] == "grace-p2"
     assert finished["finish_reason"] == "disconnect_budget"
+
+
+def test_opponent_is_immediately_notified_when_a_player_disconnects(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    p1_client = socket_client_with_player("notify-p1")
+    p2_client = socket_client_with_player("notify-p2")
+    for client, player_id, team in [
+        (p1_client, "P1", ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]),
+        (p2_client, "P2", ["satoru_gojo", "ryomen_sukuna", "mahito"]),
+    ]:
+        client.emit(
+            "battle_v2_join_pvp",
+            {"room_id": "notify-code", "player_name": player_id, "player_team": team},
+        )
+    received_payload(p1_client, "battle_v2_update")
+    received_payload(p2_client, "battle_v2_update")
+
+    p1_client.disconnect()
+
+    update = received_payload(p2_client, "battle_v2_update")
+    assert update is not None, "the connected opponent must learn about a disconnect immediately, not only on the next unrelated update"
+    assert update["paused"] is True
+    assert update["disconnect_grace_seconds_remaining"] == pytest.approx(90, abs=1)

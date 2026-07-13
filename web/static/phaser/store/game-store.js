@@ -27,6 +27,7 @@ export class GameStore {
       this.queueReviewOpen = false;
       this.queueSubmitting = false;
       this.toast = '';
+      this.connectionState = 'connected';
       this.draftPage = 0;
       this.draftTarget = 'playerTeam';
       this.creationPresetPage = 0;
@@ -62,10 +63,16 @@ export class GameStore {
 
     bindSocket() {
       this.socketClient.on('connect', () => {
+        this.connectionState = 'connected';
         this.setStatus('Connected');
         if (this.resumeSession) {
           this.socketClient.emit('battle_v2_resume', { ...this.resumeSession });
         }
+        this.notify();
+      });
+      this.socketClient.on('disconnect', () => {
+        this.connectionState = 'disconnected';
+        this.setStatus('Reconnecting…');
         this.notify();
       });
       this.socketClient.on('battle_v2_session', (data) => this.saveResumeSession(data));
@@ -80,11 +87,22 @@ export class GameStore {
         this.showToast(data && data.message ? data.message : 'Battle v2 error');
       });
       this.socketClient.on('battle_v2_finished', (data) => {
-        this.showToast(`Battle finished: ${data && data.winner_id ? data.winner_id : 'winner decided'}`);
+        this.showToast(this.finishedMessage(data));
       });
       this.socketClient.on('message', (data) => {
         if (data && data.text) this.showToast(data.text);
       });
+    }
+
+    finishedMessage(data) {
+      const winnerId = data && data.winner_id;
+      const reason = this.state && this.state.finish_reason;
+      const iWon = winnerId && winnerId === this.mineId();
+      if (reason === 'disconnect' || reason === 'disconnect_budget') {
+        if (!winnerId) return 'Both players disconnected. No contest.';
+        return iWon ? 'Your opponent disconnected. You win by forfeit.' : 'You disconnected too long and forfeited the match.';
+      }
+      return `Battle finished: ${winnerId || 'winner decided'}`;
     }
 
     setStatus(text) {

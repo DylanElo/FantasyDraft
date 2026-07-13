@@ -265,6 +265,15 @@ server's monotonic deadline. The server independently wakes the room and emits
 a new viewer-specific update when Planning or Queue Review expires; the client
 must not perform the timeout transition itself.
 
+The payload also includes `disconnect_grace_seconds_remaining` (`float |
+null`): when `paused` is `true` because a player disconnected, this is the
+number of seconds until the earliest pending disconnect deadline triggers an
+auto-forfeit; `null` when no player is currently disconnected. The server
+proactively emits `battle_v2_update` to the whole room the moment a player
+disconnects (not just on the next unrelated action), so the connected
+opponent's client learns about it immediately rather than only on the next
+state change.
+
 ### `battle_v2_error`
 
 Returned when the feature flag is disabled, the session is missing, validation

@@ -713,6 +713,12 @@ class BattleV2Manager:
             self._record_lifecycle(room_id, "expire_disconnects", {})
             return True
 
+    def _disconnect_grace_seconds_remaining(self, state: BattleState) -> float | None:
+        if not state.disconnect_deadlines:
+            return None
+        now = self.clock()
+        return max(0.0, min(deadline - now for deadline in state.disconnect_deadlines.values()))
+
     def _capture_turn_ledger(self, state: BattleState) -> bool:
         events = state.event_log[state.progress_event_cursor:]
         state.progress_event_cursor = len(state.event_log)
@@ -1026,6 +1032,7 @@ class BattleV2Manager:
             raise BattleV2Error(f"unknown viewer: {viewer_id}")
         payload = battle_state_to_dict(state, viewer_id)
         payload["phase_seconds_remaining"] = phase_seconds_remaining(state, self.clock)
+        payload["disconnect_grace_seconds_remaining"] = self._disconnect_grace_seconds_remaining(state)
         payload["skill_catalog"] = self.room_catalogs.get(room_id, skill_catalog())
         payload["roster_mode"] = self.room_roster_modes.get(room_id, "classic")
         if self.room_roster_modes.get(room_id) == "first_creation":

@@ -30,25 +30,36 @@ export class CombatScene extends CombatQueueReviewScene {
         fontStyle: '900',
       });
       const queueCount = this.store.actions.length;
-      const statusLabel = this.store.queueSubmitting
-        ? 'RESOLVING'
-        : this.store.queueReviewOpen
-          ? 'REVIEW'
-          : this.store.controlsLocked()
-            ? 'LOCKED'
-            : queueCount
-              ? 'PLANNING'
-              : 'READY';
-      this.graphics.fillStyle(queueCount ? COLORS.queued : COLORS.panel2, queueCount ? 0.86 : 0.72);
+      const disconnectSeconds = state.paused && state.disconnect_grace_seconds_remaining != null
+        ? Math.max(0, Math.ceil(state.disconnect_grace_seconds_remaining))
+        : null;
+      const connectionWarning = this.store.connectionState === 'disconnected'
+        ? 'OFFLINE'
+        : disconnectSeconds !== null
+          ? `PAUSED ${disconnectSeconds}S`
+          : null;
+      const statusLabel = connectionWarning
+        || (this.store.queueSubmitting
+          ? 'RESOLVING'
+          : this.store.queueReviewOpen
+            ? 'REVIEW'
+            : this.store.controlsLocked()
+              ? 'LOCKED'
+              : queueCount
+                ? 'PLANNING'
+                : 'READY');
+      const badgeFill = connectionWarning ? COLORS.enemy : queueCount ? COLORS.queued : COLORS.panel2;
+      const badgeAlpha = connectionWarning ? 0.9 : queueCount ? 0.86 : 0.72;
+      this.graphics.fillStyle(badgeFill, badgeAlpha);
       this.graphics.fillRoundedRect(x + 144, 43, 86, 20, 10);
-      this.graphics.lineStyle(1, queueCount ? COLORS.queued : COLORS.line, queueCount ? 0.78 : 0.5);
+      this.graphics.lineStyle(1, badgeFill, connectionWarning ? 0.95 : queueCount ? 0.78 : 0.5);
       this.graphics.strokeRoundedRect(x + 144, 43, 86, 20, 10);
       this.mono(x + 187, 48, `QUEUE ${queueCount}/3`, {
         color: queueCount ? '#d8f0dc' : COLORS.muted,
         fontSize: '7px',
       }).setOrigin(0.5, 0);
       this.mono(x + 144, 63, statusLabel, {
-        color: statusLabel === 'READY' ? '#b7dbc0' : COLORS.paperText,
+        color: connectionWarning ? '#ffe0e0' : statusLabel === 'READY' ? '#b7dbc0' : COLORS.paperText,
         fontSize: '7px',
       });
       this.renderEnergyMeter(frame.x + frame.width - 150, 24, me && me.energy);
@@ -450,7 +461,10 @@ export class CombatScene extends CombatQueueReviewScene {
       const state = this.store.state;
       if (!state) {
         this.topBar(frame, 'Opening Domain', () => this.store.resetToLobby());
-        this.mono(frame.x + frame.gutter, 130, 'Waiting for battle state from server...', { color: COLORS.text });
+        const waitingLabel = this.store.connectionState === 'disconnected'
+          ? 'Reconnecting…'
+          : 'Waiting for battle state from server...';
+        this.mono(frame.x + frame.gutter, 130, waitingLabel, { color: this.store.connectionState === 'disconnected' ? COLORS.enemy : COLORS.text });
         this.toast(frame);
         return;
       }

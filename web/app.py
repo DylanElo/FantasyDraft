@@ -1142,6 +1142,7 @@ def on_disconnect():
     if room_id and room_id in battle_v2_manager.rooms:
         battle_v2_manager.disconnect_player(room_id, player_session)
         battle_v2_timer_scheduler.arm(room_id)
+        emit_battle_v2_update(room_id)
 
 
 if __name__ == "__main__":

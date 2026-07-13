@@ -74,6 +74,23 @@ def test_disconnect_resume_restores_phase_with_minimum_time():
     assert state.phase_deadline == 35
 
 
+def test_disconnect_grace_seconds_remaining_is_serialized_and_counts_down():
+    manager, clock = manager_with_clock()
+    assert manager.serialize_for_player("match", "p1")["disconnect_grace_seconds_remaining"] is None
+
+    clock[0] = 10
+    manager.disconnect_player("match", "p1")
+    remaining = manager.serialize_for_player("match", "p2")["disconnect_grace_seconds_remaining"]
+    assert remaining == 90
+
+    clock[0] = 40
+    remaining = manager.serialize_for_player("match", "p2")["disconnect_grace_seconds_remaining"]
+    assert remaining == 60
+
+    manager.reconnect_player("match", "p1")
+    assert manager.serialize_for_player("match", "p2")["disconnect_grace_seconds_remaining"] is None
+
+
 def test_single_disconnect_expiry_forfeits_once():
     manager, clock = manager_with_clock()
     manager.disconnect_player("match", "p1")

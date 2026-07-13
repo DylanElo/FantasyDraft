@@ -661,3 +661,60 @@ same-session agentic task.
 
 Verification: the 280-game batch completed with exit code 0 and produced
 well-formed JSON; no test changes in this entry (diagnostic-only run).
+
+## 2026-07-13 - Milestone C: reconnect/disconnect UX
+
+First Milestone C deliverable (of AI difficulty / progression / combat UX /
+reconnect UX / audio-haptics / instrumentation, per the roadmap). Research
+found the server already does all the hard authoritative reconnect work
+(resume-token protocol, 90s/180s grace, auto-forfeit) but the Phaser client
+had **zero UI feedback for it** — no "Reconnecting…" state, no disconnect
+indicator, no grace countdown, and the connected opponent wasn't even told
+their opponent had disconnected until an unrelated update happened to arrive.
+
+Server changes:
+- `jjk_arena/battle_v2/manager.py`: added `_disconnect_grace_seconds_remaining`
+  and included it in `_serialize_for_player`'s payload as
+  `disconnect_grace_seconds_remaining`.
+- `web/app.py`'s `on_disconnect` now calls `emit_battle_v2_update(room_id)`
+  immediately after `disconnect_player`, so the connected opponent learns
+  about the disconnect the instant it happens, not on the next unrelated
+  state change.
+
+Client changes (`web/static/phaser/store/game-store.js`,
+`web/static/phaser/scenes/combat-scene.js`):
+- `GameStore` now tracks `connectionState` ('connected'/'disconnected') via a
+  real `disconnect` socket.io handler (there wasn't one before).
+- `battle_v2_finished` toasts are now reason-aware (`finishedMessage`):
+  distinct messages for "opponent disconnected, you win by forfeit", "you
+  forfeited by staying disconnected too long", and "both disconnected, no
+  contest", instead of a generic "Battle finished: <id>".
+- The existing turn-status badge in `CombatScene.renderTopHud` (which already
+  showed READY/PLANNING/LOCKED/etc.) now shows `OFFLINE` (own connection
+  lost) or `PAUSED <n>S` (opponent disconnected, counting down to forfeit) in
+  red, taking priority over the normal queue-status label.
+
+Initial implementation added a separate banner row below the top HUD, but
+visual testing in the browser showed it overlapping the enemy-portrait row in
+the real (cramped) mobile layout — the gap between the HUD box and the
+character row is only ~16px. Rebuilt it to reuse the existing status-badge
+slot instead of claiming new screen space, which fit cleanly.
+
+Verified live in the browser preview (not just unit tests): started a CPU
+match, force-disconnected the socket via `store.socketClient.socket.
+disconnect()`, confirmed the badge changed to `OFFLINE` in red with no layout
+collision, reconnected and confirmed it cleared back to `READY`. True
+two-player opponent-disconnect couldn't be exercised through two browser tabs
+(same browser session shares one player_id server-side), so that path was
+verified by injecting a `{paused: true, disconnect_grace_seconds_remaining:
+47}` state directly into the store and confirming `PAUSED 47S` rendered
+correctly. No console errors in any state.
+
+Added `test_disconnect_grace_seconds_remaining_is_serialized_and_counts_down`
+(`tests/test_battle_v2_lifecycle.py`) and
+`test_opponent_is_immediately_notified_when_a_player_disconnects`
+(`tests/test_battle_v2_socket.py`).
+
+Verification: `python -m pytest -q` — 336 passed, 1 skipped;
+`python -m compileall -q jjk_arena web/app.py`; `node --check` on all three
+changed Phaser modules; live browser verification as described above.

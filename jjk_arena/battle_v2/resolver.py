@@ -703,6 +703,7 @@ def finish_turn(state: BattleState, player_id: str) -> list[BattleEvent]:
             if player.id == player_id:
                 tick_cooldowns(character)
             character.acted_this_turn = False
+            character.turn_damage_reduction_used = 0
         player.queue_confirmed = False
         player.energy_converted_this_turn = False
     state.pending_actions[player_id] = []

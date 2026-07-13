@@ -203,6 +203,7 @@ class CharacterState:
     skill_replacements: dict[str, str] = field(default_factory=dict)
     acted_this_turn: bool = False
     base_skill_ids: list[str] = field(default_factory=list)
+    turn_damage_reduction_used: int = 0
 
 
 @dataclass(slots=True)

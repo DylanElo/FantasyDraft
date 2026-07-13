@@ -15,7 +15,7 @@
       "state_revision": 0,
       "client_action_nonce": "turn-1",
       "payload": {},
-      "expected_state_hash": "36ec618743952851ecaaa03926d9d0c6dc90089a2d36f357944c36120aad8c78"
+      "expected_state_hash": "ca85a789e730b82b4940ef90e4d1a211d18660b2ae37c7bd906be9c1ea05e2fb"
     },
     {
       "player_id": "p2",
@@ -23,10 +23,10 @@
       "state_revision": 1,
       "client_action_nonce": "turn-2",
       "payload": {},
-      "expected_state_hash": "127041ed8237e6186061d2a4d5bc9fb51c7686be81d44b2f69ff6ce78fe4eece"
+      "expected_state_hash": "075a753b19e7623eb8b55ef6c0ac5ade054bade7ce55a04a91b5875ce436a5d0"
     }
   ],
-  "initial_state_hash": "877872b18ee8afa9136dfcd5c40711f043fb21533b3b98d73effc7db3149fcd7",
-  "final_state_hash": "127041ed8237e6186061d2a4d5bc9fb51c7686be81d44b2f69ff6ce78fe4eece",
+  "initial_state_hash": "cee85b29bbb73ab4859f143c683a59961a28c0e29eeadb5cf1f91ff7ce3fe4f7",
+  "final_state_hash": "075a753b19e7623eb8b55ef6c0ac5ade054bade7ce55a04a91b5875ce436a5d0",
   "timer_policy": {"planning_seconds": 60.0, "queue_review_seconds": 30.0}
 }

@@ -501,3 +501,34 @@ lifecycle bugs are fixed and the 1,000-match soak requirement is met. Phase 4
 ("PvP fiable") is now considered done at the engine/lifecycle level; balance,
 AI quality, and mobile UX polish remain separate, later milestones (see
 Milestone B/C in the project roadmap).
+
+## 2026-07-13 - Locked damage reduction and anti-domain decisions
+
+Presented options for the two `docs/CODEX_PROJECT_MEMORY.md` "open decisions"
+blocking Milestone B (final DR model, final anti-domain rule); the user chose:
+
+- Damage reduction: switch from per-hit to a Naruto-style turn-aggregate
+  budget. Implemented via `CharacterState.turn_damage_reduction_used`
+  (`models.py`), consumed in `apply_damage` (`effects.py`), reset every turn
+  in `finish_turn` (`resolver.py`). Only `DamageType.NORMAL` is affected;
+  piercing/soul/health-steal/sure-hit behavior is unchanged. No existing DR
+  grant amounts (10/15/20 across ~9 sites, ~8/19 First Creation characters)
+  were retuned — that is a separate balance question.
+- Anti-domain: ratify the existing universal automatic conversion rule as
+  intentional (no code change — it was already built and tested, just never
+  marked as decided). Zero First Creation characters currently grant a real
+  Domain, so this locks the rule before any character receives one rather
+  than reconciling live content.
+
+Decisions recorded in `docs/decisions/battle_v2_damage_reduction.md` and
+`docs/decisions/battle_v2_anti_domain.md`; `AGENTS.md` and
+`docs/CODEX_PROJECT_MEMORY.md` updated to point at them and removed from the
+open-decisions list. The golden replay fixture's hashes were regenerated
+(`tests/fixtures/replays/first_creation_two_turns.json`) since the new
+`turn_damage_reduction_used` field changes the authoritative state hash;
+`RULES_VERSION` was left unchanged, consistent with how prior engine changes
+in this same window were handled.
+
+Verification: `python -m pytest -q` — 320 passed, 1 skipped (added a
+turn-aggregate budget-depletion unit test and a turn-boundary reset test);
+`python -m compileall -q jjk_arena web/app.py`.

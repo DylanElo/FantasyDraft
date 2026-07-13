@@ -174,7 +174,10 @@ Expensive skills consume the same shared pool that teammates need. A three-energ
 
 ## Normal damage
 
-- Subject to normal fixed damage reduction.
+- Subject to normal fixed damage reduction, applied as a turn-aggregate
+  budget: it absorbs at most the reduction total across every normal hit a
+  character takes in one turn, not a flat discount on each individual hit.
+  See `docs/decisions/battle_v2_damage_reduction.md`.
 - Then absorbed by destructible defense.
 - Remaining damage removes HP.
 
@@ -758,13 +761,16 @@ Unless the user explicitly changes priority, use this order:
 
 These topics are intentionally not locked and require user confirmation before a broad change:
 
-- fixed damage reduction: per-hit versus Naruto-style turn aggregate
-- exact universal anti-domain conversion rule versus per-skill anti-domain contracts
 - final monetization/commercial/IP strategy
 - final number of launch mission unlocks beyond First Creation
 - whether Draft remains a major mode beside Classic Arena after the core mobile release
 
 When a task touches one of these, present options and consequences instead of choosing silently.
+
+Fixed damage reduction (turn-aggregate budget, not per-hit) and the universal
+anti-domain conversion rule are now locked; see
+`docs/decisions/battle_v2_damage_reduction.md` and
+`docs/decisions/battle_v2_anti_domain.md`.
 
 ---
 

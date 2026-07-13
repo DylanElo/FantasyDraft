@@ -125,6 +125,35 @@ def test_damage_families_match_v2_rules():
     assert target.hp == 40
 
 
+def test_damage_reduction_is_a_turn_aggregate_budget_not_a_flat_per_hit_discount():
+    target = CharacterState(character_id="target", name="Target")
+    target.statuses.append(
+        StatusEffect(
+            id="guard",
+            name="Guard",
+            source_player_id="p1",
+            source_slot=0,
+            target_player_id="p2",
+            target_slot=0,
+            duration=1,
+            payload={"damage_reduction": 20},
+        )
+    )
+
+    # Three 15-damage hits in the same turn: the 20-point budget absorbs the
+    # first hit in full, partially absorbs the second, and the third lands
+    # untouched -- a flat per-hit model would instead no-sell all three.
+    assert apply_damage(target, 15, DamageType.NORMAL) == 0
+    assert apply_damage(target, 15, DamageType.NORMAL) == 10
+    assert apply_damage(target, 15, DamageType.NORMAL) == 15
+    assert target.turn_damage_reduction_used == 20
+    assert target.hp == 100 - 25
+
+    # A new turn refreshes the budget.
+    target.turn_damage_reduction_used = 0
+    assert apply_damage(target, 15, DamageType.NORMAL) == 0
+
+
 def test_health_steal_only_heals_actual_hp_damage():
     state = make_state()
     caster = state.players["p1"].team[0]

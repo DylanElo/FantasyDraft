@@ -73,7 +73,12 @@ Immediate-resolution tests alone are insufficient for setup/payoff mechanics.
 - Defense destruction is a distinct effect performed before damage when text says so.
 - Helpful effects are not blocked by harmful-only invulnerability.
 
-Do not change per-hit versus turn-aggregate fixed damage reduction until the user resolves that open decision.
+Fixed damage reduction is a turn-aggregate budget (`CharacterState.turn_damage_reduction_used`,
+reset in `resolver.finish_turn`), not a flat per-hit discount — see
+`docs/decisions/battle_v2_damage_reduction.md`. Anti-domain uses the existing
+universal automatic conversion rule, not per-skill contracts — see
+`docs/decisions/battle_v2_anti_domain.md`. Both are locked; do not revert
+either without a new decision record.
 
 ## Counter, reflect, invisible, replace
 

@@ -153,7 +153,14 @@ def apply_damage(
     incoming = max(0, amount + _status_amount(target, "damage_taken_delta"))
 
     if damage_type == DamageType.NORMAL:
-        incoming = max(0, incoming - reduction)
+        # Damage reduction is a turn-aggregate budget, not a flat per-hit
+        # subtraction: it absorbs at most `reduction` total HP of normal
+        # damage across every hit a character takes in one turn, then lets
+        # subsequent hits through in full for the rest of that turn.
+        available_reduction = max(0, reduction - target.turn_damage_reduction_used)
+        absorbed_reduction = min(incoming, available_reduction)
+        incoming -= absorbed_reduction
+        target.turn_damage_reduction_used += absorbed_reduction
     elif damage_type == DamageType.SOUL:
         defense = 0
     elif damage_type == DamageType.SURE_HIT:

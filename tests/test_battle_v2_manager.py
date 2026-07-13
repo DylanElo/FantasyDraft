@@ -84,6 +84,16 @@ def test_convert_energy_resets_after_turn_advances():
     assert manager.get_state("room").players["p1"].energy_converted_this_turn is False
 
 
+def test_damage_reduction_budget_resets_when_the_turn_advances():
+    manager, _ = start_manager()
+    state = manager.get_state("room")
+    state.players["p2"].team[0].turn_damage_reduction_used = 20
+
+    manager.end_turn("room", "p1")
+
+    assert manager.get_state("room").players["p2"].team[0].turn_damage_reduction_used == 0
+
+
 def test_convert_energy_requires_no_pending_queue():
     manager, _ = start_manager()
     state = manager.get_state("room")

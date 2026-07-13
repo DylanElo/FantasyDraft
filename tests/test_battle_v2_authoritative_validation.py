@@ -169,7 +169,7 @@ def test_planning_timer_is_server_authoritative_and_advances_turn():
     assert any(event.type == "phase_timeout" for event in manager.get_state("timer").event_log)
 
 
-def test_valid_queue_review_timeout_resolves_once_and_advances_turn():
+def test_queue_review_timeout_preserves_player_deadline_and_discards_unconfirmed_queue():
     now = [200.0]
     manager = BattleV2Manager(
         rng_seed=1,
@@ -192,14 +192,14 @@ def test_valid_queue_review_timeout_resolves_once_and_advances_turn():
         "target_player_id": "p2",
         "target_slot": 0,
     }])
-    assert state.phase_deadline == 202.0
+    assert state.phase_deadline == 205.0
 
-    now[0] = 202.0
+    now[0] = 205.0
     assert manager.expire_phase_if_needed("queue-timer") is True
 
-    assert state.players["p2"].team[0].hp == 80
+    assert state.players["p2"].team[0].hp == 100
     assert state.turn_player_id == "p2"
-    assert [event.type for event in state.event_log].count("skill_resolved") == 1
+    assert [event.type for event in state.event_log].count("skill_resolved") == 0
     assert [event.type for event in state.event_log].count("phase_timeout") == 1
 
 

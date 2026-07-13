@@ -761,7 +761,6 @@ These topics are intentionally not locked and require user confirmation before a
 - fixed damage reduction: per-hit versus Naruto-style turn aggregate
 - exact universal anti-domain conversion rule versus per-skill anti-domain contracts
 - final monetization/commercial/IP strategy
-- final ranked timer and timeout behavior
 - final number of launch mission unlocks beyond First Creation
 - whether Draft remains a major mode beside Classic Arena after the core mobile release
 

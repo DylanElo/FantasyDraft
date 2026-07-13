@@ -1,5 +1,5 @@
 {
-  "format_version": 1,
+  "format_version": 2,
   "rules_version": "battle-v2-2026-07",
   "match_id": "golden-two-turns",
   "roster_mode": "first_creation",
@@ -15,7 +15,7 @@
       "state_revision": 0,
       "client_action_nonce": "turn-1",
       "payload": {},
-      "expected_state_hash": "fe087428ba34219406e88d36fed6403a2ac1d3d415ed5054183ce79c783deadd"
+      "expected_state_hash": "36ec618743952851ecaaa03926d9d0c6dc90089a2d36f357944c36120aad8c78"
     },
     {
       "player_id": "p2",
@@ -23,9 +23,10 @@
       "state_revision": 1,
       "client_action_nonce": "turn-2",
       "payload": {},
-      "expected_state_hash": "64d1fe1bef030629c1af0c7c7e18aa1ec242fe8f120c446c8c2104c7f00b6a22"
+      "expected_state_hash": "127041ed8237e6186061d2a4d5bc9fb51c7686be81d44b2f69ff6ce78fe4eece"
     }
   ],
-  "initial_state_hash": "cab41391744467f42319f40b3af708a8b4c5be499ac1dc3df41616d27fbeef12",
-  "final_state_hash": "64d1fe1bef030629c1af0c7c7e18aa1ec242fe8f120c446c8c2104c7f00b6a22"
+  "initial_state_hash": "877872b18ee8afa9136dfcd5c40711f043fb21533b3b98d73effc7db3149fcd7",
+  "final_state_hash": "127041ed8237e6186061d2a4d5bc9fb51c7686be81d44b2f69ff6ce78fe4eece",
+  "timer_policy": {"planning_seconds": 60.0, "queue_review_seconds": 30.0}
 }

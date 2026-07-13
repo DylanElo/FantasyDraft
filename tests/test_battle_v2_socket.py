@@ -513,7 +513,7 @@ def test_battle_v2_pvp_disconnect_cleans_waiting_lobby(monkeypatch):
     assert "human-disconnect" not in web_app.battle_v2_manager.rooms
 
 
-def test_reset_room_clears_waiting_v2_pvp_lobby(monkeypatch):
+def test_public_reset_room_event_is_not_registered(monkeypatch):
     monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
     client = socket_client_with_player("p1")
     client.emit(
@@ -528,8 +528,50 @@ def test_reset_room_clears_waiting_v2_pvp_lobby(monkeypatch):
 
     client.emit("reset_room")
 
-    assert "human-reset" not in web_app.v2_pvp_lobbies
-    assert "human-reset" not in web_app.battle_v2_manager.rooms
+    assert "human-reset" in web_app.v2_pvp_lobbies
+    assert "reset_room" not in web_app.socketio.server.handlers.get("/", {})
+
+
+def test_non_member_cannot_join_or_delete_active_room(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    p1 = socket_client_with_player("owner-one")
+    p2 = socket_client_with_player("owner-two")
+    intruder = socket_client_with_player("intruder")
+    for client, name in ((p1, "P1"), (p2, "P2")):
+        client.emit("battle_v2_join_pvp", {"room_id": "protected-code", "player_name": name})
+    p2_messages = received_payloads(p2)
+    match_id = p2_messages["battle_v2_update"]["match_id"]
+    original = web_app.battle_v2_manager.rooms[match_id]
+
+    intruder.emit("battle_v2_join_pvp", {"room_id": "protected-code"})
+    error = received_payload(intruder, "battle_v2_error")
+    intruder.emit("reset_room")
+
+    assert "active match" in error["message"].lower()
+    assert web_app.battle_v2_manager.rooms[match_id] is original
+
+
+def test_cpu_start_cannot_overwrite_pvp_or_invalid_start_delete_room(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    p1 = socket_client_with_player("collision-one")
+    p2 = socket_client_with_player("collision-two")
+    for client in (p1, p2):
+        client.emit("battle_v2_join_pvp", {"room_id": "collision-code"})
+    match_id = received_payload(p2, "battle_v2_update")["match_id"]
+    original = web_app.battle_v2_manager.rooms[match_id]
+
+    attacker = socket_client_with_player("collision-attacker")
+    attacker.emit("battle_v2_start_classic", {"room_id": "collision-code"})
+    assert received_payload(attacker, "battle_v2_error")
+    assert web_app.battle_v2_manager.rooms[match_id] is original
+
+    web_app.battle_v2_manager.start_classic_match("protected-invalid", [
+        {"id": "x", "name": "X", "team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]},
+        {"id": "y", "name": "Y", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+    ])
+    protected = web_app.battle_v2_manager.rooms["protected-invalid"]
+    attacker.emit("battle_v2_start_classic", {"room_id": "protected-invalid", "roster_mode": "first_creation", "player_team": ["unknown", "unknown", "unknown"]})
+    assert web_app.battle_v2_manager.rooms["protected-invalid"] is protected
 
 
 def test_battle_v2_human_confirm_does_not_run_cpu_turn(monkeypatch):

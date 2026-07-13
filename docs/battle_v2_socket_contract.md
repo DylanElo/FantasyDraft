@@ -26,12 +26,11 @@ state, energy, cooldowns, queues, RNG, and logs unchanged.
 
 ### `battle_v2_start_classic`
 
-Starts an isolated Classic Arena v2 room. For local/dev testing the client may
-provide both teams:
+Starts an isolated Classic Arena v2 match. The server always generates its
+authoritative match id. For local/dev testing the client may provide both teams:
 
 ```json
 {
-  "room_id": "abc123",
   "player_name": "Player",
   "player_team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"],
   "enemy_team": ["satoru_gojo", "ryomen_sukuna", "mahito"]

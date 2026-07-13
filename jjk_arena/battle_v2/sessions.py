@@ -32,12 +32,25 @@ class BattleSessionRegistry:
             self._token_hashes.setdefault(room_id, {})[player_id] = self._digest(token)
             return ResumeSession(room_id, player_id, token)
 
-    def resume(self, room_id: str, player_id: str, token: str) -> ResumeSession | None:
+    def verify(self, room_id: str, player_id: str, token: str) -> bool:
+        """Validate a credential without consuming or rotating it."""
+
         with self._lock:
             expected = self._token_hashes.get(room_id, {}).get(player_id)
-            if expected is None or not secrets.compare_digest(expected, self._digest(str(token))):
+            return expected is not None and secrets.compare_digest(expected, self._digest(str(token)))
+
+    def rotate(self, room_id: str, player_id: str, token: str) -> ResumeSession | None:
+        """Rotate only when the supplied credential is still current."""
+
+        with self._lock:
+            if not self.verify(room_id, player_id, token):
                 return None
             return self.issue(room_id, player_id)
+
+    def resume(self, room_id: str, player_id: str, token: str) -> ResumeSession | None:
+        """Backward-compatible atomic verify-and-rotate operation."""
+
+        return self.rotate(room_id, player_id, token)
 
     def remove_room(self, room_id: str) -> None:
         with self._lock:

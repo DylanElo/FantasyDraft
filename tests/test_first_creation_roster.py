@@ -128,7 +128,8 @@ def test_first_creation_metadata_catalog_payload_and_energy_contract():
     assert payload["presets"]["story_tutorial"] == ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]
     assert payload["wildcard_cost_type"] == EnergyType.BLACK.value
     assert payload["missions"][0]["id"] == "welcome_to_jujutsu_high"
-    assert "mahito_intro_mission" in payload["missions"][-1]["unlocks"]
+    outsider_mission = next(mission for mission in payload["missions"] if mission["id"] == "outsider_poison_path")
+    assert "mahito_intro_mission" in outsider_mission["unlocks"]
     assert any(unlock["id"] == "mission_board" for unlock in payload["unlock_registry"])
     assert WILDCARD_COST_TYPE == EnergyType.BLACK
     assert EnergyType.BLACK not in GENERATED_ENERGY_TYPES

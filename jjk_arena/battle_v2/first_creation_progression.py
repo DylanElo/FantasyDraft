@@ -11,6 +11,9 @@ MISSION_STORY = "welcome_to_jujutsu_high"
 MISSION_HIDDEN = "hidden_inventory_echoes"
 MISSION_YUTA = "cursed_child_bond"
 MISSION_OUTSIDER = "outsider_poison_path"
+MISSION_KYOTO = "kyoto_pressure_gauntlet"
+MISSION_DEFENSIVE = "defensive_artillery_drill"
+MISSION_RESERVES = "student_reserves_trial"
 
 
 def _team_ids(state: BattleState, player_id: str) -> list[str]:
@@ -39,12 +42,15 @@ def _skill_uses(events: list[BattleEvent], player_id: str) -> list[str]:
     return skills
 
 
-def _status_applications(events: list[BattleEvent], status: str) -> int:
+def _status_applications(events: list[BattleEvent], status: str, source_player_id: str | None = None) -> int:
     total = 0
     for event in events:
         payload = _event_payload(event)
-        if _event_type(event) == "status_applied" and payload.get("status") == status:
-            total += 1
+        if _event_type(event) != "status_applied" or payload.get("status") != status:
+            continue
+        if source_player_id is not None and payload.get("source_player_id") != source_player_id:
+            continue
+        total += 1
     return total
 
 
@@ -124,11 +130,41 @@ def evaluate_first_creation_progress(
 
     outsider_team = list(by_id[MISSION_OUTSIDER]["recommended_team"])
     outsider_eligible = _team_matches(team, outsider_team)
-    poison_count = _status_applications(events, "poison")
+    poison_count = _status_applications(events, "poison", player_id)
     junpei_alive = any(character.character_id == "junpei_yoshino" and character.alive for character in state.players[player_id].team)
     entries.append(_mission_entry(by_id[MISSION_OUTSIDER], outsider_eligible, [
         _objective("Apply poison twice", outsider_eligible and poison_count >= 2, poison_count, 2),
         _objective("Win with Junpei alive", outsider_eligible and winner_is_player and junpei_alive, 1 if winner_is_player and junpei_alive else 0),
+    ]))
+
+    kyoto_team = list(by_id[MISSION_KYOTO]["recommended_team"])
+    kyoto_eligible = _team_matches(team, kyoto_team)
+    blood_mark_applied = _status_applications(events, "blood_mark", player_id) > 0
+    revolver_shot_used = any(skill_id.endswith("revolver_shot") for skill_id in skills_used)
+    entries.append(_mission_entry(by_id[MISSION_KYOTO], kyoto_eligible, [
+        _objective("Win the match", kyoto_eligible and winner_is_player, 1 if winner_is_player else 0),
+        _objective("Apply Blood Mark with Noritoshi's Blood-Tipped Arrow", kyoto_eligible and blood_mark_applied, 1 if blood_mark_applied else 0),
+        _objective("Fire Mai's Revolver Shot", kyoto_eligible and revolver_shot_used, 1 if revolver_shot_used else 0),
+    ]))
+
+    defensive_team = list(by_id[MISSION_DEFENSIVE]["recommended_team"])
+    defensive_eligible = _team_matches(team, defensive_team)
+    quick_draw_stun_triggered = _status_applications(events, "quick_draw_stun", player_id) > 0
+    aerial_scout_revealed = _status_applications(events, "revealed", player_id) > 0
+    entries.append(_mission_entry(by_id[MISSION_DEFENSIVE], defensive_eligible, [
+        _objective("Win the match", defensive_eligible and winner_is_player, 1 if winner_is_player else 0),
+        _objective("Trigger Quick Draw Stun with Miwa's New Shadow Quick Draw", defensive_eligible and quick_draw_stun_triggered, 1 if quick_draw_stun_triggered else 0),
+        _objective("Reveal an enemy with Momo's Aerial Scout", defensive_eligible and aerial_scout_revealed, 1 if aerial_scout_revealed else 0),
+    ]))
+
+    reserves_team = list(by_id[MISSION_RESERVES]["recommended_team"])
+    reserves_eligible = _team_matches(team, reserves_team)
+    gorilla_core_active = _status_applications(events, "gorilla_core", player_id) > 0
+    crow_mark_applied = _status_applications(events, "crow_mark", player_id) > 0
+    entries.append(_mission_entry(by_id[MISSION_RESERVES], reserves_eligible, [
+        _objective("Win the match", reserves_eligible and winner_is_player, 1 if winner_is_player else 0),
+        _objective("Enter Gorilla Core with Panda", reserves_eligible and gorilla_core_active, 1 if gorilla_core_active else 0),
+        _objective("Apply Crow Mark with Mei Mei's Crow Scout", reserves_eligible and crow_mark_applied, 1 if crow_mark_applied else 0),
     ]))
 
     completed_ids = [entry["id"] for entry in entries if entry["complete"]]

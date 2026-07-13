@@ -76,6 +76,30 @@ FIRST_CREATION_UNLOCKS: tuple[FirstCreationUnlock, ...] = (
         unlocks_after="outsider_poison_path",
         status="implemented",
     ),
+    FirstCreationUnlock(
+        id="kyoto_pressure_badge",
+        title="Kyoto Pressure Badge",
+        kind="badge",
+        description="Marks completion of the Kyoto Pressure Gauntlet with Todo, Kamo, and Mai.",
+        unlocks_after="kyoto_pressure_gauntlet",
+        status="implemented",
+    ),
+    FirstCreationUnlock(
+        id="defensive_artillery_badge",
+        title="Defensive Artillery Badge",
+        kind="badge",
+        description="Marks completion of the Defensive Artillery Drill with Miwa, Momo, and Mechamaru.",
+        unlocks_after="defensive_artillery_drill",
+        status="implemented",
+    ),
+    FirstCreationUnlock(
+        id="student_reserves_badge",
+        title="Student Reserves Badge",
+        kind="badge",
+        description="Marks completion of the Student Reserves Trial with Panda, Utahime, and Mei Mei.",
+        unlocks_after="student_reserves_trial",
+        status="implemented",
+    ),
 )
 
 UNLOCKS_BY_ID: dict[str, FirstCreationUnlock] = {unlock.id: unlock for unlock in FIRST_CREATION_UNLOCKS}

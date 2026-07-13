@@ -14,6 +14,7 @@ export class GameStore {
       this.playerName = readStorage('jjk_player_name', 'Player');
       this.roomId = readStorage('jjk_room_id', 'lobby');
       this.matchMode = 'cpu';
+      this.difficulty = 'normal';
       this.scene = 'LobbyScene';
       this.state = null;
       this.lobbyStatus = null;
@@ -268,6 +269,11 @@ export class GameStore {
       this.notify();
     }
 
+    setDifficulty(difficulty) {
+      this.difficulty = ['easy', 'normal', 'hard'].includes(difficulty) ? difficulty : 'normal';
+      this.notify();
+    }
+
     toggleTeamPick(teamKey, characterId) {
       const team = this[teamKey].slice();
       const existing = team.indexOf(characterId);
@@ -367,6 +373,7 @@ export class GameStore {
         this.socketClient.emit('battle_v2_start_classic', {
           ...payload,
           enemy_team: this.enemyTeam.slice(0, 3),
+          difficulty: this.difficulty,
         });
       }
       this.changeScene(this.matchMode === 'pvp' ? 'DraftScene' : 'CombatScene');

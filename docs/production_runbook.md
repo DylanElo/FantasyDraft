@@ -61,7 +61,25 @@ API. Test restoration into a separate environment before every public release.
 
 Operational counters include starts, commands, replayed commands, command
 errors, rate limits, phase timeouts, archives, and lifecycle pruning. They are
-process-lifetime counters, not durable analytics.
+process-lifetime counters, reset on restart.
+
+`/ops/runtime` also returns an `analytics` object backed by a durable SQLite
+table (`analytics_events`, same database as replays/profiles) that survives
+restarts: match-level counts by `by_result_type` (`WIN`/`DRAW`/etc, matching
+`BattleState.result_type`) and `by_difficulty` for CPU matches, separate
+per-player `wins`/`losses`/`draws`/`no_contests` counts (one decisive PvP
+match always yields exactly one win and one loss — match-level result and
+per-player outcome are recorded as distinct event types so a two-human match
+is never double-counted as a win for both sides), and per-mission completion
+counts for First Creation. Every row has a stable `event_key`
+(`match_finished:{match_id}`, `match_player_result:{match_id}:{player_id}`,
+`mission_completed:{match_id}:{player_id}:{mission_id}`) enforced UNIQUE at
+the database level, so concurrent emits, reconnect-triggered re-broadcasts,
+and process restarts can never create duplicate rows — the in-memory
+`analytics_recorded_matches` guard is just a fast-path, not the source of
+truth. Writes are best-effort (wrapped in try/except, counted under
+`analytics_write_errors` on failure) so a storage hiccup never breaks a
+battle in progress.
 
 Finished rooms, inactive rooms, waiting lobbies, expired replay rows, and stale
 rate-limit keys are pruned on bounded socket activity. The defaults are 15

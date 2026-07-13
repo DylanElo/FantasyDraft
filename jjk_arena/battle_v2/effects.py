@@ -488,6 +488,9 @@ def apply_effect(
                 "status": status.id,
                 "target_player_id": target_player_id,
                 "target_slot": target_slot,
+                "source_player_id": action.player_id,
+                "source_slot": action.caster_slot,
+                "source_skill_id": action.skill_id,
             },
         )
     if effect.type == "drain_energy":

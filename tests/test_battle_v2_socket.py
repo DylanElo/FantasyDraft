@@ -91,6 +91,113 @@ def test_battle_v2_socket_requires_command_revision_and_nonce(monkeypatch):
     assert web_app.battle_v2_manager.get_state("versioned-v2").turn_number == 1
 
 
+def test_battle_v2_start_classic_threads_cpu_difficulty(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    client = socket_client()
+    client.emit("battle_v2_start_classic", {"room_id": "difficulty-hard", "difficulty": "hard"})
+    payload = received_payload(client, "battle_v2_update")
+
+    assert web_app.battle_v2_manager.room_cpu_difficulty[payload["match_id"]] == "hard"
+
+
+def test_battle_v2_start_classic_rejects_invalid_difficulty_string(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    client = socket_client()
+    client.emit("battle_v2_start_classic", {"room_id": "difficulty-bogus", "difficulty": "impossible"})
+    payload = received_payload(client, "battle_v2_update")
+
+    assert web_app.battle_v2_manager.room_cpu_difficulty[payload["match_id"]] == "normal"
+
+
+def test_cpu_rematch_preserves_the_original_difficulty(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    client = socket_client()
+    client.emit("battle_v2_start_classic", {"room_id": "rematch-difficulty", "difficulty": "hard"})
+    started = received_payload(client, "battle_v2_update")
+    match_id = started["match_id"]
+    state = web_app.battle_v2_manager.get_state(match_id)
+
+    client.emit("battle_v2_surrender", command_payload(state))
+    received_payload(client, "battle_v2_finished")
+
+    client.emit(
+        "battle_v2_rematch",
+        {
+            "old_match_id": match_id,
+            "state_revision": state.state_revision,
+            "client_action_nonce": "rematch-difficulty-nonce",
+        },
+    )
+    rematch = received_payload(client, "battle_v2_rematch")
+
+    assert web_app.battle_v2_manager.room_cpu_difficulty[rematch["new_match_id"]] == "hard"
+
+
+def test_emit_battle_v2_update_records_mission_completed_analytics_once(monkeypatch):
+    from jjk_arena.battle_v2.models import BattleEvent
+
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    web_app.battle_v2_manager.start_first_creation_match("mission-analytics-room", [
+        {"id": "p1", "name": "Player One", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
+        {"id": "p2", "name": "Player Two", "team": ["maki_zenin", "toge_inumaki", "panda"]},
+    ])
+    state = web_app.battle_v2_manager.get_state("mission-analytics-room")
+    for index, skill_id in enumerate([
+        "fc_yuji_itadori_divergent_fist",
+        "fc_megumi_fushiguro_divine_dogs",
+        "fc_nobara_kugisaki_nail_barrage",
+    ]):
+        state.event_log.append(BattleEvent(
+            type="skill_resolved",
+            message=f"skill {index}",
+            turn_number=1,
+            payload={"player_id": "p1", "skill_id": skill_id},
+        ))
+    state.winner_id = "p1"
+
+    with web_app.app.test_request_context():
+        web_app.emit_battle_v2_update("mission-analytics-room", "p1")
+        # A second update (e.g. a reconnect-triggered refresh) must not double-count.
+        web_app.emit_battle_v2_update("mission-analytics-room", "p1")
+
+    summary = web_app.runtime_store.analytics_summary()
+    assert summary["missions_completed"].get("welcome_to_jujutsu_high") == 1
+
+
+def test_decisive_pvp_match_records_one_win_and_one_loss(monkeypatch):
+    """A decisive PvP match must produce exactly one winner and one loser.
+
+    Regression for the Milestone C audit finding that every decisive PvP
+    match was recorded as a "win" (the outcome logic only ever checked
+    whether the CPU player won), with no paired loss anywhere in the data.
+    """
+
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    p1_client = socket_client_with_player("pvp-win-loss-p1")
+    p2_client = socket_client_with_player("pvp-win-loss-p2")
+    for client, player_id, team in [
+        (p1_client, "P1", ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]),
+        (p2_client, "P2", ["satoru_gojo", "ryomen_sukuna", "mahito"]),
+    ]:
+        client.emit(
+            "battle_v2_join_pvp",
+            {"room_id": "pvp-win-loss", "player_name": player_id, "player_team": team},
+        )
+    received_payload(p1_client, "battle_v2_update")
+    match_id = received_payload(p2_client, "battle_v2_update")["match_id"]
+    state = web_app.battle_v2_manager.get_state(match_id)
+
+    before = web_app.runtime_store.analytics_summary()["match_finished"]
+
+    p1_client.emit("battle_v2_surrender", command_payload(state))
+    received_payload(p1_client, "battle_v2_finished")
+    received_payload(p2_client, "battle_v2_finished")
+
+    after = web_app.runtime_store.analytics_summary()["match_finished"]
+    assert after["wins"] - before["wins"] == 1
+    assert after["losses"] - before["losses"] == 1
+
+
 def test_background_planning_timeout_broadcasts_and_runs_cpu(monkeypatch):
     monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
     monkeypatch.setattr(

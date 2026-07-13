@@ -40,3 +40,6 @@ CPU-vs-CPU results measure the current heuristic AI, not human balance. They
 must not justify balance changes without matchup review and human playtesting.
 The simulator does not persist or upload results and does not select the open
 fixed-damage-reduction or disconnect policies.
+
+Orientation-balanced aggregation and interpretation rules are defined in
+`docs/battle_v2_balance_report_contract.md`.

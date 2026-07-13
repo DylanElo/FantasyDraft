@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .first_creation_unlocks import first_creation_unlocks_payload, unknown_first_creation_unlocks
+from .runtime_store import SQLiteRuntimeStore
 
 DEFAULT_PROFILE: dict[str, Any] = {
     "completed_missions": [],
@@ -75,6 +76,8 @@ def normalize_profile(raw: dict[str, Any] | None = None) -> dict[str, Any]:
 def load_first_creation_profile(player_id: str) -> dict[str, Any]:
     """Load one player's first-creation profile."""
 
+    if not os.getenv("JJK_FIRST_CREATION_PROFILE_STORE"):
+        return normalize_profile(SQLiteRuntimeStore().load_profile(str(player_id)))
     store = _load_store()
     return normalize_profile(store.get(str(player_id), {}))
 
@@ -83,34 +86,52 @@ def save_first_creation_profile(player_id: str, profile: dict[str, Any]) -> dict
     """Persist one normalized first-creation profile."""
 
     normalized = normalize_profile(profile)
+    if not os.getenv("JJK_FIRST_CREATION_PROFILE_STORE"):
+        SQLiteRuntimeStore().save_profile(str(player_id), normalized)
+        return normalized
     store = _load_store()
     store[str(player_id)] = normalized
     _save_store(store)
     return normalized
 
 
+def update_first_creation_profile(player_id: str, updater) -> dict[str, Any]:
+    """Atomically update one profile when the SQLite backend is active."""
+
+    if not os.getenv("JJK_FIRST_CREATION_PROFILE_STORE"):
+        updated = SQLiteRuntimeStore().update_profile(
+            str(player_id),
+            lambda current: normalize_profile(updater(normalize_profile(current))),
+        )
+        return normalize_profile(updated)
+    return save_first_creation_profile(player_id, updater(load_first_creation_profile(player_id)))
+
+
 def merge_first_creation_progress(player_id: str, progress: dict[str, Any] | None) -> dict[str, Any]:
     """Merge a completed room progress payload into durable player progress."""
 
-    profile = load_first_creation_profile(player_id)
     if not progress:
+        return load_first_creation_profile(player_id)
+
+    def merge(profile: dict[str, Any]) -> dict[str, Any]:
+        now = datetime.now(timezone.utc).isoformat()
+        completed = set(profile["completed_missions"])
+        first_completed_at = dict(profile["mission_first_completed_at"])
+        for mission_id in progress.get("completed_ids", []):
+            mission_id = str(mission_id)
+            if mission_id and mission_id not in completed:
+                completed.add(mission_id)
+                first_completed_at[mission_id] = now
+        unlocked = set(profile["unlocked"])
+        unlocked.update(str(unlock_id) for unlock_id in progress.get("unlocked", []) if str(unlock_id))
+        profile["completed_missions"] = sorted(completed)
+        profile["unlocked"] = sorted(unlocked)
+        profile["mission_first_completed_at"] = first_completed_at
+        if progress.get("team"):
+            profile["selected_starter_team"] = [str(character_id) for character_id in progress.get("team", [])[:3]]
         return profile
-    now = datetime.now(timezone.utc).isoformat()
-    completed = set(profile["completed_missions"])
-    first_completed_at = dict(profile["mission_first_completed_at"])
-    for mission_id in progress.get("completed_ids", []):
-        mission_id = str(mission_id)
-        if mission_id and mission_id not in completed:
-            completed.add(mission_id)
-            first_completed_at[mission_id] = now
-    unlocked = set(profile["unlocked"])
-    unlocked.update(str(unlock_id) for unlock_id in progress.get("unlocked", []) if str(unlock_id))
-    profile["completed_missions"] = sorted(completed)
-    profile["unlocked"] = sorted(unlocked)
-    profile["mission_first_completed_at"] = first_completed_at
-    if progress.get("team"):
-        profile["selected_starter_team"] = [str(character_id) for character_id in progress.get("team", [])[:3]]
-    return save_first_creation_profile(player_id, profile)
+
+    return update_first_creation_profile(player_id, merge)
 
 
 def first_creation_profile_payload(profile: dict[str, Any]) -> dict[str, Any]:

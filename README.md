@@ -34,4 +34,8 @@ python -m pytest -q
 
 ## Deployment
 
-Deploy `web/` + `run_server.py` to a Python web host such as Render, Railway, or Fly.io.
+Production uses the guarded Gunicorn configuration in `gunicorn.conf.py` and a
+durable SQLite volume. Copy `.env.example`, provide real secrets/origins, and
+follow `docs/production_runbook.md`. Battle authority is deliberately limited
+to one worker until rooms, timers, sessions, and command receipts share an
+external coordinator.

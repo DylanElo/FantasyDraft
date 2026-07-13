@@ -615,3 +615,49 @@ Verification: `python -m pytest -q` — 334 passed, 1 skipped;
 `python -m compileall -q jjk_arena web/app.py`;
 `python -m jjk_arena.battle_v2.skill_audit` reconfirms 0 structural and 0
 special-mechanic-coverage findings.
+
+## 2026-07-13 - Milestone B: round-robin balance simulation, and a scope reality check
+
+The user asked for "10,000 to 50,000 simulations" for balance signal. Measured
+actual per-game cost first: `run_headless_match` averages ~1.2-1.8s/game for a
+first-creation matchup (34-47 turns typical), not the sub-100ms rate the
+10k-50k target implicitly assumes. At that rate 10,000 games is ~4 hours and
+50,000 is ~19+ hours of wall time — not something to run unattended inside
+this session. An initial attempt to run an 840-game batch
+(`--games-per-orientation 15` across all 8 presets round-robin) in the
+background ran into an unrelated problem: this sandboxed shell's `date`
+output was not advancing consistently with the scheduled-wakeup wait times,
+so waiting on it reliably wasn't possible; the process was killed mid-run.
+
+Ran a smaller, honest, fully round-robin batch instead: all 8 First Creation
+presets × both seat orders × 5 games/orientation = **280 total games**
+(`python -m jjk_arena.battle_v2.balance_report --presets story_tutorial,
+tokyo_second_years,kyoto_pressure,defensive_artillery,poison_outsider,
+hidden_inventory,young_sorcerer_support,jjk0_beginner_special
+--games-per-orientation 5 --seed 1 --max-turns 200`, ran synchronously,
+completed in under 5 minutes). Results:
+
+- `turn_cap_rate: 0.0` — every game reached a decisive result, no stalemates.
+- `first_seat_win_rate: 0.479` — close to 50%, no strong first-mover bias.
+- Per-character descriptive win rate (Wilson 95% interval), notable outliers:
+  - High: Megumi Fushiguro 78.6% [71.1%, 84.6%], Nobara Kugisaki 78.6% [71.1%,
+    84.6%], Yuji Itadori 77.1% [66.0%, 85.4%] — the entire `story_tutorial`
+    trio.
+  - Low: Panda 12.9% [6.9%, 22.7%], Maki Zenin 24.3% [17.9%, 32.0%], Toge
+    Inumaki 24.3% [17.9%, 32.0%] — the entire `tokyo_second_years` trio.
+- This echoes the matchup note already recorded from PR #51 ("the tutorial
+  trio won 32/40 combined against the JJK0 beginner trio") with a wider,
+  independent sample — the same signal shows up again at 8x the preset
+  coverage.
+
+Per `docs/battle_v2_balance_report_contract.md`'s own interpretation limits,
+**this is evidence for matchup inspection, not a mandate to nerf/buff
+anything** — win rates here are confounded by preset teammates, the heuristic
+CPU AI (not human play), and a 5-games-per-orientation sample. No balance
+numbers were changed. If a genuine 10k-50k-game run is wanted later, it needs
+either an engine performance pass (per-game cost reduction) or dedicated
+CI/background infrastructure that can run for hours unattended — not a
+same-session agentic task.
+
+Verification: the 280-game batch completed with exit code 0 and produced
+well-formed JSON; no test changes in this entry (diagnostic-only run).

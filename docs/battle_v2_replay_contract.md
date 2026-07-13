@@ -37,6 +37,7 @@ through the same authoritative manager path, and fails at the first mismatched
 initial, command, or final hash. Unsupported replay or rules versions fail
 closed.
 
-This format does not yet persist every live production match automatically.
-Capture/storage policy and player-data retention belong to later telemetry and
-production work.
+The manager supports opt-in in-memory capture for successful player and CPU
+commands. Rejected commands are not recorded. Capture is disabled by default;
+storage, timeout-command capture, retention, consent, and production privacy
+policy belong to later production work.

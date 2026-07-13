@@ -304,8 +304,14 @@ def run_battle_v2_cpu_turns(room_id: str):
         state = battle_v2_manager.get_state(room_id)
         if state.winner_id or state.turn_player_id != CPU_V2_PLAYER_ID:
             return
-        battle_v2_manager.take_cpu_turn(room_id, CPU_V2_PLAYER_ID)
-        battle_v2_manager.advance_state_revision(room_id)
+        battle_v2_manager.execute_player_command(
+            room_id,
+            CPU_V2_PLAYER_ID,
+            "cpu_turn",
+            state.state_revision,
+            f"server-cpu-{state.state_revision}",
+            {},
+        )
         battle_v2_timer_scheduler.arm(room_id)
 
 
@@ -342,6 +348,7 @@ def remove_battle_v2_room(room_id: str) -> None:
         battle_v2_manager.room_catalogs.pop(room_id, None)
         battle_v2_manager.room_roster_modes.pop(room_id, None)
         battle_v2_manager.room_first_creation_progress.pop(room_id, None)
+        battle_v2_manager.room_replays.pop(room_id, None)
         battle_v2_sessions.remove_room(room_id)
 
     if lock is None:

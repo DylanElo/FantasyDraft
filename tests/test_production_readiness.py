@@ -43,8 +43,14 @@ def test_ops_runtime_is_hidden_without_configured_bearer(monkeypatch):
     assert client.get("/ops/runtime").status_code == 404
     response = client.get("/ops/runtime", headers={"Authorization": "Bearer secret-token"})
     assert response.status_code == 200
-    assert set(response.get_json()) == {"active_rooms", "waiting_lobbies", "rate_limit_keys", "counters", "analytics"}
+    assert set(response.get_json()) == {
+        "active_rooms", "waiting_lobbies", "rate_limit_keys", "counters", "analytics",
+        "analytics_outbox_size", "analytics_outbox_dropped_total",
+    }
     assert set(response.get_json()["analytics"]) == {"match_finished", "missions_completed"}
+    # Aggregate counts only: no raw queued-event payloads are ever exposed.
+    assert isinstance(response.get_json()["analytics_outbox_size"], int)
+    assert isinstance(response.get_json()["analytics_outbox_dropped_total"], int)
 
 
 def test_ops_runtime_analytics_reflects_a_finished_cpu_match(monkeypatch):
@@ -77,10 +83,12 @@ def test_stale_runtime_prunes_finished_rooms_lobbies_and_rate_limits(monkeypatch
     web_app.lobby_last_activity[lobby_id] = 0.0
     web_app.rate_limits[("p1", "event")].append(0.0)
     monkeypatch.setattr(web_app.runtime_store, "prune_expired_replays", lambda: 2)
+    monkeypatch.setattr(web_app.runtime_store, "flush_outbox", lambda: 3)
+    monkeypatch.setattr(web_app.runtime_store, "prune_old_analytics_events", lambda: 4)
 
     result = web_app.prune_stale_runtime(now=10_000.0)
 
-    assert result == {"rooms": 1, "lobbies": 1, "rate_limits": 1, "replays": 2}
+    assert result == {"rooms": 1, "lobbies": 1, "rate_limits": 1, "replays": 2, "analytics_flushed": 3, "analytics_pruned": 4}
     assert room_id not in web_app.battle_v2_manager.rooms
     assert lobby_id not in web_app.v2_pvp_lobbies
 

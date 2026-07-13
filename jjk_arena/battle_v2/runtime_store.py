@@ -12,9 +12,25 @@ from typing import Any, Callable
 
 SCHEMA_VERSION = 4
 
+# Retention policy for analytics_events: rows older than this are pruned by
+# prune_old_analytics_events(), called from web/app.py's existing periodic
+# maintenance pass (prune_stale_runtime). Raw event rows aren't kept forever;
+# aggregate counts are cheap to recompute from a bounded window, so this
+# keeps analytics_summary()'s SQL scans cheap indefinitely instead of
+# growing unboundedly for the life of the deployment. Override via
+# JJK_ANALYTICS_RETENTION_DAYS for a different policy.
+DEFAULT_ANALYTICS_RETENTION_DAYS = 90
+
 
 def runtime_database_path() -> Path:
     return Path(os.getenv("JJK_DATABASE_PATH", "data/jjk_arena.sqlite3"))
+
+
+def analytics_retention_days() -> int:
+    try:
+        return max(1, int(os.getenv("JJK_ANALYTICS_RETENTION_DAYS", str(DEFAULT_ANALYTICS_RETENTION_DAYS))))
+    except (TypeError, ValueError):
+        return DEFAULT_ANALYTICS_RETENTION_DAYS
 
 
 class SQLiteRuntimeStore:
@@ -24,9 +40,16 @@ class SQLiteRuntimeStore:
     this store covers data that is safe to share durably across processes.
     """
 
+    # Cap on the in-memory retry outbox so a sustained outage can't grow it
+    # without bound; the oldest queued event is dropped (and counted) rather
+    # than silently accepting unlimited memory growth.
+    MAX_OUTBOX_SIZE = 500
+
     def __init__(self, path: str | Path | None = None, *, clock=time.time):
         self.path = Path(path) if path is not None else runtime_database_path()
         self.clock = clock
+        self._outbox: list[dict[str, Any]] = []
+        self.outbox_dropped_total = 0
         self._initialize()
 
     def _connect(self) -> sqlite3.Connection:
@@ -194,6 +217,27 @@ class SQLiteRuntimeStore:
             return None
         return json.loads(row["payload_json"])
 
+    def prune_old_analytics_events(self, *, retention_days: int | None = None) -> int:
+        """Delete analytics_events rows older than the retention window.
+
+        Aggregate counters (`analytics_summary`) are computed by scanning
+        the table, so an unbounded table would make every /ops/runtime call
+        progressively more expensive over the life of a deployment. This
+        is a hard retention window, not a rollup -- if per-day historical
+        aggregates are ever needed beyond the window, roll them up into a
+        separate daily-summary table before this prunes the source rows
+        (no such table exists yet; this method only implements retention).
+        """
+
+        days = retention_days if retention_days is not None else analytics_retention_days()
+        cutoff = float(self.clock()) - max(1, int(days)) * 86400
+        with self._connect() as connection:
+            cursor = connection.execute(
+                "DELETE FROM analytics_events WHERE created_at < ?",
+                (cutoff,),
+            )
+        return int(cursor.rowcount)
+
     def prune_expired_replays(self) -> int:
         with self._connect() as connection:
             cursor = connection.execute(
@@ -202,31 +246,16 @@ class SQLiteRuntimeStore:
             )
         return int(cursor.rowcount)
 
-    def record_analytics_event(
+    def _insert_analytics_row(
         self,
         event_type: str,
         payload: dict[str, Any],
         *,
-        match_id: str | None = None,
-        player_id: str | None = None,
-        event_key: str | None = None,
+        match_id: str | None,
+        player_id: str | None,
+        event_key: str | None,
     ) -> bool:
-        """Append a durable analytics event row (match-finished / mission-completed).
-
-        `event_key` must be stable and unique per logical business event
-        (e.g. ``match_finished:{match_id}``); a UNIQUE index on the column
-        guarantees at most one row per key even under concurrent emits,
-        reconnect retries, or process restarts. Returns True if a new row
-        was inserted, False if an existing row with the same key already
-        won the race.
-
-        A handful of well-known payload keys (``result_type``,
-        ``finish_reason``, ``cpu_difficulty``, ``vs_cpu``, ``outcome``,
-        ``mission_id``) are additionally mirrored into typed columns, so
-        `analytics_summary` can aggregate with SQL `GROUP BY` instead of
-        decoding every row's JSON payload in Python. `payload_json` remains
-        the full detail record.
-        """
+        """Perform the actual write. Raises on failure; callers handle retry."""
 
         encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
         vs_cpu = payload.get("vs_cpu")
@@ -255,6 +284,98 @@ class SQLiteRuntimeStore:
                 ),
             )
         return cursor.rowcount > 0
+
+    def record_analytics_event(
+        self,
+        event_type: str,
+        payload: dict[str, Any],
+        *,
+        match_id: str | None = None,
+        player_id: str | None = None,
+        event_key: str | None = None,
+    ) -> bool:
+        """Append a durable analytics event row (match-finished / mission-completed).
+
+        `event_key` must be stable and unique per logical business event
+        (e.g. ``match_finished:{match_id}``); a UNIQUE index on the column
+        guarantees at most one row per key even under concurrent emits,
+        reconnect retries, or process restarts. Returns True if a new row
+        was inserted, False if an existing row with the same key already
+        won the race (or the write failed and was queued for retry --
+        callers that only care about "was this written eventually" should
+        use `flush_outbox()`'s return value or check `outbox_size()`).
+
+        A handful of well-known payload keys (``result_type``,
+        ``finish_reason``, ``cpu_difficulty``, ``vs_cpu``, ``outcome``,
+        ``mission_id``) are additionally mirrored into typed columns, so
+        `analytics_summary` can aggregate with SQL `GROUP BY` instead of
+        decoding every row's JSON payload in Python. `payload_json` remains
+        the full detail record.
+
+        If the write itself fails (locked/corrupt database, disk full,
+        transient I/O error -- not a duplicate, which INSERT OR IGNORE
+        already handles), the event is queued in an in-memory outbox rather
+        than silently dropped. `flush_outbox()` retries queued events; call
+        it periodically (e.g. from existing periodic maintenance) so a
+        transient outage self-heals instead of losing events forever.
+        """
+
+        try:
+            return self._insert_analytics_row(
+                event_type, payload, match_id=match_id, player_id=player_id, event_key=event_key
+            )
+        except Exception:
+            self._enqueue_outbox(event_type, payload, match_id=match_id, player_id=player_id, event_key=event_key)
+            return False
+
+    def _enqueue_outbox(
+        self,
+        event_type: str,
+        payload: dict[str, Any],
+        *,
+        match_id: str | None,
+        player_id: str | None,
+        event_key: str | None,
+    ) -> None:
+        if len(self._outbox) >= self.MAX_OUTBOX_SIZE:
+            self._outbox.pop(0)
+            self.outbox_dropped_total += 1
+        self._outbox.append({
+            "event_type": event_type,
+            "payload": payload,
+            "match_id": match_id,
+            "player_id": player_id,
+            "event_key": event_key,
+        })
+
+    def outbox_size(self) -> int:
+        return len(self._outbox)
+
+    def flush_outbox(self) -> int:
+        """Retry every queued event once; return how many were written.
+
+        Events that fail again stay queued (in original order) for the next
+        flush. Safe to call frequently -- an empty outbox is a no-op.
+        """
+
+        if not self._outbox:
+            return 0
+        pending = self._outbox
+        self._outbox = []
+        flushed = 0
+        for entry in pending:
+            try:
+                self._insert_analytics_row(
+                    entry["event_type"], entry["payload"],
+                    match_id=entry["match_id"], player_id=entry["player_id"], event_key=entry["event_key"],
+                )
+                flushed += 1
+            except Exception:
+                self._enqueue_outbox(
+                    entry["event_type"], entry["payload"],
+                    match_id=entry["match_id"], player_id=entry["player_id"], event_key=entry["event_key"],
+                )
+        return flushed
 
     def analytics_summary(self, *, since: float | None = None) -> dict[str, Any]:
         """Return small aggregate counters suitable for /ops surfacing.

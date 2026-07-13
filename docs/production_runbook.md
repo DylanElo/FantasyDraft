@@ -81,6 +81,30 @@ truth. Writes are best-effort (wrapped in try/except, counted under
 `analytics_write_errors` on failure) so a storage hiccup never breaks a
 battle in progress.
 
+A write that fails at the database layer itself (locked file, disk full, a
+transient I/O error — not a duplicate `event_key`, which `INSERT OR IGNORE`
+already handles for free) is queued in `SQLiteRuntimeStore`'s in-memory
+outbox instead of being lost. `prune_stale_runtime`'s existing periodic
+maintenance pass (piggybacked on ordinary socket traffic via
+`maybe_prune_runtime`, at most once a minute) calls `flush_outbox()`, which
+retries every queued event and re-queues only the ones that fail again — a
+transient outage self-heals within roughly a minute of recovering, with no
+separate retry thread. The outbox is capped at `SQLiteRuntimeStore.MAX_OUTBOX_SIZE`
+(500) events; a sustained outage past that drops the oldest queued event
+and counts it in `outbox_dropped_total`, rather than growing unbounded.
+`/ops/runtime` exposes `analytics_outbox_size` and
+`analytics_outbox_dropped_total` — aggregate counts only, never the queued
+event payloads themselves.
+
+**Retention.** `analytics_events` rows older than `JJK_ANALYTICS_RETENTION_DAYS`
+(default 90) are deleted by the same periodic maintenance pass
+(`prune_old_analytics_events`), keeping `analytics_summary()`'s SQL scans
+cheap indefinitely instead of growing for the life of a deployment. This is
+retention (deletion), not a rollup — no daily/weekly aggregate table exists.
+If historical aggregates beyond the retention window are ever needed, build
+a rollup table and populate it *before* extending or removing this pruning,
+not after.
+
 Match-finished analytics are recorded at the authoritative terminal state
 transition (`BattleV2Manager._finish_match`, via an `on_match_finished` hook
 the manager invokes exactly once per match), not as a side effect of

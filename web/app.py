@@ -259,6 +259,9 @@ def runtime_status():
             "rate_limit_keys": len(rate_limits),
             "counters": dict(operational_counters),
             "analytics": runtime_store.analytics_summary(),
+            # Aggregate counts only -- never the queued events themselves.
+            "analytics_outbox_size": runtime_store.outbox_size(),
+            "analytics_outbox_dropped_total": runtime_store.outbox_dropped_total,
         }
     )
 
@@ -773,14 +776,28 @@ def prune_stale_runtime(now: float | None = None) -> dict[str, int]:
     except Exception:
         expired_replays = 0
         operational_counters["storage_maintenance_errors"] += 1
+    try:
+        flushed_analytics = runtime_store.flush_outbox()
+    except Exception:
+        flushed_analytics = 0
+        operational_counters["storage_maintenance_errors"] += 1
+    try:
+        expired_analytics = runtime_store.prune_old_analytics_events()
+    except Exception:
+        expired_analytics = 0
+        operational_counters["storage_maintenance_errors"] += 1
     operational_counters["rooms_pruned"] += removed_rooms
     operational_counters["lobbies_pruned"] += removed_lobbies
     operational_counters["replays_pruned"] += expired_replays
+    operational_counters["analytics_outbox_flushed"] += flushed_analytics
+    operational_counters["analytics_events_pruned"] += expired_analytics
     return {
         "rooms": removed_rooms,
         "lobbies": removed_lobbies,
         "rate_limits": removed_limits,
         "replays": expired_replays,
+        "analytics_flushed": flushed_analytics,
+        "analytics_pruned": expired_analytics,
     }
 
 

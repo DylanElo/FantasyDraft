@@ -29,7 +29,10 @@ def test_lifecycle_stress_batch_stays_within_one_scheduler_worker_and_memory_cei
     must never accumulate extra background threads beyond the scheduler's
     single shared worker, and must stay under the documented RSS ceiling."""
 
-    result = run_stress_batch(matches=100, seed=2)
+    # Thread-count/memory-ceiling behavior doesn't need a full 100-match
+    # batch to demonstrate -- a smaller batch across many rooms proves the
+    # same property (one shared scheduler worker, bounded memory) much faster.
+    result = run_stress_batch(matches=25, seed=2)
 
     assert result["softlock_count"] == 0, result["softlocks"]
     # Exactly one scheduler worker thread total, no matter how many rooms

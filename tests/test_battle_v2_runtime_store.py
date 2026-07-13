@@ -220,3 +220,82 @@ def test_analytics_summary_since_filter_excludes_older_events(tmp_path):
 
     assert summary["total"] == 1
     assert summary["losses"] == 1
+
+
+def test_record_analytics_event_queues_to_outbox_on_write_failure(tmp_path, monkeypatch):
+    """A transient write failure (locked DB, disk full, ...) must queue the
+    event for retry instead of silently dropping it."""
+
+    import sqlite3
+
+    store = SQLiteRuntimeStore(tmp_path / "runtime.sqlite3")
+
+    def boom(*args, **kwargs):
+        raise sqlite3.OperationalError("database is locked")
+
+    monkeypatch.setattr(store, "_insert_analytics_row", boom)
+
+    inserted = store.record_analytics_event(
+        "match_finished", {"result_type": "WIN"}, match_id="m1", event_key="match_finished:m1"
+    )
+
+    assert inserted is False
+    assert store.outbox_size() == 1
+    assert store.analytics_summary()["match_finished"]["total"] == 0
+
+
+def test_flush_outbox_retries_and_clears_on_success(tmp_path, monkeypatch):
+    store = SQLiteRuntimeStore(tmp_path / "runtime.sqlite3")
+    real_insert = store._insert_analytics_row
+    fail = {"active": True}
+
+    def flaky(*args, **kwargs):
+        if fail["active"]:
+            raise RuntimeError("simulated transient failure")
+        return real_insert(*args, **kwargs)
+
+    monkeypatch.setattr(store, "_insert_analytics_row", flaky)
+    store.record_analytics_event("match_finished", {"result_type": "WIN"}, match_id="m1", event_key="match_finished:m1")
+    assert store.outbox_size() == 1
+
+    # Still failing: flush is a no-op, event stays queued.
+    flushed_while_failing = store.flush_outbox()
+    assert flushed_while_failing == 0
+    assert store.outbox_size() == 1
+
+    # Recovered: flush now succeeds and drains the outbox.
+    fail["active"] = False
+    flushed = store.flush_outbox()
+
+    assert flushed == 1
+    assert store.outbox_size() == 0
+    assert store.analytics_summary()["match_finished"]["total"] == 1
+
+
+def test_outbox_drops_oldest_entry_past_max_size(tmp_path, monkeypatch):
+    store = SQLiteRuntimeStore(tmp_path / "runtime.sqlite3")
+    monkeypatch.setattr(store, "MAX_OUTBOX_SIZE", 3)
+    monkeypatch.setattr(store, "_insert_analytics_row", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down")))
+
+    for index in range(5):
+        store.record_analytics_event("match_finished", {"result_type": "WIN"}, match_id=f"m{index}")
+
+    assert store.outbox_size() == 3
+    assert store.outbox_dropped_total == 2
+    # The two oldest (m0, m1) were dropped; the three most recent remain queued.
+    queued_match_ids = [entry["match_id"] for entry in store._outbox]
+    assert queued_match_ids == ["m2", "m3", "m4"]
+
+
+def test_prune_old_analytics_events_respects_retention_window(tmp_path):
+    now = [10_000.0]
+    store = SQLiteRuntimeStore(tmp_path / "runtime.sqlite3", clock=lambda: now[0])
+    store.record_analytics_event("match_finished", {"result_type": "WIN"}, match_id="old", event_key="match_finished:old")
+    now[0] += 91 * 86400  # just past the default 90-day retention window
+    store.record_analytics_event("match_finished", {"result_type": "WIN"}, match_id="new", event_key="match_finished:new")
+
+    removed = store.prune_old_analytics_events(retention_days=90)
+
+    assert removed == 1
+    summary = store.analytics_summary()["match_finished"]
+    assert summary["total"] == 1

@@ -152,7 +152,13 @@ def live_match_memberships() -> dict[str, set[str]]:
 
 def _timer_deadline(room_id: str) -> float | None:
     state = battle_v2_manager.rooms.get(room_id)
-    if state is None:
+    if state is None or state.phase.value == "finished":
+        # A finished match never needs another wakeup. Without this,
+        # `expire_disconnects` finishing a match via forfeit leaves
+        # `state.disconnect_deadlines` populated with the same already-past
+        # deadline forever (it only marks players expired, it never clears
+        # their deadline), so the scheduler's post-fire re-arm would see an
+        # unchanged overdue deadline and spin firing/re-arming forever.
         return None
     deadlines = [d for d in (state.phase_deadline,) if d is not None]
     deadlines.extend(state.disconnect_deadlines.values())

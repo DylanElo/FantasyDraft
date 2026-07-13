@@ -1051,7 +1051,15 @@ def test_disconnect_grace_expiry_forfeits_through_live_scheduler(monkeypatch):
     # way the outcome below proves the disconnect deadline was wired up.
     web_app.socketio.sleep(0.8)
 
-    finished = received_payload(p2_client, "battle_v2_update")
+    # p2 receives at least two "battle_v2_update" broadcasts here: an
+    # immediate one from on_disconnect() itself (still in progress, paused,
+    # winner_id None) and a later one from the scheduler's forfeit once the
+    # disconnect budget actually expires. Scan for the terminal one instead
+    # of taking the first match, which would race against whichever of the
+    # two happens to be queued first.
+    updates = [message["args"][0] for message in p2_client.get_received() if message["name"] == "battle_v2_update"]
+    finished = next((update for update in updates if update.get("phase") == "finished"), None)
+    assert finished is not None, f"no finished battle_v2_update received; got {[u.get('phase') for u in updates]}"
     assert finished["winner_id"] == "grace-p2"
     assert finished["finish_reason"] == "disconnect_budget"
 

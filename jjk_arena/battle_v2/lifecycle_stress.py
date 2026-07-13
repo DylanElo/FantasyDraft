@@ -18,18 +18,40 @@ import argparse
 import json
 import os
 import random
+import shutil
 import sys
+import tempfile
+import threading
 import time
 import uuid
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 os.environ.setdefault("JJK_BATTLE_SYSTEM", "v2")
+# Ensure the very first construction of web.app's module-level runtime_store
+# singleton (which runs its one-time schema-init write immediately at import)
+# never touches the real data/jjk_arena.sqlite3, even before run_stress_batch
+# gets a chance to redirect it. Only effective when this module is imported
+# before web.app anywhere else in the process (true for the bare CLI entry
+# point; a no-op, harmless override under pytest, which imports web.app --
+# and thus constructs the singleton -- earlier via conftest.py).
+os.environ.setdefault(
+    "JJK_DATABASE_PATH",
+    str(Path(tempfile.gettempdir()) / f"jjk_lifecycle_stress_default_{os.getpid()}.sqlite3"),
+)
 
 TEAM_A = ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]
 TEAM_B = ["satoru_gojo", "ryomen_sukuna", "mahito"]
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+
+# Documented ceiling for the "1,000 matches" exit gate: a run exceeding this
+# resident-set size indicates a real leak (rooms/lobbies/clients not being
+# reclaimed), not just normal interpreter/library overhead. Chosen from
+# observed batches of a few hundred MB plus headroom, not tuned to whatever
+# a single run happened to use.
+MEMORY_CEILING_BYTES = 400 * 1024 * 1024
 
 
 @dataclass
@@ -250,42 +272,73 @@ def _process_rss_bytes() -> int | None:
 
 
 def run_stress_batch(*, matches: int, seed: int = 1, prune_every: int = 100) -> dict[str, Any]:
-    web_app = _import_app()
-    rng = random.Random(seed)
-    findings: list[Softlock] = []
-    scenario_counts: dict[str, int] = {}
-    peak_rooms = 0
-    peak_scheduler_tasks = 0
-    start = time.monotonic()
-    for index in range(matches):
-        scenario, batch_findings, clients = _run_scenario(web_app, rng, index)
-        scenario_counts[scenario] = scenario_counts.get(scenario, 0) + 1
-        findings.extend(batch_findings)
-        for client in clients:
-            if client.is_connected():
-                client.disconnect()
-        peak_rooms = max(peak_rooms, len(web_app.battle_v2_manager.rooms))
-        peak_scheduler_tasks = max(peak_scheduler_tasks, len(web_app.battle_v2_timer_scheduler._deadlines))
-        if (index + 1) % prune_every == 0:
-            web_app.prune_stale_runtime(now=time.monotonic() + web_app.ACTIVE_ROOM_TTL_SECONDS + 1)
-    elapsed = time.monotonic() - start
+    """Run a batch of simulated matches against a throwaway analytics database.
 
-    return {
-        "schema_version": SCHEMA_VERSION,
-        "matches": matches,
-        "seed": seed,
-        "elapsed_seconds": round(elapsed, 2),
-        "scenario_counts": scenario_counts,
-        "peak_rooms": peak_rooms,
-        "peak_scheduler_tasks": peak_scheduler_tasks,
-        "final_rooms": len(web_app.battle_v2_manager.rooms),
-        "process_rss_bytes": _process_rss_bytes(),
-        "softlocks": [
-            {"match_index": f.match_index, "scenario": f.scenario, "reason": f.reason, "detail": f.detail}
-            for f in findings
-        ],
-        "softlock_count": len(findings),
-    }
+    Analytics/replay writes are redirected to a temporary SQLite file for the
+    duration of the batch and the original `runtime_store.path` is restored
+    afterward (even on error) -- a stress run must never write synthetic
+    match/mission rows into whatever database the caller was already using,
+    whether that's the real `data/jjk_arena.sqlite3` (a bare CLI invocation)
+    or a pytest session's isolated temp path (this function's own test).
+    """
+
+    web_app = _import_app()
+    original_db_path = web_app.runtime_store.path
+    temp_dir = tempfile.mkdtemp(prefix="jjk_lifecycle_stress_")
+    web_app.runtime_store.path = Path(temp_dir) / "runtime.sqlite3"
+    web_app.runtime_store._initialize()
+    scheduler = web_app.battle_v2_timer_scheduler
+    threads_before = threading.active_count()
+    try:
+        rng = random.Random(seed)
+        findings: list[Softlock] = []
+        scenario_counts: dict[str, int] = {}
+        peak_rooms = 0
+        peak_scheduler_tasks = 0
+        start = time.monotonic()
+        for index in range(matches):
+            scenario, batch_findings, clients = _run_scenario(web_app, rng, index)
+            scenario_counts[scenario] = scenario_counts.get(scenario, 0) + 1
+            findings.extend(batch_findings)
+            for client in clients:
+                if client.is_connected():
+                    client.disconnect()
+            peak_rooms = max(peak_rooms, len(web_app.battle_v2_manager.rooms))
+            peak_scheduler_tasks = max(peak_scheduler_tasks, scheduler.active_task_count())
+            if (index + 1) % prune_every == 0:
+                web_app.prune_stale_runtime(now=time.monotonic() + web_app.ACTIVE_ROOM_TTL_SECONDS + 1)
+        elapsed = time.monotonic() - start
+
+        # The scheduler itself never spawns more than one worker thread
+        # regardless of how many rooms were armed across the whole batch;
+        # confirm that here rather than trusting the deadline count alone.
+        threads_after_batch = threading.active_count()
+        extra_threads = threads_after_batch - threads_before
+        rss_bytes = _process_rss_bytes()
+
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "matches": matches,
+            "seed": seed,
+            "elapsed_seconds": round(elapsed, 2),
+            "scenario_counts": scenario_counts,
+            "peak_rooms": peak_rooms,
+            "peak_scheduler_tasks": peak_scheduler_tasks,
+            "final_rooms": len(web_app.battle_v2_manager.rooms),
+            "scheduler_worker_threads": 1 if scheduler._worker_started else 0,
+            "extra_threads_after_batch": extra_threads,
+            "process_rss_bytes": rss_bytes,
+            "memory_ceiling_bytes": MEMORY_CEILING_BYTES,
+            "over_memory_ceiling": bool(rss_bytes is not None and rss_bytes > MEMORY_CEILING_BYTES),
+            "softlocks": [
+                {"match_index": f.match_index, "scenario": f.scenario, "reason": f.reason, "detail": f.detail}
+                for f in findings
+            ],
+            "softlock_count": len(findings),
+        }
+    finally:
+        web_app.runtime_store.path = original_db_path
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -294,7 +347,23 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--seed", type=int, default=1)
     args = parser.parse_args(argv)
     result = run_stress_batch(matches=args.matches, seed=args.seed)
+    # One-shot CLI process: deterministically stop the scheduler's single
+    # worker thread before reporting, rather than relying on process exit to
+    # reap it, so "no stale timer thread survives" is actually verified here.
+    web_app = _import_app()
+    web_app.battle_v2_timer_scheduler.shutdown()
+    result["scheduler_worker_threads_after_shutdown"] = 1 if web_app.battle_v2_timer_scheduler._worker_started else 0
     print(json.dumps(result, indent=2, sort_keys=True))
+    if result["over_memory_ceiling"]:
+        print(
+            f"FAIL: process RSS {result['process_rss_bytes']} exceeded the "
+            f"documented ceiling of {MEMORY_CEILING_BYTES} bytes",
+            file=sys.stderr,
+        )
+        return 1
+    if result["scheduler_worker_threads_after_shutdown"]:
+        print("FAIL: scheduler worker thread did not stop after shutdown()", file=sys.stderr)
+        return 1
     return 1 if result["softlock_count"] else 0
 
 

@@ -65,6 +65,25 @@ already-started Battle v2 match.
 }
 ```
 
+### `battle_v2_resume`
+
+Reattaches a new socket/browser session to an existing human player identity.
+The opaque token was previously delivered through `battle_v2_session` and is
+rotated after every successful resume.
+
+```json
+{
+  "room_id": "private-room",
+  "player_id": "player-session-id",
+  "resume_token": "opaque-room-scoped-token"
+}
+```
+
+Successful resume joins the original private socket room, emits a rotated
+`battle_v2_session`, and then emits a viewer-specific `battle_v2_update` with
+the current phase, revision, pending queue, and remaining time. Invalid,
+cross-room, cross-player, and already-rotated tokens are rejected.
+
 ### `battle_v2_submit_plan`
 
 Stores pending actions for queue review without spending energy.
@@ -155,6 +174,25 @@ Concedes the v2 match for the current player.
 ```
 
 ## Server Events
+
+### `battle_v2_session`
+
+Privately delivers the room/player resume credential after match creation or a
+successful resume. The token is never included in battle serialization or
+broadcast to the opponent.
+
+```json
+{
+  "room_id": "private-room",
+  "player_id": "player-session-id",
+  "resume_token": "opaque-room-scoped-token"
+}
+```
+
+### `battle_v2_resume_rejected`
+
+Indicates that a resume credential is missing, invalid, scoped to another
+room/player, rotated, or belongs to a room that no longer exists.
 
 ### `battle_v2_lobby`
 

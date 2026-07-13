@@ -259,3 +259,26 @@ Caution / next work:
 - Timer state remains process-local with its room; durable multi-process room ownership belongs with reconnect/session persistence.
 - Timeout durations and timeout policy were not changed.
 - No reconnect flow, roster, progression, balance, Phaser layout, or visual behavior changed.
+
+## 2026-07-12 - Secure Battle v2 reconnect and resume
+
+What changed:
+
+- Added opaque room/player-scoped resume credentials stored server-side only as SHA-256 hashes.
+- Issued credentials through each player's private socket room and rotated them after every successful resume.
+- Added authenticated `battle_v2_resume` reattachment for a new browser session, including private room membership and a fresh viewer-specific state snapshot.
+- Restored authoritative phase, revision, pending Queue Review actions, and remaining timer state without leaking opponent invisible statuses or queues.
+- Persisted resume credentials in Phaser local storage without changing any scene or layout.
+- Revoked all room credentials during authoritative room cleanup.
+
+Verification:
+
+- Registry tests cover hashing, room/player scope, rotation, replay rejection, and room revocation.
+- Real SocketIO integration covers disconnect, new-session resume, Queue Review restoration, deadline restoration, hidden-state privacy, and rotated-token rejection.
+- Full pytest, Python compilation, Phaser JavaScript syntax, and `git diff --check` passed in the focused branch.
+
+Caution / next work:
+
+- Resume state is process-local; shared persistence and room affinity are required before horizontal scaling.
+- No grace-period expiry, automatic surrender, ranked penalty, or disconnect winner policy was chosen because that remains a product decision gate.
+- No combat rules, roster, progression, balance, Phaser layout, or visual behavior changed.

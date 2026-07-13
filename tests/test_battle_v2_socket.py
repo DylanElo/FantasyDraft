@@ -26,6 +26,7 @@ def clear_v2_rooms():
     web_app.battle_v2_manager.rngs.clear()
     web_app.battle_v2_manager.command_receipts.clear()
     web_app.battle_v2_manager.room_locks.clear()
+    web_app.battle_v2_sessions.clear()
     web_app.v2_pvp_lobbies.clear()
     web_app.rate_limits.clear()
     yield
@@ -35,6 +36,7 @@ def clear_v2_rooms():
     web_app.battle_v2_manager.rngs.clear()
     web_app.battle_v2_manager.command_receipts.clear()
     web_app.battle_v2_manager.room_locks.clear()
+    web_app.battle_v2_sessions.clear()
     web_app.v2_pvp_lobbies.clear()
     web_app.rate_limits.clear()
 
@@ -60,6 +62,10 @@ def received_payload(client, event_name):
         if message["name"] == event_name:
             return message["args"][0]
     return None
+
+
+def received_payloads(client):
+    return {message["name"]: message["args"][0] for message in client.get_received()}
 
 
 def test_battle_v2_socket_events_are_feature_flagged(monkeypatch):
@@ -104,6 +110,55 @@ def test_background_planning_timeout_broadcasts_and_runs_cpu(monkeypatch):
     assert timed_out["state_revision"] >= 2
     assert any(event["type"] == "phase_timeout" for event in timed_out["event_log"])
     assert any(event["type"] == "skill_resolved" for event in timed_out["event_log"])
+
+
+def test_resume_rebinds_socket_and_restores_viewer_specific_queue_without_hidden_leak(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    original = socket_client_with_player("original")
+    original.emit("battle_v2_start_classic", {"room_id": "resume-v2"})
+    started = received_payloads(original)
+    grant = started["battle_v2_session"]
+    state = web_app.battle_v2_manager.get_state("resume-v2")
+    state.players["original"].energy[EnergyType.GREEN] = 1
+    state.players["original"].team[0].statuses.append(
+        StatusEffect("enemy_secret", "Enemy Secret", "__cpu_v2__", 0, "original", 0, 2, invisible=True)
+    )
+    original.emit("battle_v2_submit_plan", command_payload(state, {"actions": [{
+        "id": "resume-action",
+        "caster_slot": 0,
+        "skill_id": "divergent_fist",
+        "target_player_id": "__cpu_v2__",
+        "target_slot": 0,
+    }]}))
+    received_payload(original, "battle_v2_update")
+    original.disconnect()
+
+    resumed = socket_client_with_player("different-browser-session")
+    resumed.emit("battle_v2_resume", grant)
+    messages = received_payloads(resumed)
+    snapshot = messages["battle_v2_update"]
+
+    assert messages["battle_v2_session"]["resume_token"] != grant["resume_token"]
+    assert snapshot["pending_actions"]["original"][0]["id"] == "resume-action"
+    assert snapshot["phase"] == "queue_review"
+    assert snapshot["phase_seconds_remaining"] > 0
+    assert snapshot["players"]["original"]["team"][0]["statuses"] == []
+
+
+def test_invalid_or_rotated_resume_token_is_rejected(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    original = socket_client_with_player("original")
+    original.emit("battle_v2_start_classic", {"room_id": "resume-reject"})
+    grant = received_payloads(original)["battle_v2_session"]
+
+    first_resume = socket_client_with_player("new-session")
+    first_resume.emit("battle_v2_resume", grant)
+    received_payloads(first_resume)
+    replay = socket_client_with_player("attacker")
+    replay.emit("battle_v2_resume", grant)
+
+    rejected = received_payloads(replay)
+    assert rejected == {"battle_v2_resume_rejected": {"message": "Battle session could not be resumed."}}
 
 
 def test_battle_v2_socket_retry_does_not_repeat_energy_conversion(monkeypatch):

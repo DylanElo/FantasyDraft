@@ -36,6 +36,7 @@ export class GameStore {
       this.recentEvents = [];
       this.lastActionPayloads = [];
       this.commandNonceCounter = 0;
+      this.resumeSession = this.loadResumeSession();
       this.records = this.loadRecords();
       this.playerTeam = preset('story_tutorial', ['yuji_itadori', 'megumi_fushiguro', 'nobara_kugisaki']);
       this.enemyTeam = preset('jjk0_beginner_special', ['yuta_okkotsu_jjk0', 'maki_zenin', 'toge_inumaki']);
@@ -59,7 +60,15 @@ export class GameStore {
     bindSocket() {
       this.socketClient.on('connect', () => {
         this.setStatus('Connected');
+        if (this.resumeSession) {
+          this.socketClient.emit('battle_v2_resume', { ...this.resumeSession });
+        }
         this.notify();
+      });
+      this.socketClient.on('battle_v2_session', (data) => this.saveResumeSession(data));
+      this.socketClient.on('battle_v2_resume_rejected', (data) => {
+        this.clearResumeSession();
+        this.showToast(data && data.message ? data.message : 'Battle session expired.');
       });
       this.socketClient.on('battle_v2_update', (data) => this.receiveBattleState(data));
       this.socketClient.on('battle_v2_lobby', (data) => this.receiveLobbyState(data));
@@ -108,6 +117,30 @@ export class GameStore {
         state_revision: revision,
         client_action_nonce: `${Date.now()}-${this.commandNonceCounter}`,
       };
+    }
+
+    loadResumeSession() {
+      try {
+        const value = JSON.parse(readStorage('jjk_battle_resume', '{}'));
+        return value && value.room_id && value.player_id && value.resume_token ? value : null;
+      } catch (error) {
+        return null;
+      }
+    }
+
+    saveResumeSession(data) {
+      if (!data || !data.room_id || !data.player_id || !data.resume_token) return;
+      this.resumeSession = {
+        room_id: data.room_id,
+        player_id: data.player_id,
+        resume_token: data.resume_token,
+      };
+      writeStorage('jjk_battle_resume', JSON.stringify(this.resumeSession));
+    }
+
+    clearResumeSession() {
+      this.resumeSession = null;
+      writeStorage('jjk_battle_resume', '{}');
     }
 
     changeScene(sceneName) {
@@ -274,6 +307,7 @@ export class GameStore {
         return;
       }
       this.state = null;
+      this.clearResumeSession();
       this.actions = [];
       this.actionWildPays = {};
       this.queueReviewOpen = false;
@@ -919,6 +953,7 @@ export class GameStore {
         this.socketClient.emit('battle_v2_leave_pvp', { room_id: this.lobbyStatus.room_id });
       }
       this.state = null;
+      this.clearResumeSession();
       this.lobbyStatus = null;
       this.actions = [];
       this.actionWildPays = {};

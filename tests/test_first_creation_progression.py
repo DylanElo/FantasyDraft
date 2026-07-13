@@ -63,11 +63,68 @@ def test_yuta_route_tracks_rika_state_and_replacement_skill():
         BattleEvent(type="status_applied", message="Weapon Specialist", turn_number=1, payload={"status": "weapon_specialist", "source_player_id": "p1"}),
         BattleEvent(type="status_applied", message="Stop", turn_number=1, payload={"status": "stopped", "source_player_id": "p1"}),
     ])
+    state.winner_id = "p1"
 
     progress = evaluate_first_creation_progress(state, "p1")
 
     assert "cursed_child_bond" in progress["completed_ids"]
     assert "jjk0_geto_route" in progress["unlocked"]
+
+
+def test_cursed_child_bond_does_not_complete_on_a_loss():
+    """Decision: every mission_unlock route requires victory (matching the
+    other 5 mission_unlock missions), including Cursed Child Bond and
+    Hidden Inventory Echoes, which previously had no win requirement at all
+    -- see docs/decisions/first_creation_mission_victory_requirement.md."""
+
+    manager = BattleV2Manager(rng_seed=1)
+    manager.start_first_creation_match("room", [
+        {"id": "p1", "name": "Player One", "team": ["yuta_okkotsu_jjk0", "maki_zenin", "toge_inumaki"]},
+        {"id": "p2", "name": "Player Two", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
+    ])
+    state = manager.get_state("room")
+    state.event_log.extend([
+        BattleEvent(type="status_applied", message="Rika", turn_number=1, payload={"status": "rikas_curse", "source_player_id": "p1"}),
+        BattleEvent(
+            type="skill_resolved",
+            message="Megaphone",
+            turn_number=2,
+            payload={"player_id": "p1", "skill_id": "fc_yuta_okkotsu_jjk0_cursed_speech_megaphone"},
+        ),
+        BattleEvent(type="status_applied", message="Weapon Specialist", turn_number=1, payload={"status": "weapon_specialist", "source_player_id": "p1"}),
+        BattleEvent(type="status_applied", message="Stop", turn_number=1, payload={"status": "stopped", "source_player_id": "p1"}),
+    ])
+    state.winner_id = "p2"
+
+    progress = evaluate_first_creation_progress(state, "p1")
+
+    assert "cursed_child_bond" not in progress["completed_ids"]
+
+
+def test_hidden_inventory_echoes_requires_a_win():
+    manager = BattleV2Manager(rng_seed=1)
+    manager.start_first_creation_match("room", [
+        {"id": "p1", "name": "Player One", "team": ["satoru_gojo_young", "suguru_geto_young", "shoko_ieiri_young"]},
+        {"id": "p2", "name": "Player Two", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
+    ])
+    state = manager.get_state("room")
+    state.event_log.append(
+        BattleEvent(
+            type="energy_gained",
+            message="Read payoff",
+            turn_number=1,
+            payload={"player_id": "p1"},
+        )
+    )
+    state.players["p1"].team[0].hp = 30
+
+    progress_on_loss = evaluate_first_creation_progress(state, "p1")
+    assert "hidden_inventory_echoes" not in progress_on_loss["completed_ids"]
+
+    state.winner_id = "p1"
+    progress_on_win = evaluate_first_creation_progress(state, "p1")
+    assert "hidden_inventory_echoes" in progress_on_win["completed_ids"]
+    assert "gojo_adult" in progress_on_win["unlocked"]
 
 
 def test_cursed_child_bond_is_incomplete_without_makis_or_toges_objective():

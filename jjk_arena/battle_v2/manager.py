@@ -1150,6 +1150,19 @@ class BattleV2Manager:
         for player_id in state.players:
             existing[player_id] = evaluate_first_creation_progress(state, player_id, existing.get(player_id))
 
+    def mission_progress_for_player(self, room_id: str, player_id: str) -> dict[str, Any] | None:
+        """Return one player's current First Creation mission progress, refreshed.
+
+        Safe to call once a match has reached its terminal state to settle
+        mission completion authoritatively, independent of whether or when
+        a viewer broadcast happens to run afterward.
+        """
+
+        if self.room_roster_modes.get(room_id) != "first_creation":
+            return None
+        self._refresh_first_creation_progress(room_id)
+        return self.room_first_creation_progress.get(room_id, {}).get(player_id)
+
     def _ensure_turn_player(self, state: BattleState, player_id: str) -> None:
         if player_id not in state.players:
             raise BattleV2Error(f"unknown player: {player_id}")

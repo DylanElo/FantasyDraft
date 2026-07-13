@@ -772,6 +772,11 @@ anti-domain conversion rule are now locked; see
 `docs/decisions/battle_v2_damage_reduction.md` and
 `docs/decisions/battle_v2_anti_domain.md`.
 
+Every First Creation mission (starter tier and every `mission_unlock` route)
+requires the evaluated player to have won the match — no unlock, cosmetic or
+character, is exempt; see
+`docs/decisions/first_creation_mission_victory_requirement.md`.
+
 ---
 
 # 15. Anti-drift checklist

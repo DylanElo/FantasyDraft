@@ -156,15 +156,46 @@ def test_match_finished_analytics_are_recorded_without_any_broadcast(monkeypatch
     assert after - before == 1
 
 
-def test_emit_battle_v2_update_records_mission_completed_analytics_once(monkeypatch):
+def test_mission_settlement_happens_from_surrender_with_no_broadcast_at_all(monkeypatch):
+    """Mirrors test_match_finished_analytics_are_recorded_without_any_broadcast:
+    settlement must fire from the real terminal-state transition
+    (manager._finish_match, via the on_match_finished hook), not from a
+    broadcast -- calling surrender() directly, with no socket client and no
+    emit_battle_v2_update call, must still merge and record mission progress."""
+
     from jjk_arena.battle_v2.models import BattleEvent
 
     monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
-    web_app.battle_v2_manager.start_first_creation_match("mission-analytics-room", [
+    web_app.battle_v2_manager.start_first_creation_match("mission-no-broadcast-room", [
         {"id": "p1", "name": "Player One", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
         {"id": "p2", "name": "Player Two", "team": ["maki_zenin", "toge_inumaki", "panda"]},
     ])
-    state = web_app.battle_v2_manager.get_state("mission-analytics-room")
+    state = web_app.battle_v2_manager.get_state("mission-no-broadcast-room")
+    for index, skill_id in enumerate([
+        "fc_yuji_itadori_divergent_fist",
+        "fc_megumi_fushiguro_divine_dogs",
+        "fc_nobara_kugisaki_nail_barrage",
+    ]):
+        state.event_log.append(BattleEvent(
+            type="skill_resolved",
+            message=f"skill {index}",
+            turn_number=1,
+            payload={"player_id": "p1", "skill_id": skill_id},
+        ))
+
+    before = web_app.runtime_store.analytics_summary()["missions_completed"].get("welcome_to_jujutsu_high", 0)
+    web_app.battle_v2_manager.surrender("mission-no-broadcast-room", "p2")  # p2 surrenders, p1 wins
+    after = web_app.runtime_store.analytics_summary()["missions_completed"].get("welcome_to_jujutsu_high", 0)
+
+    assert after - before == 1
+    profile = web_app.load_first_creation_profile("p1")
+    assert "welcome_to_jujutsu_high" in profile["completed_missions"]
+
+
+def _finish_first_creation_match_for_p1(room_id: str) -> None:
+    from jjk_arena.battle_v2.models import BattleEvent, BattlePhase
+
+    state = web_app.battle_v2_manager.get_state(room_id)
     for index, skill_id in enumerate([
         "fc_yuji_itadori_divergent_fist",
         "fc_megumi_fushiguro_divine_dogs",
@@ -177,14 +208,48 @@ def test_emit_battle_v2_update_records_mission_completed_analytics_once(monkeypa
             payload={"player_id": "p1", "skill_id": skill_id},
         ))
     state.winner_id = "p1"
+    state.result_type = "WIN"
+    state.phase = BattlePhase.FINISHED
 
+
+def test_settle_first_creation_missions_records_analytics_exactly_once(monkeypatch):
+    """Mission settlement is idempotent: calling it again (e.g. a duplicate
+    or late-arriving terminal-state hook fire) must not double-count."""
+
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    web_app.battle_v2_manager.start_first_creation_match("mission-analytics-room", [
+        {"id": "p1", "name": "Player One", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
+        {"id": "p2", "name": "Player Two", "team": ["maki_zenin", "toge_inumaki", "panda"]},
+    ])
+    _finish_first_creation_match_for_p1("mission-analytics-room")
+
+    before = web_app.runtime_store.analytics_summary()["missions_completed"].get("welcome_to_jujutsu_high", 0)
+    web_app.settle_first_creation_missions("mission-analytics-room")
+    web_app.settle_first_creation_missions("mission-analytics-room")
+    after = web_app.runtime_store.analytics_summary()["missions_completed"].get("welcome_to_jujutsu_high", 0)
+
+    assert after - before == 1
+
+
+def test_emit_battle_v2_update_no_longer_settles_missions_itself(monkeypatch):
+    """Regression: mission settlement moved out of the broadcast path onto
+    the authoritative terminal-state hook. Broadcasting a finished state
+    without that hook having fired first must not itself merge/record
+    anything -- it can only read whatever profile state already exists."""
+
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    web_app.battle_v2_manager.start_first_creation_match("mission-broadcast-only-room", [
+        {"id": "p1", "name": "Player One", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
+        {"id": "p2", "name": "Player Two", "team": ["maki_zenin", "toge_inumaki", "panda"]},
+    ])
+    _finish_first_creation_match_for_p1("mission-broadcast-only-room")
+
+    before = web_app.runtime_store.analytics_summary()["missions_completed"].get("welcome_to_jujutsu_high", 0)
     with web_app.app.test_request_context():
-        web_app.emit_battle_v2_update("mission-analytics-room", "p1")
-        # A second update (e.g. a reconnect-triggered refresh) must not double-count.
-        web_app.emit_battle_v2_update("mission-analytics-room", "p1")
+        web_app.emit_battle_v2_update("mission-broadcast-only-room", "p1")
+    after = web_app.runtime_store.analytics_summary()["missions_completed"].get("welcome_to_jujutsu_high", 0)
 
-    summary = web_app.runtime_store.analytics_summary()
-    assert summary["missions_completed"].get("welcome_to_jujutsu_high") == 1
+    assert after == before
 
 
 def test_decisive_pvp_match_records_one_win_and_one_loss(monkeypatch):

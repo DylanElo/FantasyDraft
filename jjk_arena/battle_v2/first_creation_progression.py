@@ -111,6 +111,7 @@ def evaluate_first_creation_progress(
     ) or any(skill_id.endswith("compressed_uzumaki") for skill_id in skills_used)
     low_ally_alive = any(character.alive and 0 < character.hp < 50 for character in state.players[player_id].team)
     entries.append(_mission_entry(by_id[MISSION_HIDDEN], hidden_eligible, [
+        _objective("Win the match", hidden_eligible and winner_is_player, 1 if winner_is_player else 0),
         _objective("Trigger a read or stock payoff", hidden_eligible and hidden_payoff, 1 if hidden_payoff else 0),
         _objective("Keep one ally alive below 50 HP", hidden_eligible and low_ally_alive, 1 if low_ally_alive else 0),
     ]))
@@ -126,6 +127,7 @@ def evaluate_first_creation_progress(
     weapon_specialist_active = _status_applications(events, "weapon_specialist", player_id) > 0
     toge_stop_triggered = _status_applications(events, "stopped", player_id) > 0
     entries.append(_mission_entry(by_id[MISSION_YUTA], yuta_eligible, [
+        _objective("Win the match", yuta_eligible and winner_is_player, 1 if winner_is_player else 0),
         _objective("Activate Rika's Curse", yuta_eligible and rika_activated, 1 if rika_activated else 0),
         _objective("Use a replacement skill", yuta_eligible and replacement_used, 1 if replacement_used else 0),
         _objective("Buff up with Maki's Weapon Specialist", yuta_eligible and weapon_specialist_active, 1 if weapon_specialist_active else 0),

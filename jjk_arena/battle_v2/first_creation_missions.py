@@ -15,18 +15,19 @@ FIRST_CREATION_MISSIONS: tuple[dict[str, object], ...] = (
     {
         "id": "hidden_inventory_echoes",
         "title": "Hidden Inventory Echoes",
-        "description": "Clear a match with Young Gojo, Young Geto, and Young Shoko to begin mentor-era unlocks.",
+        "description": "Win a match with Young Gojo, Young Geto, and Young Shoko to begin mentor-era unlocks.",
         "recommended_team": ["satoru_gojo_young", "suguru_geto_young", "shoko_ieiri_young"],
-        "objectives": ["Trigger a read or stock payoff", "Keep one ally alive below 50 HP"],
+        "objectives": ["Win the match", "Trigger a read or stock payoff", "Keep one ally alive below 50 HP"],
         "unlocks": ["gojo_adult", "geto_jjk0"],
         "tier": "mission_unlock",
     },
     {
         "id": "cursed_child_bond",
         "title": "Cursed Child Bond",
-        "description": "Use JJK0 Yuta's Rika state alongside Maki's tool mastery and Toge's cursed speech to unlock the first JJK0 mission branch.",
+        "description": "Win with JJK0 Yuta's Rika state alongside Maki's tool mastery and Toge's cursed speech to unlock the first JJK0 mission branch.",
         "recommended_team": ["yuta_okkotsu_jjk0", "maki_zenin", "toge_inumaki"],
         "objectives": [
+            "Win the match",
             "Activate Rika's Curse",
             "Use a replacement skill",
             "Buff up with Maki's Weapon Specialist",

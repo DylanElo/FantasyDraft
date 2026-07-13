@@ -401,10 +401,48 @@ def record_match_finished_analytics(room_id: str) -> None:
     analytics_recorded_matches.add(room_id)
 
 
-# Recorded at the authoritative terminal state transition (manager._finish_match),
-# not from the emit_battle_v2_update broadcast path — a repeated broadcast/reconnect
-# refresh must not be the thing deciding whether a match-finished event exists.
-battle_v2_manager.on_match_finished = record_match_finished_analytics
+missions_settled_matches: set[str] = set()
+
+
+def settle_first_creation_missions(room_id: str) -> None:
+    """Merge every human player's mission progress into their durable profile.
+
+    Runs once at the authoritative terminal state transition rather than
+    inside emit_battle_v2_update's broadcast loop: settlement must not
+    depend on a viewer broadcast actually happening (or happening after the
+    winner is decided) to ever occur at all.
+    """
+
+    if room_id in missions_settled_matches:
+        return
+    state = battle_v2_manager.rooms.get(room_id)
+    if state is None or state.phase.value != "finished":
+        return
+    if battle_v2_manager.room_roster_modes.get(room_id) != "first_creation":
+        return
+    for player_id in state.players:
+        if player_id == CPU_V2_PLAYER_ID:
+            continue
+        try:
+            progress = battle_v2_manager.mission_progress_for_player(room_id, player_id)
+            merge_first_creation_progress(player_id, progress, match_id=room_id, analytics_store=runtime_store)
+        except Exception:
+            operational_counters["mission_settlement_errors"] += 1
+    missions_settled_matches.add(room_id)
+
+
+def on_battle_v2_match_finished(room_id: str) -> None:
+    """Single authoritative hook fired once when a match reaches FINISHED."""
+
+    record_match_finished_analytics(room_id)
+    settle_first_creation_missions(room_id)
+
+
+# Wired at the authoritative terminal state transition (manager._finish_match),
+# not from the emit_battle_v2_update broadcast path — a repeated broadcast/
+# reconnect refresh must not be the thing deciding whether match analytics or
+# mission settlement ever happen.
+battle_v2_manager.on_match_finished = on_battle_v2_match_finished
 
 
 def clamp_int(value, minimum: int, maximum: int, default: int = 0) -> int:
@@ -565,15 +603,11 @@ def emit_battle_v2_update(room_id: str, viewer_id: str | None = None):
     for target_viewer_id in viewer_ids:
         payload = battle_v2_manager.serialize_for_player(room_id, target_viewer_id)
         if payload.get("roster_mode") == "first_creation":
-            if payload.get("winner_id"):
-                profile = merge_first_creation_progress(
-                    target_viewer_id,
-                    payload.get("first_creation_progress"),
-                    match_id=room_id,
-                    analytics_store=runtime_store,
-                )
-            else:
-                profile = load_first_creation_profile(target_viewer_id)
+            # Mission settlement itself already ran once, synchronously, at
+            # the authoritative _finish_match transition (see
+            # settle_first_creation_missions / on_battle_v2_match_finished
+            # above) -- this just reads whatever profile state that produced.
+            profile = load_first_creation_profile(target_viewer_id)
             payload["first_creation_account"] = first_creation_profile_payload(profile)
         payload["match_id"] = room_id
         payload["lobby_code"] = lobby_code_by_match.get(room_id)

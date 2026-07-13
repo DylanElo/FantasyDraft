@@ -47,12 +47,10 @@ REPLAY_RETENTION_DAYS = max(1, int(os.getenv("JJK_REPLAY_RETENTION_DAYS", "30"))
 FINISHED_ROOM_TTL_SECONDS = max(60, int(os.getenv("JJK_FINISHED_ROOM_TTL_SECONDS", "900")))
 ACTIVE_ROOM_TTL_SECONDS = max(300, int(os.getenv("JJK_ACTIVE_ROOM_TTL_SECONDS", "7200")))
 LOBBY_TTL_SECONDS = max(60, int(os.getenv("JJK_LOBBY_TTL_SECONDS", "900")))
+configured_cors_origins = os.getenv("JJK_CORS_ORIGINS")
 CORS_ORIGINS = [
     origin.strip()
-    for origin in os.getenv(
-        "JJK_CORS_ORIGINS",
-        f"http://127.0.0.1:{PORT},http://localhost:{PORT}",
-    ).split(",")
+    for origin in (configured_cors_origins or f"http://127.0.0.1:{PORT},http://localhost:{PORT}").split(",")
     if origin.strip()
 ]
 

@@ -7,6 +7,7 @@ authoritative transition taken when a deadline expires.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 import time
 from collections.abc import Callable
 
@@ -27,7 +28,7 @@ class BattleTimerPolicy:
 
 
 def system_clock() -> float:
-    return time.time()
+    return time.monotonic()
 
 
 def arm_phase_timer(
@@ -44,3 +45,12 @@ def phase_timer_expired(
     clock: Callable[[], float] = system_clock,
 ) -> bool:
     return state.phase_deadline is not None and clock() >= state.phase_deadline
+
+
+def phase_seconds_remaining(
+    state: BattleState,
+    clock: Callable[[], float] = system_clock,
+) -> int | None:
+    if state.phase_deadline is None:
+        return None
+    return max(0, math.ceil(state.phase_deadline - clock()))

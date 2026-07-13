@@ -3,6 +3,7 @@ from copy import deepcopy
 from itertools import count
 
 from jjk_arena.battle_v2.models import EnergyType, SkillClass, StatusEffect
+from jjk_arena.battle_v2.timers import BattleTimerPolicy
 from web import app as web_app
 
 
@@ -19,15 +20,21 @@ def command_payload(state, payload=None, *, revision_offset=0):
 
 @pytest.fixture(autouse=True)
 def clear_v2_rooms():
+    for room_id in list(web_app.battle_v2_manager.rooms):
+        web_app.battle_v2_timer_scheduler.cancel(room_id)
     web_app.battle_v2_manager.rooms.clear()
     web_app.battle_v2_manager.rngs.clear()
     web_app.battle_v2_manager.command_receipts.clear()
+    web_app.battle_v2_manager.room_locks.clear()
     web_app.v2_pvp_lobbies.clear()
     web_app.rate_limits.clear()
     yield
+    for room_id in list(web_app.battle_v2_manager.rooms):
+        web_app.battle_v2_timer_scheduler.cancel(room_id)
     web_app.battle_v2_manager.rooms.clear()
     web_app.battle_v2_manager.rngs.clear()
     web_app.battle_v2_manager.command_receipts.clear()
+    web_app.battle_v2_manager.room_locks.clear()
     web_app.v2_pvp_lobbies.clear()
     web_app.rate_limits.clear()
 
@@ -76,6 +83,27 @@ def test_battle_v2_socket_requires_command_revision_and_nonce(monkeypatch):
     error = received_payload(client, "battle_v2_error")
     assert error == {"message": "state_revision is required"}
     assert web_app.battle_v2_manager.get_state("versioned-v2").turn_number == 1
+
+
+def test_background_planning_timeout_broadcasts_and_runs_cpu(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    monkeypatch.setattr(
+        web_app.battle_v2_manager,
+        "timer_policy",
+        BattleTimerPolicy(planning_seconds=0.03, queue_review_seconds=0.03),
+    )
+    client = socket_client()
+    client.emit("battle_v2_start_classic", {"room_id": "scheduled-timeout"})
+    start = received_payload(client, "battle_v2_update")
+    player_id = start["turn_player_id"]
+
+    web_app.socketio.sleep(0.12)
+    timed_out = received_payload(client, "battle_v2_update")
+
+    assert timed_out["turn_player_id"] == player_id
+    assert timed_out["state_revision"] >= 2
+    assert any(event["type"] == "phase_timeout" for event in timed_out["event_log"])
+    assert any(event["type"] == "skill_resolved" for event in timed_out["event_log"])
 
 
 def test_battle_v2_socket_retry_does_not_repeat_energy_conversion(monkeypatch):

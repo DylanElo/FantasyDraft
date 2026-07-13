@@ -96,6 +96,11 @@ Planning and Queue Review have server-owned deadlines. Timing policy is
 isolated in `jjk_arena/battle_v2/timers.py`; the manager owns timeout
 transitions. Planning timeout skips the turn. A valid Queue Review timeout
 resolves the submitted queue; an invalid queue is discarded before advancing.
+Internal deadlines use a monotonic clock. A stale-safe background scheduler
+wakes idle rooms, runs the authoritative transition under the room lock, then
+broadcasts viewer-specific state. Re-arming or deleting a room invalidates old
+wakeups. Clients receive whole `phase_seconds_remaining` values for display but
+do not decide when expiration occurs.
 
 ## Hidden Information
 

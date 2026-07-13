@@ -421,3 +421,9 @@ Caution / external launch gates:
 - Removed public HTTP/Socket.IO room reset surfaces and removed replay RNG seeds from public battle serialization while keeping a private integer seed in replay documents.
 - Added lifecycle and adversarial regressions. Normal-order verification at this commit: 313 passed, 1 opt-in visual test skipped.
 - No roster, kit, balance, mission, progression, or visual feature changed.
+# 2026-07-13 - Environment combat UI integration commit
+
+- Integrated the rain-darkened underpass/courtyard CombatScene, dossier fighter cards, tactical HUD, command dock, skill dossier, legal/illegal target feedback, and redesigned Queue Review onto the authoritative lifecycle commit.
+- Preserved responsive 360x800, 390x844, and 430x932 layouts, 44px minimum hit targets, the original environment generator, and Playwright QA tooling.
+- Full pytest passed in normal and reverse file order with 313 passed and 1 opt-in visual test skipped in each order. All Phaser syntax checks, Python compilation, deterministic asset regeneration, and diff hygiene passed.
+- No character, kit, balance, mission, progression, or new non-combat screen was added.

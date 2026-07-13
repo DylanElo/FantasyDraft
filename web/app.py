@@ -178,8 +178,8 @@ def apply_security_headers(response):
     response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
     response.headers.setdefault(
         "Content-Security-Policy",
-        "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
-        "img-src 'self' data:; connect-src 'self' ws: wss:; font-src 'self' data:; "
+        "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "img-src 'self' data: blob:; connect-src 'self' ws: wss:; font-src 'self' data: https://fonts.gstatic.com; "
         "object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
     )
     if PRODUCTION_MODE and request.is_secure:

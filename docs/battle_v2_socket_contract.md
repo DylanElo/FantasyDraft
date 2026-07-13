@@ -41,10 +41,27 @@ authoritative match id. For local/dev testing the client may provide both teams:
 If `player_team` is omitted, the starter trio Yuji/Nobara/Megumi is used. If
 `enemy_team` is omitted, Gojo/Sukuna/Mahito is used. `difficulty` is optional
 (`easy`, `normal`, or `hard`); an omitted or invalid value falls back to
-`normal`. It only affects the CPU opponent's play (Easy plays closer to
-"always basic-attack", Hard leans harder into kill-securing/control plays and
-is less cost-averse) and has no effect on legality — the CPU only ever
-selects among validated legal actions at every difficulty.
+`normal`. It only affects the CPU opponent's play and has no effect on
+legality — the CPU only ever selects among validated legal actions at every
+difficulty. Preserved across CPU rematches (see `battle_v2_rematch` below).
+
+Per-action cost aversion is lower on Hard than Normal/Easy (Hard: -1 per cost
+pip; Normal/Easy: -2), but Hard is not simply "less cost-averse" overall —
+`jjk_arena/battle_v2/manager.py`'s `_cpu_action_score` gives Hard three
+signals Normal/Easy don't have at all, which can make it choose a *cheaper*
+or *less obviously strong* action than Normal in some states:
+
+- **Setup/payoff awareness**: a conditional damage effect's value is only
+  counted if its `condition_status`/`condition_missing_status` is actually
+  true of the live target. Normal/Easy always count the listed amount,
+  whether or not the condition would actually apply.
+- **Counter/reflect risk**: a harmful action against a target currently
+  holding an active counter/reflect status is penalized on Hard, since it
+  risks feeding the payload back at the caster's own team.
+- **Future energy reservation**: a non-lethal, non-control action is
+  discounted further on Hard when other living teammates still need to act
+  this turn and would draw from the same shared energy pool — this is the
+  one case where Hard becomes *more* cost-averse than Normal, not less.
 
 ### `battle_v2_join_pvp`
 

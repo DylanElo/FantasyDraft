@@ -604,6 +604,263 @@ def test_cpu_action_score_hard_reacts_to_heal_urgency_earlier_than_normal():
     assert hard_score > normal_score
 
 
+def test_cpu_action_score_hard_avoids_feeding_an_active_counter():
+    """Hard alone reads counter/reflect risk on the target and discounts a
+    harmful action against it; Normal doesn't look at this at all."""
+
+    from jjk_arena.battle_v2.manager import _cpu_action_score
+    from jjk_arena.battle_v2.models import (
+        BattleState,
+        CharacterState,
+        EffectSpec,
+        PendingAction,
+        PlayerState,
+        SkillSpec,
+        StatusEffect,
+        TargetRule,
+    )
+
+    caster = CharacterState(character_id="attacker", name="Attacker")
+    target = CharacterState(character_id="target", name="Target", hp=80, max_hp=100)
+    target.statuses.append(
+        StatusEffect("counter_stance", "Counter Stance", "p2", 0, "p2", 0, duration=2, payload={"counter": True})
+    )
+    state = BattleState(
+        players={
+            "p1": PlayerState(id="p1", name="P1", team=[caster]),
+            "p2": PlayerState(id="p2", name="P2", team=[target]),
+        },
+        turn_player_id="p1",
+    )
+    skill = SkillSpec(
+        id="strike", name="Strike", text="", cost=[EnergyType.GREEN], cooldown=0,
+        target_rule=TargetRule(kind="enemy"), classes=[], effects=[EffectSpec(type="damage", amount=20)],
+    )
+    action = PendingAction(
+        id="p1:test", player_id="p1", caster_slot=0, skill_id=skill.id, target_player_id="p2", target_slot=0
+    )
+
+    hard_score = _cpu_action_score(state, "p1", action, skill, difficulty="hard")
+    normal_score = _cpu_action_score(state, "p1", action, skill, difficulty="normal")
+
+    # Same raw damage either way, but Hard's counter-risk penalty must pull
+    # its score below what an otherwise-identical safe strike would score.
+    target_no_counter = CharacterState(character_id="target2", name="Target2", hp=80, max_hp=100)
+    state_safe = BattleState(
+        players={
+            "p1": PlayerState(id="p1", name="P1", team=[caster]),
+            "p2": PlayerState(id="p2", name="P2", team=[target_no_counter]),
+        },
+        turn_player_id="p1",
+    )
+    hard_score_safe = _cpu_action_score(state_safe, "p1", action, skill, difficulty="hard")
+    normal_score_safe = _cpu_action_score(state_safe, "p1", action, skill, difficulty="normal")
+
+    assert hard_score < hard_score_safe
+    # Normal ignores counter risk entirely: identical score with or without the status.
+    assert normal_score == normal_score_safe
+
+
+def test_cpu_action_score_hard_values_a_ready_payoff_over_blind_setup():
+    """Hard reads whether a conditional damage effect's condition_status is
+    actually true of the live target; Normal just sums the listed amount."""
+
+    from jjk_arena.battle_v2.manager import _cpu_action_score
+    from jjk_arena.battle_v2.models import (
+        BattleState,
+        CharacterState,
+        EffectSpec,
+        PendingAction,
+        PlayerState,
+        SkillSpec,
+        StatusEffect,
+        TargetRule,
+    )
+
+    def make_state(marked: bool):
+        caster = CharacterState(character_id="attacker", name="Attacker")
+        target = CharacterState(character_id="target", name="Target", hp=80, max_hp=100)
+        if marked:
+            target.statuses.append(StatusEffect("nail", "Nail", "p1", 0, "p2", 0, duration=3))
+        return BattleState(
+            players={
+                "p1": PlayerState(id="p1", name="P1", team=[caster]),
+                "p2": PlayerState(id="p2", name="P2", team=[target]),
+            },
+            turn_player_id="p1",
+        )
+
+    skill = SkillSpec(
+        id="resonance", name="Resonance", text="", cost=[EnergyType.GREEN], cooldown=0,
+        target_rule=TargetRule(kind="enemy"), classes=[],
+        effects=[EffectSpec(type="damage", amount=25, payload={"condition_status": "nail"})],
+    )
+    action = PendingAction(
+        id="p1:test", player_id="p1", caster_slot=0, skill_id=skill.id, target_player_id="p2", target_slot=0
+    )
+
+    hard_marked = _cpu_action_score(make_state(True), "p1", action, skill, difficulty="hard")
+    hard_unmarked = _cpu_action_score(make_state(False), "p1", action, skill, difficulty="hard")
+    normal_marked = _cpu_action_score(make_state(True), "p1", action, skill, difficulty="normal")
+    normal_unmarked = _cpu_action_score(make_state(False), "p1", action, skill, difficulty="normal")
+
+    # Hard correctly values the payoff only when the mark is actually there.
+    assert hard_marked > hard_unmarked
+    # Normal blindly counts the listed amount either way -- it doesn't read the board.
+    assert normal_marked == normal_unmarked
+
+
+def test_cpu_action_score_hard_reserves_energy_for_teammates_still_to_act():
+    """A non-lethal, non-control action gets discounted further on Hard when
+    other living teammates still need to draw from the same energy pool."""
+
+    from jjk_arena.battle_v2.manager import _cpu_action_score
+    from jjk_arena.battle_v2.models import (
+        BattleState,
+        CharacterState,
+        EffectSpec,
+        PendingAction,
+        PlayerState,
+        SkillSpec,
+        TargetRule,
+    )
+
+    caster = CharacterState(character_id="attacker", name="Attacker")
+    target = CharacterState(character_id="target", name="Target", hp=80, max_hp=100)
+    state = BattleState(
+        players={
+            "p1": PlayerState(id="p1", name="P1", team=[caster]),
+            "p2": PlayerState(id="p2", name="P2", team=[target]),
+        },
+        turn_player_id="p1",
+    )
+    skill = SkillSpec(
+        id="jab", name="Jab", text="", cost=[EnergyType.GREEN, EnergyType.GREEN], cooldown=0,
+        target_rule=TargetRule(kind="enemy"), classes=[], effects=[EffectSpec(type="damage", amount=15)],
+    )
+    action = PendingAction(
+        id="p1:test", player_id="p1", caster_slot=0, skill_id=skill.id, target_player_id="p2", target_slot=0
+    )
+
+    hard_alone = _cpu_action_score(state, "p1", action, skill, difficulty="hard", remaining_teammates=0)
+    hard_with_teammates = _cpu_action_score(state, "p1", action, skill, difficulty="hard", remaining_teammates=2)
+    normal_with_teammates = _cpu_action_score(state, "p1", action, skill, difficulty="normal", remaining_teammates=2)
+
+    assert hard_with_teammates < hard_alone
+    # Normal doesn't reserve energy at all -- remaining_teammates is a no-op for it.
+    normal_alone = _cpu_action_score(state, "p1", action, skill, difficulty="normal", remaining_teammates=0)
+    assert normal_with_teammates == normal_alone
+
+
+def test_cpu_difficulty_fixed_decision_corpus_shows_meaningful_normal_vs_hard_divergence():
+    """Fixed decision-separation gate: across a representative corpus of
+    tactical states (each with several candidate actions), Hard's chosen
+    action (the argmax, not just a raw score delta) must differ from
+    Normal's for a meaningful share of scenarios -- not the 0/400 the
+    Milestone C audit found when the only difference was an untriggered
+    lethal bonus.
+    """
+
+    from jjk_arena.battle_v2.manager import _cpu_action_score
+    from jjk_arena.battle_v2.models import (
+        BattleState,
+        CharacterState,
+        EffectSpec,
+        PendingAction,
+        PlayerState,
+        SkillSpec,
+        StatusEffect,
+        TargetRule,
+    )
+
+    def base_state(target_hp=80, target_marked=False, target_countering=False, ally_hp=100, extra_teammates=0):
+        caster = CharacterState(character_id="attacker", name="Attacker")
+        ally_team = [caster] + [
+            CharacterState(character_id=f"ally{i}", name=f"Ally {i}", hp=100, max_hp=100)
+            for i in range(extra_teammates)
+        ]
+        target = CharacterState(character_id="target", name="Target", hp=target_hp, max_hp=100)
+        if target_marked:
+            target.statuses.append(StatusEffect("nail", "Nail", "p1", 0, "p2", 0, duration=3))
+        if target_countering:
+            target.statuses.append(
+                StatusEffect("counter_stance", "Counter Stance", "p2", 0, "p2", 0, duration=2, payload={"counter": True})
+            )
+        return BattleState(
+            players={
+                "p1": PlayerState(id="p1", name="P1", team=ally_team),
+                "p2": PlayerState(id="p2", name="P2", team=[target]),
+            },
+            turn_player_id="p1",
+        )
+
+    jab = SkillSpec(
+        id="jab", name="Jab", text="", cost=[EnergyType.GREEN], cooldown=0,
+        target_rule=TargetRule(kind="enemy"), classes=[], effects=[EffectSpec(type="damage", amount=18)],
+    )
+    payoff = SkillSpec(
+        id="payoff", name="Payoff", text="", cost=[EnergyType.GREEN], cooldown=0,
+        target_rule=TargetRule(kind="enemy"), classes=[],
+        effects=[EffectSpec(type="damage", amount=26, payload={"condition_status": "nail"})],
+    )
+    setup = SkillSpec(
+        id="setup", name="Setup", text="", cost=[EnergyType.GREEN, EnergyType.GREEN], cooldown=0,
+        target_rule=TargetRule(kind="enemy"), classes=[],
+        effects=[EffectSpec(type="damage", amount=8), EffectSpec(type="apply_status", status="nail")],
+    )
+    heavy = SkillSpec(
+        id="heavy", name="Heavy", text="", cost=[EnergyType.GREEN, EnergyType.GREEN, EnergyType.GREEN], cooldown=0,
+        target_rule=TargetRule(kind="enemy"), classes=[], effects=[EffectSpec(type="damage", amount=22)],
+    )
+
+    corpus_states = [
+        base_state(target_hp=80),
+        base_state(target_hp=80, target_marked=True),
+        base_state(target_hp=80, target_countering=True),
+        base_state(target_hp=80, extra_teammates=2),
+        base_state(target_hp=18),
+        base_state(target_hp=80, target_marked=True, extra_teammates=2),
+        base_state(target_hp=80, target_countering=True, extra_teammates=2),
+        base_state(target_hp=80, target_marked=False, extra_teammates=1),
+        base_state(target_hp=60, target_marked=True),
+        base_state(target_hp=80, target_countering=True, target_marked=True),
+    ]
+    skills = [jab, payoff, setup, heavy]
+
+    def build_action(skill):
+        return PendingAction(
+            id=f"p1:{skill.id}", player_id="p1", caster_slot=0, skill_id=skill.id,
+            target_player_id="p2", target_slot=0,
+        )
+
+    def argmax_choice(state, difficulty, remaining_teammates):
+        scored = [
+            (
+                _cpu_action_score(
+                    state, "p1", build_action(skill), skill,
+                    difficulty=difficulty, remaining_teammates=remaining_teammates,
+                ),
+                skill.id,
+            )
+            for skill in skills
+        ]
+        return max(scored)[1]
+
+    divergent = 0
+    for state in corpus_states:
+        remaining_teammates = len(state.players["p1"].team) - 1
+        normal_choice = argmax_choice(state, "normal", remaining_teammates)
+        hard_choice = argmax_choice(state, "hard", remaining_teammates)
+        if normal_choice != hard_choice:
+            divergent += 1
+
+    divergence_rate = divergent / len(corpus_states)
+    assert divergence_rate >= 0.3, (
+        f"Hard only diverged from Normal in {divergent}/{len(corpus_states)} "
+        f"fixed corpus scenarios ({divergence_rate:.0%}); minimum gate is 30%."
+    )
+
+
 def test_start_first_creation_match_uses_student_era_catalog_and_rejects_locked_variants():
     manager = BattleV2Manager(rng_seed=1)
     serialized = manager.start_first_creation_match(

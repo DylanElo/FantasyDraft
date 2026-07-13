@@ -287,6 +287,7 @@ def _cpu_action_score(
     skill: SkillSpec,
     *,
     difficulty: str = "normal",
+    remaining_teammates: int = 0,
 ) -> int:
     """Heuristic value of a candidate CPU action.
 
@@ -296,17 +297,31 @@ def _cpu_action_score(
     cost-averse, Easy leans closer to "always basic-attack".
 
     Hard and Normal must not collapse to the same ranking whenever a lethal
-    opportunity happens to be absent: Hard also weighs tactical setup
-    (stuns, counters, damage modifiers, conditions) more heavily than
-    Normal, and reserves energy more aggressively when no kill or control
-    payoff is on the table. Easy applies none of that extra weighting.
+    opportunity happens to be absent. Beyond scaling the same bonuses harder,
+    Hard alone evaluates three qualitatively different signals Normal never
+    looks at:
+
+    - **Setup/payoff awareness**: a conditional damage effect's real value
+      depends on whether its `condition_status`/`condition_missing_status`
+      is actually true of the live target right now, not the raw listed
+      `amount` (which may not fire, or may be the smaller of two branches).
+      Normal/Easy still just sum every effect's listed amount, matching
+      their "doesn't read the board that closely" identity.
+    - **Counter/reflect risk**: a harmful effect against a target currently
+      holding an active counter/reflect status is penalized, since it risks
+      feeding the caster's own payload back at them.
+    - **Future energy reservation**: non-lethal, non-control actions are
+      discounted further when other living teammates still need to act
+      this turn and would draw from the same shared energy pool.
     """
 
     if difficulty not in {"easy", "normal", "hard"}:
         difficulty = "normal"
+    is_hard = difficulty == "hard"
     score = 0
     smart_bonus = 0
-    lethal_bonus_amount = 650 if difficulty == "hard" else 500
+    lethal_secured = False
+    lethal_bonus_amount = 650 if is_hard else 500
     smart_bonus_weight = {"easy": 0.5, "normal": 1.0, "hard": 1.35}[difficulty]
     condition_weight = {"easy": 1.0, "normal": 1.0, "hard": 1.6}[difficulty]
     target_player = state.players.get(action.target_player_id)
@@ -316,13 +331,39 @@ def _cpu_action_score(
             "target_slots": action.target_slots,
         }
     )
+    harmful_to_enemy = bool(target_player and target_player.id != player_id)
+    if is_hard and harmful_to_enemy:
+        for slot in target_slots:
+            if 0 <= slot < len(target_player.team):
+                target = target_player.team[slot]
+                if any(
+                    status.duration != 0 and (status.payload.get("counter") or status.payload.get("reflect"))
+                    for status in target.statuses
+                ):
+                    smart_bonus -= 80
     for effect in skill.effects:
         if effect.type in {"damage", "health_steal"}:
             amount = effect.amount or 0
-            if effect.damage_type == DamageType.SOUL:
-                amount += 10
-            elif effect.damage_type in {DamageType.PIERCING, DamageType.SURE_HIT, DamageType.HEALTH_STEAL}:
-                amount += 6
+            condition_unmet_for_hard = False
+            if is_hard and harmful_to_enemy and target_slots:
+                # Read the board: a conditional amount only counts toward Hard's
+                # valuation if its condition is actually true of the real target.
+                sample_slot = next((s for s in target_slots if 0 <= s < len(target_player.team)), None)
+                sample_target = target_player.team[sample_slot] if sample_slot is not None else None
+                condition_status = effect.payload.get("condition_status")
+                condition_missing = effect.payload.get("condition_missing_status")
+                if sample_target is not None:
+                    if condition_status and not has_status(sample_target, str(condition_status)):
+                        condition_unmet_for_hard = True
+                    elif condition_missing and has_status(sample_target, str(condition_missing)):
+                        condition_unmet_for_hard = True
+            if condition_unmet_for_hard:
+                amount = 0
+            else:
+                if effect.damage_type == DamageType.SOUL:
+                    amount += 10
+                elif effect.damage_type in {DamageType.PIERCING, DamageType.SURE_HIT, DamageType.HEALTH_STEAL}:
+                    amount += 6
             score += amount
             if target_player and target_player.id != player_id:
                 for slot in target_slots:
@@ -330,9 +371,10 @@ def _cpu_action_score(
                         target = target_player.team[slot]
                         if target.alive and (effect.amount or 0) >= target.hp:
                             smart_bonus += lethal_bonus_amount
+                            lethal_secured = True
                         score += max(0, target.max_hp - target.hp) // 5
         elif effect.type == "heal":
-            heal_urgency_threshold = 55 if difficulty == "hard" else 40
+            heal_urgency_threshold = 55 if is_hard else 40
             if target_player:
                 for slot in target_slots:
                     if 0 <= slot < len(target_player.team):
@@ -362,7 +404,9 @@ def _cpu_action_score(
     if skill.conditions:
         score += int(35 * condition_weight)
     score += int(smart_bonus * smart_bonus_weight)
-    score -= len(skill.cost) * (1 if difficulty == "hard" else 2)
+    score -= len(skill.cost) * (1 if is_hard else 2)
+    if is_hard and not lethal_secured and smart_bonus <= 0 and remaining_teammates > 0:
+        score -= len(skill.cost) * remaining_teammates
     return score
 
 
@@ -982,7 +1026,7 @@ class BattleV2Manager:
         player = state.players[player_id]
         difficulty = self._cpu_difficulty_for_room(room_id)
         actions: list[PendingAction] = []
-        for slot in player.active_slots:
+        for slot_index, slot in enumerate(player.active_slots):
             if slot < 0 or slot >= len(player.team):
                 continue
             caster = player.team[slot]
@@ -991,6 +1035,11 @@ class BattleV2Manager:
             character_spec = self._roster_for_room(room_id).get(caster.character_id)
             if character_spec is None:
                 continue
+            remaining_teammates = sum(
+                1
+                for other_slot in player.active_slots[slot_index + 1 :]
+                if 0 <= other_slot < len(player.team) and player.team[other_slot].alive
+            )
             best: tuple[int, PendingAction] | None = None
             for base_skill_id in caster.base_skill_ids:
                 resolved_skill_id = caster.skill_replacements.get(base_skill_id, base_skill_id)
@@ -1022,7 +1071,10 @@ class BattleV2Manager:
                             validate_queue(trial_state, player_id, self._skills_for_room(room_id))
                         except ResolverError:
                             continue
-                        score = _cpu_action_score(state, player_id, candidate, resolved_skill, difficulty=difficulty)
+                        score = _cpu_action_score(
+                            state, player_id, candidate, resolved_skill,
+                            difficulty=difficulty, remaining_teammates=remaining_teammates,
+                        )
                         if best is None or score > best[0]:
                             best = (score, candidate)
             if best is not None:

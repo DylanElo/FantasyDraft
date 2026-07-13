@@ -124,15 +124,30 @@ def prune_context_indexes() -> None:
             battle_v2_manager.room_aliases.pop(alias, None)
 
 
+def _is_live_match(match_id: str | None) -> bool:
+    if not match_id:
+        return False
+    state = battle_v2_manager.rooms.get(match_id)
+    return state is not None and state.phase.value != "finished"
+
+
 def _timer_deadline(room_id: str) -> float | None:
     state = battle_v2_manager.rooms.get(room_id)
-    return state.phase_deadline if state is not None else None
+    if state is None:
+        return None
+    deadlines = [d for d in (state.phase_deadline,) if d is not None]
+    deadlines.extend(state.disconnect_deadlines.values())
+    return min(deadlines) if deadlines else None
 
 
 def _expire_timer_room(room_id: str) -> bool:
     if room_id not in battle_v2_manager.rooms:
         return False
-    return battle_v2_manager.expire_phase_if_needed(room_id)
+    expired_phase = battle_v2_manager.expire_phase_if_needed(room_id)
+    expired_disconnect = battle_v2_manager.expire_disconnects(room_id)
+    if expired_disconnect:
+        operational_counters["disconnect_forfeits"] += 1
+    return expired_phase or expired_disconnect
 
 
 battle_v2_timer_scheduler = PhaseTimerScheduler(
@@ -564,6 +579,11 @@ def remove_battle_v2_room(room_id: str) -> None:
         battle_v2_sessions.remove_room(room_id)
         room_last_activity.pop(room_id, None)
         archived_replays.discard(room_id)
+        rematch_receipts.pop(room_id, None)
+        rematch_by_old_match.pop(room_id, None)
+        for old_match_id, new_match in list(rematch_by_old_match.items()):
+            if new_match == room_id:
+                rematch_by_old_match.pop(old_match_id, None)
 
     if lock is None:
         remove_state()
@@ -716,10 +736,13 @@ def on_battle_v2_start_classic(data=None):
     enemy_team = clean_v2_team(data.get("enemy_team"), battle_v2_default_enemy_team(roster_mode))
     try:
         with lifecycle_lock:
-            if requested_code in active_by_code or requested_code in battle_v2_manager.rooms:
+            bound_match = active_by_code.get(requested_code)
+            if _is_live_match(requested_code) or (bound_match and _is_live_match(bound_match)):
                 raise BattleV2Error("Lobby code is already bound to an active match.")
+            if bound_match and not _is_live_match(bound_match):
+                active_by_code.pop(requested_code, None)
             current = active_match_by_player.get(player_session)
-            if current and current in battle_v2_manager.rooms:
+            if current and _is_live_match(current):
                 raise BattleV2Error("Player is already in an active match.")
             previous_code = waiting_code_by_player.get(player_session)
             if previous_code:
@@ -760,13 +783,13 @@ def on_battle_v2_join_pvp(data=None):
         with lifecycle_lock:
             prune_context_indexes()
             active_match_id = active_match_by_player.get(player_session)
-            if active_match_id and active_match_id in battle_v2_manager.rooms:
+            if active_match_id and _is_live_match(active_match_id):
                 if lobby_code_by_match.get(active_match_id) == room_id:
                     emit_battle_v2_update(active_match_id, player_session)
                     return
                 raise BattleV2Error("Player is already in an active match.")
             bound_match = active_by_code.get(room_id)
-            if bound_match and bound_match in battle_v2_manager.rooms:
+            if bound_match and _is_live_match(bound_match):
                 raise BattleV2Error("Lobby code is currently in use by an active match.")
             if bound_match:
                 active_by_code.pop(room_id, None)
@@ -796,7 +819,7 @@ def on_battle_v2_join_pvp(data=None):
                         room=player_room(waiting["id"]),
                     )
                     raise BattleV2Error("Both PvP players must use the same roster mode.")
-                if active_match_by_player.get(waiting["id"]):
+                if _is_live_match(active_match_by_player.get(waiting["id"])):
                     raise BattleV2Error("Waiting player is already active elsewhere.")
                 match_id = new_match_id()
                 players = [waiting, entry]
@@ -863,6 +886,9 @@ def on_battle_v2_resume(data=None):
     if grant is None:
         emit("battle_v2_resume_rejected", {"message": "Battle session could not be resumed."})
         return
+    with lifecycle_lock:
+        active_match_by_player[player_id] = room_id
+        waiting_code_by_player.pop(player_id, None)
     session["player_id"] = player_id
     session["room_id"] = room_id
     session["match_id"] = room_id

@@ -53,6 +53,13 @@ lobby; the second player starts the match with each player's selected team.
 }
 ```
 
+A private code and a player's active-match slot become available for reuse the
+instant the bound match reaches `FINISHED` — this does not require the client
+to send `battle_v2_leave_pvp` or `battle_v2_ack_result` first. An invalid or
+incompatible second joiner (mismatched roster mode, or a match-start failure)
+never mutates the first player's waiting lobby entry; match creation is the
+sole commit point.
+
 ### `battle_v2_leave_pvp`
 
 Leaves a waiting PvP lobby before the second player joins. This does not end an
@@ -81,7 +88,47 @@ rotated after every successful resume.
 Successful resume joins the original private socket room, emits a rotated
 `battle_v2_session`, and then emits a viewer-specific `battle_v2_update` with
 the current phase, revision, pending queue, and remaining time. Invalid,
-cross-room, cross-player, and already-rotated tokens are rejected.
+cross-room, cross-player, and already-rotated tokens are rejected. The token is
+only rotated after `reconnect_player` succeeds, so a rejected resume never
+consumes it. A successful resume also reconciles the player's one-live-match
+identity to this room, so a stale or desynced identity mapping cannot be used
+to join or start a second concurrent match.
+
+### `battle_v2_rematch`
+
+Requests a new match against the same opponent after a finished match reaches
+a terminal result.
+
+```json
+{
+  "old_match_id": "m_...",
+  "state_revision": 12,
+  "client_action_nonce": "1712345678901-9"
+}
+```
+
+`state_revision` must match the finished match's final revision, and
+`client_action_nonce` is required. Rematch is idempotent per `old_match_id`:
+once a rematch has produced a new match id, repeated `battle_v2_rematch`
+requests (including concurrent ones) resolve to that same new match id rather
+than creating additional rooms. Reusing a nonce with a different revision is
+rejected as replay. On success the server emits `battle_v2_rematch` with
+`old_match_id`/`new_match_id`, followed by a viewer-specific `battle_v2_update`
+for the new match.
+
+### `battle_v2_ack_result`
+
+Releases a finished match's identity/code bindings (active-match slot and
+private code) without deleting the archived match state, letting a player
+start a new match immediately rather than waiting for the runtime TTL sweep.
+This is optional — as noted under `battle_v2_join_pvp`, a finished match's
+code and slot are already reusable without this event.
+
+```json
+{
+  "match_id": "m_..."
+}
+```
 
 ### `battle_v2_submit_plan`
 
@@ -237,10 +284,16 @@ viewer-specific state updates private via `battle_v2_update`.
 ### `battle_v2_finished`
 
 Emitted to each human player in the room after a confirm, end-turn CPU response,
-or surrender produces a winner.
+surrender, or disconnect-grace expiry produces a winner (or a no-contest).
 
 ```json
 {
   "winner_id": "player-session-id"
 }
 ```
+
+A disconnected player who does not reconnect within their 90-second grace
+window (or exhausts the 180-second cumulative budget) is auto-forfeited by the
+authoritative background scheduler — the same scheduler that drives planning
+and queue-review phase timeouts — without requiring any further client action
+from the connected opponent.

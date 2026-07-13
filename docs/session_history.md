@@ -421,3 +421,58 @@ Caution / external launch gates:
 - Removed public HTTP/Socket.IO room reset surfaces and removed replay RNG seeds from public battle serialization while keeping a private integer seed in replay documents.
 - Added lifecycle and adversarial regressions. Normal-order verification at this commit: 313 passed, 1 opt-in visual test skipped.
 - No roster, kit, balance, mission, progression, or visual feature changed.
+
+## 2026-07-13 - Phase 4 PvP lifecycle gap closure
+
+Source: roadmap review named 7 open Phase 4 ("PvP fiable") lifecycle bugs. The
+authoritative lobby/rematch/resume machinery from the prior entry existed only
+on an unmerged local branch (`codex/lifecycle-ui-integration`, commit
+`49808fc`); it was cherry-picked onto this branch (its unrelated sibling
+commit, a Phaser environment/art redesign, was intentionally left out — out of
+Phase 4 scope). Of the 7 named bugs, rematch idempotency, resume-token
+rotate-only-on-success, and invalid-second-joiner protection were already
+correct on inspection. Real gaps found and fixed:
+
+- Disconnect-forfeit (`expire_disconnects`) was fully implemented and
+  unit-tested at the manager layer but never invoked by the running server —
+  the live `PhaseTimerScheduler` only watched `state.phase_deadline`, which is
+  cleared while a room is paused for disconnect. Extended `_timer_deadline`/
+  `_expire_timer_room` in `web/app.py` to also watch and expire
+  `state.disconnect_deadlines`, so a disconnected player who never reconnects
+  is now auto-forfeited by the same live background scheduler within their
+  90s grace / 180s cumulative budget instead of sitting paused until the
+  2-hour TTL sweep.
+- `on_battle_v2_resume` reconnected the player and rotated the token but never
+  updated `active_match_by_player`, so the one-live-match identity map could
+  desync from a legitimately resumed session. Resume now reconciles that map
+  under `lifecycle_lock` after a successful rotate.
+- The "already in an active match" / "lobby code in use" / "waiting player is
+  already active elsewhere" guards in `battle_v2_start_classic` and
+  `battle_v2_join_pvp` treated any still-tracked match id as blocking, even
+  after it reached `FINISHED`, so a private code and a player's slot were only
+  actually reusable after an explicit `battle_v2_leave_pvp`/
+  `battle_v2_ack_result` or the 15-minute TTL. Added an `_is_live_match`
+  liveness check (room exists and phase is not finished) and used it at all
+  three call sites, so reuse is now immediate on match completion.
+- `remove_battle_v2_room` never purged `rematch_by_old_match`/
+  `rematch_receipts`, leaking unbounded state across a long-running process;
+  it now purges both on room removal.
+- Deleted `jjk_arena/battle_v2/lobby_registry.py` and its isolated unit test —
+  dead code never wired into `web/app.py`; the real lobby concurrency
+  guarantee is `lifecycle_lock` in `web/app.py`, which was already correct.
+- Added 5 new regression tests in `tests/test_battle_v2_socket.py` covering:
+  rematch spam producing exactly one new match, disconnect-grace expiry
+  firing through the real live scheduler (not a direct manager call),
+  resume reconciling the active-match identity map, a finished match's
+  private code/slot being reusable without an explicit ack, and an
+  incompatible second joiner leaving the first player's lobby entry intact.
+
+Verification: `python -m pytest -q` — 317 passed, 1 opt-in visual test
+skipped (up from the 312-test baseline after removing the dead
+`LobbyRegistry` test and adding 5 new ones); `python -m compileall -q
+jjk_arena web/app.py`; `git diff --check`; the new socket tests were also run
+3x in isolation to rule out timing flakiness in the live-scheduler test.
+No roster, kit, balance, mission, progression, or visual feature changed.
+This is server-authoritative lifecycle/socket logic with no new UI surface,
+so no browser/manual pass was performed — the socket-layer tests are the
+meaningful verification here.

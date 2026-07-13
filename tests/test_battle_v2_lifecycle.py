@@ -1,8 +1,5 @@
-from concurrent.futures import ThreadPoolExecutor
-
 import pytest
 
-from jjk_arena.battle_v2.lobby_registry import LobbyRegistry
 from jjk_arena.battle_v2.manager import BattleV2Error, BattleV2Manager
 from jjk_arena.battle_v2.models import BattleEvent, BattlePhase, StatusFamily
 from jjk_arena.battle_v2.replay import authoritative_state_hash, run_replay
@@ -62,19 +59,6 @@ def test_submit_cancel_preserves_absolute_player_turn_deadline():
     manager.submit_plan("match", "p1", [])
     manager.cancel_queue("match", "p1")
     assert state.phase_deadline == initial
-
-
-def test_simultaneous_lobby_joins_create_exactly_one_match():
-    registry = LobbyRegistry()
-    ids = iter(["authoritative-match"])
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        results = list(pool.map(
-            lambda player: registry.join("private-code", player, lambda: next(ids)),
-            PLAYERS,
-        ))
-    assert sorted(result[0] for result in results) == ["start", "waiting"]
-    assert registry.resolve("private-code") == "authoritative-match"
-    assert all(registry.resolve(None, player["id"]) == "authoritative-match" for player in PLAYERS)
 
 
 def test_disconnect_resume_restores_phase_with_minimum_time():

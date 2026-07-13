@@ -754,3 +754,173 @@ def test_venom_bloom_secondary_target_survives_socket_cleaner_manager_and_resolv
         and event.payload.get("target_slot") == 1
     )
     assert spread.payload["target_player_id"] == "__cpu_v2__"
+
+
+def test_incompatible_second_joiner_does_not_corrupt_first_players_lobby(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    p1_client = socket_client_with_player("lobby-owner")
+    p2_client = socket_client_with_player("lobby-intruder")
+
+    p1_client.emit(
+        "battle_v2_join_pvp",
+        {
+            "room_id": "mismatched-code",
+            "player_name": "P1",
+            "player_team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"],
+        },
+    )
+    assert received_payload(p1_client, "battle_v2_lobby")["status"] == "waiting"
+
+    p2_client.emit(
+        "battle_v2_join_pvp",
+        {
+            "room_id": "mismatched-code",
+            "player_name": "P2",
+            "roster_mode": "first_creation",
+        },
+    )
+    error = received_payload(p2_client, "battle_v2_error")
+    assert error is not None
+
+    lobby = web_app.v2_pvp_lobbies["mismatched-code"]
+    assert [entry["id"] for entry in lobby] == ["lobby-owner"]
+    assert "mismatched-code" not in web_app.battle_v2_manager.rooms
+
+    p3_client = socket_client_with_player("lobby-real-opponent")
+    p3_client.emit(
+        "battle_v2_join_pvp",
+        {
+            "room_id": "mismatched-code",
+            "player_name": "P3",
+            "player_team": ["satoru_gojo", "ryomen_sukuna", "mahito"],
+        },
+    )
+    p1_update = received_payload(p1_client, "battle_v2_update")
+    assert set(p1_update["players"]) == {"lobby-owner", "lobby-real-opponent"}
+
+
+def test_finished_match_releases_private_code_and_player_slot_without_ack(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    p1_client = socket_client_with_player("finish-p1")
+    p2_client = socket_client_with_player("finish-p2")
+    for client, player_id, team in [
+        (p1_client, "P1", ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]),
+        (p2_client, "P2", ["satoru_gojo", "ryomen_sukuna", "mahito"]),
+    ]:
+        client.emit(
+            "battle_v2_join_pvp",
+            {"room_id": "reuse-code", "player_name": player_id, "player_team": team},
+        )
+    received_payload(p1_client, "battle_v2_update")
+    match_id = received_payload(p2_client, "battle_v2_update")["match_id"]
+    state = web_app.battle_v2_manager.get_state(match_id)
+
+    p1_client.emit("battle_v2_surrender", command_payload(state))
+    received_payload(p1_client, "battle_v2_finished")
+    received_payload(p2_client, "battle_v2_finished")
+
+    assert web_app.active_by_code.get("reuse-code") == match_id
+    assert web_app.active_match_by_player.get("finish-p1") == match_id
+
+    p3_client = socket_client_with_player("finish-p1")
+    p4_client = socket_client_with_player("finish-p3")
+    p3_client.emit(
+        "battle_v2_join_pvp",
+        {"room_id": "reuse-code", "player_name": "P1-again", "player_team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]},
+    )
+    waiting = received_payload(p3_client, "battle_v2_lobby")
+    assert waiting["status"] == "waiting"
+
+    p4_client.emit(
+        "battle_v2_join_pvp",
+        {"room_id": "reuse-code", "player_name": "P3", "player_team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+    )
+    new_match = received_payload(p4_client, "battle_v2_update")
+    assert new_match["match_id"] != match_id
+
+
+def test_rematch_spam_with_same_nonce_creates_exactly_one_new_match(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    p1_client = socket_client_with_player("rematch-p1")
+    p2_client = socket_client_with_player("rematch-p2")
+    for client, player_id, team in [
+        (p1_client, "P1", ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]),
+        (p2_client, "P2", ["satoru_gojo", "ryomen_sukuna", "mahito"]),
+    ]:
+        client.emit(
+            "battle_v2_join_pvp",
+            {"room_id": "rematch-code", "player_name": player_id, "player_team": team},
+        )
+    received_payload(p1_client, "battle_v2_update")
+    match_id = received_payload(p2_client, "battle_v2_update")["match_id"]
+    state = web_app.battle_v2_manager.get_state(match_id)
+
+    p1_client.emit("battle_v2_surrender", command_payload(state))
+    received_payload(p1_client, "battle_v2_finished")
+    received_payload(p2_client, "battle_v2_finished")
+
+    rooms_before = set(web_app.battle_v2_manager.rooms)
+    rematch_payload = {
+        "old_match_id": match_id,
+        "state_revision": state.state_revision,
+        "client_action_nonce": "rematch-spam-nonce",
+    }
+    p1_client.emit("battle_v2_rematch", rematch_payload)
+    first = received_payload(p1_client, "battle_v2_rematch")
+    p1_client.emit("battle_v2_rematch", rematch_payload)
+    second = received_payload(p1_client, "battle_v2_rematch")
+
+    assert first["new_match_id"] == second["new_match_id"]
+    new_rooms = set(web_app.battle_v2_manager.rooms) - rooms_before
+    assert len(new_rooms) == 1
+    assert new_rooms == {first["new_match_id"]}
+
+
+def test_resume_reconciles_active_match_and_blocks_second_pvp_join(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    original = socket_client_with_player("resume-reconcile")
+    original.emit("battle_v2_start_classic", {"room_id": "reconcile-v2"})
+    grant = received_payloads(original)["battle_v2_session"]
+    original.disconnect()
+    web_app.active_match_by_player.pop("resume-reconcile", None)
+
+    resumed = socket_client_with_player("resume-reconcile")
+    resumed.emit("battle_v2_resume", grant)
+    received_payloads(resumed)
+
+    assert web_app.active_match_by_player.get("resume-reconcile") == grant["room_id"]
+
+    resumed.emit("battle_v2_join_pvp", {"room_id": "some-other-code", "player_name": "Dup"})
+    error = received_payload(resumed, "battle_v2_error")
+    assert error is not None
+    assert "already in an active match" in error["message"].lower()
+
+
+def test_disconnect_grace_expiry_forfeits_through_live_scheduler(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    p1_client = socket_client_with_player("grace-p1")
+    p2_client = socket_client_with_player("grace-p2")
+    for client, player_id, team in [
+        (p1_client, "P1", ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]),
+        (p2_client, "P2", ["satoru_gojo", "ryomen_sukuna", "mahito"]),
+    ]:
+        client.emit(
+            "battle_v2_join_pvp",
+            {"room_id": "grace-code", "player_name": player_id, "player_team": team},
+        )
+    received_payload(p1_client, "battle_v2_update")
+    match_id = received_payload(p2_client, "battle_v2_update")["match_id"]
+    state = web_app.battle_v2_manager.get_state(match_id)
+    # Exhaust the 180s disconnect budget up front so the real scheduler
+    # fires almost immediately, instead of waiting out the full 90s grace window.
+    state.disconnect_seconds_used["grace-p1"] = 180
+
+    p1_client.disconnect()
+    # A near-zero remaining budget means the real background scheduler may
+    # already run and forfeit the match before this line executes; either
+    # way the outcome below proves the disconnect deadline was wired up.
+    web_app.socketio.sleep(0.8)
+
+    finished = received_payload(p2_client, "battle_v2_update")
+    assert finished["winner_id"] == "grace-p2"
+    assert finished["finish_reason"] == "disconnect_budget"

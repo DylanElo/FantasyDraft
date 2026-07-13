@@ -566,3 +566,52 @@ guard (pins structural completeness at 0, guards counter/reflect/replacement
 coverage) without silently asserting away the open targeting-coverage finding.
 
 Verification: `python -m pytest -q` — 322 passed, 1 skipped.
+
+## 2026-07-13 - Milestone B: closed the 11 targeting-coverage gaps, found a real bug
+
+Wrote `tests/test_first_creation_targeting_contracts.py`, one dedicated test
+per skill flagged by the audit tool (ally/ally_team/enemy_team targeting with
+no test beyond the blanket parametrized one), verifying each skill's effect
+actually lands on the correct slot(s) rather than just "something meaningful
+happened."
+
+Writing these caught a real, previously-unnoticed bug: Utahime Iori Young's
+`fc_utahime_iori_young_curtain_step` granted its `ritual_guard`
+destructible-defense status to Utahime herself (`target="self"`) instead of
+the chosen ally — contradicting its own flavor text ("Ritual Rhythm gives an
+ally 10 destructible defense") and the pattern every sibling skill (Rainbow
+Dragon Guard, Curse Screen, Useful Retreat, Emergency Step) correctly follows.
+Fixed in `jjk_arena/battle_v2/starter_roster.py` by removing the erroneous
+`target="self"` kwarg so it defaults to the selected ally.
+
+Two other test-setup lessons worth recording: `enemy_team(required_status=...)`
+(used by Hairpin/Nail and Shikigami Veil/Poison) enforces that **every**
+selected target already carries the required status — you cannot mix marked
+and unmarked targets in one cast, only choose among the marked ones (1-3 of
+them). And `EffectSpec(type="extend_status", ...)` respects each status's own
+`duration_clock` — a synthetic test status built without an explicit
+`duration_clock` defaults to `GLOBAL_TURN`, which can tick down within the
+same resolution the extension applies in, making an extension look like it
+silently no-opped. Real First Creation statuses avoid this because
+`status_effect()` infers `SOURCE_TURN`/`TARGET_TURN` from the `target` kwarg.
+
+Also fixed `docs/jjk_kit_grammar.md` to document the payload-key condition
+convention that's actually used (full key list: `condition_status`,
+`condition_statuses`, `condition_missing_status`, `condition_user_status`,
+`condition_user_stacks`, `condition_target_hp_below`,
+`condition_original_has_status`/`condition_original_missing_status`,
+`condition_recipient_has_status`/`condition_recipient_missing_status`,
+`condition_ally_damaged_target_this_turn`, `condition_scope`, the `bonus_*`
+payoff variants, and `conditional_targeting`), and the effect-vocabulary
+naming/implementation drift (payload-key vs `EffectSpec.type`,
+`invulnerable`/`skill_replacements` vs the documented
+`invulnerability`/`skill_replacement`, and which documented mechanics
+genuinely don't exist anywhere in the engine vs. are just unused by First
+Creation). Strengthened `tests/test_first_creation_skill_audit.py` to assert
+0 special-mechanic coverage gaps now that the count is actually 0, instead of
+leaving it as an open, unenforced finding.
+
+Verification: `python -m pytest -q` — 334 passed, 1 skipped;
+`python -m compileall -q jjk_arena web/app.py`;
+`python -m jjk_arena.battle_v2.skill_audit` reconfirms 0 structural and 0
+special-mechanic-coverage findings.

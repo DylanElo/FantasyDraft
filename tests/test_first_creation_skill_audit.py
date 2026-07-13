@@ -8,13 +8,12 @@ def test_all_78_first_creation_skills_pass_structural_completeness():
     assert result["structural_completeness"]["flagged_count"] == 0, result["structural_completeness"]["findings"]
 
 
-def test_counter_and_replacement_mechanics_have_dedicated_test_coverage():
+def test_every_special_mechanic_skill_has_dedicated_test_coverage():
+    # Every counter/reflect/skill-replacement/non-trivial-targeting skill now
+    # has a dedicated test (tests/test_first_creation_targeting_contracts.py
+    # closed the last 11 targeting gaps). Pinned at 0 rather than left open,
+    # so a newly added skill with one of these mechanics fails loudly here
+    # instead of silently shipping without a dedicated test.
     result = run_audit()
     gaps = result["special_mechanic_coverage"]["findings"]
-    uncovered_mechanic_kinds = {
-        mechanic
-        for finding in gaps
-        for mechanic in finding["mechanics"]
-        if mechanic in {"counter", "reflect", "skill_replacement"}
-    }
-    assert not uncovered_mechanic_kinds, gaps
+    assert gaps == [], gaps

@@ -22,11 +22,14 @@ doesn't catch. Current result: 0 flagged across all 78 skills.
 Detects which skills grant `counter`, `reflect`, or `skill_replacements`
 behavior, or use non-trivial targeting (anything other than plain single
 `enemy`/`self`), and reports whether that skill has a *dedicated* test beyond
-the blanket parametrized one. Current result: counter and both
-skill-replacement mechanics (Suguru Geto Young, Yuta Okkotsu JJK0) already
-have dedicated coverage; 11 skills using `ally`/`ally_team`/`enemy_team`
-targeting do not have a test beyond the blanket one (they are still exercised
-by it, just not with a targeting-specific assertion).
+the blanket parametrized one. Current result: 0 flagged — the initial pass
+found 11 skills using `ally`/`ally_team`/`enemy_team` targeting with no
+dedicated test; `tests/test_first_creation_targeting_contracts.py` now covers
+all of them. Writing those tests also caught a real bug: Utahime's
+`fc_utahime_iori_young_curtain_step` applied its destructible-defense status
+to Utahime herself (`target="self"`) instead of the chosen ally, contradicting
+its own flavor text ("gives an ally 10 destructible defense") — fixed in
+`starter_roster.py`.
 
 ## 3. Kit-grammar vocabulary drift
 
@@ -58,12 +61,10 @@ python -m jjk_arena.battle_v2.skill_audit          # human-readable summary
 python -m jjk_arena.battle_v2.skill_audit --json   # machine-readable
 ```
 
-`tests/test_first_creation_skill_audit.py` pins the structural-completeness
-result at 0 and guards that counter/reflect/skill-replacement mechanics keep
-their dedicated coverage, so both stay regression-checked. It deliberately
-does not assert the targeting-coverage gap count is 0, since that's an
-open, reportable finding rather than a bug this tool should silently paper
-over by asserting it away.
+`tests/test_first_creation_skill_audit.py` pins both structural completeness
+and special-mechanic coverage at 0 flagged, so a newly added skill with an
+untested counter/reflect/replacement/non-trivial-targeting mechanic fails
+loudly here instead of silently shipping without a dedicated test.
 
 ## Limitations
 

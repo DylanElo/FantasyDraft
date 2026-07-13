@@ -9,12 +9,12 @@ export class CombatPlaybackScene extends BaseScene {
       if (!events.length) return;
       let actionNumber = 0;
       const hasQueuedResolution = events.some((event) => safeText(event.type) === 'skill_resolved');
-      const baseDelay = hasQueuedResolution ? 260 : 0;
+      const baseDelay = hasQueuedResolution ? 220 : 0;
       if (hasQueuedResolution) this.playCinematicCurtain(frame);
       events.slice(0, 7).forEach((event, index) => {
         if (safeText(event.type) === 'skill_resolved') actionNumber += 1;
         const visibleActionNumber = actionNumber || null;
-        this.time.delayedCall(baseDelay + index * 400, () => this.playEvent(event, frame, visibleActionNumber));
+        this.time.delayedCall(baseDelay + index * 650, () => this.playEvent(event, frame, visibleActionNumber));
       });
     }
 
@@ -148,8 +148,8 @@ export class CombatPlaybackScene extends BaseScene {
         targets: nodes,
         x: '+=18',
         alpha: 0,
-        duration: 900,
-        delay: 210,
+        duration: 520,
+        delay: 80,
         ease: 'Cubic.easeIn',
         onComplete: () => nodes.forEach((node) => node.destroy()),
       });
@@ -311,7 +311,6 @@ export class CombatPlaybackScene extends BaseScene {
 
       if (type === 'skill_resolved') {
         this.playCinematicCutIn(frame, message, COLORS.selection);
-        this.playActionBanner(frame, message, 'TECHNIQUE RELEASED', COLORS.selection, actionNumber);
         if (casterPoint) this.playRing(casterPoint, COLORS.selection, { radius: (casterPoint.size || 62) / 2 + 20, alpha: 0.86 });
         if (casterPoint && point) this.playSlashLine(casterPoint, point, COLORS.selection);
         return;

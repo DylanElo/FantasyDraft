@@ -363,3 +363,28 @@ Caution / remaining Chunk 1 policy gates:
 - Fixed damage reduction, universal anti-domain behavior, disconnect outcome, draw/stalemate, and final ranked timeout values still require explicit product decisions.
 - Timeout transitions are not yet represented as replay commands; durable replay retention and consent remain production work.
 - Existing stacked PRs still require review and ordered merging.
+
+## 2026-07-12 - Chunk 2 player experience and validation
+
+What changed:
+
+- Reworked First Creation detail presentation into an exclusive reading state and removed primary starter-name truncation from roster, trio, combat, and queue surfaces.
+- Added in-combat Skill Detail with adjusted cost, target family, classes, authoritative description, and explicit availability/disabled reason; disabled cards remain inspectable.
+- Added explicit primary, secondary, and alternate target labels plus local energy/Wild validation to Queue Review.
+- Added explicit active-match Exit behavior that surrenders and ignores late updates from the abandoned room.
+- Anchored responsive layout to canvas CSS dimensions and serialized playback cut-ins to prevent interaction-time scaling and overlapping technique banners.
+- Added mobile wireframes, executable 360/390/430 layout checks, Phaser parity regressions, and screenshot evidence for seven major states at both required primary/large viewports.
+
+Verification:
+
+- Live Flask-SocketIO flow covered Lobby, First Creation, Character Detail, Combat, disabled/enabled Skill Detail, Queue Review, authoritative CPU turns, surrender/exit, and Results.
+- Final browser console inspection returned no warnings or errors.
+- Two mirrored 20-game seeded simulation batches completed; the tutorial trio won 32/40 combined, exposing a matchup/seat concern for human validation rather than an automatic balance change.
+- Full pytest, Python compilation, changed-JavaScript syntax checks, and `git diff --check` are required before final commit.
+
+Caution / remaining Chunk 2 validation:
+
+- The in-app capture backend omitted the last safe-area row from most PNG files although the browser reported exact 390x844 and 430x932 CSS viewports.
+- The all-preset balance matrix exceeded the local two-minute ceiling; bounded mirrored matchup batches completed after orphaned timeout workers were stopped.
+- Human playtesting, assistive-technology review, physical iOS/Android browser passes, and broader matchup sampling remain external validation work.
+- No battle number, roster, progression, mission, or server-authority rule changed in this pass.

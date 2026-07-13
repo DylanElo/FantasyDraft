@@ -100,3 +100,97 @@ def test_phaser_and_server_preserve_primary_secondary_and_alternate_target_paylo
     assert serialized["target_slot"] == 0
     assert serialized["alternate_target_player_id"] == "p1"
     assert serialized["alternate_target_slot"] == 2
+
+
+def test_phaser_queue_review_blocks_missing_or_overdrawn_wild_payments():
+    script = r"""
+globalThis.window = { JJK_BOOT: {}, setTimeout: () => {}, __phaserShellDebug: null };
+globalThis.document = { getElementById: () => null };
+globalThis.localStorage = { getItem: () => null, setItem: () => {} };
+const { GameStore } = await import('./web/static/phaser/store/game-store.js');
+const store = Object.create(GameStore.prototype);
+const skill = { id: 'wild_skill', name: 'Wild Skill', cost: ['black'], classes: [], target_rule: { kind: 'enemy' }, effects: [] };
+const fighter = { character_id: 'tester', alive: true, cooldowns: {}, statuses: [], skill_replacements: {} };
+store.actions = [{ id: 'a1', caster_slot: 0, skill_id: 'wild_skill', target_player_id: 'p2', target_slot: 0 }];
+store.actionWildPays = {};
+store.me = () => ({ id: 'p1', energy: { green: 1, red: 0, blue: 0, white: 0 }, team: [fighter] });
+store.skillFor = () => skill;
+store.adjustedCost = () => ['black'];
+const missing = store.queueReviewFit();
+store.actionWildPays = { a1: ['green'] };
+const valid = store.queueReviewFit();
+store.actionWildPays = { a1: ['red'] };
+const overdrawn = store.queueReviewFit();
+console.log(JSON.stringify({ missing, valid, overdrawn }));
+"""
+    result = subprocess.run(
+        ["node", "--experimental-default-type=module", "-"],
+        input=script,
+        text=True,
+        capture_output=True,
+        cwd=ROOT,
+        check=True,
+    )
+    probe = json.loads(result.stdout)
+    assert probe["missing"] == {"ok": False, "reason": "Assign every Wild payment."}
+    assert probe["valid"] == {"ok": True, "reason": ""}
+    assert probe["overdrawn"]["ok"] is False
+
+
+def test_phaser_second_skill_tap_opens_detail_without_mutating_queue():
+    script = r"""
+globalThis.window = { JJK_BOOT: {}, setTimeout: () => {}, __phaserShellDebug: null };
+globalThis.document = { getElementById: () => null };
+globalThis.localStorage = { getItem: () => null, setItem: () => {} };
+const { GameStore } = await import('./web/static/phaser/store/game-store.js');
+const store = Object.create(GameStore.prototype);
+store.selectedSkillId = 'skill'; store.detailSkillId = null; store.actions = [];
+store.notify = () => {}; store.openSkillDetail = GameStore.prototype.openSkillDetail;
+store.selectSkill('skill');
+console.log(JSON.stringify({ detailSkillId: store.detailSkillId, actions: store.actions }));
+"""
+    result = subprocess.run(
+        ["node", "--experimental-default-type=module", "-"],
+        input=script,
+        text=True,
+        capture_output=True,
+        cwd=ROOT,
+        check=True,
+    )
+    probe = json.loads(result.stdout)
+    assert probe == {"detailSkillId": "skill", "actions": []}
+
+
+def test_leaving_active_match_surrenders_and_ignores_late_room_updates():
+    script = r"""
+globalThis.window = { JJK_BOOT: {}, setTimeout: () => {}, __phaserShellDebug: null };
+globalThis.document = { getElementById: () => null };
+globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+const { GameStore } = await import('./web/static/phaser/store/game-store.js');
+const emitted = [];
+const store = Object.create(GameStore.prototype);
+store.state = { winner_id: null, state_revision: 7 };
+store.lobbyStatus = null; store.actions = []; store.actionWildPays = {}; store.selectedCasterSlot = 0;
+store.selectedSkillId = 'skill'; store.queueSubmitting = false; store.queueReviewOpen = false;
+store.detailCharacterId = null; store.eventCursor = 2; store.playbackEvents = []; store.recentEvents = [];
+store.playerId = 'p1'; store.commandNonceCounter = 0; store.resumeSession = null; store.ignoreBattleUpdates = false;
+store.socketClient = { emit: (event, payload) => emitted.push({ event, payload }) };
+store.changeScene = (scene) => { store.scene = scene; };
+store.clearResumeSession = () => {};
+store.resetToLobby();
+store.receiveBattleState({ winner_id: 'p2', players: {}, event_log: [], pending_actions: {}, phase: 'finished' });
+console.log(JSON.stringify({ emitted, scene: store.scene, state: store.state, ignored: store.ignoreBattleUpdates }));
+"""
+    result = subprocess.run(
+        ["node", "--experimental-default-type=module", "-"],
+        input=script,
+        text=True,
+        capture_output=True,
+        cwd=ROOT,
+        check=True,
+    )
+    probe = json.loads(result.stdout)
+    assert probe["emitted"][0]["event"] == "battle_v2_surrender"
+    assert probe["scene"] == "LobbyScene"
+    assert probe["state"] is None
+    assert probe["ignored"] is True

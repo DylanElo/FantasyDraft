@@ -15,10 +15,20 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
       } else if ((action.target_slots || []).length) {
         targetName = `${action.target_slots.length} targets`;
       }
+      const selectedName = (player, slot) => player && player.team && player.team[slot] ? player.team[slot].name : `Slot ${Number(slot) + 1}`;
+      const secondaryName = action.secondary_target_slot !== null && action.secondary_target_slot !== undefined
+        ? selectedName(targetPlayer, action.secondary_target_slot)
+        : null;
+      const alternatePlayer = action.alternate_target_player_id === this.store.mineId() ? me : foe;
+      const alternateName = action.alternate_target_slot !== null && action.alternate_target_slot !== undefined
+        ? selectedName(alternatePlayer, action.alternate_target_slot)
+        : null;
       return {
         caster,
         skill,
         targetName,
+        secondaryName,
+        alternateName,
         cost: skill ? this.store.adjustedCost(caster, skill) : [],
       };
     }
@@ -43,7 +53,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
     renderQueueReviewRow(frame, action, index, rowY, rowW) {
       const x = frame.x + frame.gutter + 10;
       const meta = this.actionMeta(action);
-      const rowH = 70;
+      const rowH = 82;
       const tone = index === 0 ? COLORS.selection : index === 1 ? COLORS.ally : COLORS.talismanDim;
       this.graphics.fillStyle(COLORS.surfaceRaised, 0.95);
       this.graphics.fillRoundedRect(x, rowY, rowW, rowH, 16);
@@ -55,15 +65,23 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
       this.graphics.fillStyle(tone, 0.9);
       this.graphics.fillRoundedRect(x + 10, rowY + 10, 26, 22, 11);
       this.mono(x + 23, rowY + 16, `Q${index + 1}`, { color: '#08080a', fontSize: '8px' }).setOrigin(0.5, 0);
-      this.text(x + 44, rowY + 9, shortText(meta.skill ? meta.skill.name : action.skill_id, 22), {
+      this.text(x + 44, rowY + 9, meta.skill ? meta.skill.name : action.skill_id, {
         fontSize: '11px',
         fontStyle: '900',
+        wordWrap: { width: rowW - 132 },
       });
-      this.mono(x + 44, rowY + 28, `${shortText(meta.caster && meta.caster.name, 15)} -> ${shortText(meta.targetName, 15)}`, {
+      this.mono(x + 44, rowY + 27, `CASTER ${meta.caster ? meta.caster.name : 'Unknown'}`, {
         color: COLORS.text,
-        fontSize: '8px',
+        fontSize: '7px',
       });
-      this.renderCostOrbs(x + 48, rowY + 55, meta.cost, 5);
+      this.mono(x + 44, rowY + 39, `PRIMARY ${meta.targetName}`, { color: COLORS.text, fontSize: '7px' });
+      if (meta.secondaryName || meta.alternateName) {
+        this.mono(x + 44, rowY + 51, meta.secondaryName ? `SECONDARY ${meta.secondaryName}` : `ALTERNATE ${meta.alternateName}`, {
+          color: COLORS.paperText,
+          fontSize: '7px',
+        });
+      }
+      this.renderCostOrbs(x + 48, rowY + 69, meta.cost, 5);
 
       this.button(x + rowW - 74, rowY + 9, 28, 26, '^', () => this.store.moveQueuedAction(action.id, -1), {
         fill: COLORS.surfaceDeep,
@@ -82,13 +100,13 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
 
       const wildCount = meta.cost.filter((color) => color === 'black').length;
       if (!wildCount) {
-        this.mono(x + rowW - 122, rowY + 51, 'NO RANDOM', { color: COLORS.dim, fontSize: '8px' });
+        this.mono(x + rowW - 122, rowY + 65, 'NO WILD', { color: COLORS.dim, fontSize: '8px' });
         return;
       }
-      this.mono(x + rowW - 132, rowY + 44, 'X PAY', { color: COLORS.paperText, fontSize: '7px' });
+      this.mono(x + rowW - 132, rowY + 58, 'X PAY', { color: COLORS.paperText, fontSize: '7px' });
       for (let wildIndex = 0; wildIndex < wildCount; wildIndex += 1) {
         const pay = (this.store.actionWildPays[action.id] || [])[wildIndex] || 'black';
-        this.button(x + rowW - 86 + wildIndex * 34, rowY + 42, 28, 24, ENERGY_LABELS[pay] || 'X', () => this.store.cycleWildcardPay(action.id, wildIndex), {
+        this.button(x + rowW - 86 + wildIndex * 34, rowY + 55, 28, 24, ENERGY_LABELS[pay] || 'X', () => this.store.cycleWildcardPay(action.id, wildIndex), {
           fill: pay === 'white' ? COLORS.focusIvory : (ENERGY_COLORS[pay] || COLORS.black),
           stroke: pay === 'black' ? COLORS.talismanPaper : (ENERGY_COLORS[pay] || COLORS.selection),
           color: pay === 'white' ? '#08080a' : COLORS.text,
@@ -112,7 +130,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
       });
 
       const x = frame.x + frame.gutter;
-      const sheetY = Math.max(172, frame.height - 456);
+      const sheetY = Math.max(132, frame.height - 516);
       const sheetH = frame.height - sheetY + 10;
       const sheetW = frame.width - 32;
       this.graphics.fillStyle(COLORS.voidBlack, 0.7);
@@ -152,10 +170,12 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
 
       const rowW = sheetW - 20;
       this.store.actions.slice(0, 3).forEach((action, index) => {
-        this.renderQueueReviewRow(frame, action, index, sheetY + 78 + index * 78, rowW);
+        this.renderQueueReviewRow(frame, action, index, sheetY + 78 + index * 90, rowW);
       });
 
       const footerY = frame.height - 50;
+      const queueFit = this.store.queueReviewFit();
+      if (!queueFit.ok) this.mono(x + 18, footerY - 18, shortText(queueFit.reason, 48), { color: '#f1a0a0', fontSize: '8px' });
       this.button(x + 10, footerY, 78, 34, 'Cancel', () => this.store.cancelQueue(), {
         fill: COLORS.surfaceRaised,
         stroke: COLORS.enemy,
@@ -174,7 +194,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         stroke: COLORS.talismanPaper,
         mono: true,
         fontSize: '9px',
-        disabled: this.store.queueSubmitting,
+        disabled: this.store.queueSubmitting || !queueFit.ok,
       });
     }
 

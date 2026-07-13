@@ -6,8 +6,9 @@ export class LayoutService {
   }
 
   frame() {
-    const width = this.scene.scale.width;
-    const height = this.scene.scale.height;
+    const canvas = this.scene.game && this.scene.game.canvas;
+    const width = Math.round((canvas && canvas.clientWidth) || this.scene.scale.width);
+    const height = Math.round((canvas && canvas.clientHeight) || this.scene.scale.height);
     const gameWidth = Math.min(width, TOKEN_FRAMES.large ? TOKEN_FRAMES.large.width : 430);
     const x = Math.round((width - gameWidth) / 2);
     return {
@@ -65,4 +66,3 @@ export class LayoutService {
     return { x: frame.x + frame.gutter, y, width: frame.width - 32, height: Math.max(88, ally.y - y - 28) };
   }
 }
-

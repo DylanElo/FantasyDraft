@@ -19,6 +19,7 @@ export class GameStore {
       this.lobbyStatus = null;
       this.selectedCasterSlot = null;
       this.selectedSkillId = null;
+      this.detailSkillId = null;
       this.targetingStage = null;
       this.pendingPrimaryTarget = null;
       this.actions = [];
@@ -37,6 +38,7 @@ export class GameStore {
       this.lastActionPayloads = [];
       this.commandNonceCounter = 0;
       this.resumeSession = this.loadResumeSession();
+      this.ignoreBattleUpdates = false;
       this.records = this.loadRecords();
       this.playerTeam = preset('story_tutorial', ['yuji_itadori', 'megumi_fushiguro', 'nobara_kugisaki']);
       this.enemyTeam = preset('jjk0_beginner_special', ['yuta_okkotsu_jjk0', 'maki_zenin', 'toge_inumaki']);
@@ -48,6 +50,7 @@ export class GameStore {
           actionCount: this.actions.length,
           selectedCasterSlot: this.selectedCasterSlot,
           selectedSkillId: this.selectedSkillId,
+          detailSkillId: this.detailSkillId,
           queueReviewOpen: this.queueReviewOpen,
           detailCharacterId: this.detailCharacterId,
           hasBattle: !!this.state,
@@ -292,6 +295,16 @@ export class GameStore {
       this.notify();
     }
 
+    openSkillDetail(skillId) {
+      this.detailSkillId = skillId;
+      this.notify();
+    }
+
+    closeSkillDetail() {
+      this.detailSkillId = null;
+      this.notify();
+    }
+
     setDraftTarget(teamKey) {
       this.draftTarget = teamKey === 'enemyTeam' && this.matchMode === 'cpu' ? 'enemyTeam' : 'playerTeam';
       this.notify();
@@ -318,6 +331,7 @@ export class GameStore {
       this.eventCursor = 0;
       this.playbackEvents = [];
       this.recentEvents = [];
+      this.ignoreBattleUpdates = false;
       const payload = {
         room_id: this.matchMode === 'pvp' ? this.roomId : `classic_v2_${Math.random().toString(36).slice(2, 8)}`,
         player_name: this.playerName,
@@ -343,6 +357,7 @@ export class GameStore {
     }
 
     receiveBattleState(data) {
+      if (this.ignoreBattleUpdates) return;
       const log = data && Array.isArray(data.event_log) ? data.event_log : [];
       const nextEvents = log.slice(this.eventCursor);
       this.eventCursor = log.length;
@@ -602,12 +617,17 @@ export class GameStore {
       }
       this.selectedCasterSlot = slot;
       this.selectedSkillId = null;
+      this.detailSkillId = null;
       this.targetingStage = null;
       this.pendingPrimaryTarget = null;
       this.notify();
     }
 
     selectSkill(skillId) {
+      if (this.selectedSkillId === skillId) {
+        this.openSkillDetail(skillId);
+        return;
+      }
       if (this.controlsLocked()) return;
       const me = this.me();
       const foe = this.foe();
@@ -634,6 +654,7 @@ export class GameStore {
       }
       const kind = (skill.target_rule && skill.target_rule.kind) || 'enemy';
       this.selectedSkillId = skill.id;
+      this.detailSkillId = null;
       this.targetingStage = null;
       this.pendingPrimaryTarget = null;
       if (this.hasEffectFlag(skill, 'conditional_targeting', 'venom_bloom')) {
@@ -734,6 +755,7 @@ export class GameStore {
         ...extras,
       });
       this.selectedSkillId = null;
+      this.detailSkillId = null;
       this.targetingStage = null;
       this.pendingPrimaryTarget = null;
       this.ensureSelectedCaster();
@@ -829,6 +851,28 @@ export class GameStore {
       this.notify();
     }
 
+    queueReviewFit() {
+      if (!this.actions.length) return { ok: false, reason: 'Queue is empty.' };
+      const me = this.me();
+      const energy = { green: 0, blue: 0, white: 0, red: 0, ...((me && me.energy) || {}) };
+      for (const action of this.actions) {
+        const caster = me && me.team ? me.team[action.caster_slot] : null;
+        const skill = caster ? this.skillFor(caster, action.skill_id) : null;
+        if (!caster || !skill) return { ok: false, reason: 'Queued action is no longer available.' };
+        const pays = this.actionWildPays[action.id] || [];
+        let wildIndex = 0;
+        for (const color of this.adjustedCost(caster, skill)) {
+          const pay = color === 'black' ? pays[wildIndex++] : color;
+          if (!CORE_ENERGY.includes(pay) || Number(energy[pay] || 0) <= 0) {
+            return { ok: false, reason: color === 'black' ? 'Assign every Wild payment.' : `Not enough ${pay} energy.` };
+          }
+          energy[pay] -= 1;
+        }
+        if (pays.length !== wildIndex) return { ok: false, reason: 'Wild payment count changed.' };
+      }
+      return { ok: true, reason: '' };
+    }
+
     closeQueueReview() {
       this.queueReviewOpen = false;
       this.notify();
@@ -896,7 +940,11 @@ export class GameStore {
     }
 
     confirmQueue() {
-      if (this.controlsLocked() || !this.actions.length) return;
+      const fit = this.queueReviewFit();
+      if (this.controlsLocked() || !fit.ok) {
+        if (!fit.ok) this.showToast(fit.reason);
+        return;
+      }
       this.queueSubmitting = true;
       this.queueReviewOpen = false;
       const payloads = this.pendingActionPayloads();
@@ -913,6 +961,7 @@ export class GameStore {
       this.actions = [];
       this.actionWildPays = {};
       this.selectedSkillId = null;
+      this.detailSkillId = null;
       this.queueSubmitting = false;
       this.queueReviewOpen = false;
       this.socketClient.emit('battle_v2_cancel_queue', this.commandPayload());
@@ -951,6 +1000,10 @@ export class GameStore {
     resetToLobby() {
       if (!this.state && this.lobbyStatus && this.lobbyStatus.status === 'waiting') {
         this.socketClient.emit('battle_v2_leave_pvp', { room_id: this.lobbyStatus.room_id });
+      }
+      if (this.state && !this.state.winner_id) {
+        this.ignoreBattleUpdates = true;
+        this.socketClient.emit('battle_v2_surrender', this.commandPayload());
       }
       this.state = null;
       this.clearResumeSession();

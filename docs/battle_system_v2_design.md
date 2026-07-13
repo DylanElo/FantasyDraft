@@ -18,6 +18,11 @@ Battle v2 is the only maintained battle engine in this repository.
 8. Cooldowns, statuses, deaths, domains, and energy update at turn end.
 9. The next player acts unless a winner has been decided.
 
+Action intents identify one declared base skill slot. The server resolves any
+active replacement from that slot; replacement-only and foreign skill IDs are
+never valid client submissions. Action IDs and queue order are exact,
+non-empty, unique identities, and selected target slots cannot be duplicated.
+
 ## Design Pillars
 
 ### Tactical clarity first
@@ -76,6 +81,16 @@ The resolver implements these rule families:
 - Soul damage ignores damage reduction and destructible defense.
 - Sure-hit damage is for Domain effects and ignores normal target protection unless anti-domain effects apply.
 - Health steal heals the user only for actual HP damage dealt.
+
+`Physical` describes a damage/technique family, not reach. `Melee` and `Ranged`
+are explicit independent tags used by counters and punishments.
+
+## Authoritative phase timers
+
+Planning and Queue Review have server-owned deadlines. Timing policy is
+isolated in `jjk_arena/battle_v2/timers.py`; the manager owns timeout
+transitions. Planning timeout skips the turn. A valid Queue Review timeout
+resolves the submitted queue; an invalid queue is discarded before advancing.
 
 ## Hidden Information
 

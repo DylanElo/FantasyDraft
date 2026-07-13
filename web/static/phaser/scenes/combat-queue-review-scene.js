@@ -19,7 +19,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         caster,
         skill,
         targetName,
-        cost: (skill && skill.cost) || [],
+        cost: skill ? this.store.adjustedCost(caster, skill) : [],
       };
     }
 

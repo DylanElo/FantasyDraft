@@ -455,3 +455,102 @@ def test_battle_v2_socket_start_first_creation_mode_uses_first_creation_catalog(
     assert "satoru_gojo_young" in state["skill_catalog"]
     assert "mahito" not in state["skill_catalog"]
     assert state["players"]["__cpu_v2__"]["team"][0]["character_id"] == "yuta_okkotsu_jjk0"
+
+
+def test_todo_alternate_redirect_survives_socket_cleaner_manager_and_resolver(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    monkeypatch.setattr(web_app, "allow_event", lambda *args, **kwargs: True)
+    monkeypatch.setattr(web_app, "battle_v2_has_cpu", lambda room_id: False)
+    client = socket_client()
+    client.emit(
+        "battle_v2_start_classic",
+        {
+            "room_id": "todo-socket",
+            "roster_mode": "first_creation",
+            "player_team": ["aoi_todo", "yuji_itadori", "maki_zenin"],
+            "enemy_team": ["mai_zenin", "panda", "megumi_fushiguro"],
+        },
+    )
+    start = received_payload(client, "battle_v2_update")
+    player_id = start["turn_player_id"]
+    state = web_app.battle_v2_manager.get_state("todo-socket")
+    state.players[player_id].energy[EnergyType.BLUE] = 1
+    state.players[player_id].energy[EnergyType.WHITE] = 1
+
+    client.emit(
+        "battle_v2_submit_plan",
+        {"actions": [{
+            "id": "todo",
+            "caster_slot": 0,
+            "skill_id": "fc_aoi_todo_boogie_woogie",
+            "target_player_id": "__cpu_v2__",
+            "target_slot": 0,
+            "alternate_target_player_id": player_id,
+            "alternate_target_slot": 1,
+        }]},
+    )
+    queued = received_payload(client, "battle_v2_update")
+    action = queued["pending_actions"][player_id][0]
+    assert action["alternate_target_player_id"] == player_id
+    assert action["alternate_target_slot"] == 1
+
+    client.emit("battle_v2_confirm_queue", {})
+    received_payload(client, "battle_v2_update")
+    redirect = next(status for status in state.players["__cpu_v2__"].team[0].statuses if status.id == "boogie_woogie_redirect")
+    assert redirect.payload["redirect_to_player_id"] == player_id
+    assert redirect.payload["redirect_to_slot"] == 1
+
+
+def test_venom_bloom_secondary_target_survives_socket_cleaner_manager_and_resolver(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    monkeypatch.setattr(web_app, "allow_event", lambda *args, **kwargs: True)
+    client = socket_client()
+    client.emit(
+        "battle_v2_start_classic",
+        {
+            "room_id": "venom-socket",
+            "roster_mode": "first_creation",
+            "player_team": ["junpei_yoshino", "yuji_itadori", "maki_zenin"],
+            "enemy_team": ["mai_zenin", "panda", "megumi_fushiguro"],
+        },
+    )
+    start = received_payload(client, "battle_v2_update")
+    player_id = start["turn_player_id"]
+    state = web_app.battle_v2_manager.get_state("venom-socket")
+    state.players[player_id].energy[EnergyType.RED] = 1
+    state.players[player_id].energy[EnergyType.GREEN] = 1
+    state.players["__cpu_v2__"].team[0].statuses.append(
+        StatusEffect("poison", "Poison", player_id, 0, "__cpu_v2__", 0, 2)
+    )
+
+    client.emit(
+        "battle_v2_submit_plan",
+        {"actions": [{
+            "id": "venom",
+            "caster_slot": 0,
+            "skill_id": "fc_junpei_yoshino_venom_bloom",
+            "target_player_id": "__cpu_v2__",
+            "target_slot": 0,
+            "target_slots": [0, 1],
+            "secondary_target_slot": 1,
+        }]},
+    )
+    queued = received_payload(client, "battle_v2_update")
+    action = queued["pending_actions"][player_id][0]
+    assert action["target_slots"] == [0, 1]
+    assert action["secondary_target_slot"] == 1
+
+    client.emit(
+        "battle_v2_update_queue",
+        {"queue_order": ["venom"], "wildcard_pays": {"venom": ["green"]}},
+    )
+    received_payload(client, "battle_v2_update")
+    client.emit("battle_v2_confirm_queue", {})
+    received_payload(client, "battle_v2_update")
+    spread = next(
+        event for event in state.event_log
+        if event.type == "status_applied"
+        and event.payload.get("status") == "poison"
+        and event.payload.get("target_slot") == 1
+    )
+    assert spread.payload["target_player_id"] == "__cpu_v2__"

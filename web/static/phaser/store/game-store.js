@@ -19,6 +19,8 @@ export class GameStore {
       this.lobbyStatus = null;
       this.selectedCasterSlot = null;
       this.selectedSkillId = null;
+      this.targetingStage = null;
+      this.pendingPrimaryTarget = null;
       this.actions = [];
       this.actionWildPays = {};
       this.queueReviewOpen = false;
@@ -382,13 +384,64 @@ export class GameStore {
       const catalog = this.state && this.state.skill_catalog ? this.state.skill_catalog[character.character_id] : null;
       const roster = this.character(character.character_id);
       const skills = (catalog && catalog.skills) || (roster && roster.skills) || [];
-      return skills.find((skill) => skill.id === skillId || skill.original_slot_id === skillId) || null;
+      const replacementId = (character.skill_replacements && character.skill_replacements[skillId]) || skillId;
+      const effective = skills.find((skill) => skill.id === replacementId || skill.original_slot_id === replacementId) || null;
+      return effective && replacementId !== skillId
+        ? { ...effective, id: skillId, effective_skill_id: replacementId, original_slot_id: skillId }
+        : effective;
     }
 
     skillsFor(character) {
       const catalog = this.state && this.state.skill_catalog ? this.state.skill_catalog[character.character_id] : null;
       const roster = this.character(character.character_id);
-      return (catalog && catalog.skills) || (roster && roster.skills) || [];
+      const skills = (catalog && catalog.skills) || (roster && roster.skills) || [];
+      const replacements = character.skill_replacements || {};
+      const replacementIds = new Set(Object.values(replacements));
+      return skills.filter((skill) => !replacementIds.has(skill.id)).map((skill) => this.skillFor(character, skill.id));
+    }
+
+    skillCooldown(character, skill) {
+      if (!character || !skill) return 0;
+      return (character.cooldowns && character.cooldowns[skill.effective_skill_id || skill.id]) || 0;
+    }
+
+    adjustedCost(character, skill) {
+      const cost = [...((skill && skill.cost) || [])];
+      const delta = ((character && character.statuses) || []).reduce((total, status) => Number(status.duration || 0) !== 0 ? total + Number((status.payload && status.payload.black_cost_delta) || 0) : total, 0);
+      if (delta > 0) return cost.concat(Array(delta).fill('black'));
+      let discount = Math.max(0, -delta);
+      return cost.filter((color) => color !== 'black' || discount-- <= 0);
+    }
+
+    skillIsHarmful(skill) {
+      const kind = (skill && skill.target_rule && skill.target_rule.kind) || 'enemy';
+      const effects = (skill && skill.effects) || [];
+      if (kind === 'enemy' || kind === 'enemy_team') return effects.some((effect) => effect.target !== 'self') || (skill.classes || []).includes('Control');
+      return effects.some((effect) => effect.target !== 'self' && ['damage', 'health_steal', 'drain_energy', 'remove_status', 'counter'].includes(effect.type));
+    }
+
+    statusBlocksSkill(character, skill) {
+      const classes = (skill && skill.classes) || [];
+      for (const status of ((character && character.statuses) || [])) {
+        if (Number(status.duration || 0) === 0) continue;
+        const payload = status.payload || {};
+        const stunned = payload.stun_classes || [];
+        if (stunned.includes('all') || classes.some((skillClass) => stunned.includes(skillClass))) return `Blocked by ${status.name || 'stun'}`;
+        if (payload.stun_harmful && this.skillIsHarmful(skill)) return `Harmful skills blocked by ${status.name || 'stun'}`;
+        if (payload.block_non_damaging_skills && !(skill.effects || []).some((effect) => effect.target !== 'self' && ['damage', 'health_steal'].includes(effect.type))) return `Non-damaging skills blocked by ${status.name || 'control'}`;
+        if (payload.block_counters && (skill.effects || []).some((effect) => effect.payload && effect.payload.counter)) return `Counters blocked by ${status.name || 'control'}`;
+      }
+      return '';
+    }
+
+    skillDisabledReason(character, skill) {
+      const cooldown = this.skillCooldown(character, skill);
+      if (cooldown > 0) return `Cooldown ${cooldown}`;
+      return this.statusBlocksSkill(character, skill) || this.skillFit(skill, character).reason;
+    }
+
+    hasEffectFlag(skill, key, value = true) {
+      return ((skill && skill.effects) || []).some((effect) => effect.payload && effect.payload[key] === value);
     }
 
     selectedSkill() {
@@ -419,6 +472,10 @@ export class GameStore {
     canTarget(character, slot, side) {
       if (!character || !character.alive || this.controlsLocked() || this.selectedCasterSlot === null || !this.selectedSkillId) return false;
       const skill = this.selectedSkill();
+      const playerId = side === 'enemy' ? this.enemyId() : this.mineId();
+      if (this.targetingStage === 'alternate') return !(this.pendingPrimaryTarget && this.pendingPrimaryTarget.playerId === playerId && this.pendingPrimaryTarget.slot === slot);
+      if (this.targetingStage === 'venom_secondary') return side === 'enemy' && (!this.pendingPrimaryTarget || this.pendingPrimaryTarget.slot !== slot);
+      if (this.targetingStage === 'venom_primary') return side === 'enemy' && (character.statuses || []).some((status) => status.id === 'poison' && Number(status.duration || 0) !== 0);
       const kind = (skill && skill.target_rule && skill.target_rule.kind) || 'enemy';
       if (this.targetBlocksSkill(character, skill)) return false;
       if (kind === 'enemy') return side === 'enemy';
@@ -468,7 +525,11 @@ export class GameStore {
     }
 
     targetBlocksSkill(character, skill) {
-      return this.targetHasInvulnerability(character) && !this.skillBypassesInvulnerability(skill, character);
+      if (!this.targetHasInvulnerability(character) || this.skillBypassesInvulnerability(skill, character)) return false;
+      const statuses = (character && character.statuses) || [];
+      if (statuses.some((status) => status.payload && status.payload.invulnerable_to_all)) return true;
+      if (this.skillIsHarmful(skill)) return true;
+      return statuses.some((status) => status.payload && status.payload.invulnerable_to_helpful);
     }
 
     hasManualTargetForSkill(skill, side) {
@@ -496,6 +557,8 @@ export class GameStore {
       }
       this.selectedCasterSlot = slot;
       this.selectedSkillId = null;
+      this.targetingStage = null;
+      this.pendingPrimaryTarget = null;
       this.notify();
     }
 
@@ -509,10 +572,15 @@ export class GameStore {
         this.showToast('Select a ready fighter first.');
         return;
       }
-      const cooldown = (caster.cooldowns && caster.cooldowns[skill.id]) || 0;
-      const fit = this.skillFit(skill);
+      const cooldown = this.skillCooldown(caster, skill);
+      const fit = this.skillFit(skill, caster);
+      const blocked = this.statusBlocksSkill(caster, skill);
       if (cooldown > 0) {
         this.showToast(`Cooldown ${cooldown} turns.`);
+        return;
+      }
+      if (blocked) {
+        this.showToast(blocked);
         return;
       }
       if (!fit.ok) {
@@ -521,6 +589,19 @@ export class GameStore {
       }
       const kind = (skill.target_rule && skill.target_rule.kind) || 'enemy';
       this.selectedSkillId = skill.id;
+      this.targetingStage = null;
+      this.pendingPrimaryTarget = null;
+      if (this.hasEffectFlag(skill, 'conditional_targeting', 'venom_bloom')) {
+        const poisoned = this.livingSlots(foe).filter((slot) => (foe.team[slot].statuses || []).some((status) => status.id === 'poison' && Number(status.duration || 0) !== 0));
+        if (!poisoned.length) {
+          this.addAction(this.selectedCasterSlot, skill.id, this.enemyId(), null, this.livingSlots(foe));
+          return;
+        }
+        this.targetingStage = 'venom_primary';
+        this.showToast('Choose a poisoned primary target.');
+        this.notify();
+        return;
+      }
       if (kind === 'self') {
         this.addAction(this.selectedCasterSlot, skill.id, this.mineId(), this.selectedCasterSlot, []);
         return;
@@ -565,10 +646,36 @@ export class GameStore {
         this.showToast('Illegal target for that skill.');
         return;
       }
+      const skill = this.selectedSkill();
+      const playerId = side === 'enemy' ? this.enemyId() : this.mineId();
+      if (this.targetingStage === 'alternate') {
+        const primary = this.pendingPrimaryTarget;
+        this.addAction(this.selectedCasterSlot, this.selectedSkillId, primary.playerId, primary.slot, [], { alternate_target_player_id: playerId, alternate_target_slot: slot });
+        return;
+      }
+      if (this.targetingStage === 'venom_primary') {
+        this.pendingPrimaryTarget = { playerId, slot };
+        this.targetingStage = 'venom_secondary';
+        this.showToast('Choose a different secondary spread target.');
+        this.notify();
+        return;
+      }
+      if (this.targetingStage === 'venom_secondary') {
+        const primary = this.pendingPrimaryTarget;
+        this.addAction(this.selectedCasterSlot, this.selectedSkillId, primary.playerId, primary.slot, [primary.slot, slot], { secondary_target_slot: slot });
+        return;
+      }
+      if (this.hasEffectFlag(skill, 'controlled_redirect')) {
+        this.pendingPrimaryTarget = { playerId, slot };
+        this.targetingStage = 'alternate';
+        this.showToast('Choose the alternate redirect destination.');
+        this.notify();
+        return;
+      }
       this.addAction(this.selectedCasterSlot, this.selectedSkillId, side === 'enemy' ? this.enemyId() : this.mineId(), slot, []);
     }
 
-    addAction(casterSlot, skillId, targetPlayerId, targetSlot, targetSlots) {
+    addAction(casterSlot, skillId, targetPlayerId, targetSlot, targetSlots, extras = {}) {
       const id = `phaser_${Date.now()}_${casterSlot}`;
       this.actions = this.actions.filter((action) => Number(action.caster_slot) !== Number(casterSlot));
       this.actionWildPays = Object.fromEntries(Object.entries(this.actionWildPays).filter(([actionId]) => this.actions.some((action) => action.id === actionId)));
@@ -579,8 +686,11 @@ export class GameStore {
         target_player_id: targetPlayerId,
         target_slot: targetSlot,
         target_slots: targetSlots || [],
+        ...extras,
       });
       this.selectedSkillId = null;
+      this.targetingStage = null;
+      this.pendingPrimaryTarget = null;
       this.ensureSelectedCaster();
       this.ensureWildcardPayments();
       this.lastActionPayloads = this.pendingActionPayloads();
@@ -588,12 +698,12 @@ export class GameStore {
       this.notify();
     }
 
-    skillFit(skill) {
+    skillFit(skill, caster = null) {
       const me = this.me();
       const summary = this.energySummary(me, this.actions);
       const remaining = { ...summary.remaining };
       let wildcardNeeded = summary.wildcardNeeded;
-      (skill.cost || []).forEach((color) => {
+      this.adjustedCost(caster, skill).forEach((color) => {
         if (color === 'black') wildcardNeeded += 1;
         else remaining[color] = (remaining[color] || 0) - 1;
       });
@@ -616,7 +726,7 @@ export class GameStore {
       (actions || []).forEach((action) => {
         const caster = player && player.team ? player.team[action.caster_slot] : null;
         const skill = caster ? this.skillFor(caster, action.skill_id) : null;
-        (skill && skill.cost ? skill.cost : []).forEach((color) => {
+        this.adjustedCost(caster, skill).forEach((color) => {
           if (color === 'black') wildcardNeeded += 1;
           else remaining[color] = (remaining[color] || 0) - 1;
         });
@@ -638,7 +748,7 @@ export class GameStore {
         const wildcardPays = [];
         const preferredPays = this.actionWildPays[action.id] || [];
         let preferredIndex = 0;
-        (skill && skill.cost ? skill.cost : []).forEach((color) => {
+        this.adjustedCost(caster, skill).forEach((color) => {
           if (color === 'black') {
             const preferred = preferredPays[preferredIndex];
             preferredIndex += 1;
@@ -702,10 +812,10 @@ export class GameStore {
       for (const action of this.actions) {
         const caster = me && me.team ? me.team[action.caster_slot] : null;
         const skill = caster ? this.skillFor(caster, action.skill_id) : null;
-        (skill && skill.cost ? skill.cost : []).forEach((color) => {
+        this.adjustedCost(caster, skill).forEach((color) => {
           if (color !== 'black') energy[color] = (energy[color] || 0) - 1;
         });
-        const wildCount = (skill && skill.cost ? skill.cost : []).filter((color) => color === 'black').length;
+        const wildCount = this.adjustedCost(caster, skill).filter((color) => color === 'black').length;
         for (let index = 0; index < wildCount; index += 1) {
           if (action.id === actionId && index === wildcardIndex) {
             return CORE_ENERGY.filter((color) => (energy[color] || 0) > 0);

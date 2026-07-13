@@ -230,9 +230,10 @@ export class CombatScene extends CombatQueueReviewScene {
     }
 
     renderSkillButton(skill, caster, x, y, w, h) {
-      const cooldown = (caster.cooldowns && caster.cooldowns[skill.id]) || 0;
-      const fit = this.store.skillFit(skill);
-      const disabled = cooldown > 0 || !fit.ok || this.store.queuedSlots().has(Number(this.store.selectedCasterSlot)) || this.store.controlsLocked();
+      const cooldown = this.store.skillCooldown(caster, skill);
+      const fit = this.store.skillFit(skill, caster);
+      const ruleReason = this.store.statusBlocksSkill(caster, skill);
+      const disabled = cooldown > 0 || !!ruleReason || !fit.ok || this.store.queuedSlots().has(Number(this.store.selectedCasterSlot)) || this.store.controlsLocked();
       const selected = this.store.selectedSkillId === skill.id;
       const tone = selected ? COLORS.selection : (ENERGY_COLORS[(skill.cost || [])[0]] || COLORS.talismanDim);
       this.graphics.fillStyle(selected ? 0x221a0c : COLORS.surfaceRaised, disabled ? 0.42 : 0.96);
@@ -249,7 +250,7 @@ export class CombatScene extends CombatQueueReviewScene {
         color: selected ? COLORS.paperText : COLORS.text,
         fontSize: '8px',
       }).setOrigin(0.5, 0);
-      (skill.cost || []).slice(0, 4).forEach((color, index) => {
+      this.store.adjustedCost(caster, skill).slice(0, 4).forEach((color, index) => {
         const orbX = x + 15 + index * 8;
         this.graphics.fillStyle(COLORS.inkBlack, 0.9);
         this.graphics.fillCircle(orbX, y + h - 15, 4.5);
@@ -261,7 +262,7 @@ export class CombatScene extends CombatQueueReviewScene {
         fontStyle: '900',
         wordWrap: { width: w - 58 },
       });
-      this.mono(x + 52, y + h - 19, cooldown > 0 ? `CD ${cooldown}` : fit.ok ? shortText(this.store.effectLine(skill), 23) : shortText(fit.reason, 23), {
+      this.mono(x + 52, y + h - 19, cooldown > 0 ? `CD ${cooldown}` : ruleReason ? shortText(ruleReason, 23) : fit.ok ? shortText(this.store.effectLine(skill), 23) : shortText(fit.reason, 23), {
         color: cooldown > 0 ? '#e6b84a' : disabled ? COLORS.muted : COLORS.paperText,
         fontSize: '8px',
       });
@@ -334,8 +335,8 @@ export class CombatScene extends CombatQueueReviewScene {
         const tone = this.store.assets.toneFor(selected.character_id);
         const skills = this.store.skillsFor(selected).slice(0, 4);
         const readyCount = skills.filter((skill) => {
-          const cooldown = (selected.cooldowns && selected.cooldowns[skill.id]) || 0;
-          return cooldown <= 0 && this.store.skillFit(skill).ok && !this.store.queuedSlots().has(Number(this.store.selectedCasterSlot)) && !this.store.controlsLocked();
+          const cooldown = this.store.skillCooldown(selected, skill);
+          return cooldown <= 0 && !this.store.statusBlocksSkill(selected, skill) && this.store.skillFit(skill, selected).ok && !this.store.queuedSlots().has(Number(this.store.selectedCasterSlot)) && !this.store.controlsLocked();
         }).length;
         this.portrait(selected, x, dockY + 16, 54, { tone, selected: true });
         this.text(x + 66, dockY + 15, shortText(selected.name, 24), { fontSize: '16px', fontStyle: '900' });

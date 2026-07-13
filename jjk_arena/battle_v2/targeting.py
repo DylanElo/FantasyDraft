@@ -96,7 +96,13 @@ def invulnerability_blocks_skill(target: CharacterState, skill: SkillSpec, actio
     if not invulnerable_statuses:
         return False
 
-    return not skill_bypasses_invulnerability(skill, target)
+    if skill_bypasses_invulnerability(skill, target):
+        return False
+    if any(status.payload.get("invulnerable_to_all", False) for status in invulnerable_statuses):
+        return True
+    if skill_is_harmful_to_target(skill, action, target_player_id):
+        return True
+    return any(status.payload.get("invulnerable_to_helpful", False) for status in invulnerable_statuses)
 
 
 def validate_target_rule(
@@ -115,6 +121,8 @@ def validate_target_rule(
         return target_player_id, []
 
     slots = action_target_slots(action)
+    if len(slots) != len(set(slots)):
+        raise TargetingError("duplicate target slots are not allowed")
     if rule.kind in {"enemy_team", "ally_team", "team"} and not slots:
         slots = list(target_player.active_slots)
 

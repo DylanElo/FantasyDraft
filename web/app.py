@@ -138,14 +138,15 @@ def clean_v2_actions(value) -> list[dict]:
                 clamp_int(slot, 0, 2)
                 for slot in raw.get("target_slots", [])[:3]
             ] if isinstance(raw.get("target_slots", []), list) else [],
+            "secondary_target_slot": None if raw.get("secondary_target_slot") is None else clamp_int(raw.get("secondary_target_slot"), 0, 2),
+            "alternate_target_player_id": None if raw.get("alternate_target_player_id") is None else CONTROL_RE.sub("", str(raw.get("alternate_target_player_id", "")).strip())[:64],
+            "alternate_target_slot": None if raw.get("alternate_target_slot") is None else clamp_int(raw.get("alternate_target_slot"), 0, 2),
             "wildcard_pays": [
                 CONTROL_RE.sub("", str(energy).strip().lower())[:8]
                 for energy in raw.get("wildcard_pays", [])[:3]
             ] if isinstance(raw.get("wildcard_pays", []), list) else [],
             "queue_index": clamp_int(raw.get("queue_index", len(actions)), 0, 2, default=len(actions)),
         }
-        if not action["id"]:
-            action.pop("id")
         actions.append(action)
     return actions
 

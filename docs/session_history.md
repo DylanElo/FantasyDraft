@@ -167,3 +167,48 @@ Caution / next work:
 Superseded by later work:
 
 - The July 8 pass removed remaining legacy/v1 surfaces and made Battle v2 the only maintained path.
+
+## 2026-07-12 - Persistent Codex project memory
+
+What changed:
+
+- Added root `AGENTS.md` with cross-project product, gameplay, roster, UI/UX, scope, and verification rules.
+- Added `jjk_arena/battle_v2/AGENTS.md` with authoritative engine invariants and high-risk starter regressions.
+- Added `web/static/phaser/AGENTS.md` with the mobile redesign constitution and client/server parity rules.
+- Added `docs/CODEX_PROJECT_MEMORY.md` as the canonical durable record of decisions agreed across design sessions.
+
+Purpose:
+
+- Ensure Codex reloads the project’s agreed constraints on every task instead of relying on chat history.
+- Reduce design drift, repeated rediscovery, and accidental scope expansion.
+
+Verification:
+
+- Instruction file byte sizes were checked against Codex’s default combined project-instruction limit.
+- The repository instruction chain can be verified with `codex --ask-for-approval never "Summarize the current instructions."` from the repository root and from the relevant nested directory.
+
+Caution:
+
+- `AGENTS.md` is the enforceable concise layer; `docs/CODEX_PROJECT_MEMORY.md` is the detailed canonical memory.
+- Open decisions in the memory document still require explicit user approval rather than autonomous resolution.
+
+## 2026-07-12 - Battle v2 authoritative validation hardening
+
+What changed:
+
+- Bound every live caster to declared base skill slots and resolved active replacements only from those slots.
+- Rejected foreign/replacement-only skill IDs, empty or duplicate action IDs, incomplete/duplicate queue order, and duplicate or misordered primary/secondary targets.
+- Preserved secondary and alternate redirect fields through the real SocketIO cleaner.
+- Added explicit `Melee` and `Ranged` tags; melee counters no longer treat all Physical skills as melee.
+- Deferred explicitly marked one-shot damage-buff consumption until the complete skill finishes, preserved persistent damage bonuses, corrected helpful/hostile status families, and emitted configured invisible-expiry reveals.
+- Added an isolated server-authoritative Planning/Queue Review timer policy module and manager timeout transitions.
+
+Verification:
+
+- Full pytest, Python compilation, and `git diff --check` passed in the clean PR worktree.
+- Socket integration coverage traverses Phaser-style payloads through the cleaner, manager, and resolver for Todo and Junpei.
+
+Caution / next work:
+
+- Timer deadlines are authoritative and serialized; production scheduling may poll `expire_phase_if_needed` or invoke it through normal manager/socket entry points.
+- No Phaser layout, roster, progression, damage-family aggregation, or anti-domain behavior changed.

@@ -476,3 +476,28 @@ No roster, kit, balance, mission, progression, or visual feature changed.
 This is server-authoritative lifecycle/socket logic with no new UI surface,
 so no browser/manual pass was performed — the socket-layer tests are the
 meaningful verification here.
+
+## 2026-07-13 - Phase 4 exit gate: lifecycle stress test
+
+Added `jjk_arena/battle_v2/lifecycle_stress.py`, a simulated-network stress
+harness (see `docs/battle_v2_lifecycle_stress_contract.md`) that drives the
+real Socket.IO handlers through randomized `clean_finish` /
+`disconnect_reconnect` / `disconnect_forfeit` / `rematch_spam` /
+`code_reuse_race` scenarios and checks the Phase 4 lifecycle invariants after
+every match. This is the roadmap's own named exit gate for Phase 4: "1,000
+simulated network matches produce 0 softlocks."
+
+Ran two independent 1,000-match batches (`--seed 1` and `--seed 2`):
+`softlock_count: 0` on both, ~40s wall time each. Added
+`tests/test_battle_v2_lifecycle_stress.py` (100-match batch, ~4s) as a
+permanent regression guard so this doesn't silently regress; it clears all
+lobby/session/rematch global state before and after itself to avoid leaking
+into other test files.
+
+Verification: `python -m pytest -q` — 318 passed, 1 skipped;
+`python -m compileall -q jjk_arena web/app.py`. Per the roadmap's own Phase 4
+exit-gate checklist, this closes the last outstanding item — all 7 named
+lifecycle bugs are fixed and the 1,000-match soak requirement is met. Phase 4
+("PvP fiable") is now considered done at the engine/lifecycle level; balance,
+AI quality, and mobile UX polish remain separate, later milestones (see
+Milestone B/C in the project roadmap).

@@ -1,7 +1,7 @@
-import { COLORS, LOCAL_PORTRAIT_FILES, TOKEN_MOTION, TOKEN_TYPE } from '../core/runtime-config.js?v=19';
-import { LayoutService } from '../core/layout-service.js?v=19';
-import { firstCreationRoster, imageKeyFor, portraitFileFor } from '../core/roster.js?v=19';
-import { BaseScene } from './base-scene.js?v=19';
+import { COLORS, LOCAL_PORTRAIT_FILES, TOKEN_MOTION, TOKEN_TYPE } from '../core/runtime-config.js?v=20';
+import { LayoutService } from '../core/layout-service.js?v=20';
+import { firstCreationRoster, imageKeyFor, portraitFileFor } from '../core/roster.js?v=20';
+import { BaseScene } from './base-scene.js?v=20';
 
 export class BootScene extends BaseScene {
     constructor() {
@@ -96,7 +96,7 @@ export class BootScene extends BaseScene {
       }).setOrigin(0.5, 0);
       this.mono(cx, cy + 108, 'DRAFT A TRIO / READ THE TECHNIQUE / BREAK THE DOMAIN', {
         color: COLORS.paperText,
-        fontSize: '8px',
+        fontSize: '10px',
       }).setOrigin(0.5, 0);
 
       const meterW = Math.min(frame.width - 92, 280);
@@ -107,8 +107,8 @@ export class BootScene extends BaseScene {
         trackAlpha: 0.92,
         fillAlpha: 0.72,
       });
-      this.mono(cx, meterY + 22, 'OPENING DOMAIN', { color: COLORS.text, fontSize: '9px' }).setOrigin(0.5, 0);
-      this.mono(cx, meterY + 46, 'TAP TO ENTER', { color: COLORS.dim, fontSize: '8px' }).setOrigin(0.5, 0);
+      this.mono(cx, meterY + 22, 'OPENING DOMAIN', { color: COLORS.text, fontSize: '10px' }).setOrigin(0.5, 0);
+      this.mono(cx, meterY + 46, 'TAP TO ENTER', { color: COLORS.dim, fontSize: '10px' }).setOrigin(0.5, 0);
 
       this.tweens.add({
         targets: sigil,

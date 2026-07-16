@@ -1,6 +1,6 @@
-import { COLORS, TOKEN_TYPE } from '../core/runtime-config.js?v=19';
-import { clamp, shortText } from '../core/text.js?v=19';
-import { DraftScene } from './draft-scene.js?v=19';
+import { COLORS, TOKEN_TYPE } from '../core/runtime-config.js?v=20';
+import { clamp, shortText } from '../core/text.js?v=20';
+import { DraftScene } from './draft-scene.js?v=20';
 
 export class FirstCreationScene extends DraftScene {
     constructor() {
@@ -11,23 +11,23 @@ export class FirstCreationScene extends DraftScene {
       const x = frame.x + frame.gutter;
       const slotW = (frame.width - 64) / 3;
       const ready = this.store.playerTeam.length;
-      this.railLabel(x, y - 18, `CHOOSE YOUR FIRST TRIO ${ready}/3`, COLORS.ally, { color: ready === 3 ? '#b7dbc0' : COLORS.paperText, fontSize: '9px' });
+      this.railLabel(x, y - 18, `CHOOSE YOUR FIRST TRIO ${ready}/3`, COLORS.ally, { color: ready === 3 ? '#b7dbc0' : COLORS.paperText });
       [0, 1, 2].forEach((index) => {
         const id = this.store.playerTeam[index];
         const sx = x + index * (slotW + 8);
         this.platePanel(sx, y, slotW, 76, id ? COLORS.ally : COLORS.line, { alpha: id ? 0.84 : 0.52 });
-        this.mono(sx + 8, y + 7, `S${index + 1}`, { color: id ? COLORS.text : COLORS.dim, fontSize: '8px' });
+        this.mono(sx + 8, y + 7, `S${index + 1}`, { color: id ? COLORS.text : COLORS.dim, fontSize: '9px' });
         if (id) {
           const character = this.store.character(id);
           this.platePortrait(character, sx + slotW / 2 - 19, y + 7, 38, { tone: COLORS.ally });
           this.text(sx + slotW / 2, y + 48, character.name, {
-            fontSize: '9px',
+            fontSize: '10px',
             fontStyle: '800',
             align: 'center',
             wordWrap: { width: slotW - 12 },
           }).setOrigin(0.5, 0);
         } else {
-          this.mono(sx + slotW / 2, y + 31, 'OPEN SLOT', { color: COLORS.dim, fontSize: '8px' }).setOrigin(0.5, 0);
+          this.mono(sx + slotW / 2, y + 31, 'OPEN SLOT', { color: COLORS.dim, fontSize: '10px' }).setOrigin(0.5, 0);
         }
       });
     }
@@ -61,14 +61,14 @@ export class FirstCreationScene extends DraftScene {
         fontSize: '18px',
         fontStyle: '900',
       });
-      this.mono(x + 16, y + 41, mission ? shortText(mission.title, 33) : 'Starter route ready', { color: COLORS.paperText, fontSize: '9px' });
+      this.mono(x + 16, y + 41, mission ? shortText(mission.title, 33) : 'Starter route ready', { color: COLORS.paperText, fontSize: '10px' });
       this.progressRail(x + 16, y + 59, frame.width - 172, 8, pct, COLORS.selection);
-      this.mono(x + frame.width - 174, y + 58, `${completed}/${total} ROUTES`, { color: COLORS.text, fontSize: '7px' });
+      this.mono(x + frame.width - 174, y + 58, `${completed}/${total} ROUTES`, { color: COLORS.text, fontSize: '9px' });
       this.button(x + frame.width - 138, y + 22, 104, 34, 'Mission Map', () => this.store.changeScene('MissionMapScene'), {
         fill: COLORS.surfaceRaised,
         stroke: COLORS.selection,
         mono: true,
-        fontSize: '9px',
+        fontSize: '10px',
       });
     }
 
@@ -106,11 +106,11 @@ export class FirstCreationScene extends DraftScene {
         this.button(x + frame.width - 100, y - 12, 68, 28, `Set ${this.store.creationPresetPage + 1}`, () => {
           this.store.creationPresetPage = this.store.creationPresetPage >= presetMax ? 0 : this.store.creationPresetPage + 1;
           this.store.notify();
-        }, { fill: COLORS.surfaceRaised, stroke: COLORS.selection, mono: true, fontSize: '8px' });
+        }, { fill: COLORS.surfaceRaised, stroke: COLORS.selection, mono: true, fontSize: '10px' });
       }
 
       y += presetPageSize > 2 ? 166 : 94;
-      this.mono(x, y, 'TAP A DOSSIER TO INSPECT SKILLS', { color: COLORS.text, fontSize: '8px' });
+      this.mono(x, y, 'TAP A DOSSIER TO INSPECT SKILLS', { color: COLORS.text, fontSize: '10px' });
       const roster = this.store.rosterEntries();
       const pageSize = frame.height < 790 ? 4 : 6;
       const pageMax = Math.max(0, Math.ceil(roster.length / pageSize) - 1);
@@ -127,12 +127,12 @@ export class FirstCreationScene extends DraftScene {
       this.button(x, navY, 70, 34, 'Prev', () => {
         this.store.draftPage = Math.max(0, this.store.draftPage - 1);
         this.store.notify();
-      }, { disabled: this.store.draftPage === 0, fill: COLORS.surfaceRaised, mono: true, fontSize: '9px' });
-      this.mono(x + 86, navY + 11, `Roster ${this.store.draftPage + 1}/${pageMax + 1}`, { color: COLORS.muted, fontSize: '9px' });
+      }, { disabled: this.store.draftPage === 0, fill: COLORS.surfaceRaised, mono: true, fontSize: '10px' });
+      this.mono(x + 86, navY + 11, `Roster ${this.store.draftPage + 1}/${pageMax + 1}`, { color: COLORS.muted, fontSize: '10px' });
       this.button(x + frame.width - 102, navY, 70, 34, 'Next', () => {
         this.store.draftPage = Math.min(pageMax, this.store.draftPage + 1);
         this.store.notify();
-      }, { disabled: this.store.draftPage === pageMax, fill: COLORS.surfaceRaised, mono: true, fontSize: '9px' });
+      }, { disabled: this.store.draftPage === pageMax, fill: COLORS.surfaceRaised, mono: true, fontSize: '10px' });
 
       const ready = this.store.playerTeam.length === 3;
       this.button(x, frame.height - 58, frame.width - 32, 42, ready ? 'Enter Domain' : `Choose ${3 - this.store.playerTeam.length} More`, () => this.store.startMatch(), {

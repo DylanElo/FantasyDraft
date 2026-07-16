@@ -2,9 +2,9 @@
   'use strict';
 
   const colors = {
-    voidBlack: '#030303',
-    inkBlack: '#08080A',
-    surfaceDeep: '#111111',
+    voidBlack: '#0B0C10',
+    inkBlack: '#101114',
+    surfaceDeep: '#16171B',
     surfaceRaised: '#181715',
     surfaceLine: '#3A3327',
     talismanPaper: '#D8C28A',
@@ -19,15 +19,15 @@
     focusIvory: '#EDE9D5',
     textMain: '#F4EFE1',
     textMuted: '#A39A86',
-    textDim: '#6F675A',
+    textDim: '#8C8371',
   };
 
   window.JJK_MOBILE_TOKENS = {
     colors,
     phaserColors: {
-      voidBlack: 0x030303,
-      inkBlack: 0x08080a,
-      surfaceDeep: 0x111111,
+      voidBlack: 0x0b0c10,
+      inkBlack: 0x101114,
+      surfaceDeep: 0x16171b,
       surfaceRaised: 0x181715,
       surfaceLine: 0x3a3327,
       talismanPaper: 0xd8c28a,
@@ -40,7 +40,7 @@
       bodyGreen: 0x4fb06d,
       techniqueBlue: 0x3d6bff,
       focusIvory: 0xede9d5,
-      textDim: 0x6f675a,
+      textDim: 0x8c8371,
     },
     energy: {
       body: { label: 'B', key: 'green', color: colors.bodyGreen, phaser: 0x4fb06d },

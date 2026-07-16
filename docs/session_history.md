@@ -1624,3 +1624,106 @@ Verification: `python -m pytest -q` — 407 passed, 1 skipped (test count
 unchanged from the prior entry; only the `?v=19` literals moved).
 `python -m compileall -q jjk_arena web run_server.py` and `node --check`
 on `boot-scene.js` both clean.
+
+## 2026-07-16 - Legibility, layout-overflow, and portrait-art pass
+
+User feedback: "the ui is impractical unreadable and too dark, borderline
+doesn't look like a game." Diagnosed live (real Chrome) and in code before
+touching anything, per plan mode — not a Phaser limitation, three
+independent root causes in this codebase's own token/scene choices:
+
+1. A genuine layout-overflow bug in `draft-scene.js`, not just an
+   aesthetic complaint: at real short viewport heights, the "Prev/Next"
+   pager and "Ignite Battle" CTA visually overlapped the roster cards. It
+   stacked fixed pixel `y +=` offsets regardless of `frame.height`, unlike
+   `combat-scene.js`, which budgets against `frame.height` via
+   `layout-service.js`. No scroll/mask primitive exists anywhere in the
+   codebase.
+2. Pervasive tiny text: 94 of 155 literal `fontSize:` values across every
+   scene (including `combat-scene.js` itself) were ≤9px, several as small
+   as 6px (`dossierHeader`'s eyebrow, `dossierTag`/`costPips`/`railLabel`
+   defaults). `COLORS.dim` (`#6F675A`) measured ~3.75:1 contrast against
+   the near-black backgrounds it sat on — below WCAG AA's 4.5:1 minimum.
+3. 12 of the 19 First Creation starters had no portrait art at all and
+   silently fell back to a plain initials-in-a-box tile. The 7 existing
+   portraits turned out to be simple procedural SVGs (radial gradient +
+   silhouette + glowing monogram + name label), not licensed art, so
+   generating 12 more in the same style was achievable this pass — unlike
+   environment art, which stays out of scope for lack of real assets.
+
+Mid-investigation, an Explore agent (run without an explicit path
+override) reported the OLD pre-unification shape of `base-scene.js` —
+it had defaulted to this session's own stale worktree
+(`.claude/worktrees/hungry-kapitsa-3a5188`, still on branch
+`claude/where-are-we-a5ac4a` at the pre-merge commit), not the root
+checkout on `main`. Caught by cross-checking `git log`/`git branch`
+directly in both locations before trusting the report — the same class of
+mistake flagged earlier this session, now doubly confirmed as a recurring
+trap. All further work targeted the root checkout explicitly.
+
+**Fixes, same visual identity throughout (gold/teal/violet dossier
+palette, angular cut corners) — not a redesign:**
+
+- `web/static/phaser-design-tokens.js`: brightened `textDim` from
+  `#6F675A` (3.75:1) to `#8C8371` (~5.5:1, computed via the WCAG relative-
+  luminance formula, not eyeballed); nudged `voidBlack`/`inkBlack`/
+  `surfaceDeep` up slightly for gradient depth. Cascades automatically
+  through `runtime-config.js`'s `COLORS` derivation.
+- `base-scene.js`: removed `dossierHeader`'s 6px eyebrow branch (floored
+  at 10px); raised `dossierTag`/`costPips`/`railLabel` defaults from 7px
+  to 9-10px; widened `dossierTag`'s chip-width formula to match.
+- Swept literal 6-9px `fontSize` values up to a 9-10px floor across every
+  scene file. Combat's own HUD (68px header, tiny energy-meter/queue-slot
+  circles) got a more conservative bump (6→7/8px, 7→9px) to avoid
+  introducing new collisions in its already-tight, already-shipped
+  layout — verified live afterward with zero new overlaps.
+- Rebuilt `draft-scene.js`'s `render()` to budget against `frame.height`
+  bottom-up (footer/nav reserved first, roster-grid row count derived
+  from whatever space is actually left) instead of fixed summed offsets —
+  this is what actually fixes the overlap. Found and fixed a second,
+  related bug while doing this: `renderRosterCard`'s own internal content
+  (in `draft-roster-scene.js`) uses fixed offsets up to ~86px regardless
+  of the `h` it's given, so an earlier version of this fix that shrank
+  card height to fit tight spaces caused the card's own skill-preview
+  text to spill out past its drawn edge. Fixed by never shrinking card
+  height below its safe minimum (90px) and instead adding an
+  `ultraCompact` tier (`frame.height < 700`) that drops the mission-
+  preview panel first to free real space — verified clean at both a
+  638px and a 932px (frame-patched) height, CPU and PvP mode both.
+- Auditing the other scenes at short viewport height caught a real,
+  pre-existing overlap in `mission-map-scene.js`: fixed 142px mission
+  cards put the "RECOMMENDED TEAM" label only 1px below the second
+  objective line. Fixed by growing card height to 190px (row spacing to
+  204px) — arithmetic checked against both compact (1 card/page) and
+  spacious (2 cards/page) heights before landing on the number.
+- Generated 12 new procedural portrait SVGs (`web/static/assets/
+  portraits/`) matching the existing style, for `junpei_yoshino`,
+  `kasumi_miwa`, `kokichi_muta_mechamaru`, `mai_zenin`, `mei_mei_young`,
+  `momo_nishimiya`, `noritoshi_kamo`, `panda`, `shoko_ieiri_young`,
+  `suguru_geto_young`, `toge_inumaki`, `utahime_iori_young`, each with a
+  distinct thematic color. Registered them in `runtime-config.js`'s
+  `LOCAL_PORTRAIT_FILES` set (their filenames already match
+  `portraitFileFor()`'s default fallback pattern, so `roster.js` needed
+  no changes). This surfaced a genuine, previously-invisible engine
+  limit: Phaser's Loader silently stalled at exactly 32/39 queued assets
+  (`scene.load.totalComplete`/`totalToLoad`, 0 reported failures) once
+  the portrait count crossed Phaser's default `maxParallelDownloads: 32`
+  — the 7-portrait roster never exercised this before. Fixed by setting
+  `loader: { maxParallelDownloads: 64 }` in the `Phaser.Game` config
+  (`web/static/phaser/legacy-shell.js`). Confirmed all 39/39 assets now
+  load and all 19 First Creation characters render real portrait art
+  instead of initials fallbacks.
+
+Version bumped `?v=19` → `?v=20` in the usual lockstep (every Phaser file,
+`SHELL_VERSION`, both `index.html` script tags); fixed the resulting stale
+`?v=19` literals in `tests/test_app.py` (same recurring class of fix as
+the two prior version bumps this session).
+
+Verification: `python -m pytest -q` — 407 passed, 1 skipped (unchanged
+count; no server-side logic touched). `python -m compileall -q jjk_arena
+web run_server.py` and `node --check` on every touched JS file clean.
+Live-verified in real Chrome across Lobby, Draft (CPU and PvP mode),
+Combat, Queue Review, Skill Detail sheet, Mission Map, Records, and
+Result at this environment's real ~638-695px window plus a frame-patched
+932px simulation — zero overlaps, zero console errors throughout the
+whole pass (checked via `read_console_messages` after the final reload).

@@ -1,6 +1,6 @@
-import { COLORS } from '../core/runtime-config.js?v=19';
-import { shortText, titleize } from '../core/text.js?v=19';
-import { BaseScene } from './base-scene.js?v=19';
+import { COLORS } from '../core/runtime-config.js?v=20';
+import { shortText, titleize } from '../core/text.js?v=20';
+import { BaseScene } from './base-scene.js?v=20';
 
 export class DraftRosterScene extends BaseScene {
     renderRosterCard(character, x, y, w, h, teamKey) {
@@ -13,9 +13,9 @@ export class DraftRosterScene extends BaseScene {
         fontStyle: '800',
         wordWrap: { width: w - 78 },
       });
-      this.mono(x + 68, y + 40, shortText(character.role || 'Fighter', 23), { fontSize: '8px', color: COLORS.text });
+      this.mono(x + 68, y + 40, shortText(character.role || 'Fighter', 23), { fontSize: '10px', color: COLORS.text });
       this.mono(x + 10, y + 72, ((character.skills || [])[0] || {}).name || 'Skill kit', {
-        fontSize: '9px',
+        fontSize: '10px',
         color: selected ? COLORS.paperText : COLORS.muted,
       });
       if (selected) {
@@ -33,7 +33,7 @@ export class DraftRosterScene extends BaseScene {
       this.text(x + 12, y + 27, mission.title || mission.id, { fontSize: '13px', fontStyle: '900' });
       this.mono(x + 12, y + 50, (mission.objectives || []).slice(0, 2).join(' / ') || mission.description || 'Win the domain.', {
         color: COLORS.text,
-        fontSize: '8px',
+        fontSize: '10px',
       });
       return 88;
     }
@@ -49,7 +49,7 @@ export class DraftRosterScene extends BaseScene {
       const tags = (skill.classes || []).slice(0, 2).map((tag) => titleize(tag)).join(' / ');
       this.mono(x + 10, y + 36, `${titleize((skill.target_rule && skill.target_rule.kind) || 'enemy')} - ${shortText(tags || 'Technique', 34)}`, {
         color: COLORS.text,
-        fontSize: '8px',
+        fontSize: '10px',
       });
     }
 
@@ -66,10 +66,10 @@ export class DraftRosterScene extends BaseScene {
       });
 
       this.platePortrait(character, content.x, content.y, 64, { tone, selected });
-      this.mono(content.x + 76, content.y + 4, shortText(character.role || 'Starter sorcerer', 36), { color: COLORS.text, fontSize: '9px' });
+      this.mono(content.x + 76, content.y + 4, shortText(character.role || 'Starter sorcerer', 36), { color: COLORS.text, fontSize: '10px' });
       this.mono(content.x + 76, content.y + 22, `${titleize(character.difficulty || 'Medium')} / ${titleize(character.era || 'Student Era')}`, {
         color: COLORS.paperText,
-        fontSize: '8px',
+        fontSize: '10px',
       });
 
       let tagX = content.x;
@@ -78,7 +78,7 @@ export class DraftRosterScene extends BaseScene {
         tagX += tagW + 8;
       });
 
-      this.mono(content.x, content.y + 106, 'TECHNIQUE DOSSIER', { color: COLORS.paperText, fontSize: '9px' });
+      this.mono(content.x, content.y + 106, 'TECHNIQUE DOSSIER', { color: COLORS.paperText, fontSize: '10px' });
       (character.skills || []).slice(0, 3).forEach((skill, index) => {
         this.renderDetailSkillRow(skill, content.x, content.y + 122 + index * 58, content.w);
       });
@@ -112,11 +112,11 @@ export class DraftRosterScene extends BaseScene {
         fontStyle: '900',
         wordWrap: { width: w - 76 },
       });
-      this.mono(x + 68, y + 43, shortText(character.role || 'Starter', 24), { color: COLORS.text, fontSize: '8px' });
+      this.mono(x + 68, y + 43, shortText(character.role || 'Starter', 24), { color: COLORS.text, fontSize: '10px' });
       this.costPips(x + 18, y + h - 16, (((character.skills || [])[0] || {}).cost || []), 11);
       this.mono(x + 68, y + h - 22, shortText(((character.skills || [])[0] || {}).name || 'Technique', 21), {
         color: selected ? COLORS.paperText : COLORS.muted,
-        fontSize: '8px',
+        fontSize: '10px',
       });
       if (selected) this.dossierTag(x + w - 56, y + 18, 'TRIO', COLORS.selection);
       this.buttons.push({ x, y, w, h, label: `Inspect ${character.name}`, onClick: () => this.store.openCharacterDetail(character.id) });

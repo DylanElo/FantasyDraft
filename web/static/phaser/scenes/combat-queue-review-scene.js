@@ -1,6 +1,6 @@
-import { COLORS, CORE_ENERGY, ENERGY_COLORS, ENERGY_LABELS, TOKEN_TYPE } from '../core/runtime-config.js?v=19';
-import { shortText } from '../core/text.js?v=19';
-import { CombatPlaybackScene } from '../fx/combat-playback-scene.js?v=19';
+import { COLORS, CORE_ENERGY, ENERGY_COLORS, ENERGY_LABELS, TOKEN_TYPE } from '../core/runtime-config.js?v=20';
+import { shortText } from '../core/text.js?v=20';
+import { CombatPlaybackScene } from '../fx/combat-playback-scene.js?v=20';
 
 export class CombatQueueReviewScene extends CombatPlaybackScene {
     actionMeta(action) {
@@ -45,7 +45,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         this.graphics.strokeCircle(cx, y, 5.5);
         this.mono(cx, y - 4, ENERGY_LABELS[color] || '?', {
           color: color === 'white' ? '#08080a' : COLORS.text,
-          fontSize: '6px',
+          fontSize: '7px',
         }).setOrigin(0.5, 0);
       });
     }
@@ -90,7 +90,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
       ], true);
       this.mono(x + 21, rowY + 15, `Q${index + 1}`, {
         color: '#07090a',
-        fontSize: '8px',
+        fontSize: '9px',
         fontStyle: '700',
       }).setOrigin(0.5, 0);
 
@@ -101,16 +101,16 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
       });
       this.mono(x + 46, rowY + 26, `CASTER / ${shortText(meta.caster ? meta.caster.name : 'Unknown', 18).toUpperCase()}`, {
         color: COLORS.paperText,
-        fontSize: '7px',
+        fontSize: '9px',
       });
       this.mono(x + 46, rowY + 40, `TARGET / ${shortText(meta.targetName, 20).toUpperCase()}`, {
         color: COLORS.text,
-        fontSize: '7px',
+        fontSize: '9px',
       });
       if (meta.secondaryName || meta.alternateName) {
         this.mono(x + 46, rowY + 54, shortText(meta.secondaryName ? `SECOND / ${meta.secondaryName}` : `FALLBACK / ${meta.alternateName}`, 31).toUpperCase(), {
           color: COLORS.muted,
-          fontSize: '6px',
+          fontSize: '8px',
         });
       } else {
         this.renderCostOrbs(x + 50, rowY + 61, meta.cost, 5);
@@ -137,10 +137,10 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
 
       const wildCount = meta.cost.filter((color) => color === 'black').length;
       if (!wildCount) {
-        this.mono(x + rowW - 102, rowY + 58, 'FIXED COST', { color: COLORS.dim, fontSize: '6px' });
+        this.mono(x + rowW - 102, rowY + 58, 'FIXED COST', { color: COLORS.dim, fontSize: '8px' });
         return;
       }
-      this.mono(x + rowW - 112, rowY + 49, 'WILD PAY', { color: COLORS.paperText, fontSize: '6px' });
+      this.mono(x + rowW - 112, rowY + 49, 'WILD PAY', { color: COLORS.paperText, fontSize: '8px' });
       for (let wildIndex = 0; wildIndex < wildCount; wildIndex += 1) {
         const pay = (this.store.actionWildPays[action.id] || [])[wildIndex] || 'black';
         this.button(x + rowW - 64 + wildIndex * 32, rowY + 45, 28, 24, ENERGY_LABELS[pay] || 'X', () => this.store.cycleWildcardPay(action.id, wildIndex), {
@@ -201,7 +201,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
 
       this.mono(x + 18, sheetY + 17, 'BATTLEFIELD COMMAND / RESOLUTION', {
         color: COLORS.paperText,
-        fontSize: '7px',
+        fontSize: '9px',
         fontStyle: '700',
       });
       this.text(x + 18, sheetY + 33, 'Resolution Order', {
@@ -211,7 +211,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
       });
       this.mono(x + 20, sheetY + 62, 'ORDERS RESOLVE FROM Q1 TO Q3', {
         color: COLORS.muted,
-        fontSize: '7px',
+        fontSize: '9px',
       });
 
       const me = this.store.me();
@@ -225,7 +225,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         this.graphics.fillCircle(cx, sheetY + 38, 6.2);
         this.graphics.lineStyle(1, color === 'white' ? COLORS.talismanPaper : ENERGY_COLORS[color], count ? 0.78 : 0.3);
         this.graphics.strokeCircle(cx, sheetY + 38, 8.3);
-        this.mono(cx, sheetY + 49, String(count), { color: COLORS.text, fontSize: '7px' }).setOrigin(0.5, 0);
+        this.mono(cx, sheetY + 49, String(count), { color: COLORS.text, fontSize: '8px' }).setOrigin(0.5, 0);
       });
 
       const rowW = sheetW - 40;
@@ -242,7 +242,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
       this.graphics.strokePath();
       this.mono(x + 20, summaryY + 10, queueFit.ok ? 'ENERGY COMMITMENT VALID' : shortText(queueFit.reason, 46).toUpperCase(), {
         color: queueFit.ok ? '#b7dbc0' : '#f1a0a0',
-        fontSize: '7px',
+        fontSize: '9px',
         fontStyle: '700',
       });
 
@@ -251,14 +251,14 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         fill: 0x080b0e,
         stroke: COLORS.enemy,
         mono: true,
-        fontSize: '8px',
+        fontSize: '10px',
         radius: 3,
       });
       this.button(x + 100, footerY, 68, 36, 'Back', () => this.store.closeQueueReview(), {
         fill: 0x080b0e,
         stroke: COLORS.line,
         mono: true,
-        fontSize: '8px',
+        fontSize: '10px',
         radius: 3,
       });
       this.button(right - 146, footerY, 134, 36, this.store.queueSubmitting ? 'Resolving' : 'Confirm Queue', () => this.store.confirmQueue(), {
@@ -267,7 +267,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         stroke: COLORS.talismanPaper,
         color: '#08080a',
         mono: true,
-        fontSize: '8px',
+        fontSize: '10px',
         radius: 3,
         disabled: this.store.queueSubmitting || !queueFit.ok,
       });

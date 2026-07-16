@@ -1,7 +1,7 @@
-import { COLORS, TOKEN_TYPE } from '../core/runtime-config.js?v=19';
-import { safeText, shortText } from '../core/text.js?v=19';
-import { eventAmount } from '../fx/event-metrics.js?v=19';
-import { BaseScene } from './base-scene.js?v=19';
+import { COLORS, TOKEN_TYPE } from '../core/runtime-config.js?v=20';
+import { safeText, shortText } from '../core/text.js?v=20';
+import { eventAmount } from '../fx/event-metrics.js?v=20';
+import { BaseScene } from './base-scene.js?v=20';
 
 export class ResultScene extends BaseScene {
     constructor() {
@@ -53,7 +53,7 @@ export class ResultScene extends BaseScene {
         : 'No route progress registered.';
       this.mono(x + 22, heroY + heroH - 29, routeLine, {
         color: victory ? '#b7dbc0' : outcome === 'loss' ? '#f1a0a0' : COLORS.muted,
-        fontSize: '9px',
+        fontSize: '10px',
       });
       const strikesY = heroY + heroH + (compact ? 16 : 26);
       const strikesH = compact ? 118 : 150;
@@ -68,8 +68,8 @@ export class ResultScene extends BaseScene {
         this.mono(x + 16, strikesY + 50, 'No strike data recorded.', { color: COLORS.muted });
       } else {
         strikes.forEach((event, index) => {
-          this.mono(x + 16, strikesY + 48 + index * (compact ? 21 : 26), safeText(event.message).slice(0, 44), { color: COLORS.text, fontSize: '9px' });
-          this.mono(x + frame.width - 86, strikesY + 48 + index * (compact ? 21 : 26), `${event.amount} DMG`, { color: '#f1a0a0', fontSize: '9px' });
+          this.mono(x + 16, strikesY + 48 + index * (compact ? 21 : 26), safeText(event.message).slice(0, 44), { color: COLORS.text, fontSize: '10px' });
+          this.mono(x + frame.width - 86, strikesY + 48 + index * (compact ? 21 : 26), `${event.amount} DMG`, { color: '#f1a0a0', fontSize: '10px' });
         });
       }
       const mission = this.store.activeMission();
@@ -79,13 +79,13 @@ export class ResultScene extends BaseScene {
       const missionY = strikesY + strikesH + (compact ? 14 : 22);
       const missionH = compact ? 108 : 116;
       this.platePanel(x, missionY, frame.width - 32, missionH, COLORS.selection, { edgeBar: 'left' });
-      this.mono(x + 16, missionY + 15, 'MISSION PROGRESS', { color: COLORS.paperText, fontSize: '9px' });
+      this.mono(x + 16, missionY + 15, 'MISSION PROGRESS', { color: COLORS.paperText, fontSize: '10px' });
       this.text(x + 16, missionY + 32, shortText(mission ? mission.title : 'First Creation Progress', 34), { fontSize: '13px', fontStyle: '900' });
       this.progressRail(x + 16, missionY + 58, frame.width - 164, 8, completed / total, COLORS.selection);
-      this.mono(x + frame.width - 128, missionY + 56, `${completed}/${total} ROUTES`, { color: COLORS.text, fontSize: '8px' });
+      this.mono(x + frame.width - 128, missionY + 56, `${completed}/${total} ROUTES`, { color: COLORS.text, fontSize: '9px' });
       const unlocks = mission && mission.unlocks && mission.unlocks.length ? `Unlocks: ${mission.unlocks.join(' / ')}` : 'Progress saved to your profile.';
-      this.mono(x + 16, missionY + 78, 'REWARD CHECK', { color: COLORS.paperText, fontSize: '8px' });
-      this.mono(x + 16, missionY + 94, shortText(victory ? unlocks : 'Replay the route to clear the objective.', 58), { color: COLORS.text, fontSize: '9px' });
+      this.mono(x + 16, missionY + 78, 'REWARD CHECK', { color: COLORS.paperText, fontSize: '10px' });
+      this.mono(x + 16, missionY + 94, shortText(victory ? unlocks : 'Replay the route to clear the objective.', 58), { color: COLORS.text, fontSize: '10px' });
       this.button(x, frame.height - 120, frame.width - 32, 44, 'Rematch', () => this.store.changeScene('DraftScene'), {
         fill: COLORS.panel2,
         stroke: COLORS.ally,

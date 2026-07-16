@@ -1,7 +1,7 @@
-import { COLORS, ENERGY_COLORS, TOKEN_TYPE } from '../core/runtime-config.js?v=19';
-import { clamp, initials, shortText, titleize } from '../core/text.js?v=19';
-import { eventTone } from '../fx/event-metrics.js?v=19';
-import { CombatQueueReviewScene } from './combat-queue-review-scene.js?v=19';
+import { COLORS, ENERGY_COLORS, TOKEN_TYPE } from '../core/runtime-config.js?v=20';
+import { clamp, initials, shortText, titleize } from '../core/text.js?v=20';
+import { eventTone } from '../fx/event-metrics.js?v=20';
+import { CombatQueueReviewScene } from './combat-queue-review-scene.js?v=20';
 
 const WORLD_KEY = 'combat-underpass-night';
 const LOCATION_LINE = 'KASUMIGAOKA MUNICIPAL UNDERPASS';
@@ -134,12 +134,12 @@ export class CombatScene extends CombatQueueReviewScene {
 
       this.mono(x + 12, y + 7, LOCATION_LINE, {
         color: COLORS.paperText,
-        fontSize: frame.width < 380 ? '6px' : '7px',
+        fontSize: '9px',
         fontStyle: '700',
       });
       this.mono(x + w - 132, y + 7, '22:47 / HEAVY RAIN', {
         color: COLORS.muted,
-        fontSize: '6px',
+        fontSize: '8px',
       });
       this.text(x + 12, y + 27, `Turn ${state.turn_number || 1}`, {
         fontFamily: TOKEN_TYPE.display || 'Georgia, serif',
@@ -148,14 +148,14 @@ export class CombatScene extends CombatQueueReviewScene {
       });
       this.mono(x + 14, y + 52, statusLabel, {
         color: connectionWarning ? '#ffb3b3' : mine ? COLORS.paperText : '#f1a0a0',
-        fontSize: '7px',
+        fontSize: '9px',
         fontStyle: '700',
       });
 
       this.renderEnergyMeter(x + w - 142, y + 35, me && me.energy);
       this.mono(x + 151, y + 53, `QUEUE ${queueCount}/3`, {
         color: queueCount ? '#b7dbc0' : COLORS.dim,
-        fontSize: '7px',
+        fontSize: '9px',
       });
       for (let index = 0; index < 3; index += 1) {
         const active = index < queueCount;
@@ -194,9 +194,9 @@ export class CombatScene extends CombatQueueReviewScene {
         this.graphics.strokeCircle(cx, y, 8.5);
         this.mono(cx, y - 3.5, slot.label, {
           color: slot.color === 'white' ? '#08080a' : COLORS.text,
-          fontSize: '6px',
+          fontSize: '7px',
         }).setOrigin(0.5, 0);
-        this.mono(cx, y + 11, String(count), { color: COLORS.text, fontSize: '7px' }).setOrigin(0.5, 0);
+        this.mono(cx, y + 11, String(count), { color: COLORS.text, fontSize: '8px' }).setOrigin(0.5, 0);
       });
     }
 
@@ -337,13 +337,13 @@ export class CombatScene extends CombatQueueReviewScene {
       this.graphics.fillRect(barX, barY, barW * hpPct, 5);
 
       this.text(x + 7, y + portraitH - 25, shortText((character && character.name) || 'Down', w < 110 ? 14 : 17), {
-        fontSize: w < 110 ? '8px' : '9px',
+        fontSize: w < 110 ? '9px' : '10px',
         fontStyle: '800',
         color: dead ? COLORS.dim : COLORS.text,
       });
       this.mono(x + 7, y + portraitH - 10, dead ? 'DOWN' : `${hp}/${maxHp}`, {
         color: dead ? COLORS.dim : COLORS.paperText,
-        fontSize: '7px',
+        fontSize: '9px',
       });
 
       const stateLabel = queuedIndex >= 0
@@ -366,7 +366,7 @@ export class CombatScene extends CombatQueueReviewScene {
         ], true);
         this.mono(x + 9, y - 3, stateLabel, {
           color: protectedTarget ? COLORS.text : '#07090a',
-          fontSize: '7px',
+          fontSize: '9px',
           fontStyle: '700',
         });
       }
@@ -396,7 +396,7 @@ export class CombatScene extends CombatQueueReviewScene {
         this.graphics.fillRect(sx - 5, y + 7, 10, 10);
         this.mono(sx, y + 7.5, shortText(status.name || status.id, 1).toUpperCase(), {
           color: '#ffffff',
-          fontSize: '6px',
+          fontSize: '8px',
         }).setOrigin(0.5, 0);
       });
 
@@ -417,7 +417,7 @@ export class CombatScene extends CombatQueueReviewScene {
       const tone = side === 'enemy' ? COLORS.enemy : COLORS.ally;
       this.mono(layout.contentX + 2, y - 20, label, {
         color: side === 'enemy' ? '#e9a0a0' : '#9fe0d4',
-        fontSize: '7px',
+        fontSize: '9px',
         fontStyle: '700',
       });
       this.graphics.lineStyle(1, tone, 0.42);
@@ -456,7 +456,7 @@ export class CombatScene extends CombatQueueReviewScene {
       ], true);
       this.mono(centerX, layout.fieldTop + 15, selectedSkill ? 'TARGET ACQUISITION' : 'TACTICAL DIRECTIVE', {
         color: selectedSkill ? '#9fe0d4' : COLORS.paperText,
-        fontSize: '7px',
+        fontSize: '9px',
         fontStyle: '700',
       }).setOrigin(0.5, 0);
       this.text(centerX, layout.fieldTop + 27, prompt, {
@@ -529,12 +529,12 @@ export class CombatScene extends CombatQueueReviewScene {
 
       this.mono(x + 12, y + 8, `0${index + 1}`, {
         color: selected ? COLORS.paperText : COLORS.muted,
-        fontSize: '7px',
+        fontSize: '9px',
         fontStyle: '700',
       });
       this.mono(x + 12, y + h - 17, this.store.targetLabel(skill).slice(0, 5).toUpperCase(), {
         color: disabled ? COLORS.dim : COLORS.text,
-        fontSize: '6px',
+        fontSize: '8px',
       });
       this.text(x + 40, y + 7, shortText(skill.name, w < 170 ? 20 : 23), {
         fontSize: h < 52 ? '9px' : '10px',
@@ -543,7 +543,7 @@ export class CombatScene extends CombatQueueReviewScene {
       });
       this.mono(x + 40, y + h - 18, reason, {
         color: cooldown > 0 ? '#e6b84a' : disabled ? COLORS.dim : COLORS.paperText,
-        fontSize: '7px',
+        fontSize: '9px',
       });
       this.store.adjustedCost(caster, skill).slice(0, 4).forEach((color, costIndex) => {
         const px = x + w - 13 - costIndex * 10;
@@ -553,7 +553,7 @@ export class CombatScene extends CombatQueueReviewScene {
         this.graphics.fillCircle(px, y + 13, 3.1);
       });
       if (selected) {
-        this.mono(x + w - 35, y + h - 17, 'INFO', { color: COLORS.paperText, fontSize: '6px' });
+        this.mono(x + w - 35, y + h - 17, 'INFO', { color: COLORS.paperText, fontSize: '8px' });
       }
 
       this.buttons.push({
@@ -599,7 +599,7 @@ export class CombatScene extends CombatQueueReviewScene {
         { x, y: y + 18 },
       ], true);
 
-      this.mono(x + 18, y + 18, 'TECHNIQUE DOSSIER / AUTHORITATIVE', { color: COLORS.paperText, fontSize: '8px' });
+      this.mono(x + 18, y + 18, 'TECHNIQUE DOSSIER / AUTHORITATIVE', { color: COLORS.paperText, fontSize: '10px' });
       this.text(x + 18, y + 40, skill.name, {
         fontFamily: TOKEN_TYPE.display || 'Georgia, serif',
         fontSize: '22px',
@@ -607,16 +607,16 @@ export class CombatScene extends CombatQueueReviewScene {
         wordWrap: { width: w - 88 },
       });
       this.iconButton(x + w - 52, y + 16, 38, 36, '×', () => this.store.closeSkillDetail(), { stroke: COLORS.enemy, fontSize: '14px', radius: 5 });
-      this.mono(x + 18, y + 94, `${titleize((skill.target_rule && skill.target_rule.kind) || 'enemy')} target`, { color: COLORS.text, fontSize: '9px' });
+      this.mono(x + 18, y + 94, `${titleize((skill.target_rule && skill.target_rule.kind) || 'enemy')} target`, { color: COLORS.text, fontSize: '10px' });
       this.costPips(x + 24, y + 126, adjusted, 15);
       const classLine = (skill.classes || []).map((value) => titleize(value)).join(' / ') || 'Technique';
-      this.mono(x + 18, y + 151, classLine, { color: COLORS.paperText, fontSize: '8px' });
+      this.mono(x + 18, y + 151, classLine, { color: COLORS.paperText, fontSize: '10px' });
       this.graphics.fillStyle(reason === 'Available now' ? COLORS.queued : COLORS.enemy, 0.14);
       this.graphics.fillRect(x + 18, y + 179, w - 36, 34);
       this.graphics.fillStyle(reason === 'Available now' ? COLORS.queued : COLORS.enemy, 0.84);
       this.graphics.fillRect(x + 18, y + 179, 4, 34);
-      this.mono(x + 30, y + 190, reason.toUpperCase(), { color: reason === 'Available now' ? '#b7dbc0' : '#f1a0a0', fontSize: '8px' });
-      this.mono(x + 18, y + 238, 'EFFECT', { color: COLORS.paperText, fontSize: '8px' });
+      this.mono(x + 30, y + 190, reason.toUpperCase(), { color: reason === 'Available now' ? '#b7dbc0' : '#f1a0a0', fontSize: '10px' });
+      this.mono(x + 18, y + 238, 'EFFECT', { color: COLORS.paperText, fontSize: '10px' });
       this.text(x + 18, y + 260, skill.description || this.store.effectLine(skill), {
         fontSize: '12px',
         color: COLORS.text,
@@ -638,7 +638,7 @@ export class CombatScene extends CombatQueueReviewScene {
       const count = this.store.actions.length;
       this.mono(x, y - 14, `QUEUE ${this.store.actions.length}/3`, {
         color: count ? '#b7dbc0' : COLORS.dim,
-        fontSize: '7px',
+        fontSize: '9px',
       });
       const me = this.store.me();
       [0, 1, 2].forEach((index) => {
@@ -652,12 +652,12 @@ export class CombatScene extends CombatQueueReviewScene {
         this.graphics.fillStyle(action ? COLORS.queued : COLORS.surfaceRaised, action ? 0.9 : 0.54);
         this.graphics.fillTriangle(slotX, y, slotX + 7, y - 7, slotX + 14, y);
         if (!action) {
-          this.mono(slotX + 22, y - 10, `Q${index + 1}`, { color: COLORS.dim, fontSize: '6px' });
+          this.mono(slotX + 22, y - 10, `Q${index + 1}`, { color: COLORS.dim, fontSize: '7px' });
           return;
         }
         const caster = me && me.team ? me.team[action.caster_slot] : null;
         const skill = caster ? this.store.skillFor(caster, action.skill_id) : null;
-        this.mono(slotX + 20, y - 10, shortText(skill ? skill.name : action.skill_id, 9), { color: COLORS.text, fontSize: '6px' });
+        this.mono(slotX + 20, y - 10, shortText(skill ? skill.name : action.skill_id, 9), { color: COLORS.text, fontSize: '7px' });
       });
     }
 
@@ -673,7 +673,7 @@ export class CombatScene extends CombatQueueReviewScene {
       this.graphics.fillRect(x, y, w, 22);
       this.graphics.fillStyle(tone === 'damage' ? COLORS.enemy : tone === 'status' ? COLORS.domain : COLORS.talismanDim, 0.82);
       this.graphics.fillRect(x, y, 3, 22);
-      this.mono(x + 12, y + 6, shortText(event.message || event.type, 44), { color, fontSize: '7px' });
+      this.mono(x + 12, y + 6, shortText(event.message || event.type, 44), { color, fontSize: '9px' });
     }
 
     renderCommandDeck(frame, layout, selected) {
@@ -723,16 +723,16 @@ export class CombatScene extends CombatQueueReviewScene {
           : 'NO TECHNIQUE ONLINE';
         this.mono(contentX + 55, headerY + 26, instruction, {
           color: this.store.selectedSkillId ? '#9fe0d4' : COLORS.paperText,
-          fontSize: '7px',
+          fontSize: '9px',
           fontStyle: '700',
         });
         this.mono(contentX + 55, headerY + 42, `READY ${readyCount}/${skills.length}`, {
           color: readyCount ? '#b7dbc0' : '#f1a0a0',
-          fontSize: '7px',
+          fontSize: '9px',
         });
         this.mono(frame.x + frame.width - 96, headerY + 5, `ORDER ${this.store.actions.length + 1}`, {
           color: COLORS.muted,
-          fontSize: '7px',
+          fontSize: '9px',
         });
 
         const cardW = (frame.width - 38) / 2;
@@ -744,9 +744,9 @@ export class CombatScene extends CombatQueueReviewScene {
           this.renderSkillButton(skill, selected, index, contentX + col * (cardW + 10), gridY + row * (cardH + 8), cardW, cardH);
         });
       } else {
-        this.mono(contentX, headerY + 3, 'NO ACTIVE SIGNATURE', { color: COLORS.paperText, fontSize: '8px' });
+        this.mono(contentX, headerY + 3, 'NO ACTIVE SIGNATURE', { color: COLORS.paperText, fontSize: '10px' });
         this.text(contentX, headerY + 21, 'Choose a combatant', { fontSize: '17px', fontStyle: '800' });
-        this.mono(contentX, headerY + 47, 'TAP ONE OF THE THREE ALLY PLATES', { color: COLORS.muted, fontSize: '7px' });
+        this.mono(contentX, headerY + 47, 'TAP ONE OF THE THREE ALLY PLATES', { color: COLORS.muted, fontSize: '9px' });
       }
 
       const buttonY = frame.height - 48;
@@ -754,7 +754,7 @@ export class CombatScene extends CombatQueueReviewScene {
         fill: 0x0a0e11,
         stroke: COLORS.line,
         mono: true,
-        fontSize: '8px',
+        fontSize: '10px',
         radius: 5,
         disabled: !this.store.actions.length || this.store.controlsLocked(),
       });
@@ -762,7 +762,7 @@ export class CombatScene extends CombatQueueReviewScene {
         fill: 0x0a0e11,
         stroke: COLORS.line,
         mono: true,
-        fontSize: '8px',
+        fontSize: '10px',
         radius: 5,
         disabled: this.store.controlsLocked(),
       });
@@ -772,7 +772,7 @@ export class CombatScene extends CombatQueueReviewScene {
         stroke: this.store.actions.length ? COLORS.talismanPaper : COLORS.line,
         color: this.store.actions.length ? '#08080a' : COLORS.dim,
         mono: true,
-        fontSize: '8px',
+        fontSize: '10px',
         radius: 5,
         disabled: !this.store.actions.length || this.store.controlsLocked(),
       });
@@ -814,7 +814,7 @@ export class CombatScene extends CombatQueueReviewScene {
         fill: 0x071417,
         stroke: COLORS.ally,
         color: '#bcebe2',
-        fontSize: '8px',
+        fontSize: '10px',
         mono: true,
         radius: 4,
         disabled: this.store.controlsLocked() || !!this.store.actions.length || !!(me && me.energy_converted_this_turn),

@@ -1,6 +1,6 @@
-import { SocketClient } from './network/socket-client.js?v=19';
-import { GameStore } from './store/game-store.js?v=19';
-import { SCENE_LIST } from './scenes/scene-registry.js?v=19';
+import { SocketClient } from './network/socket-client.js?v=20';
+import { GameStore } from './store/game-store.js?v=20';
+import { SCENE_LIST } from './scenes/scene-registry.js?v=20';
 
 function startShell() {
   const element = document.getElementById('v2-phaser-shell');
@@ -20,6 +20,7 @@ function startShell() {
     },
     audio: { noAudio: true },
     render: { antialias: true, pixelArt: false },
+    loader: { maxParallelDownloads: 64 },
     scene: SCENE_LIST,
   });
   window.JJKPhaserShell.game = game;

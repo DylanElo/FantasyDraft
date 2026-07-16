@@ -1,6 +1,6 @@
-import { COLORS } from '../core/runtime-config.js?v=19';
-import { shortText } from '../core/text.js?v=19';
-import { BaseScene } from './base-scene.js?v=19';
+import { COLORS } from '../core/runtime-config.js?v=20';
+import { shortText } from '../core/text.js?v=20';
+import { BaseScene } from './base-scene.js?v=20';
 
 export class RecordsScene extends BaseScene {
     constructor() {
@@ -35,7 +35,7 @@ export class RecordsScene extends BaseScene {
       ].forEach((stat, index) => {
         const sx = x + index * (summaryW + 10);
         this.platePanel(sx, summaryY, summaryW, 66, stat.tone, { alpha: 0.85, cut: 5 });
-        this.mono(sx + 9, summaryY + 12, stat.label, { color: COLORS.paperText, fontSize: '7px' });
+        this.mono(sx + 9, summaryY + 12, stat.label, { color: COLORS.paperText, fontSize: '9px' });
         this.text(sx + 9, summaryY + 31, stat.value, { fontSize: '18px', fontStyle: '900' });
       });
       const y = 278;
@@ -50,7 +50,7 @@ export class RecordsScene extends BaseScene {
           color: record.result === 'Victory' ? '#b7dbc0' : '#f1a0a0',
         });
         this.mono(x + 190, rowY + 9, `${record.damage} dmg`, { color: COLORS.text });
-        this.mono(x + 14, rowY + 26, shortText(record.winner || 'Domain record', 28), { color: COLORS.muted, fontSize: '8px' });
+        this.mono(x + 14, rowY + 26, shortText(record.winner || 'Domain record', 28), { color: COLORS.muted, fontSize: '9px' });
       });
       this.button(x, frame.height - 62, frame.width - 32, 44, 'Lobby', () => this.store.changeScene('LobbyScene'), {
         fill: COLORS.panel2,

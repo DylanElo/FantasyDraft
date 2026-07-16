@@ -1,4 +1,4 @@
-import { TOKEN_FRAMES } from './runtime-config.js?v=19';
+import { TOKEN_FRAMES } from './runtime-config.js?v=20';
 
 export class LayoutService {
   constructor(scene) {

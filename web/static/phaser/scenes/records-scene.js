@@ -1,6 +1,6 @@
-import { COLORS } from '../core/runtime-config.js?v=18';
-import { shortText } from '../core/text.js?v=18';
-import { BaseScene } from './base-scene.js?v=18';
+import { COLORS } from '../core/runtime-config.js?v=19';
+import { shortText } from '../core/text.js?v=19';
+import { BaseScene } from './base-scene.js?v=19';
 
 export class RecordsScene extends BaseScene {
     constructor() {

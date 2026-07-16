@@ -1,6 +1,6 @@
-import { COLORS, TOKEN_TYPE } from '../core/runtime-config.js?v=18';
-import { clamp, shortText } from '../core/text.js?v=18';
-import { DraftScene } from './draft-scene.js?v=18';
+import { COLORS, TOKEN_TYPE } from '../core/runtime-config.js?v=19';
+import { clamp, shortText } from '../core/text.js?v=19';
+import { DraftScene } from './draft-scene.js?v=19';
 
 export class FirstCreationScene extends DraftScene {
     constructor() {

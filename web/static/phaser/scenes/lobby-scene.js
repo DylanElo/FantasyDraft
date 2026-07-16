@@ -1,5 +1,5 @@
-import { COLORS, TOKEN_TYPE } from '../core/runtime-config.js?v=18';
-import { BaseScene } from './base-scene.js?v=18';
+import { COLORS, TOKEN_TYPE } from '../core/runtime-config.js?v=19';
+import { BaseScene } from './base-scene.js?v=19';
 
 export class LobbyScene extends BaseScene {
     constructor() {

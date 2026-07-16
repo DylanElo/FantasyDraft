@@ -1,6 +1,6 @@
-import { BOOT, COLORS } from '../core/runtime-config.js?v=18';
-import { clamp, safeText, shortText } from '../core/text.js?v=18';
-import { DraftRosterScene } from './draft-roster-scene.js?v=18';
+import { BOOT, COLORS } from '../core/runtime-config.js?v=19';
+import { clamp, safeText, shortText } from '../core/text.js?v=19';
+import { DraftRosterScene } from './draft-roster-scene.js?v=19';
 
 export class DraftScene extends DraftRosterScene {
     constructor(key) {

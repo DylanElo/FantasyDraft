@@ -53,8 +53,8 @@ def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
     assert 'v2-enemy-team' not in html
     assert 'v2-my-team' not in html
     assert 'vendor/phaser.min.js?v=3.90.0' in html
-    assert 'phaser-design-tokens.js?v=18' in html
-    assert 'phaser-shell.js?v=18' in html
+    assert 'phaser-design-tokens.js?v=19' in html
+    assert 'phaser-shell.js?v=19' in html
     assert 'phaser-shell.css?v=1' in html
     assert 'phaser-battle.js' not in html
     assert 'app.js' not in html
@@ -96,13 +96,13 @@ def test_battle_v2_public_surface_uses_production_copy(monkeypatch):
     design_tokens_js = Path(web_app.app.static_folder, "phaser-design-tokens.js").read_text(encoding="utf-8")
 
     assert "import(`./phaser/index.js?v=${SHELL_VERSION}`)" in shell_js
-    assert "import './legacy-shell.js?v=18';" in phaser_entry_js
-    assert "from './store/game-store.js?v=18';" in runtime_js
-    assert "from './network/socket-client.js?v=18';" in runtime_js
-    assert "from './scenes/scene-registry.js?v=18';" in runtime_js
+    assert "import './legacy-shell.js?v=19';" in phaser_entry_js
+    assert "from './store/game-store.js?v=19';" in runtime_js
+    assert "from './network/socket-client.js?v=19';" in runtime_js
+    assert "from './scenes/scene-registry.js?v=19';" in runtime_js
     assert "scene: SCENE_LIST" in runtime_js
-    assert "from './scenes/boot-scene.js?v=18';" not in runtime_js
-    assert "from './boot-scene.js?v=18';" in scene_registry_js
+    assert "from './scenes/boot-scene.js?v=19';" not in runtime_js
+    assert "from './boot-scene.js?v=19';" in scene_registry_js
     assert "export const SCENE_LIST" in scene_registry_js
     assert "export const COLORS" in runtime_config_js
     assert "selectionGold" in design_tokens_js

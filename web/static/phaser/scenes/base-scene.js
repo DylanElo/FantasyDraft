@@ -1,7 +1,7 @@
-import { COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE } from '../core/runtime-config.js?v=18';
-import { initials, safeText } from '../core/text.js?v=18';
-import { LayoutService } from '../core/layout-service.js?v=18';
-import { costColors } from '../core/roster.js?v=18';
+import { COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE } from '../core/runtime-config.js?v=19';
+import { initials, safeText } from '../core/text.js?v=19';
+import { LayoutService } from '../core/layout-service.js?v=19';
+import { costColors } from '../core/roster.js?v=19';
 
 export class BaseScene extends Phaser.Scene {
     constructor(key) {

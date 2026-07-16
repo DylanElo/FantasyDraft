@@ -1,7 +1,7 @@
-import { COLORS, ENERGY_COLORS, TOKEN_TYPE } from '../core/runtime-config.js?v=18';
-import { clamp, initials, shortText, titleize } from '../core/text.js?v=18';
-import { eventTone } from '../fx/event-metrics.js?v=18';
-import { CombatQueueReviewScene } from './combat-queue-review-scene.js?v=18';
+import { COLORS, ENERGY_COLORS, TOKEN_TYPE } from '../core/runtime-config.js?v=19';
+import { clamp, initials, shortText, titleize } from '../core/text.js?v=19';
+import { eventTone } from '../fx/event-metrics.js?v=19';
+import { CombatQueueReviewScene } from './combat-queue-review-scene.js?v=19';
 
 const WORLD_KEY = 'combat-underpass-night';
 const LOCATION_LINE = 'KASUMIGAOKA MUNICIPAL UNDERPASS';

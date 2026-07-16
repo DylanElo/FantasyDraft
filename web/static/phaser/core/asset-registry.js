@@ -1,5 +1,5 @@
-import { COLORS } from './runtime-config.js?v=18';
-import { safeText } from './text.js?v=18';
+import { COLORS } from './runtime-config.js?v=19';
+import { safeText } from './text.js?v=19';
 
 export class AssetRegistry {
   toneFor(id) {

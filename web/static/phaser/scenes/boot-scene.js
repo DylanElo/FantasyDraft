@@ -1,7 +1,7 @@
-import { COLORS, LOCAL_PORTRAIT_FILES, TOKEN_MOTION, TOKEN_TYPE } from '../core/runtime-config.js?v=18';
-import { LayoutService } from '../core/layout-service.js?v=18';
-import { firstCreationRoster, imageKeyFor, portraitFileFor } from '../core/roster.js?v=18';
-import { BaseScene } from './base-scene.js?v=18';
+import { COLORS, LOCAL_PORTRAIT_FILES, TOKEN_MOTION, TOKEN_TYPE } from '../core/runtime-config.js?v=19';
+import { LayoutService } from '../core/layout-service.js?v=19';
+import { firstCreationRoster, imageKeyFor, portraitFileFor } from '../core/roster.js?v=19';
+import { BaseScene } from './base-scene.js?v=19';
 
 export class BootScene extends BaseScene {
     constructor() {
@@ -45,12 +45,12 @@ export class BootScene extends BaseScene {
 
     renderBootSplash() {
       const frame = this.layout.frame();
-      this.drawAppBg(frame);
+      this.worldBackdrop(frame, { textureKey: null, ambient: 'motes' });
       const cx = frame.x + frame.width / 2;
       const cy = frame.height * 0.43;
       const radiusBase = Math.min(frame.width, frame.height) * 0.28;
 
-      this.graphics.fillStyle(COLORS.voidBlack, 0.68);
+      this.graphics.fillStyle(COLORS.voidBlack, 0.5);
       this.graphics.fillRect(frame.x, 0, frame.width, frame.height);
       [1, 0.72, 0.44].forEach((scale, index) => {
         const radius = radiusBase * scale;
@@ -76,13 +76,17 @@ export class BootScene extends BaseScene {
         fontStyle: '900',
         color: COLORS.text,
       }).setOrigin(0.5, 0);
-      const seal = this.add.graphics({ x: cx - 84, y: cy + 16 });
+
+      const sealW = 168;
+      const sealH = 28;
+      const seal = this.add.graphics({ x: cx - sealW / 2, y: cy + 16 });
+      const sealPoints = this.cutRectPoints(0, 0, sealW, sealH, { cut: 8 });
       seal.fillStyle(COLORS.talismanPaper, 0.92);
-      seal.fillRoundedRect(0, 0, 168, 28, 5);
+      seal.fillPoints(sealPoints, true);
       seal.fillStyle(COLORS.sealRed, 0.76);
-      seal.fillRoundedRect(64, 0, 40, 28, 5);
+      seal.fillTriangle(sealW - 40, 0, sealW, 0, sealW, sealH);
       seal.lineStyle(1, COLORS.selection, 0.82);
-      seal.strokeRoundedRect(0, 0, 168, 28, 5);
+      seal.strokePoints(sealPoints, true);
       this.nodes.push(seal);
       this.mono(cx, cy + 24, 'CURSED CLASH', { color: '#08080a', fontSize: '10px' }).setOrigin(0.5, 0);
       this.text(cx, cy + 72, 'Cursed Clash', {
@@ -98,12 +102,11 @@ export class BootScene extends BaseScene {
       const meterW = Math.min(frame.width - 92, 280);
       const meterX = cx - meterW / 2;
       const meterY = frame.height - 128;
-      this.graphics.fillStyle(COLORS.inkBlack, 0.92);
-      this.graphics.fillRoundedRect(meterX, meterY, meterW, 8, 4);
-      this.graphics.fillStyle(COLORS.domain, 0.58);
-      this.graphics.fillRoundedRect(meterX, meterY, Math.max(18, meterW * Math.max(0.18, this.loadProgress || 1)), 8, 4);
-      this.graphics.lineStyle(1, COLORS.selection, 0.52);
-      this.graphics.strokeRoundedRect(meterX, meterY, meterW, 8, 4);
+      this.progressRail(meterX, meterY, meterW, 8, Math.max(0.18, this.loadProgress || 1), COLORS.domain, {
+        trackColor: COLORS.inkBlack,
+        trackAlpha: 0.92,
+        fillAlpha: 0.72,
+      });
       this.mono(cx, meterY + 22, 'OPENING DOMAIN', { color: COLORS.text, fontSize: '9px' }).setOrigin(0.5, 0);
       this.mono(cx, meterY + 46, 'TAP TO ENTER', { color: COLORS.dim, fontSize: '8px' }).setOrigin(0.5, 0);
 

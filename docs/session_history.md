@@ -1582,3 +1582,45 @@ splash screen (still needs the old primitives), new environment art for
 the 6 rebuilt scenes (all use `worldBackdrop`'s gradient-fallback path,
 same as Combat falls back to), and the dual condition-grammar / soak-test
 production-scaling items noted in earlier entries.
+
+## 2026-07-16 - UI unification: boot splash gets the dossier treatment
+
+Closed the one deliberate gap left by the prior pass. Rewrote
+`renderBootSplash()` in `web/static/phaser/scenes/boot-scene.js` to use the
+same shared primitives added to `base-scene.js` for the 6-scene
+unification, instead of the old `drawAppBg`: background now goes through
+`worldBackdrop(frame, { textureKey: null, ambient: 'motes' })`; the
+"CURSED CLASH" seal is now an angular cut-corner plate via
+`cutRectPoints`/`fillPoints`/`strokePoints` with a `fillTriangle` red
+corner accent (replacing the old rounded seal shape); the loading meter
+now uses `progressRail` instead of a hand-drawn bar. Left `preload()`,
+`create()`, `enterLobby()`, the concentric-circle/radiating-spoke motif,
+and the auto-transition timing completely untouched — this was a drawing-
+layer swap only, same pattern as Result's rebuild in the prior entry.
+
+Version bumped once more for this pass, `?v=18` → `?v=19` across every
+Phaser JS file, `SHELL_VERSION`, and the two `index.html` `<script>` tags
+(same lockstep convention), since the app had been open in a real browser
+long enough during the prior pass's verification that a stale `?v=18`
+cache was a real risk. This tripped the same class of test-literal
+mismatch as last time — 8 hardcoded `?v=18` assertions in
+`tests/test_app.py` — fixed by bumping those literals to `?v=19`, again a
+plain string-match fix, not a behavioral regression.
+
+Verified live in real Chrome (`claude-in-chrome`, since the sandboxed
+Browser-pane still can't render Phaser — same `document.hidden` freeze as
+every prior pass). The splash auto-transitions to Lobby ~1s after boot, so
+a plain navigate+screenshot missed it on the first attempt; second attempt
+used `game.scene.stop('LobbyScene')` + `game.scene.start('BootScene')` +
+a monkey-patched no-op `enterLobby` to hold the splash still for a clean
+screenshot. Confirmed the new angular seal plate, red triangular corner
+accent, and flat `progressRail` progress bar all render correctly with
+zero console errors. Separately re-verified the *untouched* normal flow
+end-to-end: a fresh page load with no console overrides landed on
+`LobbyScene` after a 2s wait, confirming the real auto-transition timing
+still fires normally now that the drawing code changed.
+
+Verification: `python -m pytest -q` — 407 passed, 1 skipped (test count
+unchanged from the prior entry; only the `?v=19` literals moved).
+`python -m compileall -q jjk_arena web run_server.py` and `node --check`
+on `boot-scene.js` both clean.

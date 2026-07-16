@@ -1,6 +1,6 @@
-import { COLORS, TOKEN_TYPE } from '../core/runtime-config.js?v=18';
-import { clamp, shortText, titleize } from '../core/text.js?v=18';
-import { BaseScene } from './base-scene.js?v=18';
+import { COLORS, TOKEN_TYPE } from '../core/runtime-config.js?v=19';
+import { clamp, shortText, titleize } from '../core/text.js?v=19';
+import { BaseScene } from './base-scene.js?v=19';
 
 export class MissionMapScene extends BaseScene {
     constructor() {

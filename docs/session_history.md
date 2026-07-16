@@ -1434,4 +1434,4 @@ confirmed to actually change behavior by running its new test against a
 `git stash`-reverted copy of the fixed file first (fails), then restoring
 the fix (passes) — not just trusting the test's own logic.
 
-Not yet committed/pushed as of writing this entry.
+Committed (`4d39188`) and pushed directly to `main`.

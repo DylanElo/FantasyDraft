@@ -1196,3 +1196,58 @@ Milestone C status: CPU difficulty, mission coverage (team-level and now
 mastery-level), and analytics (P1 correctness + both P2 architecture items)
 are all done. Audio/haptics remains the only Milestone C deliverable left,
 and it isn't agent-doable.
+
+## 2026-07-16 - PR #54 render investigation (false alarm), worktree cleanup, merged timer-scheduler-and-missions
+
+Reviewed the parked [PR #54](https://github.com/DylanElo/FantasyDraft/pull/54)
+("Cursed Arena" visual redesign) live by checking it out into a scratch
+worktree and running its server. Initial finding was that the Phaser
+canvas rendered solid black on every scene — reported this as a blocking
+regression.
+
+That finding was wrong, and the correction matters for future browser
+verification in this repo: the automated preview-browser tab used for
+testing reports `document.visibilityState === "hidden"` permanently, which
+halts Phaser's `requestAnimationFrame`-driven render loop entirely
+(confirmed via a monkey-patched `renderer.render()` call counter that
+stayed at 0 across 2 real seconds while `game.loop.frame` was frozen).
+Proved this was a tooling artifact, not a PR #54 regression, two ways:
+already-shipped `main` (byte-identical `legacy-shell.js` boot code)
+exhibits the exact same black screen in the same test tool; and forcing
+`document.visibilityState` to `"visible"` via a runtime-only patch in a
+real Chrome tab immediately unfroze the render loop and the app rendered
+correctly. Confirmed the Lobby, Team Builder (CPU Easy/Normal/Hard
+selector visible), and live Combat screens all render as intended in the
+new visual language. No code changes were needed or made to PR #54 itself
+— the earlier "black screen" report is retracted. PR #54 remains open,
+unmerged, awaiting the human visual sign-off it was already parked for.
+
+Takeaway for future sessions: this project's Browser-pane preview tool
+cannot be trusted to visually verify Phaser/canvas rendering — its tabs
+report `document.hidden = true`, which silently starves any
+rAF-driven render loop with no console error. Use the real Chrome
+(`claude-in-chrome`) tools for any Phaser visual verification instead.
+
+Separately, cleaned up worktree sprawl: removed `pr54-review` (the scratch
+worktree from the above investigation) and `audit-findings-review-081b70`
+(fully merged into `main`, no unique commits; its now-empty local branch
+was also deleted). Left `FantasyDraft-temporal-pr`
+(`wip/temporal-pr-combat-ui-2026-07-13`) parked as-is — its base is 23
+merged PRs behind current `main` and a dry-run merge shows real conflicts
+in `tests/test_battle_v2_lifecycle.py` and the combat-scene files; it
+needs a rebase/conflict-resolution pass before it can land, and it's a
+single "preserve uncommitted WIP" commit rather than finished work.
+
+Merged `worktree-timer-scheduler-and-missions` into `main` (commit
+`2bf82fd`, fast-forward — its branch base was exactly `main`'s prior tip,
+so no merge commit was needed). Six commits: replaced the one-thread-per-
+deadline timer scheduler with a single cancellable worker, gave Hard CPU
+three real decision signals beyond score multipliers, settled First
+Creation missions at the terminal state instead of the broadcast path,
+completed mission attribution (exact skills, split payoffs, new mastery
+objectives), started routing every terminal match outcome through
+`ResultScene` with `first_creation_account` stored live, and added
+analytics outbox retry/event retention while keeping `/ops/runtime`
+aggregate-only. 399 tests passed (up from 377) before merging. Pushed to
+`origin/main`. The `timer-scheduler-and-missions` worktree itself is
+locked and was left in place, but its work is now on `main`.

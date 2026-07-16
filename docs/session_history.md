@@ -1501,4 +1501,4 @@ declared closed.
 Verification: `python -m pytest -q` — 407 passed (was 406, +1), 1
 skipped. `python -m compileall -q jjk_arena web run_server.py` clean.
 
-Not yet committed/pushed as of writing this entry.
+Committed (`a441c05`) and pushed directly to `main`.

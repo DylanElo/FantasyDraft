@@ -404,7 +404,7 @@ def record_match_finished_analytics(room_id: str) -> None:
     analytics_recorded_matches.add(room_id)
 
 
-missions_settled_matches: set[str] = set()
+missions_settled_players: dict[str, set[str]] = defaultdict(set)
 
 
 def settle_first_creation_missions(room_id: str) -> None:
@@ -414,24 +414,31 @@ def settle_first_creation_missions(room_id: str) -> None:
     inside emit_battle_v2_update's broadcast loop: settlement must not
     depend on a viewer broadcast actually happening (or happening after the
     winner is decided) to ever occur at all.
+
+    Tracked per player, not per room: a transient write failure for one
+    player must not stop the room from ever being retried -- only a player
+    whose merge actually succeeded is skipped on a later call, so a repeat
+    on_match_finished fire (or any other future retry trigger) can still
+    recover mission credit and unlocks a prior failure would otherwise have
+    lost permanently.
     """
 
-    if room_id in missions_settled_matches:
-        return
     state = battle_v2_manager.rooms.get(room_id)
     if state is None or state.phase.value != "finished":
         return
     if battle_v2_manager.room_roster_modes.get(room_id) != "first_creation":
         return
+    settled = missions_settled_players[room_id]
     for player_id in state.players:
-        if player_id == CPU_V2_PLAYER_ID:
+        if player_id == CPU_V2_PLAYER_ID or player_id in settled:
             continue
         try:
             progress = battle_v2_manager.mission_progress_for_player(room_id, player_id)
             merge_first_creation_progress(player_id, progress, match_id=room_id, analytics_store=runtime_store)
         except Exception:
             operational_counters["mission_settlement_errors"] += 1
-    missions_settled_matches.add(room_id)
+        else:
+            settled.add(player_id)
 
 
 def on_battle_v2_match_finished(room_id: str) -> None:
@@ -704,6 +711,7 @@ def remove_battle_v2_room(room_id: str) -> None:
         room_last_activity.pop(room_id, None)
         archived_replays.discard(room_id)
         analytics_recorded_matches.discard(room_id)
+        missions_settled_players.pop(room_id, None)
         rematch_receipts.pop(room_id, None)
         rematch_by_old_match.pop(room_id, None)
         for old_match_id, new_match in list(rematch_by_old_match.items()):

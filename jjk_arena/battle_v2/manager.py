@@ -15,7 +15,7 @@ from typing import Any, Callable
 
 from .energy import CORE_ENERGY, gain_turn_energy, normalize_energy, split_cost
 from .conditions import has_status
-from .models import BattleEvent, BattlePhase, BattleState, CharacterState, DamageType, PendingAction, PlayerState, SkillSpec, use_battle_v2
+from .models import BattleEvent, BattlePhase, BattleState, CharacterState, DamageType, PendingAction, PlayerState, SkillClass, SkillSpec, use_battle_v2
 from .first_creation_progression import evaluate_first_creation_progress, initial_first_creation_progress
 from .resolver import ResolverError, check_winner, finish_turn, get_skill_for_action, resolve_queue, validate_action_identity, validate_queue, validate_queue_identity
 from .serialization import serialize_battle_state
@@ -333,11 +333,21 @@ def _cpu_action_score(
     )
     harmful_to_enemy = bool(target_player and target_player.id != player_id)
     if is_hard and harmful_to_enemy:
+        skill_is_uncounterable = SkillClass.UNCOUNTERABLE in skill.classes
+        skill_is_unreflectable = SkillClass.UNREFLECTABLE in skill.classes
         for slot in target_slots:
             if 0 <= slot < len(target_player.team):
                 target = target_player.team[slot]
                 if any(
-                    status.duration != 0 and (status.payload.get("counter") or status.payload.get("reflect"))
+                    status.duration != 0
+                    # Hard only reacts to traps it could actually know about: its own,
+                    # or ones already revealed. An unrevealed opponent trap is invisible
+                    # to a player and must stay invisible to the CPU too.
+                    and not (status.invisible and not status.revealed and player_id != status.source_player_id)
+                    and (
+                        (status.payload.get("counter") and not skill_is_uncounterable)
+                        or (status.payload.get("reflect") and not skill_is_unreflectable)
+                    )
                     for status in target.statuses
                 ):
                     smart_bonus -= 80
@@ -369,7 +379,7 @@ def _cpu_action_score(
                 for slot in target_slots:
                     if 0 <= slot < len(target_player.team):
                         target = target_player.team[slot]
-                        if target.alive and (effect.amount or 0) >= target.hp:
+                        if target.alive and amount >= target.hp:
                             smart_bonus += lethal_bonus_amount
                             lethal_secured = True
                         score += max(0, target.max_hp - target.hp) // 5

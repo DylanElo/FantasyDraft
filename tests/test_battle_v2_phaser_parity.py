@@ -249,6 +249,111 @@ console.log(JSON.stringify(outcomes));
     assert outcomes["ongoing"] == "CombatScene"
 
 
+def test_remember_result_records_draws_and_no_contests_not_just_decisive_outcomes():
+    """Regression: rememberResult gated on winner_id, so a DRAW or NO_CONTEST
+    (winner_id null but result_type set) was silently never recorded --
+    ResultScene would then fall back to store.records[0] from whatever
+    match actually won last, showing stale turns/damage for the draw."""
+
+    script = r"""
+globalThis.window = { JJK_BOOT: {}, setTimeout: () => {}, __phaserShellDebug: null };
+globalThis.document = { getElementById: () => null };
+globalThis.localStorage = { getItem: () => null, setItem: () => {} };
+const { GameStore } = await import('./web/static/phaser/store/game-store.js');
+function freshStore() {
+  const store = Object.create(GameStore.prototype);
+  store.records = []; store.playerId = 'p1';
+  store.mineId = () => 'p1';
+  return store;
+}
+const results = {};
+for (const [label, state] of Object.entries({
+  win: { winner_id: 'p1', result_type: 'WIN', turn_number: 3, players: { p1: { name: 'P1' } }, event_log: [] },
+  defeat: { winner_id: 'p2', result_type: 'WIN', turn_number: 4, players: { p2: { name: 'P2' } }, event_log: [] },
+  draw: { winner_id: null, result_type: 'DRAW', turn_number: 12, players: {}, event_log: [] },
+  no_contest: { winner_id: null, result_type: 'NO_CONTEST', turn_number: 1, players: {}, event_log: [] },
+})) {
+  const store = freshStore();
+  store.rememberResult(state);
+  results[label] = { recordCount: store.records.length, record: store.records[0] || null };
+}
+console.log(JSON.stringify(results));
+"""
+    result = subprocess.run(
+        ["node", "--experimental-default-type=module", "-"],
+        input=script,
+        text=True,
+        capture_output=True,
+        cwd=ROOT,
+        check=True,
+    )
+    results = json.loads(result.stdout)
+
+    assert results["win"]["recordCount"] == 1
+    assert results["win"]["record"]["result"] == "Victory"
+    assert results["defeat"]["record"]["result"] == "Defeat"
+
+    assert results["draw"]["recordCount"] == 1, "a draw must produce its own record, not be silently skipped"
+    assert results["draw"]["record"]["result"] == "Draw"
+    assert results["draw"]["record"]["turns"] == 12
+
+    assert results["no_contest"]["recordCount"] == 1
+    assert results["no_contest"]["record"]["result"] == "No Contest"
+
+
+def test_reset_to_lobby_does_not_surrender_an_already_finished_draw_or_no_contest():
+    """Regression: resetToLobby surrendered on any state without winner_id,
+    which is also true of an already-finished draw/no-contest -- leaving
+    the result screen sent a pointless surrender command for a match that
+    was already over."""
+
+    script = r"""
+globalThis.window = { JJK_BOOT: {}, setTimeout: () => {}, __phaserShellDebug: null };
+globalThis.document = { getElementById: () => null };
+globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+const { GameStore } = await import('./web/static/phaser/store/game-store.js');
+function freshStore(state) {
+  const store = Object.create(GameStore.prototype);
+  const emitted = [];
+  store.state = state;
+  store.lobbyStatus = null; store.actions = []; store.actionWildPays = {}; store.selectedCasterSlot = 0;
+  store.selectedSkillId = null; store.queueSubmitting = false; store.queueReviewOpen = false;
+  store.detailCharacterId = null; store.eventCursor = 0; store.playbackEvents = []; store.recentEvents = [];
+  store.playerId = 'p1'; store.commandNonceCounter = 0; store.resumeSession = null; store.ignoreBattleUpdates = false;
+  store.socketClient = { emit: (event, payload) => emitted.push({ event, payload }) };
+  store.changeScene = (scene) => { store.scene = scene; };
+  store.clearResumeSession = () => {};
+  return { store, emitted };
+}
+const outcomes = {};
+for (const [label, state] of Object.entries({
+  draw: { winner_id: null, result_type: 'DRAW', state_revision: 1 },
+  no_contest: { winner_id: null, result_type: 'NO_CONTEST', state_revision: 1 },
+  win: { winner_id: 'p1', result_type: 'WIN', state_revision: 1 },
+  ongoing: { winner_id: null, result_type: null, state_revision: 1 },
+})) {
+  const { store, emitted } = freshStore(state);
+  store.resetToLobby();
+  outcomes[label] = emitted.map((entry) => entry.event);
+}
+console.log(JSON.stringify(outcomes));
+"""
+    result = subprocess.run(
+        ["node", "--experimental-default-type=module", "-"],
+        input=script,
+        text=True,
+        capture_output=True,
+        cwd=ROOT,
+        check=True,
+    )
+    outcomes = json.loads(result.stdout)
+
+    assert outcomes["draw"] == [], "leaving a finished draw must not emit a surrender"
+    assert outcomes["no_contest"] == [], "leaving a finished no-contest must not emit a surrender"
+    assert outcomes["win"] == [], "leaving a finished win must not emit a surrender"
+    assert outcomes["ongoing"] == ["battle_v2_surrender"], "leaving a still-live match must still surrender"
+
+
 def test_first_creation_account_updates_live_from_battle_updates():
     """Regression: mission counters/unlocks/active route were read only from
     the page-load bootstrap profile snapshot, so they never changed after a

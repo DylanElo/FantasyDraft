@@ -243,6 +243,43 @@ def test_settle_first_creation_missions_records_analytics_exactly_once(monkeypat
     assert after - before == 1
 
 
+def test_settle_first_creation_missions_retries_after_a_transient_write_failure(monkeypatch):
+    """Regression: a transient failure merging one player's profile must not
+    permanently mark the match as settled -- the next natural retry (e.g. a
+    reconnect-triggered rebroadcast, or another on_match_finished fire) must
+    still be able to persist the mission credit and unlock instead of losing
+    it forever the moment one write happens to fail."""
+
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    web_app.battle_v2_manager.start_first_creation_match("mission-retry-room", [
+        {"id": "p1", "name": "Player One", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
+        {"id": "p2", "name": "Player Two", "team": ["maki_zenin", "toge_inumaki", "panda"]},
+    ])
+    _finish_first_creation_match_for_p1("mission-retry-room")
+
+    real_merge = web_app.merge_first_creation_progress
+
+    def failing_merge(*args, **kwargs):
+        raise RuntimeError("simulated transient SQLite write failure")
+
+    monkeypatch.setattr(web_app, "merge_first_creation_progress", failing_merge)
+    web_app.settle_first_creation_missions("mission-retry-room")
+
+    profile = web_app.load_first_creation_profile("p1")
+    assert "welcome_to_jujutsu_high" not in profile["completed_missions"], (
+        "sanity check: the failing write must not itself have persisted anything"
+    )
+
+    monkeypatch.setattr(web_app, "merge_first_creation_progress", real_merge)
+    web_app.settle_first_creation_missions("mission-retry-room")
+
+    profile = web_app.load_first_creation_profile("p1")
+    assert "welcome_to_jujutsu_high" in profile["completed_missions"], (
+        "a transient failure must not permanently mark the match settled -- "
+        "a later retry must still be able to persist the mission credit"
+    )
+
+
 def test_emit_battle_v2_update_no_longer_settles_missions_itself(monkeypatch):
     """Regression: mission settlement moved out of the broadcast path onto
     the authoritative terminal-state hook. Broadcasting a finished state

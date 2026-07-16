@@ -1347,3 +1347,91 @@ PR #54 remains open and unmerged; per the user's call this session,
 temporal-pr is the intended direction, not #54 — what to do with #54
 (close it, leave it parked, or mine specific ideas from it) still needs a
 decision.
+
+## 2026-07-16 - PR #56 merged; verified and fixed 5 issues from an external audit, discovered and fixed a 6th
+
+PR #56 was merged into `main` (`d15777b`) by the user directly on GitHub.
+Fast-forwarded the root `FantasyDraft` checkout (which the user had also
+switched from a stale branch to `main` this session) to pick it up, then
+re-ran the full verification chain: 399 passed/1 skipped, `compileall`,
+and `node --check` across all 27 Phaser modules — all clean.
+
+The user then shared two rounds of an external LLM-generated audit report
+(in French) making detailed correctness claims. Verifying them surfaced a
+process lesson worth recording: my first verification pass wrongly
+dismissed two of the audit's Hard-CPU claims as fabricated, because I
+grepped `_cpu_action_score` too narrowly and missed its Hard-only branch
+entirely. A later, more careful full read of the function proved both
+claims correct. Separately, a claim about mission-settlement retry safety
+referencing `missions_settled_matches` was *also* wrongly dismissed as
+fabricated — that identifier turned out to be real, but I'd grepped it in
+`.claude/worktrees/hungry-kapitsa-3a5188`, a stale session worktree that
+never received the earlier `timer-scheduler-and-missions` merge (which is
+where that code originated), instead of the root checkout that actually
+had it. Same root cause both times: checking the wrong copy of the code
+rather than the actual claim being unverifiable. Take-away: when a
+concrete, checkable claim is dismissed as fabricated, that dismissal
+itself needs verifying against the *right* checkout before it's trusted.
+
+Five issues confirmed and fixed, each with a regression test that fails
+without the fix and passes with it:
+
+1. **Hard CPU read hidden traps.** `_cpu_action_score`'s counter/reflect
+   risk penalty (`jjk_arena/battle_v2/manager.py`) read `target.statuses`
+   directly with no `invisible`/`revealed` filter, so Hard reacted
+   identically to a revealed trap and one no human opponent could see.
+   Fixed to skip statuses hidden from the CPU's own viewpoint, using the
+   same visibility rule `serialize_status` already uses for the wire
+   format. Tests: `test_cpu_action_score_hard_ignores_invisible_unrevealed_counter_status`,
+   `test_cpu_action_score_hard_reacts_to_a_revealed_counter_status`.
+2. **Hard ignored Uncounterable/Unreflectable.** The same risk penalty
+   applied even when the skill being scored couldn't actually be
+   countered or reflected. Fixed to check `SkillClass.UNCOUNTERABLE` /
+   `UNREFLECTABLE` against the skill's own classes. Test:
+   `test_cpu_action_score_hard_ignores_counter_risk_for_uncounterable_skill`.
+3. **Lethal bonus used the raw declared amount.** The condition-aware
+   `amount` computed for a conditional damage effect (zeroed when its
+   `condition_status`/`condition_missing_status` isn't actually true of
+   the live target) was used for scoring, but the lethal-bonus check two
+   lines later still read `effect.amount` directly, so an unmet
+   conditional "finisher" could still register as a kill. Fixed to reuse
+   the corrected `amount`. Test:
+   `test_cpu_action_score_hard_lethal_bonus_requires_condition_to_actually_hold`.
+4. **`rememberResult` skipped DRAW/NO_CONTEST.** (`web/static/phaser/store/game-store.js`)
+   Gated on `state.winner_id`, which is null for a draw/no-contest even
+   though `state.result_type` is set — so `ResultScene` fell back to
+   whatever match last had a decisive winner. Fixed to gate on
+   `result_type` instead, with `Draw`/`No Contest` result labels. Test:
+   `test_remember_result_records_draws_and_no_contests_not_just_decisive_outcomes`.
+5. **`resetToLobby` surrendered finished draws/no-contests.** Same
+   `!winner_id` conflation — leaving the result screen after an
+   already-finished draw sent a needless `battle_v2_surrender`. Fixed to
+   gate on `!result_type` (still-live) instead. Test:
+   `test_reset_to_lobby_does_not_surrender_an_already_finished_draw_or_no_contest`.
+
+Writing the retry-safety test for the mission-settlement claim (rather
+than guessing) surfaced a sixth, previously-unconfirmed real bug in
+`web/app.py`'s `settle_first_creation_missions`: it tracked settlement at
+room granularity (`missions_settled_matches: set[str]`), and marked the
+whole room settled unconditionally after the loop even if a player's
+`merge_first_creation_progress` call raised (caught, counted in
+`operational_counters["mission_settlement_errors"]`, then silently
+dropped). A single transient write failure therefore permanently blocked
+any retry for that room — proved this first with
+`test_settle_first_creation_missions_retries_after_a_transient_write_failure`
+against the unfixed code (failed as expected), then fixed it: tracking
+switched to `missions_settled_players: dict[str, set[str]]` (per room, per
+player), so a call only skips players who already succeeded, and a later
+retry (any future call to `on_match_finished`, from wherever) can still
+recover a player whose earlier write failed. Added the matching
+`missions_settled_players.pop(room_id, None)` to room cleanup, mirroring
+the existing `analytics_recorded_matches.discard(room_id)` there.
+
+Verification: `python -m pytest -q` — 406 passed (was 399, +7 new tests),
+1 skipped. `python -m compileall -q jjk_arena web run_server.py` and
+`node --check` on the modified JS both clean. Each of the 6 fixes was
+confirmed to actually change behavior by running its new test against a
+`git stash`-reverted copy of the fixed file first (fails), then restoring
+the fix (passes) — not just trusting the test's own logic.
+
+Not yet committed/pushed as of writing this entry.

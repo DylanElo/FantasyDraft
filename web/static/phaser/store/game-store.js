@@ -241,10 +241,17 @@ export class GameStore {
     }
 
     rememberResult(state) {
-      if (!state || !state.winner_id || state.__recorded) return;
+      // A draw or no-contest has no winner_id but is still a real terminal
+      // result -- result_type (WIN/DRAW/NO_CONTEST/FORFEIT) is set for all of
+      // them, so that's the correct "did this match actually finish" gate.
+      if (!state || !state.result_type || state.__recorded) return;
       state.__recorded = true;
       const mine = this.mineId();
-      const iWon = state.winner_id === mine;
+      const resultLabel = !state.winner_id
+        ? (state.result_type === 'NO_CONTEST' ? 'No Contest' : 'Draw')
+        : state.winner_id === mine
+          ? 'Victory'
+          : 'Defeat';
       const damage = (state.event_log || []).reduce((total, event) => total + eventAmount(event), 0);
       const biggest = (state.event_log || [])
         .map((event) => ({ message: event.message || event.type, amount: eventAmount(event), type: event.type }))
@@ -253,8 +260,10 @@ export class GameStore {
         .slice(0, 3);
       this.records.unshift({
         at: new Date().toISOString(),
-        result: iWon ? 'Victory' : 'Defeat',
-        winner: state.players && state.players[state.winner_id] ? state.players[state.winner_id].name : state.winner_id,
+        result: resultLabel,
+        winner: state.winner_id && state.players && state.players[state.winner_id]
+          ? state.players[state.winner_id].name
+          : resultLabel,
         turns: state.turn_number || 0,
         damage,
         biggest,
@@ -1065,7 +1074,10 @@ export class GameStore {
       if (!this.state && this.lobbyStatus && this.lobbyStatus.status === 'waiting') {
         this.socketClient.emit('battle_v2_leave_pvp', { room_id: this.lobbyStatus.room_id });
       }
-      if (this.state && !this.state.winner_id) {
+      // Only surrender a match that's actually still live -- a finished draw
+      // or no-contest has no winner_id either, but result_type is already
+      // set for it, so it must not send a surrender on the way out.
+      if (this.state && !this.state.result_type) {
         this.ignoreBattleUpdates = true;
         this.socketClient.emit('battle_v2_surrender', this.commandPayload());
       }

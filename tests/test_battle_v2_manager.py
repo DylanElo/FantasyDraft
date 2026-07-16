@@ -564,6 +564,252 @@ def test_cpu_action_score_hard_differs_from_normal_without_a_lethal_opportunity(
     assert hard_score > normal_score > easy_score
 
 
+def test_cpu_action_score_hard_ignores_invisible_unrevealed_counter_status():
+    """Hard must not react to a trap the opponent hasn't revealed -- seeing an
+    unrevealed invisible status is information no human opponent would have."""
+
+    from jjk_arena.battle_v2.manager import _cpu_action_score
+    from jjk_arena.battle_v2.models import (
+        BattleState,
+        CharacterState,
+        EffectSpec,
+        PendingAction,
+        PlayerState,
+        SkillSpec,
+        StatusEffect,
+        TargetRule,
+    )
+
+    caster = CharacterState(character_id="attacker", name="Attacker")
+    target = CharacterState(character_id="target", name="Target", hp=90, max_hp=100)
+    target.statuses = [
+        StatusEffect(
+            id="hidden_counter",
+            name="Hidden Counter",
+            source_player_id="p2",
+            source_slot=0,
+            target_player_id="p2",
+            target_slot=0,
+            duration=2,
+            invisible=True,
+            revealed=False,
+            payload={"counter": "first_harmful"},
+        )
+    ]
+    state = BattleState(
+        players={
+            "p1": PlayerState(id="p1", name="P1", team=[caster]),
+            "p2": PlayerState(id="p2", name="P2", team=[target]),
+        },
+        turn_player_id="p1",
+    )
+    skill = SkillSpec(
+        id="basic_strike",
+        name="Basic Strike",
+        text="",
+        cost=[EnergyType.GREEN],
+        cooldown=0,
+        target_rule=TargetRule(kind="enemy"),
+        classes=[],
+        effects=[EffectSpec(type="damage", amount=15)],
+    )
+    action = PendingAction(
+        id="p1:test", player_id="p1", caster_slot=0, skill_id=skill.id, target_player_id="p2", target_slot=0
+    )
+
+    hidden_counter_score = _cpu_action_score(state, "p1", action, skill, difficulty="hard")
+    target.statuses = []
+    no_counter_score = _cpu_action_score(state, "p1", action, skill, difficulty="hard")
+
+    assert hidden_counter_score == no_counter_score
+
+
+def test_cpu_action_score_hard_reacts_to_a_revealed_counter_status():
+    """A revealed trap is real information the CPU is allowed to use."""
+
+    from jjk_arena.battle_v2.manager import _cpu_action_score
+    from jjk_arena.battle_v2.models import (
+        BattleState,
+        CharacterState,
+        EffectSpec,
+        PendingAction,
+        PlayerState,
+        SkillSpec,
+        StatusEffect,
+        TargetRule,
+    )
+
+    caster = CharacterState(character_id="attacker", name="Attacker")
+    target = CharacterState(character_id="target", name="Target", hp=90, max_hp=100)
+    target.statuses = [
+        StatusEffect(
+            id="revealed_counter",
+            name="Revealed Counter",
+            source_player_id="p2",
+            source_slot=0,
+            target_player_id="p2",
+            target_slot=0,
+            duration=2,
+            invisible=True,
+            revealed=True,
+            payload={"counter": "first_harmful"},
+        )
+    ]
+    state = BattleState(
+        players={
+            "p1": PlayerState(id="p1", name="P1", team=[caster]),
+            "p2": PlayerState(id="p2", name="P2", team=[target]),
+        },
+        turn_player_id="p1",
+    )
+    skill = SkillSpec(
+        id="basic_strike",
+        name="Basic Strike",
+        text="",
+        cost=[EnergyType.GREEN],
+        cooldown=0,
+        target_rule=TargetRule(kind="enemy"),
+        classes=[],
+        effects=[EffectSpec(type="damage", amount=15)],
+    )
+    action = PendingAction(
+        id="p1:test", player_id="p1", caster_slot=0, skill_id=skill.id, target_player_id="p2", target_slot=0
+    )
+
+    revealed_counter_score = _cpu_action_score(state, "p1", action, skill, difficulty="hard")
+    target.statuses = []
+    no_counter_score = _cpu_action_score(state, "p1", action, skill, difficulty="hard")
+
+    assert revealed_counter_score < no_counter_score
+
+
+def test_cpu_action_score_hard_ignores_counter_risk_for_uncounterable_skill():
+    """An Uncounterable skill can't trigger the counter, so Hard shouldn't fear it."""
+
+    from jjk_arena.battle_v2.manager import _cpu_action_score
+    from jjk_arena.battle_v2.models import (
+        BattleState,
+        CharacterState,
+        EffectSpec,
+        PendingAction,
+        PlayerState,
+        SkillSpec,
+        StatusEffect,
+        TargetRule,
+    )
+
+    caster = CharacterState(character_id="attacker", name="Attacker")
+    target = CharacterState(character_id="target", name="Target", hp=90, max_hp=100)
+    target.statuses = [
+        StatusEffect(
+            id="visible_counter",
+            name="Visible Counter",
+            source_player_id="p2",
+            source_slot=0,
+            target_player_id="p2",
+            target_slot=0,
+            duration=2,
+            invisible=False,
+            payload={"counter": "first_harmful"},
+        )
+    ]
+    state = BattleState(
+        players={
+            "p1": PlayerState(id="p1", name="P1", team=[caster]),
+            "p2": PlayerState(id="p2", name="P2", team=[target]),
+        },
+        turn_player_id="p1",
+    )
+    uncounterable_skill = SkillSpec(
+        id="uncounterable_strike",
+        name="Uncounterable Strike",
+        text="",
+        cost=[EnergyType.GREEN],
+        cooldown=0,
+        target_rule=TargetRule(kind="enemy"),
+        classes=[SkillClass.UNCOUNTERABLE],
+        effects=[EffectSpec(type="damage", amount=15)],
+    )
+    action = PendingAction(
+        id="p1:test",
+        player_id="p1",
+        caster_slot=0,
+        skill_id=uncounterable_skill.id,
+        target_player_id="p2",
+        target_slot=0,
+    )
+
+    uncounterable_score = _cpu_action_score(state, "p1", action, uncounterable_skill, difficulty="hard")
+    target.statuses = []
+    no_counter_score = _cpu_action_score(state, "p1", action, uncounterable_skill, difficulty="hard")
+
+    assert uncounterable_score == no_counter_score
+
+
+def test_cpu_action_score_hard_lethal_bonus_requires_condition_to_actually_hold():
+    """A conditional 'finisher' whose condition isn't met can't actually kill,
+    so it must not get the lethal bonus just because its listed amount would."""
+
+    from jjk_arena.battle_v2.manager import _cpu_action_score
+    from jjk_arena.battle_v2.models import (
+        BattleState,
+        CharacterState,
+        EffectSpec,
+        PendingAction,
+        PlayerState,
+        SkillSpec,
+        TargetRule,
+    )
+
+    caster = CharacterState(character_id="attacker", name="Attacker")
+    target = CharacterState(character_id="target", name="Target", hp=20, max_hp=100)
+    state = BattleState(
+        players={
+            "p1": PlayerState(id="p1", name="P1", team=[caster]),
+            "p2": PlayerState(id="p2", name="P2", team=[target]),
+        },
+        turn_player_id="p1",
+    )
+    conditional_finisher = SkillSpec(
+        id="conditional_finisher",
+        name="Conditional Finisher",
+        text="",
+        cost=[EnergyType.GREEN],
+        cooldown=0,
+        target_rule=TargetRule(kind="enemy"),
+        classes=[],
+        effects=[
+            EffectSpec(type="damage", amount=25, payload={"condition_status": "marked"}),
+        ],
+    )
+    real_finisher = SkillSpec(
+        id="real_finisher",
+        name="Real Finisher",
+        text="",
+        cost=[EnergyType.GREEN],
+        cooldown=0,
+        target_rule=TargetRule(kind="enemy"),
+        classes=[],
+        effects=[EffectSpec(type="damage", amount=18)],
+    )
+    conditional_action = PendingAction(
+        id="p1:cond",
+        player_id="p1",
+        caster_slot=0,
+        skill_id=conditional_finisher.id,
+        target_player_id="p2",
+        target_slot=0,
+    )
+    real_action = PendingAction(
+        id="p1:real", player_id="p1", caster_slot=0, skill_id=real_finisher.id, target_player_id="p2", target_slot=0
+    )
+
+    conditional_score = _cpu_action_score(state, "p1", conditional_action, conditional_finisher, difficulty="hard")
+    real_score = _cpu_action_score(state, "p1", real_action, real_finisher, difficulty="hard")
+
+    assert conditional_score < real_score
+
+
 def test_cpu_action_score_hard_reacts_to_heal_urgency_earlier_than_normal():
     """Hard should value topping off a mid-HP ally sooner than Normal does."""
 

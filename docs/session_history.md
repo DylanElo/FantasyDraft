@@ -414,6 +414,36 @@ Caution / external launch gates:
 - Replay capture requires approved consent/privacy and retention policy before enabling.
 - Legal/IP/commercial approval, licensed art/audio provenance, physical-device/accessibility QA, human balance, load/soak/failure exercises, and staffed live operations remain external sign-offs.
 - No roster, progression content, combat rule, balance number, Phaser layout, or visual effect changed.
+## 2026-07-12 - Environment-integrated combat UI redesign
+
+What changed:
+
+- Rebuilt the real modular Phaser combat scene around an authored rain-darkened municipal underpass and old school courtyard rather than a near-black dashboard field.
+- Replaced floating circular combatants with world-anchored rectangular dossier plates and compact HP, selected, queued, status, and legal-target treatments.
+- Rebuilt the location/turn/energy HUD, tactical directive, selected-combatant command dock, technique cards, unavailable-skill dossier, target feedback, action queue rail, and Queue Review resolution sheet.
+- Added an original deterministic environment generator and PNG asset, taller portrait-card texture loading, CDN typography stacks, CSP support for Google Fonts and Phaser SVG blob textures, and a live Playwright combat-state capture tool.
+- Added before/after, responsive, state-suite, and machine-readable visual QA artifacts plus a detailed implementation handoff.
+
+Verification:
+
+- Live Phaser browser QA covered 360x800, 390x844, and 430x932 plus default, selected combatant, unavailable skill, legal targets, illegal target, queued action, and Queue Review states.
+- The live QA report found zero registered controls below 44x44 and zero controls outside the tested viewports; the final console contained no warnings or errors.
+- `tests/test_production_readiness.py` -> `8 passed` in an isolated process.
+- Remaining test suite -> `281 passed, 1 skipped` in an isolated process.
+- A monolithic run produced `288 passed, 1 skipped, 1 failed`; the same order-dependent stale-runtime failure reproduces in the untouched source archive and the affected test passes alone, so it is documented as a pre-existing test-isolation issue rather than a UI regression.
+- Changed JavaScript syntax checks, Python compilation, and `git diff --check` passed.
+
+Caution / next work:
+
+- The environment and current portrait SVGs are production-intent placeholders, not final licensed commercial illustration.
+- Google font binaries are not bundled; the runtime continues to use Google Fonts with declared fallbacks.
+- Physical-device, assistive-technology, localization, reduced-motion, and final art-provenance reviews remain external validation.
+- No Battle v2 rule, server contract, roster, progression, damage, targeting, cooldown, queue, or energy behavior changed.
+
+Commit / pushed state:
+
+- Delivered as a source archive for review; no remote push was performed in this pass.
+
 # 2026-07-13 - Lifecycle and matchmaking integration commit
 
 - Promoted the approved disconnect/reconnect, timeout-strike, no-progress, hard-cap, terminal-immutability, and replay-v2 policy onto the clean lifecycle base.
@@ -1251,3 +1281,69 @@ analytics outbox retry/event retention while keeping `/ops/runtime`
 aggregate-only. 399 tests passed (up from 377) before merging. Pushed to
 `origin/main`. The `timer-scheduler-and-missions` worktree itself is
 locked and was left in place, but its work is now on `main`.
+
+## 2026-07-16 - Compared PR #54 against temporal-pr, user chose temporal-pr, rebased it onto main
+
+Built a side-by-side comparison of the two unmerged combat-UI redesigns:
+PR #54 "Cursed Arena" (broad, all scenes, violet/gold blade-plate system,
+mergeable as-is) versus the local `wip/temporal-pr-combat-ui-2026-07-13`
+branch "Underpass Courtyard" (narrow, Combat + Queue Review only, an
+authored rain-darkened environment with dossier-style combatant plates,
+real checked-in before/after screenshots and a visual-QA report, but 23
+merged PRs stale with real conflicts). User's call: temporal-pr is the
+preferred direction.
+
+Rebased `wip/temporal-pr-combat-ui-2026-07-13` onto current `main`
+(`git rebase main`), resolving three real conflicts:
+- `docs/session_history.md` — both sides appended; kept both entries.
+- `tests/test_battle_v2_lifecycle.py` (add/add) — main's version has 4
+  newer lifecycle tests this branch didn't have; temporal-pr's version
+  added one test (`test_simultaneous_lobby_joins_create_exactly_one_match`)
+  against `jjk_arena/battle_v2/lobby_registry.py`. Confirmed via grep that
+  `lobby_registry.py` is still dead code — nothing in `web/app.py` or
+  `jjk_arena/` imports it, same as when it was deliberately deleted during
+  the Phase 4 cleanup. Took main's version wholesale and dropped the
+  resurrected `lobby_registry.py` file entirely rather than reintroducing
+  dead code under a different branch.
+- `web/static/phaser/scenes/combat-scene.js` (`renderTopHud`) — main added
+  connection-aware status (`OFFLINE` / `PAUSED <n>s`, shipped as part of
+  Milestone C's reconnect/disconnect UX) to the pre-redesign HUD;
+  temporal-pr rewrote the same function for its new visual language from
+  an older base that predates that feature, so its version had no
+  connection-awareness at all. Merged both: kept temporal-pr's rendering
+  and copy (`YOUR MOVE` / `ORDERS OPEN` / `QUEUE REVIEW` / `ENEMY CONTROL`)
+  but layered main's `connectionWarning` logic on top so a real disconnect
+  still overrides the label and now tints it red in the new HUD too
+  (verified live — forcing `store.connectionState = 'disconnected'` and
+  re-rendering shows `OFFLINE` in red).
+
+Verification:
+- `python -m pytest -q` — 399 passed, 1 skipped, same count as `main`.
+- `node --check` on the resolved JS file; `ast.parse` on the resolved test
+  file.
+- Live in a real Chrome tab (not the sandboxed preview browser, which
+  cannot render Phaser at all — see the entry above): drove Quick Play →
+  Draft → Ignite Battle → Combat on the rebased branch running on its
+  default port. The redesigned Combat scene rendered exactly as intended
+  — authored underpass environment, location/weather header, dossier
+  plates, tactical-directive skill cards — matching the branch's own
+  checked-in reference screenshots.
+- Did not run the branch's own `tools/capture_combat_redesign.py` —
+  it depends on Playwright, which isn't a tracked project dependency
+  (not in `requirements*.txt`); installing it just for one verification
+  pass would add ~300MB of undeclared browser binaries. Used the
+  already-available live-Chrome verification path instead.
+- Along the way, hit and diagnosed a `"Not an accepted origin"` 400 on
+  the Socket.IO handshake when running the app on a non-default port
+  (5001/5002/5003). Confirmed this reproduces identically on unmodified
+  `main` run the same way — a pre-existing dev-environment CORS quirk tied
+  to `JJK_CORS_ORIGINS`'s port-derived default, unrelated to this branch
+  or the rebase. Works cleanly on the default port 5000.
+
+Force-pushed the rebased branch to `origin/wip/temporal-pr-combat-ui-2026-07-13`
+(history rewrite, done with explicit user confirmation) and opened
+[PR #56](https://github.com/DylanElo/FantasyDraft/pull/56) against `main`.
+PR #54 remains open and unmerged; per the user's call this session,
+temporal-pr is the intended direction, not #54 — what to do with #54
+(close it, leave it parked, or mine specific ideas from it) still needs a
+decision.

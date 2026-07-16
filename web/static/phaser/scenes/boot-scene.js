@@ -14,10 +14,12 @@ export class BootScene extends BaseScene {
       this.load.on('progress', (value) => {
         this.loadProgress = value || 0;
       });
+      this.load.image('combat-underpass-night', '/static/assets/environments/underpass-courtyard-night.png');
       Object.keys(firstCreationRoster()).forEach((id) => {
         const file = portraitFileFor(id);
         if (LOCAL_PORTRAIT_FILES.has(file)) {
           this.load.svg(imageKeyFor(id), `/static/assets/portraits/${file}`, { width: 192, height: 192 });
+          this.load.svg(`${imageKeyFor(id)}-card`, `/static/assets/portraits/${file}`, { width: 168, height: 224 });
         }
       });
     }

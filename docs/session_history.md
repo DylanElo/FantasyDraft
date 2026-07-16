@@ -1281,3 +1281,69 @@ analytics outbox retry/event retention while keeping `/ops/runtime`
 aggregate-only. 399 tests passed (up from 377) before merging. Pushed to
 `origin/main`. The `timer-scheduler-and-missions` worktree itself is
 locked and was left in place, but its work is now on `main`.
+
+## 2026-07-16 - Compared PR #54 against temporal-pr, user chose temporal-pr, rebased it onto main
+
+Built a side-by-side comparison of the two unmerged combat-UI redesigns:
+PR #54 "Cursed Arena" (broad, all scenes, violet/gold blade-plate system,
+mergeable as-is) versus the local `wip/temporal-pr-combat-ui-2026-07-13`
+branch "Underpass Courtyard" (narrow, Combat + Queue Review only, an
+authored rain-darkened environment with dossier-style combatant plates,
+real checked-in before/after screenshots and a visual-QA report, but 23
+merged PRs stale with real conflicts). User's call: temporal-pr is the
+preferred direction.
+
+Rebased `wip/temporal-pr-combat-ui-2026-07-13` onto current `main`
+(`git rebase main`), resolving three real conflicts:
+- `docs/session_history.md` — both sides appended; kept both entries.
+- `tests/test_battle_v2_lifecycle.py` (add/add) — main's version has 4
+  newer lifecycle tests this branch didn't have; temporal-pr's version
+  added one test (`test_simultaneous_lobby_joins_create_exactly_one_match`)
+  against `jjk_arena/battle_v2/lobby_registry.py`. Confirmed via grep that
+  `lobby_registry.py` is still dead code — nothing in `web/app.py` or
+  `jjk_arena/` imports it, same as when it was deliberately deleted during
+  the Phase 4 cleanup. Took main's version wholesale and dropped the
+  resurrected `lobby_registry.py` file entirely rather than reintroducing
+  dead code under a different branch.
+- `web/static/phaser/scenes/combat-scene.js` (`renderTopHud`) — main added
+  connection-aware status (`OFFLINE` / `PAUSED <n>s`, shipped as part of
+  Milestone C's reconnect/disconnect UX) to the pre-redesign HUD;
+  temporal-pr rewrote the same function for its new visual language from
+  an older base that predates that feature, so its version had no
+  connection-awareness at all. Merged both: kept temporal-pr's rendering
+  and copy (`YOUR MOVE` / `ORDERS OPEN` / `QUEUE REVIEW` / `ENEMY CONTROL`)
+  but layered main's `connectionWarning` logic on top so a real disconnect
+  still overrides the label and now tints it red in the new HUD too
+  (verified live — forcing `store.connectionState = 'disconnected'` and
+  re-rendering shows `OFFLINE` in red).
+
+Verification:
+- `python -m pytest -q` — 399 passed, 1 skipped, same count as `main`.
+- `node --check` on the resolved JS file; `ast.parse` on the resolved test
+  file.
+- Live in a real Chrome tab (not the sandboxed preview browser, which
+  cannot render Phaser at all — see the entry above): drove Quick Play →
+  Draft → Ignite Battle → Combat on the rebased branch running on its
+  default port. The redesigned Combat scene rendered exactly as intended
+  — authored underpass environment, location/weather header, dossier
+  plates, tactical-directive skill cards — matching the branch's own
+  checked-in reference screenshots.
+- Did not run the branch's own `tools/capture_combat_redesign.py` —
+  it depends on Playwright, which isn't a tracked project dependency
+  (not in `requirements*.txt`); installing it just for one verification
+  pass would add ~300MB of undeclared browser binaries. Used the
+  already-available live-Chrome verification path instead.
+- Along the way, hit and diagnosed a `"Not an accepted origin"` 400 on
+  the Socket.IO handshake when running the app on a non-default port
+  (5001/5002/5003). Confirmed this reproduces identically on unmodified
+  `main` run the same way — a pre-existing dev-environment CORS quirk tied
+  to `JJK_CORS_ORIGINS`'s port-derived default, unrelated to this branch
+  or the rebase. Works cleanly on the default port 5000.
+
+Branch is now 1 commit ahead of a rebased `main` tip, verified clean and
+working. Not yet pushed — the rebase rewrote history, so landing it on
+`origin/wip/temporal-pr-combat-ui-2026-07-13` needs a force-push, which
+wasn't done without explicit confirmation. PR #54 remains open and
+unmerged; per the user's call this session, temporal-pr is the intended
+direction, not #54 — that decision, and what to do with #54, still needs
+to be acted on separately.

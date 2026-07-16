@@ -1435,3 +1435,70 @@ confirmed to actually change behavior by running its new test against a
 the fix (passes) — not just trusting the test's own logic.
 
 Committed (`4d39188`) and pushed directly to `main`.
+
+## 2026-07-16 - Ran and closed the real "1,000 matches, bounded memory" soak gate
+
+Ran `python -m jjk_arena.battle_v2.lifecycle_stress --matches 1000 --seed 1`
+for real, in a fresh subprocess, to settle the soak-test question the
+external audit raised and I'd deferred rather than guess on. `psutil`
+wasn't installed (neither is the stdlib `resource`, which doesn't exist
+on Windows) and wasn't a declared dependency anywhere, so the harness's
+own RSS check had been silently no-op-ing this whole time on this
+machine. Installed `psutil` (small, cross-platform, already the
+harness's own documented fallback — not a heavyweight add like
+Playwright) and re-ran.
+
+Real result, first run: **887 MB RSS against a documented 400 MB
+ceiling — genuinely over**, but the audit's other claim (">5 minutes,
+never terminates") was wrong: it completed in 75.5s. Softlocks: 0 across
+all 1,000 randomized matches (clean_finish, disconnect_reconnect,
+disconnect_forfeit, rematch_spam, code_reuse_race) — the actual PvP
+lifecycle invariants (no double-match-membership, no orphaned rooms,
+idempotent rematch, clean resume) all held. So the correctness half of
+this exit gate was already solid; only the memory half genuinely failed.
+
+Root-caused rather than assumed: instrumented `socketio.server.environ`
+and `SocketIOTestClient.clients` directly around a 200-match batch with
+every client explicitly `.disconnect()`ed. Both retained 530 entries
+after — `gc.collect()` didn't touch them. Read the actual
+`flask-socketio`/`python-socketio` source to find why:
+`SocketIOTestClient.disconnect()` (`flask_socketio/test_client.py`) only
+replays a Socket.IO-level DISCONNECT packet through
+`_handle_eio_message`; it never reaches `python-socketio`'s
+`Server._handle_eio_disconnect`, which is the *only* place
+`self.environ.pop(eio_sid, None)` happens (`socketio/server.py:681`) —
+that handler is wired to the real Engine.IO transport's own `disconnect`
+event (`base_server.py:37`), which only a genuine transport close fires.
+The class-level `SocketIOTestClient.clients` registry (added at connect,
+line `test_client.py:82`) has the identical gap and is the bigger
+contributor of the two, since it retains whole client objects (queues,
+`socketio`/`app` references), not just small WSGI environ dicts.
+
+Confirmed this is a **test-harness-only artifact, not a production
+leak**: a real WebSocket disconnect goes through the actual transport
+close and does fire the handler that cleans `environ` up correctly. It
+only affects `lifecycle_stress.py`'s own use of `SocketIOTestClient` to
+simulate 1,000 matches' worth of connections.
+
+Fixed with a `_fully_disconnect_client()` helper in
+`jjk_arena/battle_v2/lifecycle_stress.py` that disconnects a client and
+then explicitly pops it from both leaked structures, used at the one
+call site that previously just called `client.disconnect()`. Added
+`test_lifecycle_stress_batch_does_not_leak_socketio_test_client_state`
+(`tests/test_battle_v2_lifecycle_stress.py`) asserting both structures
+don't grow across a 200-match batch — confirmed it fails against the
+pre-fix file via `git stash` (grew by 502) before restoring the fix.
+Declared `psutil` in `requirements-dev.txt` with a comment explaining
+why, so this gate can't silently no-op again for the next person running
+it, on Windows or in a `resource`-less CI image.
+
+Re-ran the full 1,000-match batch with the fix: **83.5 MB RSS** — over a
+10x reduction, comfortably under the 400 MB ceiling, still 0 softlocks,
+scheduler thread still cleanly stopped. The "1,000 matches, 0 softlocks,
+bounded memory" exit gate is now genuinely, verifiably closed, not just
+declared closed.
+
+Verification: `python -m pytest -q` — 407 passed (was 406, +1), 1
+skipped. `python -m compileall -q jjk_arena web run_server.py` clean.
+
+Not yet committed/pushed as of writing this entry.

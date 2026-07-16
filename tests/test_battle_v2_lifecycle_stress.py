@@ -1,3 +1,5 @@
+from flask_socketio.test_client import SocketIOTestClient
+
 from jjk_arena.battle_v2.lifecycle_stress import MEMORY_CEILING_BYTES, run_stress_batch
 from web import app as web_app
 
@@ -47,6 +49,35 @@ def test_lifecycle_stress_batch_stays_within_one_scheduler_worker_and_memory_cei
             f"process RSS {result['process_rss_bytes']} exceeded the "
             f"documented ceiling of {MEMORY_CEILING_BYTES} bytes"
         )
+
+
+def test_lifecycle_stress_batch_does_not_leak_socketio_test_client_state():
+    """Regression: SocketIOTestClient.disconnect() only replays a Socket.IO-
+    level DISCONNECT packet -- it never reaches python-socketio's
+    Server._handle_eio_disconnect (the real Engine.IO transport-close path,
+    which is the only place that pops socketio.server.environ[eio_sid]).
+    The class-level SocketIOTestClient.clients registry has the same gap.
+    A batch of matches must not leave either behind: this was the actual
+    mechanism behind a 1,000-match run's RSS blowing well past the
+    documented ceiling despite peak_rooms staying flat, since it retains
+    whole client objects (queues, socketio/app references) forever."""
+
+    clients_before = len(SocketIOTestClient.clients)
+    environ_before = len(web_app.socketio.server.environ)
+
+    run_stress_batch(matches=200, seed=4)
+
+    clients_after = len(SocketIOTestClient.clients)
+    environ_after = len(web_app.socketio.server.environ)
+
+    assert clients_after == clients_before, (
+        f"SocketIOTestClient.clients grew by {clients_after - clients_before} "
+        "over the batch -- test clients are not being fully disconnected"
+    )
+    assert environ_after == environ_before, (
+        f"socketio.server.environ grew by {environ_after - environ_before} "
+        "over the batch -- test clients are not being fully disconnected"
+    )
 
 
 def test_lifecycle_stress_batch_never_writes_to_the_configured_runtime_database():

@@ -1,1 +1,7 @@
 pytest>=8.0.0
+# RSS measurement fallback for jjk_arena/battle_v2/lifecycle_stress.py's
+# memory-ceiling check on platforms without the stdlib `resource` module
+# (all of Windows, some CI images) -- without it, that check silently
+# no-ops instead of failing, which is exactly how a real leak went
+# unnoticed until it was run manually.
+psutil>=5.9.0

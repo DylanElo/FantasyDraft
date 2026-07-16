@@ -253,6 +253,26 @@ def _run_scenario(web_app, rng: random.Random, index: int) -> tuple[str, list[So
     return scenario, findings, clients
 
 
+def _fully_disconnect_client(client: Any) -> None:
+    """Disconnect a SocketIOTestClient and reclaim what it leaks on its own.
+
+    SocketIOTestClient.disconnect() only replays a Socket.IO-level DISCONNECT
+    packet -- it never reaches python-socketio's Server._handle_eio_disconnect,
+    which is the only place that pops socketio.server.environ[eio_sid]. The
+    client also registers itself in the class-level SocketIOTestClient.clients
+    registry at connect time and nothing ever pops it back out. A real
+    WebSocket disconnect doesn't have this problem (it goes through the real
+    Engine.IO transport close, which does fire that handler), so this is a
+    test-harness-only leak -- but it's exactly the kind of leak that makes a
+    soak test's own memory measurement meaningless if left in place.
+    """
+
+    if client.is_connected():
+        client.disconnect()
+    client.socketio.server.environ.pop(client.eio_sid, None)
+    type(client).clients.pop(client.eio_sid, None)
+
+
 def _process_rss_bytes() -> int | None:
     """Best-effort resident set size; returns None if unavailable on this platform."""
 
@@ -301,8 +321,7 @@ def run_stress_batch(*, matches: int, seed: int = 1, prune_every: int = 100) -> 
             scenario_counts[scenario] = scenario_counts.get(scenario, 0) + 1
             findings.extend(batch_findings)
             for client in clients:
-                if client.is_connected():
-                    client.disconnect()
+                _fully_disconnect_client(client)
             peak_rooms = max(peak_rooms, len(web_app.battle_v2_manager.rooms))
             peak_scheduler_tasks = max(peak_scheduler_tasks, scheduler.active_task_count())
             if (index + 1) % prune_every == 0:

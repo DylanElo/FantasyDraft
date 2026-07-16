@@ -1,7 +1,7 @@
-import { COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE } from '../core/runtime-config.js?v=20';
-import { initials, safeText } from '../core/text.js?v=20';
-import { LayoutService } from '../core/layout-service.js?v=20';
-import { costColors } from '../core/roster.js?v=20';
+import { COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=21';
+import { initials, safeText } from '../core/text.js?v=21';
+import { LayoutService } from '../core/layout-service.js?v=21';
+import { costColors } from '../core/roster.js?v=21';
 
 export class BaseScene extends Phaser.Scene {
     constructor(key) {
@@ -58,7 +58,7 @@ export class BaseScene extends Phaser.Scene {
     text(x, y, value, style) {
       const node = this.add.text(x, y, safeText(value), {
         fontFamily: TOKEN_TYPE.ui || 'Inter, Arial, sans-serif',
-        fontSize: '14px',
+        fontSize: `${TYPE_SCALE.body}px`,
         color: COLORS.text,
         ...style,
       });
@@ -69,7 +69,7 @@ export class BaseScene extends Phaser.Scene {
     mono(x, y, value, style) {
       return this.text(x, y, value, {
         fontFamily: TOKEN_TYPE.mono || '"JetBrains Mono", monospace',
-        fontSize: '11px',
+        fontSize: `${TYPE_SCALE.label}px`,
         color: COLORS.muted,
         ...style,
       });
@@ -199,7 +199,7 @@ export class BaseScene extends Phaser.Scene {
       g.strokePath();
       const text = this.text(x + w / 2, y + h / 2 - 8, label, {
         fontFamily: opts.mono ? (TOKEN_TYPE.mono || '"JetBrains Mono", monospace') : (TOKEN_TYPE.ui || 'Inter, Arial, sans-serif'),
-        fontSize: opts.fontSize || '13px',
+        fontSize: opts.fontSize || `${TYPE_SCALE.body}px`,
         fontStyle: '800',
         color: opts.color || COLORS.text,
         align: 'center',
@@ -280,13 +280,13 @@ export class BaseScene extends Phaser.Scene {
         this.graphics.strokeCircle(cx, y, size / 2);
         this.mono(cx - 3, y - 4, ENERGY_LABELS[color] || 'X', {
           color: color === 'white' ? '#08080a' : COLORS.text,
-          fontSize: '9px',
+          fontSize: `${TYPE_SCALE.micro}px`,
         });
       });
       if (!cost || !cost.length) {
         this.graphics.lineStyle(1, COLORS.queued, 0.72);
         this.graphics.strokeCircle(x, y, size / 2);
-        this.mono(x - 4, y - 4, '0', { color: '#b7dbc0', fontSize: '9px' });
+        this.mono(x - 4, y - 4, '0', { color: '#b7dbc0', fontSize: `${TYPE_SCALE.micro}px` });
       }
     }
 
@@ -487,9 +487,9 @@ export class BaseScene extends Phaser.Scene {
       g.lineTo(x + w - 66, y + 21);
       g.strokePath();
       if (opts.eyebrow) {
-        this.mono(x + 12, y + 7, opts.eyebrow, {
+        this.mono(x + 12, y + 6, opts.eyebrow, {
           color: COLORS.paperText,
-          fontSize: '10px',
+          fontSize: `${TYPE_SCALE.label}px`,
           fontStyle: '700',
         });
       }
@@ -559,8 +559,8 @@ export class BaseScene extends Phaser.Scene {
        stateLabel chip; same (x, y, text, tone) call shape as talismanLabel. */
     dossierTag(x, y, text, tone, options) {
       const opts = options || {};
-      const chipH = opts.height || 18;
-      const chipW = opts.width || (text.length * 6 + 16);
+      const chipH = opts.height || 20;
+      const chipW = opts.width || (text.length * 7 + 18);
       this.graphics.fillStyle(tone || COLORS.selection, opts.alpha === undefined ? 0.88 : opts.alpha);
       this.graphics.fillPoints([
         { x: x + 5, y: y - chipH / 2 },
@@ -570,7 +570,7 @@ export class BaseScene extends Phaser.Scene {
       ], true);
       this.mono(x + 9, y - chipH / 2 + 5, text, {
         color: opts.color || '#07090a',
-        fontSize: opts.fontSize || '9px',
+        fontSize: opts.fontSize || `${TYPE_SCALE.label}px`,
         fontStyle: '700',
       });
       return chipW;
@@ -600,10 +600,10 @@ export class BaseScene extends Phaser.Scene {
       g.lineStyle(2, tone, 0.68);
       g.strokePoints(points, true);
       if (opts.eyebrow) {
-        this.mono(x + 18, y + 18, opts.eyebrow, { color: COLORS.paperText, fontSize: '8px' });
+        this.mono(x + 18, y + 18, opts.eyebrow, { color: COLORS.paperText, fontSize: `${TYPE_SCALE.label}px` });
       }
       if (opts.title) {
-        this.text(x + 18, y + 40, opts.title, {
+        this.text(x + 18, y + 42, opts.title, {
           fontFamily: TOKEN_TYPE.display || 'Georgia, serif',
           fontSize: '22px',
           fontStyle: '700',
@@ -625,7 +625,7 @@ export class BaseScene extends Phaser.Scene {
       const opts = options || {};
       this.mono(x, y, text, {
         color: opts.color || COLORS.paperText,
-        fontSize: opts.fontSize || '10px',
+        fontSize: opts.fontSize || `${TYPE_SCALE.label}px`,
         fontStyle: '700',
       });
       if (opts.width) {

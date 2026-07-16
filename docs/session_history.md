@@ -1727,3 +1727,108 @@ Combat, Queue Review, Skill Detail sheet, Mission Map, Records, and
 Result at this environment's real ~638-695px window plus a frame-patched
 932px simulation — zero overlaps, zero console errors throughout the
 whole pass (checked via `read_console_messages` after the final reload).
+
+## 2026-07-16/17 - Full visual rethink: type scale, color discipline, decluttering
+
+User feedback after the prior pass, seen at true 1:1 scale (not the zoomed
+screenshots shown before, which made text look ~25% bigger than it
+actually renders): still "barely readable" and "ugly." A fair miss — the
+prior pass's 9-10px floor is still below real mobile UI minimums (13-16px
+for body text), and it never addressed density/hierarchy, only size.
+Asked the user how far to go; chose "full visual rethink" over
+incremental cleanup.
+
+Read `combat-scene.js` in full for the first time this session (previously
+only seen in font-size-line snippets). Key finding that shaped the plan:
+Combat's density is functionally justified — a live tactical HUD showing
+turn state, legal targets, queued actions, cooldowns — and its color
+usage (`selection`=active-turn, `enemy`=hostile, `ally`=player,
+`queued`=already-queued, `target`=legal-target) is already state-driven,
+not arbitrary. The "arbitrary color per box" problem was much more true
+of the 6 management screens, which tinted nav buttons/panels with
+different accent colors for no reason tied to state. Also confirmed
+`jjk-tokens.css`/`jjk-theme.css`/`arena-redesign.css` (flagged by an
+earlier stale-worktree agent report as a "richer DOM token system") **are
+not even linked in `index.html`** — dead files, irrelevant; the Phaser
+canvas token system is the only one that matters.
+
+Planned via EnterPlanMode: touch the 6 management screens for real
+(structural declutter, not just bigger numbers) while treating Combat/
+Queue Review conservatively (font-size push + trim one decorative field,
+no structural change) — the one screen CLAUDE.md protects from casual
+changes and whose density is earned by representing real game state.
+
+**New design-system foundation** (`web/static/phaser/core/
+runtime-config.js`, `base-scene.js`): added a `TYPE_SCALE` export
+(`micro:10, label:12, body:14, subtitle:16, title:20, display:28`) —
+`micro` is the only tier below 12px, reserved for single-glyph badges in
+small fixed chips. Wired it into `base-scene.js`'s primitive defaults
+(`text()`, `mono()`, `button()`, `railLabel`, `dossierTag`,
+`dossierHeader`'s eyebrow, `dossierSheet`'s eyebrow, `costPips`) so every
+scene inherits the floor automatically. Also established a font-family
+rule: real readable copy (descriptions, list rows) now uses the sans
+`text()` body font instead of monospace `mono()` — mono stays reserved
+for short all-caps tags/labels/numeric readouts, addressing a real
+contributor to the "spec-sheet, not a game" read (almost everything had
+been monospace).
+
+**Pilot: `lobby-scene.js`**, rebuilt with the new type scale + a color
+discipline (Quick Play is the only gold/primary-CTA element on the
+screen; every other button defaults to a neutral `COLORS.line` outline
+instead of a different bright accent each). Screenshotted at true 1:1
+scale and shown to the user for explicit confirmation before touching any
+other scene — the built-in checkpoint this plan added specifically
+because two prior guesses on this exact complaint had already missed.
+User confirmed to continue.
+
+**Remaining 5 management scenes** (`draft-scene.js` +
+`draft-roster-scene.js` mixin, `first-creation-scene.js`,
+`mission-map-scene.js`, `records-scene.js`, `result-scene.js`) rebuilt
+with the same discipline, one at a time, verified live. Found and fixed
+three more real bugs along the way (not just resizing text):
+- `draft-roster-scene.js`'s `renderRosterCard`/`renderStarterRosterCard`
+  needed taller cards for the bigger fonts (90→100px, 80→100-104px) —
+  propagated into both `draft-scene.js`'s and `first-creation-scene.js`'s
+  roster-grid math, which both already used the bottom-up frame-budget
+  pattern from the prior pass.
+- `first-creation-scene.js`'s `renderPresetTile` put a wide "USE
+  PRESET"/"ACTIVE TRIO" chip beside 3 portraits in a tile too narrow to
+  fit both without overlap — restacked the chip onto its own row below
+  the portraits instead of cramming them side by side, and added the
+  same `ultraCompact` (`frame.height < 700`) tier as Draft (drops the
+  presets section first) since First Creation stacks even more content
+  than Draft above its roster grid.
+- `mission-map-scene.js`'s mission-card tone simplified from
+  `talismanDim` to neutral `COLORS.line` for non-featured cards, matching
+  the "reserve bright color for the one meaningful thing" rule.
+`result-scene.js`'s outcome-derivation logic (win/loss/draw/no_contest)
+confirmed byte-identical via `git diff` — only drawing calls below it
+changed; also swapped which button gets the gold treatment (Rematch, the
+real primary action on a result screen, instead of Lobby).
+
+**Combat/Queue Review conservative pass**: pushed already-bumped 7-9px
+sizes up one more step (8-11px depending on context, tiny geometry-
+constrained badges like energy-pip letters and queue-chip glyphs get the
+smallest bump), and deleted the purely decorative `'22:47 / HEAVY RAIN'`
+clock/weather line from the top HUD to reclaim space. While verifying
+this live, found and fixed a genuine pre-existing layout bug unrelated to
+font sizes: `combatLayout()`'s `allyY` (`dockY - cardH - 28`) could land
+above `fieldTop`'s tactical-directive panel bottom at short viewports
+where `dockH` clamps to its minimum, so the "TACTICAL DIRECTIVE / Choose
+technique" panel visibly overlapped the ally fighter row. Fixed with a
+one-line floor: `allyY = Math.max(fieldTop + 46, dockY - cardH - 28)` —
+verified it doesn't change `allyY` at all at taller heights (the original
+value already wins there) and closes the overlap at short ones.
+
+Version bumped `?v=20` → `?v=21` in the usual lockstep; fixed the
+resulting stale `?v=20` literals in `tests/test_app.py` (same recurring
+fix as every prior version bump this session).
+
+Verification: `python -m pytest -q` — 407 passed, 1 skipped (unchanged;
+no server-side logic touched — `result-scene.js`'s outcome derivation
+confirmed untouched via diff). `python -m compileall -q jjk_arena web
+run_server.py` and `node --check` on every touched file clean. Live-
+verified every rebuilt scene in real Chrome, including real interactive
+flows (queueing 3 actions through actual button clicks, opening Queue
+Review, injecting a synthetic Victory result) rather than only static
+screenshots — zero overlaps, zero console errors on final reload.

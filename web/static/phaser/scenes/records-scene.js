@@ -1,6 +1,6 @@
-import { COLORS } from '../core/runtime-config.js?v=20';
-import { shortText } from '../core/text.js?v=20';
-import { BaseScene } from './base-scene.js?v=20';
+import { COLORS, TYPE_SCALE } from '../core/runtime-config.js?v=21';
+import { shortText } from '../core/text.js?v=21';
+import { BaseScene } from './base-scene.js?v=21';
 
 export class RecordsScene extends BaseScene {
     constructor() {
@@ -23,10 +23,10 @@ export class RecordsScene extends BaseScene {
       const biggestHit = records
         .flatMap((record) => record.biggest || [])
         .sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0))[0];
-      this.platePanel(x, 96, frame.width - 32, 76, COLORS.queued, { edgeBar: 'left' });
+      this.platePanel(x, 96, frame.width - 32, 80, COLORS.queued, { edgeBar: 'left' });
       this.text(x + 16, 116, `${wins}W / ${losses}L`, { fontSize: '27px', fontStyle: '900' });
-      this.mono(x + 18, 148, 'Local device battle records', { color: COLORS.text });
-      const summaryY = 188;
+      this.text(x + 18, 150, 'Local device battle records', { color: COLORS.muted, fontSize: `${TYPE_SCALE.body}px` });
+      const summaryY = 192;
       const summaryW = (frame.width - 52) / 3;
       [
         { label: 'FASTEST WIN', value: fastestWin ? `${fastestWin.turns}T` : '--', tone: COLORS.selection },
@@ -34,27 +34,28 @@ export class RecordsScene extends BaseScene {
         { label: 'TOTAL DAMAGE', value: String(totalDamage), tone: COLORS.ally },
       ].forEach((stat, index) => {
         const sx = x + index * (summaryW + 10);
-        this.platePanel(sx, summaryY, summaryW, 66, stat.tone, { alpha: 0.85, cut: 5 });
-        this.mono(sx + 9, summaryY + 12, stat.label, { color: COLORS.paperText, fontSize: '9px' });
-        this.text(sx + 9, summaryY + 31, stat.value, { fontSize: '18px', fontStyle: '900' });
+        this.platePanel(sx, summaryY, summaryW, 70, stat.tone, { alpha: 0.85, cut: 5 });
+        this.mono(sx + 9, summaryY + 13, stat.label, { color: COLORS.paperText, fontSize: `${TYPE_SCALE.label}px` });
+        this.text(sx + 9, summaryY + 33, stat.value, { fontSize: '18px', fontStyle: '900' });
       });
-      const y = 278;
-      const maxRows = Math.max(3, Math.min(7, Math.floor((frame.height - 348) / 54)));
+      const y = 288;
+      const maxRows = Math.max(3, Math.min(7, Math.floor((frame.height - 358) / 60)));
       if (!records.length) {
-        this.mono(x, y, 'No finished battles yet.', { color: COLORS.muted });
+        this.text(x, y, 'No finished battles yet.', { color: COLORS.muted, fontSize: `${TYPE_SCALE.body}px` });
       }
       records.slice(0, maxRows).forEach((record, index) => {
-        const rowY = y + index * 54;
-        this.platePanel(x, rowY, frame.width - 32, 44, record.result === 'Victory' ? COLORS.queued : COLORS.enemy, { alpha: 0.85, cut: 5, edgeBar: 'left' });
-        this.mono(x + 14, rowY + 9, `${record.result} / ${record.turns} turns`, {
+        const rowY = y + index * 60;
+        this.platePanel(x, rowY, frame.width - 32, 50, record.result === 'Victory' ? COLORS.queued : COLORS.enemy, { alpha: 0.85, cut: 5, edgeBar: 'left' });
+        this.text(x + 14, rowY + 8, `${record.result} / ${record.turns} turns`, {
           color: record.result === 'Victory' ? '#b7dbc0' : '#f1a0a0',
+          fontSize: `${TYPE_SCALE.body}px`,
         });
-        this.mono(x + 190, rowY + 9, `${record.damage} dmg`, { color: COLORS.text });
-        this.mono(x + 14, rowY + 26, shortText(record.winner || 'Domain record', 28), { color: COLORS.muted, fontSize: '9px' });
+        this.text(x + 200, rowY + 8, `${record.damage} dmg`, { color: COLORS.text, fontSize: `${TYPE_SCALE.body}px` });
+        this.text(x + 14, rowY + 29, shortText(record.winner || 'Domain record', 28), { color: COLORS.muted, fontSize: `${TYPE_SCALE.label}px` });
       });
       this.button(x, frame.height - 62, frame.width - 32, 44, 'Lobby', () => this.store.changeScene('LobbyScene'), {
         fill: COLORS.panel2,
-        stroke: COLORS.ally,
+        stroke: COLORS.line,
       });
       this.toast(frame);
     }

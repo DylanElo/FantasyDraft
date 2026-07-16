@@ -8,6 +8,19 @@ export const TOKEN_FRAMES = DESIGN_TOKENS.frames || {};
 export const TOKEN_TOUCH = DESIGN_TOKENS.touch || {};
 export const TOKEN_MOTION = DESIGN_TOKENS.motion || {};
 
+// Real minimum sizes for mobile UI text -- `micro` is the only tier allowed
+// below 12px, and only for single-glyph badges in small fixed chips (slot
+// markers, energy-pip letters) where color/position carry as much meaning
+// as the character. Everything a player is meant to read starts at `body`.
+export const TYPE_SCALE = {
+  micro: 10,
+  label: 12,
+  body: 14,
+  subtitle: 16,
+  title: 20,
+  display: 28,
+};
+
 export const COLORS = {
   bg: TOKEN_COLORS.voidBlack || 0x030303,
   voidBlack: TOKEN_COLORS.voidBlack || 0x030303,

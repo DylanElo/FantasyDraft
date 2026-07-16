@@ -1576,7 +1576,7 @@ briefly 405 with 2 failures until the version-literal tests were fixed),
 click-tested live (buttons, pagers, roster card taps, the character
 detail sheet) with zero new console errors at each step.
 
-Not yet committed/pushed as of writing this entry. Remaining, deliberately
+Committed (`93d8217`) and pushed directly to `main`. Remaining, deliberately
 out of scope for this pass per the plan's non-goals: `boot-scene.js`'s
 splash screen (still needs the old primitives), new environment art for
 the 6 rebuilt scenes (all use `worldBackdrop`'s gradient-fallback path,

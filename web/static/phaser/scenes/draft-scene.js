@@ -1,6 +1,6 @@
-import { BOOT, COLORS } from '../core/runtime-config.js?v=17';
-import { clamp, safeText, shortText } from '../core/text.js?v=17';
-import { DraftRosterScene } from './draft-roster-scene.js?v=17';
+import { BOOT, COLORS } from '../core/runtime-config.js?v=18';
+import { clamp, safeText, shortText } from '../core/text.js?v=18';
+import { DraftRosterScene } from './draft-roster-scene.js?v=18';
 
 export class DraftScene extends DraftRosterScene {
     constructor(key) {
@@ -10,10 +10,10 @@ export class DraftScene extends DraftRosterScene {
     renderTeamDock(frame, y) {
       const x = frame.x + frame.gutter;
       const slotW = (frame.width - 64) / 3;
-      this.mono(x, y - 18, this.store.matchMode === 'pvp' ? 'MY PRIVATE DOMAIN TRIO' : 'MY TRIO', { color: COLORS.paperText });
+      this.railLabel(x, y - 14, this.store.matchMode === 'pvp' ? 'MY PRIVATE DOMAIN TRIO' : 'MY TRIO', COLORS.ally);
       this.store.playerTeam.forEach((id, index) => this.renderDraftSlot(x + index * (slotW + 8), y, slotW, id, index, COLORS.ally));
       if (this.store.matchMode === 'cpu') {
-        this.mono(x, y + 68, 'CPU TRIO', { color: '#f1a0a0' });
+        this.railLabel(x, y + 72, 'CPU TRIO', COLORS.enemy, { color: '#f1a0a0' });
         this.store.enemyTeam.forEach((id, index) => this.renderDraftSlot(x + index * (slotW + 8), y + 86, slotW, id, index, COLORS.enemy));
       } else if (this.store.lobbyStatus && this.store.lobbyStatus.status === 'waiting') {
         this.mono(x, y + 74, `Waiting in room ${this.store.lobbyStatus.room_id}.`, { color: '#a3eadf' });
@@ -22,8 +22,8 @@ export class DraftScene extends DraftRosterScene {
 
     renderDraftSlot(x, y, w, id, index, tone) {
       const character = this.store.character(id);
-      this.cardPanel(x, y, w, 58, tone, 0.78);
-      this.portrait(character, x + 6, y + 9, 34, { tone });
+      this.platePanel(x, y, w, 58, tone, { alpha: 0.78, edgeBar: 'left' });
+      this.platePortrait(character, x + 6, y + 9, 34, { tone });
       this.mono(x + 8, y + 7, `S${index + 1}`, { color: COLORS.text, fontSize: '9px' });
       this.text(x + 46, y + 12, shortText(safeText(character.name, id), 16), {
         fontSize: '11px',
@@ -35,14 +35,14 @@ export class DraftScene extends DraftRosterScene {
     render() {
       const frame = this.layout.frame();
       this.clearSurface();
-      this.drawAppBg(frame);
-      this.topBar(frame, 'Draft', () => this.store.resetToLobby());
+      this.worldBackdrop(frame, { textureKey: null, ambient: 'motes' });
+      this.dossierHeader(frame, { eyebrow: 'CURSED CLASH', title: 'Draft', backHandler: () => this.store.resetToLobby() });
       const x = frame.x + frame.gutter;
       let y = 88;
       y += this.renderMissionPreview(frame, y);
       const presets = (BOOT.firstCreation && BOOT.firstCreation.presets) || {};
       const presetNames = Object.keys(presets).slice(0, 4);
-      this.mono(x, y, 'PRESETS', { color: COLORS.paperText });
+      this.railLabel(x, y, 'PRESETS', COLORS.selection);
       const small = (frame.width - 44) / 2;
       presetNames.slice(0, 2).forEach((name, index) => {
         this.button(x + index * (small + 12), y + 18, small, 34, name.replace(/_/g, ' '), () => this.store.applyPreset(name, 'playerTeam'), {
@@ -61,7 +61,7 @@ export class DraftScene extends DraftRosterScene {
             mono: true,
           });
         });
-        this.mono(x, y + 100, 'CPU DIFFICULTY', { color: '#f1a0a0' });
+        this.railLabel(x, y + 100, 'CPU DIFFICULTY', COLORS.enemy, { color: '#f1a0a0' });
         const diffW = (frame.width - 44 - 16) / 3;
         ['easy', 'normal', 'hard'].forEach((level, index) => {
           const active = this.store.difficulty === level;
@@ -127,6 +127,7 @@ export class DraftScene extends DraftRosterScene {
         fontSize: '15px',
         disabled: !!this.store.lobbyStatus,
       });
+
       this.toast(frame);
     }
   }

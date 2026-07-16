@@ -1,6 +1,6 @@
-import { COLORS } from '../core/runtime-config.js?v=17';
-import { shortText } from '../core/text.js?v=17';
-import { BaseScene } from './base-scene.js?v=17';
+import { COLORS } from '../core/runtime-config.js?v=18';
+import { shortText } from '../core/text.js?v=18';
+import { BaseScene } from './base-scene.js?v=18';
 
 export class RecordsScene extends BaseScene {
     constructor() {
@@ -10,8 +10,8 @@ export class RecordsScene extends BaseScene {
     render() {
       const frame = this.layout.frame();
       this.clearSurface();
-      this.drawAppBg(frame);
-      this.topBar(frame, 'Records', () => this.store.changeScene('LobbyScene'));
+      this.worldBackdrop(frame, { textureKey: null, ambient: 'motes' });
+      this.dossierHeader(frame, { eyebrow: 'CURSED CLASH', title: 'Records', backHandler: () => this.store.changeScene('LobbyScene') });
       const x = frame.x + frame.gutter;
       const records = this.store.records;
       const wins = records.filter((record) => record.result === 'Victory').length;
@@ -23,7 +23,7 @@ export class RecordsScene extends BaseScene {
       const biggestHit = records
         .flatMap((record) => record.biggest || [])
         .sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0))[0];
-      this.cardPanel(x, 96, frame.width - 32, 76, COLORS.queued, 0.76);
+      this.platePanel(x, 96, frame.width - 32, 76, COLORS.queued, { edgeBar: 'left' });
       this.text(x + 16, 116, `${wins}W / ${losses}L`, { fontSize: '27px', fontStyle: '900' });
       this.mono(x + 18, 148, 'Local device battle records', { color: COLORS.text });
       const summaryY = 188;
@@ -34,7 +34,7 @@ export class RecordsScene extends BaseScene {
         { label: 'TOTAL DAMAGE', value: String(totalDamage), tone: COLORS.ally },
       ].forEach((stat, index) => {
         const sx = x + index * (summaryW + 10);
-        this.cardPanel(sx, summaryY, summaryW, 66, stat.tone, 0.62);
+        this.platePanel(sx, summaryY, summaryW, 66, stat.tone, { alpha: 0.85, cut: 5 });
         this.mono(sx + 9, summaryY + 12, stat.label, { color: COLORS.paperText, fontSize: '7px' });
         this.text(sx + 9, summaryY + 31, stat.value, { fontSize: '18px', fontStyle: '900' });
       });
@@ -45,7 +45,7 @@ export class RecordsScene extends BaseScene {
       }
       records.slice(0, maxRows).forEach((record, index) => {
         const rowY = y + index * 54;
-        this.cardPanel(x, rowY, frame.width - 32, 44, record.result === 'Victory' ? COLORS.queued : COLORS.enemy, 0.62);
+        this.platePanel(x, rowY, frame.width - 32, 44, record.result === 'Victory' ? COLORS.queued : COLORS.enemy, { alpha: 0.85, cut: 5, edgeBar: 'left' });
         this.mono(x + 14, rowY + 9, `${record.result} / ${record.turns} turns`, {
           color: record.result === 'Victory' ? '#b7dbc0' : '#f1a0a0',
         });

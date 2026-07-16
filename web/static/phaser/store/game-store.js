@@ -1,9 +1,9 @@
-import { BOOT, CORE_ENERGY } from '../core/runtime-config.js?v=17';
-import { safeText } from '../core/text.js?v=17';
-import { readStorage, writeStorage } from '../core/storage.js?v=17';
-import { AssetRegistry } from '../core/asset-registry.js?v=17';
-import { firstCreationRoster, imageKeyFor, preset, presetTitle } from '../core/roster.js?v=17';
-import { eventAmount } from '../fx/event-metrics.js?v=17';
+import { BOOT, CORE_ENERGY } from '../core/runtime-config.js?v=18';
+import { safeText } from '../core/text.js?v=18';
+import { readStorage, writeStorage } from '../core/storage.js?v=18';
+import { AssetRegistry } from '../core/asset-registry.js?v=18';
+import { firstCreationRoster, imageKeyFor, preset, presetTitle } from '../core/roster.js?v=18';
+import { eventAmount } from '../fx/event-metrics.js?v=18';
 
 export class GameStore {
     constructor(socketClient) {

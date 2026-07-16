@@ -1,6 +1,6 @@
-import { COLORS, CORE_ENERGY, ENERGY_COLORS, ENERGY_LABELS, TOKEN_TYPE } from '../core/runtime-config.js?v=17';
-import { shortText } from '../core/text.js?v=17';
-import { CombatPlaybackScene } from '../fx/combat-playback-scene.js?v=17';
+import { COLORS, CORE_ENERGY, ENERGY_COLORS, ENERGY_LABELS, TOKEN_TYPE } from '../core/runtime-config.js?v=18';
+import { shortText } from '../core/text.js?v=18';
+import { CombatPlaybackScene } from '../fx/combat-playback-scene.js?v=18';
 
 export class CombatQueueReviewScene extends CombatPlaybackScene {
     actionMeta(action) {

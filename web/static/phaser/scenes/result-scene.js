@@ -1,7 +1,7 @@
-import { COLORS } from '../core/runtime-config.js?v=17';
-import { safeText, shortText } from '../core/text.js?v=17';
-import { eventAmount } from '../fx/event-metrics.js?v=17';
-import { BaseScene } from './base-scene.js?v=17';
+import { COLORS, TOKEN_TYPE } from '../core/runtime-config.js?v=18';
+import { safeText, shortText } from '../core/text.js?v=18';
+import { eventAmount } from '../fx/event-metrics.js?v=18';
+import { BaseScene } from './base-scene.js?v=18';
 
 export class ResultScene extends BaseScene {
     constructor() {
@@ -11,7 +11,7 @@ export class ResultScene extends BaseScene {
     render() {
       const frame = this.layout.frame();
       this.clearSurface();
-      this.drawAppBg(frame);
+      this.worldBackdrop(frame, { textureKey: null, ambient: 'motes' });
       const state = this.store.state;
       const mine = this.store.mineId();
       // WIN/FORFEIT both resolve to a decisive winner_id; DRAW/NO_CONTEST
@@ -27,14 +27,14 @@ export class ResultScene extends BaseScene {
       const heroLabel = { win: 'DOMAIN WON', loss: 'DOMAIN LOST', draw: 'DOMAIN CONTESTED', no_contest: 'NO CONTEST' }[outcome] || 'RESULT';
       const heroColor = victory ? COLORS.selection : outcome === 'loss' ? COLORS.enemy : COLORS.line;
       const heroTextColor = victory ? COLORS.paperText : outcome === 'loss' ? '#f1a0a0' : COLORS.text;
-      this.topBar(frame, outcomeLabel, () => this.store.resetToLobby());
+      this.dossierHeader(frame, { eyebrow: 'CURSED CLASH', title: outcomeLabel, tone: heroColor, backHandler: () => this.store.resetToLobby() });
       const x = frame.x + frame.gutter;
       const compact = frame.height < 730;
       const heroY = compact ? 84 : 108;
       const heroH = compact ? 144 : 180;
-      this.cardPanel(x, heroY, frame.width - 32, heroH, heroColor, 0.84);
+      this.platePanel(x, heroY, frame.width - 32, heroH, heroColor, { alpha: 0.9, edgeBar: 'left' });
       this.text(frame.x + frame.width / 2, heroY + (compact ? 22 : 26), heroLabel, {
-        fontFamily: 'Cinzel, Inter, serif',
+        fontFamily: TOKEN_TYPE.display || 'Georgia, serif',
         fontSize: compact ? '27px' : '32px',
         fontStyle: '900',
         color: heroTextColor,
@@ -57,8 +57,8 @@ export class ResultScene extends BaseScene {
       });
       const strikesY = heroY + heroH + (compact ? 16 : 26);
       const strikesH = compact ? 118 : 150;
-      this.cardPanel(x, strikesY, frame.width - 32, strikesH, COLORS.line, 0.72);
-      this.mono(x + 16, strikesY + 18, 'BIGGEST STRIKES', { color: COLORS.paperText });
+      this.platePanel(x, strikesY, frame.width - 32, strikesH, COLORS.line, { alpha: 0.88 });
+      this.railLabel(x + 16, strikesY + 18, 'BIGGEST STRIKES', COLORS.line);
       const strikes = (last.biggest && last.biggest.length ? last.biggest : ((state && state.event_log) || [])
         .map((event) => ({ message: event.message || event.type, amount: eventAmount(event) }))
         .filter((event) => event.amount > 0)
@@ -78,13 +78,10 @@ export class ResultScene extends BaseScene {
       const total = this.store.missions().length || 1;
       const missionY = strikesY + strikesH + (compact ? 14 : 22);
       const missionH = compact ? 108 : 116;
-      this.cardPanel(x, missionY, frame.width - 32, missionH, COLORS.selection, 0.58);
+      this.platePanel(x, missionY, frame.width - 32, missionH, COLORS.selection, { edgeBar: 'left' });
       this.mono(x + 16, missionY + 15, 'MISSION PROGRESS', { color: COLORS.paperText, fontSize: '9px' });
       this.text(x + 16, missionY + 32, shortText(mission ? mission.title : 'First Creation Progress', 34), { fontSize: '13px', fontStyle: '900' });
-      this.graphics.fillStyle(COLORS.inkBlack, 0.72);
-      this.graphics.fillRoundedRect(x + 16, missionY + 58, frame.width - 164, 8, 4);
-      this.graphics.fillStyle(COLORS.selection, 0.9);
-      this.graphics.fillRoundedRect(x + 16, missionY + 58, (frame.width - 164) * Math.min(1, completed / total), 8, 4);
+      this.progressRail(x + 16, missionY + 58, frame.width - 164, 8, completed / total, COLORS.selection);
       this.mono(x + frame.width - 128, missionY + 56, `${completed}/${total} ROUTES`, { color: COLORS.text, fontSize: '8px' });
       const unlocks = mission && mission.unlocks && mission.unlocks.length ? `Unlocks: ${mission.unlocks.join(' / ')}` : 'Progress saved to your profile.';
       this.mono(x + 16, missionY + 78, 'REWARD CHECK', { color: COLORS.paperText, fontSize: '8px' });

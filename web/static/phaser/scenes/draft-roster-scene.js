@@ -1,13 +1,13 @@
-import { COLORS } from '../core/runtime-config.js?v=17';
-import { shortText, titleize } from '../core/text.js?v=17';
-import { BaseScene } from './base-scene.js?v=17';
+import { COLORS } from '../core/runtime-config.js?v=18';
+import { shortText, titleize } from '../core/text.js?v=18';
+import { BaseScene } from './base-scene.js?v=18';
 
 export class DraftRosterScene extends BaseScene {
     renderRosterCard(character, x, y, w, h, teamKey) {
       const selected = this.store[teamKey].includes(character.id);
       const tone = selected ? (teamKey === 'playerTeam' ? COLORS.ally : COLORS.enemy) : this.store.assets.toneFor(character.id);
-      this.cardPanel(x, y, w, h, tone, selected ? 0.94 : 0.74);
-      this.portrait(character, x + 10, y + 12, 48, { tone, selected });
+      this.platePanel(x, y, w, h, tone, { alpha: selected ? 0.94 : 0.74, edgeBar: 'left' });
+      this.platePortrait(character, x + 10, y + 12, 48, { tone, selected });
       this.text(x + 68, y + 10, shortText(character.name, 18), {
         fontSize: '12px',
         fontStyle: '800',
@@ -19,9 +19,7 @@ export class DraftRosterScene extends BaseScene {
         color: selected ? COLORS.paperText : COLORS.muted,
       });
       if (selected) {
-        this.graphics.fillStyle(teamKey === 'playerTeam' ? COLORS.ally : COLORS.enemy, 0.9);
-        this.graphics.fillRoundedRect(x + w - 52, y + 8, 40, 16, 8);
-        this.mono(x + w - 32, y + 12, 'IN', { color: '#08080a', fontSize: '8px' }).setOrigin(0.5, 0);
+        this.dossierTag(x + w - 56, y + 16, 'IN', teamKey === 'playerTeam' ? COLORS.ally : COLORS.enemy, { color: '#08080a' });
       }
       this.buttons.push({ x, y, w, h, label: `Roster ${character.name}`, onClick: () => this.store.toggleTeamPick(this.store.draftTarget, character.id) });
     }
@@ -30,8 +28,8 @@ export class DraftRosterScene extends BaseScene {
       const mission = this.store.activeMission();
       if (!mission) return 0;
       const x = frame.x + frame.gutter;
-      this.cardPanel(x, y, frame.width - 32, 76, COLORS.selection, 0.62);
-      this.mono(x + 12, y + 10, 'MISSION OBJECTIVE', { color: COLORS.paperText, fontSize: '9px' });
+      this.platePanel(x, y, frame.width - 32, 76, COLORS.selection, { edgeBar: 'left' });
+      this.railLabel(x + 12, y + 10, 'MISSION OBJECTIVE', COLORS.selection, { width: frame.width - 64 });
       this.text(x + 12, y + 27, mission.title || mission.id, { fontSize: '13px', fontStyle: '900' });
       this.mono(x + 12, y + 50, (mission.objectives || []).slice(0, 2).join(' / ') || mission.description || 'Win the domain.', {
         color: COLORS.text,
@@ -41,10 +39,7 @@ export class DraftRosterScene extends BaseScene {
     }
 
     renderDetailSkillRow(skill, x, y, w) {
-      this.graphics.fillStyle(COLORS.surfaceRaised, 0.82);
-      this.graphics.fillRoundedRect(x, y, w, 54, 12);
-      this.graphics.lineStyle(1, COLORS.line, 0.44);
-      this.graphics.strokeRoundedRect(x, y, w, 54, 12);
+      this.platePanel(x, y, w, 54, COLORS.line, { cut: 5, fill: 0x0e1215, accentTriangle: false, highlight: false });
       this.text(x + 10, y + 7, skill.name, {
         fontSize: '11px',
         fontStyle: '900',
@@ -61,44 +56,35 @@ export class DraftRosterScene extends BaseScene {
     renderCharacterDetailSheet(frame, teamKey) {
       const character = this.store.detailCharacterId ? this.store.character(this.store.detailCharacterId) : null;
       if (!character || !character.id) return;
-      const sheetH = Math.min(500, frame.height - 96);
-      const x = frame.x + 14;
-      const y = frame.height - sheetH - 12;
-      const w = frame.width - 28;
       const tone = this.store.assets.toneFor(character.id);
       const selected = this.store[teamKey].includes(character.id);
-      this.graphics.fillStyle(COLORS.voidBlack, 0.72);
-      this.graphics.fillRect(frame.x, 0, frame.width, frame.height);
-      this.graphics.fillStyle(COLORS.surfaceDeep, 1);
-      this.graphics.fillRoundedRect(x, y, w, sheetH, 18);
-      this.cardPanel(x, y, w, sheetH, tone, 1);
-      this.portrait(character, x + 16, y + 20, 76, { tone, selected });
-      this.text(x + 104, y + 20, character.name, {
-        fontFamily: 'Cinzel, Inter, serif',
-        fontSize: '18px',
-        fontStyle: '900',
-        wordWrap: { width: w - 154 },
+      const content = this.dossierSheet(frame, {
+        eyebrow: 'CHARACTER DOSSIER',
+        title: character.name,
+        tone,
+        onClose: () => this.store.closeCharacterDetail(),
       });
-      this.mono(x + 106, y + 49, shortText(character.role || 'Starter sorcerer', 36), { color: COLORS.text, fontSize: '9px' });
-      this.mono(x + 106, y + 69, `${titleize(character.difficulty || 'Medium')} / ${titleize(character.era || 'Student Era')}`, {
+
+      this.platePortrait(character, content.x, content.y, 64, { tone, selected });
+      this.mono(content.x + 76, content.y + 4, shortText(character.role || 'Starter sorcerer', 36), { color: COLORS.text, fontSize: '9px' });
+      this.mono(content.x + 76, content.y + 22, `${titleize(character.difficulty || 'Medium')} / ${titleize(character.era || 'Student Era')}`, {
         color: COLORS.paperText,
         fontSize: '8px',
       });
-      this.iconButton(x + w - 48, y + 18, 34, 30, 'x', () => this.store.closeCharacterDetail(), {
-        stroke: COLORS.enemy,
-        fontSize: '13px',
+
+      let tagX = content.x;
+      (character.tags || []).slice(0, 4).forEach((tag, index) => {
+        const tagW = this.dossierTag(tagX, content.y + 84, shortText(titleize(tag), 11).toUpperCase(), index % 2 ? COLORS.ally : COLORS.selection);
+        tagX += tagW + 8;
       });
 
-      const tags = (character.tags || []).slice(0, 4);
-      tags.forEach((tag, index) => this.talismanLabel(x + 16 + index * 76, y + 108, shortText(titleize(tag), 11).toUpperCase(), index % 2 ? COLORS.ally : COLORS.selection));
-
-      this.mono(x + 16, y + 140, 'TECHNIQUE DOSSIER', { color: COLORS.paperText, fontSize: '9px' });
-      (character.skills || []).slice(0, 4).forEach((skill, index) => {
-        this.renderDetailSkillRow(skill, x + 16, y + 156 + index * 58, w - 32);
+      this.mono(content.x, content.y + 106, 'TECHNIQUE DOSSIER', { color: COLORS.paperText, fontSize: '9px' });
+      (character.skills || []).slice(0, 3).forEach((skill, index) => {
+        this.renderDetailSkillRow(skill, content.x, content.y + 122 + index * 58, content.w);
       });
 
-      const buttonY = y + sheetH - 54;
-      this.button(x + 16, buttonY, w - 32, 38, selected ? 'Remove From Trio' : 'Add To Trio', () => {
+      const buttonY = content.sheetY + content.sheetH - 54;
+      this.button(content.x, buttonY, content.w, 38, selected ? 'Remove From Trio' : 'Add To Trio', () => {
         const team = this.store[teamKey] || [];
         if (selected || team.length < 3) {
           this.store.toggleTeamPick(teamKey, character.id);
@@ -119,8 +105,8 @@ export class DraftRosterScene extends BaseScene {
     renderStarterRosterCard(character, x, y, w, h, teamKey) {
       const selected = this.store[teamKey].includes(character.id);
       const tone = selected ? COLORS.selection : this.store.assets.toneFor(character.id);
-      this.cardPanel(x, y, w, h, tone, selected ? 0.94 : 0.72);
-      this.portrait(character, x + 10, y + 12, 50, { tone, selected });
+      this.platePanel(x, y, w, h, tone, { alpha: selected ? 0.94 : 0.72, edgeBar: 'left' });
+      this.platePortrait(character, x + 10, y + 12, 50, { tone, selected });
       this.text(x + 68, y + 8, character.name, {
         fontSize: '11px',
         fontStyle: '900',
@@ -132,7 +118,7 @@ export class DraftRosterScene extends BaseScene {
         color: selected ? COLORS.paperText : COLORS.muted,
         fontSize: '8px',
       });
-      if (selected) this.talismanLabel(x + w - 56, y + 10, 'TRIO', COLORS.selection);
+      if (selected) this.dossierTag(x + w - 56, y + 18, 'TRIO', COLORS.selection);
       this.buttons.push({ x, y, w, h, label: `Inspect ${character.name}`, onClick: () => this.store.openCharacterDetail(character.id) });
     }
 

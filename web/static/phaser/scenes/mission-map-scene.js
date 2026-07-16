@@ -1,6 +1,6 @@
-import { COLORS } from '../core/runtime-config.js?v=17';
-import { clamp, shortText, titleize } from '../core/text.js?v=17';
-import { BaseScene } from './base-scene.js?v=17';
+import { COLORS, TOKEN_TYPE } from '../core/runtime-config.js?v=18';
+import { clamp, shortText, titleize } from '../core/text.js?v=18';
+import { BaseScene } from './base-scene.js?v=18';
 
 export class MissionMapScene extends BaseScene {
     constructor() {
@@ -9,19 +9,19 @@ export class MissionMapScene extends BaseScene {
 
     renderMissionCard(mission, x, y, w, h, index) {
       const tone = index === 0 ? COLORS.selection : COLORS.talismanDim;
-      this.cardPanel(x, y, w, h, tone, 0.74);
-      this.mono(x + 14, y + 12, titleize(mission.tier || 'starter').toUpperCase(), { color: COLORS.paperText, fontSize: '8px' });
-      this.text(x + 14, y + 29, shortText(mission.title || mission.id, 31), { fontSize: '15px', fontStyle: '900' });
-      this.mono(x + 14, y + 56, shortText(mission.description || 'Clear this route to unlock the next dossier.', 58), {
+      this.platePanel(x, y, w, h, tone, { alpha: 0.9, edgeBar: 'left' });
+      this.dossierTag(x + 14, y + 20, titleize(mission.tier || 'starter').toUpperCase(), tone);
+      this.text(x + 14, y + 40, shortText(mission.title || mission.id, 31), { fontSize: '15px', fontStyle: '900' });
+      this.mono(x + 14, y + 66, shortText(mission.description || 'Clear this route to unlock the next dossier.', 58), {
         color: COLORS.text,
         fontSize: '8px',
       });
       (mission.objectives || []).slice(0, 2).forEach((objective, objectiveIndex) => {
-        this.mono(x + 16, y + 82 + objectiveIndex * 18, `- ${shortText(objective, 44)}`, { color: COLORS.muted, fontSize: '8px' });
+        this.mono(x + 16, y + 90 + objectiveIndex * 18, `- ${shortText(objective, 44)}`, { color: COLORS.muted, fontSize: '8px' });
       });
-      this.mono(x + 14, y + h - 51, 'RECOMMENDED TEAM', { color: COLORS.paperText, fontSize: '8px' });
+      this.railLabel(x + 14, y + h - 51, 'RECOMMENDED TEAM', tone);
       (mission.recommended_team || []).slice(0, 3).forEach((id, portraitIndex) => {
-        this.portrait(this.store.character(id), x + 14 + portraitIndex * 39, y + h - 36, 30, { tone });
+        this.platePortrait(this.store.character(id), x + 14 + portraitIndex * 39, y + h - 36, 30, { tone });
       });
       this.button(x + w - 114, y + h - 42, 96, 30, 'Use Team', () => this.store.applyRecommendedTeam(mission), {
         fill: COLORS.surfaceRaised,
@@ -33,14 +33,12 @@ export class MissionMapScene extends BaseScene {
 
     renderLockedRoutes(frame, y) {
       const x = frame.x + frame.gutter;
-      this.cardPanel(x, y, frame.width - 32, 92, COLORS.line, 0.58);
+      this.platePanel(x, y, frame.width - 32, 92, COLORS.line, { alpha: 0.66 });
       this.mono(x + 14, y + 12, 'LOCKED ROUTES', { color: COLORS.muted, fontSize: '8px' });
       ['Shibuya Incident', 'Culling Game', 'Shinjuku Showdown'].forEach((route, index) => {
         const rx = x + 14 + index * ((frame.width - 60) / 3);
-        this.graphics.fillStyle(COLORS.inkBlack, 0.76);
-        this.graphics.fillRoundedRect(rx, y + 35, (frame.width - 76) / 3, 36, 12);
-        this.graphics.lineStyle(1, COLORS.line, 0.54);
-        this.graphics.strokeRoundedRect(rx, y + 35, (frame.width - 76) / 3, 36, 12);
+        const routeW = (frame.width - 76) / 3;
+        this.platePanel(rx, y + 35, routeW, 36, COLORS.line, { cut: 5, fill: 0x05070a, accentTriangle: false, highlight: false, alpha: 0.9 });
         this.mono(rx + 8, y + 47, shortText(route, 13), { color: COLORS.dim, fontSize: '7px' });
       });
     }
@@ -48,8 +46,8 @@ export class MissionMapScene extends BaseScene {
     render() {
       const frame = this.layout.frame();
       this.clearSurface();
-      this.drawAppBg(frame);
-      this.topBar(frame, 'Mission Map', () => this.store.changeScene('LobbyScene'));
+      this.worldBackdrop(frame, { textureKey: null, ambient: 'motes' });
+      this.dossierHeader(frame, { eyebrow: 'CURSED CLASH', title: 'Mission Map', backHandler: () => this.store.changeScene('LobbyScene') });
       const x = frame.x + frame.gutter;
       const missions = this.store.missions();
       const pageSize = frame.height < 790 ? 1 : 2;
@@ -57,9 +55,9 @@ export class MissionMapScene extends BaseScene {
       this.store.missionPage = clamp(this.store.missionPage, 0, maxPage);
       const page = missions.slice(this.store.missionPage * pageSize, this.store.missionPage * pageSize + pageSize);
       let y = 92;
-      this.cardPanel(x, y, frame.width - 32, 74, COLORS.selection, 0.66);
+      this.platePanel(x, y, frame.width - 32, 74, COLORS.selection, { edgeBar: 'left' });
       this.text(x + 16, y + 13, 'Student Era Route', {
-        fontFamily: 'Cinzel, Inter, serif',
+        fontFamily: TOKEN_TYPE.display || 'Georgia, serif',
         fontSize: '18px',
         fontStyle: '900',
       });

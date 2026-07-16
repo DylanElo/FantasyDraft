@@ -1,5 +1,5 @@
-import { COLORS } from '../core/runtime-config.js?v=17';
-import { BaseScene } from './base-scene.js?v=17';
+import { COLORS, TOKEN_TYPE } from '../core/runtime-config.js?v=18';
+import { BaseScene } from './base-scene.js?v=18';
 
 export class LobbyScene extends BaseScene {
     constructor() {
@@ -9,11 +9,11 @@ export class LobbyScene extends BaseScene {
     render() {
       const frame = this.layout.frame();
       this.clearSurface();
-      this.drawAppBg(frame);
-      this.topBar(frame, 'Mobile Arena');
+      this.worldBackdrop(frame, { textureKey: null, ambient: 'motes' });
+      this.dossierHeader(frame, { eyebrow: 'CURSED CLASH', title: 'Mobile Arena' });
       const x = frame.x + frame.gutter;
       let y = 92;
-      this.cardPanel(x, y, frame.width - 32, 142, COLORS.talismanDim, 0.9);
+      this.platePanel(x, y, frame.width - 32, 142, COLORS.talismanDim, { edgeBar: 'left' });
       const heroCx = x + frame.width - 92;
       const heroCy = y + 70;
       [52, 36, 20].forEach((radius, index) => {
@@ -28,7 +28,7 @@ export class LobbyScene extends BaseScene {
       this.graphics.lineTo(heroCx, heroCy + 48);
       this.graphics.strokePath();
       this.text(x + 18, y + 16, 'JJK ARENA', {
-        fontFamily: 'Cinzel, Inter, serif',
+        fontFamily: TOKEN_TYPE.display || 'Georgia, serif',
         fontSize: '31px',
         fontStyle: '900',
       });
@@ -48,7 +48,7 @@ export class LobbyScene extends BaseScene {
         this.store.setMatchMode('cpu');
         this.store.changeScene('DraftScene');
       }, { fill: COLORS.selection, gradientTop: COLORS.talismanDim, stroke: COLORS.talismanPaper, color: '#08080a', fontSize: '20px', radius: 18, glowAlpha: 0.16 });
-      this.talismanLabel(x + 16, y + 50, 'CPU PRACTICE', COLORS.selection);
+      this.dossierTag(x + 16, y + 58, 'CPU PRACTICE', COLORS.selection);
 
       y += 98;
       const modeW = (frame.width - 44) / 2;
@@ -60,8 +60,8 @@ export class LobbyScene extends BaseScene {
         this.store.setMatchMode('cpu');
         this.store.changeScene('FirstCreationScene');
       }, { fill: COLORS.surfaceRaised, gradientTop: 0x17121d, stroke: COLORS.domain, fontSize: '14px', radius: 18 });
-      this.talismanLabel(x + 16, y + 38, 'PRIVATE ROOM', COLORS.ally);
-      this.talismanLabel(x + modeW + 28, y + 38, 'STARTER TRIO', COLORS.domain);
+      this.dossierTag(x + 16, y + 46, 'PRIVATE ROOM', COLORS.ally);
+      this.dossierTag(x + modeW + 28, y + 46, 'STARTER TRIO', COLORS.domain);
 
       y += 82;
       const half = (frame.width - 44) / 2;
@@ -69,8 +69,9 @@ export class LobbyScene extends BaseScene {
       this.button(x + half + 12, y, half, 54, 'Records', () => this.store.changeScene('RecordsScene'), { fill: COLORS.surfaceRaised, stroke: COLORS.queued, fontSize: '12px' });
 
       y += 74;
-      this.cardPanel(x, y, frame.width - 32, Math.max(92, frame.height - y - 24), COLORS.line, 0.66);
-      this.mono(x + 16, y + 14, 'RECENT RECORDS', { color: COLORS.text });
+      const recordsH = Math.max(92, frame.height - y - 24);
+      this.platePanel(x, y, frame.width - 32, recordsH, COLORS.line, { alpha: 0.9 });
+      this.railLabel(x + 16, y + 14, 'RECENT RECORDS', COLORS.line, { width: frame.width - 64 });
       const records = this.store.records.slice(0, 3);
       if (!records.length) {
         this.mono(x + 16, y + 48, 'No finished domains yet.', { color: COLORS.dim });

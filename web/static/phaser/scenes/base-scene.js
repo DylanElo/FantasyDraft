@@ -1,7 +1,7 @@
-import { COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE } from '../core/runtime-config.js?v=17';
-import { initials, safeText } from '../core/text.js?v=17';
-import { LayoutService } from '../core/layout-service.js?v=17';
-import { costColors } from '../core/roster.js?v=17';
+import { COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE } from '../core/runtime-config.js?v=18';
+import { initials, safeText } from '../core/text.js?v=18';
+import { LayoutService } from '../core/layout-service.js?v=18';
+import { costColors } from '../core/roster.js?v=18';
 
 export class BaseScene extends Phaser.Scene {
     constructor(key) {
@@ -338,6 +338,320 @@ export class BaseScene extends Phaser.Scene {
       this.graphics.strokeRoundedRect(x, y, w, 22, 6);
       this.mono(x + 12, y + 6, text, { color: COLORS.paperText, fontSize: '8px' });
       return w;
+    }
+
+    /* ---- Dossier-plate primitives (Combat/Queue-Review visual language,
+       generalized here for reuse by non-combat scenes). The rounded
+       primitives above stay untouched -- BootScene still uses drawAppBg. ---- */
+
+    /* Shared cut-corner hexagon shape. Most Combat panels cut the top-left
+       and bottom-right corners (asymmetric sizes allowed); pass cut:0 (or
+       cutTL/cutBR:0) for an uncut edge. */
+    cutRectPoints(x, y, w, h, options) {
+      const opts = options || {};
+      const cut = opts.cut === undefined ? 7 : opts.cut;
+      const cutTL = opts.cutTL === undefined ? cut : opts.cutTL;
+      const cutBR = opts.cutBR === undefined ? cut : opts.cutBR;
+      if (!cutTL && !cutBR) {
+        return [{ x, y }, { x: x + w, y }, { x: x + w, y: y + h }, { x, y: y + h }];
+      }
+      const points = [];
+      points.push({ x: x + cutTL, y });
+      points.push({ x: x + w, y });
+      if (cutBR) {
+        points.push({ x: x + w, y: y + h - cutBR });
+        points.push({ x: x + w - cutBR, y: y + h });
+      } else {
+        points.push({ x: x + w, y: y + h });
+      }
+      points.push({ x, y: y + h });
+      if (cutTL) points.push({ x, y: y + cutTL });
+      return points;
+    }
+
+    /* Default panel for the dossier language -- replaces cardPanel. Dark
+       cut-corner fill, tone corner-triangle accent, optional edge bar. */
+    platePanel(x, y, w, h, tone, options) {
+      const opts = options || {};
+      const points = this.cutRectPoints(x, y, w, h, { cut: opts.cut === undefined ? 7 : opts.cut });
+      const g = this.graphics;
+      g.fillStyle(opts.fill === undefined ? 0x080c0f : opts.fill, opts.alpha === undefined ? 0.9 : opts.alpha);
+      g.fillPoints(points, true);
+      if (opts.accentTriangle !== false) {
+        const accentSize = opts.accentSize || 60;
+        g.fillStyle(tone || COLORS.line, opts.accentAlpha === undefined ? 0.1 : opts.accentAlpha);
+        g.fillTriangle(x, y, x + Math.min(w, accentSize), y, x, y + Math.min(h, accentSize));
+      }
+      if (opts.edgeBar) {
+        g.fillStyle(tone || COLORS.selection, opts.edgeBarAlpha === undefined ? 0.7 : opts.edgeBarAlpha);
+        if (opts.edgeBar === 'left') g.fillRect(x, y, opts.edgeBarWidth || 3, h);
+        else if (opts.edgeBar === 'top') g.fillRect(x, y, w, opts.edgeBarWidth || 3);
+      }
+      g.lineStyle(opts.strokeWidth || 1.5, tone || COLORS.line, opts.strokeAlpha === undefined ? 0.5 : opts.strokeAlpha);
+      g.strokePoints(points, true);
+      if (opts.highlight !== false) {
+        g.lineStyle(1, COLORS.talismanPaper, 0.06);
+        g.beginPath();
+        g.moveTo(x + 10, y + 6);
+        g.lineTo(x + w - 10, y + 6);
+        g.strokePath();
+      }
+    }
+
+    /* Extracted from Combat's renderWorld rain/domain-glow loops. Called by
+       worldBackdrop when ambient !== 'none'; also standalone-callable. */
+    renderAmbientParticles(frame, kind) {
+      const g = this.graphics;
+      if (kind === 'rain') {
+        for (let index = 0; index < 22; index += 1) {
+          const x = frame.x + 10 + ((index * 47) % Math.max(40, frame.width - 20));
+          const y = 66 + ((index * 83) % Math.max(120, frame.height - 160));
+          const length = 14 + (index % 4) * 7;
+          g.lineStyle(index % 5 === 0 ? 1.4 : 1, 0xb7d5dc, index % 5 === 0 ? 0.18 : 0.09);
+          g.beginPath();
+          g.moveTo(x, y);
+          g.lineTo(x - 4, y + length);
+          g.strokePath();
+        }
+      }
+      if (kind === 'rain' || kind === 'motes') {
+        [0.22, 0.48, 0.73].forEach((progress, index) => {
+          const cx = frame.x + frame.width * (0.28 + progress * 0.42);
+          const cy = frame.height * (0.26 + progress * 0.43);
+          g.fillStyle(COLORS.domain, 0.028 + index * 0.012);
+          g.fillCircle(cx, cy, 58 + index * 34);
+        });
+      }
+    }
+
+    /* Default background for the dossier language -- replaces drawAppBg.
+       Generalizes Combat's renderWorld: texture-or-gradient base, local
+       translucent grading, optional ambient layer. Pass textureKey: null
+       (the default) to always take the same gradient-fallback path Combat
+       itself uses when its own texture is missing -- no new art required. */
+    worldBackdrop(frame, options) {
+      const opts = options || {};
+      const g = this.graphics;
+      const textureKey = opts.textureKey || null;
+      if (textureKey && this.textures.exists(textureKey)) {
+        const world = this.add.image(frame.x + frame.width / 2, frame.height / 2, textureKey);
+        world.setDisplaySize(frame.width, frame.height);
+        world.setDepth(-30);
+        this.nodes.push(world);
+      } else {
+        const grad = opts.fallbackGradient || [0x07131c, 0x0b1820, 0x03070b, 0x020406];
+        g.fillGradientStyle(grad[0], grad[1], grad[2], grad[3], 1);
+        g.fillRect(frame.x, 0, frame.width, frame.height);
+      }
+      if (opts.grade !== false) {
+        g.fillStyle(0x020507, 0.14);
+        g.fillRect(frame.x, 0, frame.width, frame.height);
+        g.fillStyle(0x071016, 0.12);
+        g.fillRect(frame.x, 0, frame.width, 94);
+        g.fillStyle(0x020506, 0.24);
+        g.fillRect(frame.x, frame.height - 332, frame.width, 332);
+      }
+      if (opts.ambient && opts.ambient !== 'none') {
+        this.renderAmbientParticles(frame, opts.ambient);
+      }
+    }
+
+    /* Default header for the dossier language -- replaces topBar. Angular
+       header plate from Combat's renderTopHud, generalized: rightSlot lets
+       a scene draw its own right-aligned content (Combat puts its energy
+       meter/connection status there; other scenes can leave it empty). */
+    dossierHeader(frame, options) {
+      const opts = options || {};
+      const g = this.graphics;
+      const x = frame.x + 10;
+      const y = 10;
+      const w = frame.width - 20;
+      const tone = opts.tone || COLORS.selection;
+      const points = [
+        { x, y },
+        { x: x + w - 48, y },
+        { x: x + w, y: y + 22 },
+        { x: x + w, y: y + 68 },
+        { x: x + 18, y: y + 68 },
+        { x, y: y + 50 },
+      ];
+      g.fillStyle(0x05090d, 0.78);
+      g.fillPoints(points, true);
+      g.fillStyle(tone, 0.12);
+      g.fillTriangle(x, y, x + 122, y, x, y + 58);
+      g.lineStyle(1.5, tone, 0.52);
+      g.strokePoints(points, true);
+      g.lineStyle(1, 0xd8c28a, 0.18);
+      g.beginPath();
+      g.moveTo(x + 12, y + 21);
+      g.lineTo(x + w - 66, y + 21);
+      g.strokePath();
+      if (opts.eyebrow) {
+        this.mono(x + 12, y + 7, opts.eyebrow, {
+          color: COLORS.paperText,
+          fontSize: frame.width < 380 ? '6px' : '7px',
+          fontStyle: '700',
+        });
+      }
+      if (opts.title) {
+        this.text(x + 12, y + 27, opts.title, {
+          fontFamily: TOKEN_TYPE.display || 'Georgia, serif',
+          fontSize: '20px',
+          fontStyle: '700',
+        });
+      }
+      if (opts.rightSlot) opts.rightSlot(x + w, y);
+      if (opts.backHandler) {
+        this.iconButton(x + w - 42, y + 23, 34, 34, '<', opts.backHandler, {
+          fill: 0x0d1114,
+          stroke: COLORS.line,
+          fontSize: '11px',
+          mono: true,
+          radius: 5,
+          strokeAlpha: 0.72,
+        });
+      }
+      return { x, y, w, bottom: y + 68 };
+    }
+
+    /* Default character token for the dossier language -- replaces
+       portrait()'s circular ring. Generalizes renderPortraitPlate /
+       renderIdentitySeal into one cut-corner tile; same call contract as
+       portrait() (dead/selected/targetable/tone options) for low-friction
+       swap-in at existing call sites. */
+    platePortrait(characterOrId, x, y, size, options) {
+      const opts = options || {};
+      const w = opts.w || size;
+      const h = opts.h || size;
+      const id = typeof characterOrId === 'string'
+        ? characterOrId
+        : (characterOrId && (characterOrId.id || characterOrId.character_id));
+      const name = typeof characterOrId === 'string'
+        ? safeText(this.store.character(characterOrId).name, characterOrId)
+        : safeText(characterOrId && characterOrId.name, id);
+      const dead = !!opts.dead;
+      const tone = opts.tone || this.store.assets.toneFor(id || name);
+      const points = this.cutRectPoints(x, y, w, h, { cut: opts.cut === undefined ? 7 : opts.cut });
+      const key = this.store.portraitKey(id);
+      this.graphics.fillStyle(0x05090c, dead ? 0.5 : 0.94);
+      this.graphics.fillPoints(points, true);
+      this.graphics.fillStyle(tone, dead ? 0.08 : 0.22);
+      this.graphics.fillTriangle(x, y, x + w, y, x, y + h);
+      this.graphics.lineStyle(opts.selected || opts.targetable ? 2 : 1, tone, dead ? 0.24 : (opts.targetable ? 0.9 : 0.68));
+      this.graphics.strokePoints(points, true);
+      if (this.textures.exists(key)) {
+        const image = this.add.image(x + w / 2, y + h / 2, key);
+        image.setDisplaySize(w - 6, h - 6);
+        image.setAlpha(dead ? 0.35 : 0.96);
+        this.nodes.push(image);
+      } else {
+        this.text(x + w / 2, y + h / 2 - 10, initials(name), {
+          fontFamily: TOKEN_TYPE.display || 'Georgia, serif',
+          fontSize: `${Math.max(16, Math.round(Math.min(w, h) * 0.3))}px`,
+          fontStyle: '700',
+          color: dead ? COLORS.dim : COLORS.text,
+        }).setOrigin(0.5, 0);
+      }
+    }
+
+    /* Default state chip for the dossier language -- replaces
+       talismanLabel's rounded pill. Generalized from renderFighterPlate's
+       stateLabel chip; same (x, y, text, tone) call shape as talismanLabel. */
+    dossierTag(x, y, text, tone, options) {
+      const opts = options || {};
+      const chipH = opts.height || 16;
+      const chipW = opts.width || (text.length * 5 + 14);
+      this.graphics.fillStyle(tone || COLORS.selection, opts.alpha === undefined ? 0.88 : opts.alpha);
+      this.graphics.fillPoints([
+        { x: x + 5, y: y - chipH / 2 },
+        { x: x + chipW, y: y - chipH / 2 },
+        { x: x + chipW - 5, y: y + chipH / 2 },
+        { x: x + 5, y: y + chipH / 2 },
+      ], true);
+      this.mono(x + 9, y - chipH / 2 + 5, text, {
+        color: opts.color || '#07090a',
+        fontSize: opts.fontSize || '7px',
+        fontStyle: '700',
+      });
+      return chipW;
+    }
+
+    /* Full-screen dim + angular bottom-sheet-with-header, generalized from
+       Combat's renderSkillDetailSheet/renderQueueReviewSheet. Returns the
+       interior content rect so the caller fills in scene-specific rows.
+       Primary reuse target: DraftRosterScene's renderCharacterDetailSheet. */
+    dossierSheet(frame, options) {
+      const opts = options || {};
+      const x = frame.x + 12;
+      const y = opts.y === undefined ? Math.max(168, frame.height * 0.34) : opts.y;
+      const w = frame.width - 24;
+      const h = frame.height - y + (opts.bottomInset === undefined ? 18 : opts.bottomInset);
+      const tone = opts.tone || COLORS.selection;
+      const g = this.graphics;
+      const fullW = frame.fullWidth === undefined ? frame.width : frame.fullWidth;
+      const fullH = frame.fullHeight === undefined ? frame.height : frame.fullHeight;
+      g.fillStyle(0x010305, 0.5);
+      g.fillRect(0, 0, fullW, fullH);
+      const points = this.cutRectPoints(x, y, w, h, { cutTL: 18, cutBR: 0 });
+      g.fillStyle(0x080c0f, 0.97);
+      g.fillPoints(points, true);
+      g.fillStyle(tone, 0.12);
+      g.fillTriangle(x + 18, y, x + 178, y, x, y + 168);
+      g.lineStyle(2, tone, 0.68);
+      g.strokePoints(points, true);
+      if (opts.eyebrow) {
+        this.mono(x + 18, y + 18, opts.eyebrow, { color: COLORS.paperText, fontSize: '8px' });
+      }
+      if (opts.title) {
+        this.text(x + 18, y + 40, opts.title, {
+          fontFamily: TOKEN_TYPE.display || 'Georgia, serif',
+          fontSize: '22px',
+          fontStyle: '700',
+          wordWrap: { width: w - 88 },
+        });
+      }
+      if (opts.onClose) {
+        this.iconButton(x + w - 52, y + 16, 38, 36, '×', opts.onClose, { stroke: COLORS.enemy, fontSize: '14px', radius: 5 });
+      }
+      if (opts.blockOverlay !== false) {
+        this.buttons.push({ x: 0, y: 0, w: fullW, h: fullH, label: 'Sheet Overlay', onClick: () => {}, disabled: false });
+      }
+      return { x: x + 18, y: y + 60, w: w - 36, h: h - 78, sheetX: x, sheetY: y, sheetW: w, sheetH: h };
+    }
+
+    /* Section label + rule, generalized from renderFighterLane's
+       "HOSTILE SIGNATURES"/"YOUR FIELD" lane headers. */
+    railLabel(x, y, text, tone, options) {
+      const opts = options || {};
+      this.mono(x, y, text, {
+        color: opts.color || COLORS.paperText,
+        fontSize: opts.fontSize || '7px',
+        fontStyle: '700',
+      });
+      if (opts.width) {
+        const lineY = y + (opts.lineY === undefined ? 5 : opts.lineY);
+        const lineOffset = opts.lineOffset === undefined ? 90 : opts.lineOffset;
+        this.graphics.lineStyle(1, tone || COLORS.line, opts.lineAlpha === undefined ? 0.42 : opts.lineAlpha);
+        this.graphics.beginPath();
+        this.graphics.moveTo(x + lineOffset, lineY);
+        this.graphics.lineTo(x + opts.width, lineY);
+        this.graphics.strokePath();
+      }
+    }
+
+    /* Rectangular progress bar, generalized from renderFighterPlate's HP
+       bar math. Used for mission-progress bars (FirstCreation, Result). */
+    progressRail(x, y, w, h, pct, tone, options) {
+      const opts = options || {};
+      const clampedPct = Math.max(0, Math.min(1, pct));
+      this.graphics.fillStyle(opts.trackColor === undefined ? 0x020405 : opts.trackColor, opts.trackAlpha === undefined ? 0.96 : opts.trackAlpha);
+      this.graphics.fillRect(x, y, w, h);
+      this.graphics.fillStyle(tone || COLORS.selection, opts.fillAlpha === undefined ? 0.94 : opts.fillAlpha);
+      this.graphics.fillRect(x, y, w * clampedPct, h);
+      if (opts.stroke !== false) {
+        this.graphics.lineStyle(1, COLORS.line, 0.3);
+        this.graphics.strokeRect(x, y, w, h);
+      }
     }
 
     render() {}

@@ -1502,3 +1502,83 @@ Verification: `python -m pytest -q` — 407 passed (was 406, +1), 1
 skipped. `python -m compileall -q jjk_arena web run_server.py` clean.
 
 Committed (`a441c05`) and pushed directly to `main`.
+
+## 2026-07-16 - UI unification: brought Lobby, Draft, First Creation, Mission Map, Records, and Result onto Combat's visual language
+
+Since PR #56 merged, the app had looked like two products: Combat/Queue
+Review on the new "Underpass Courtyard" angular dossier-plate language,
+everything else still on the old rounded-panel `cardPanel`/circular-
+`portrait`/`topBar` language. Used plan mode to scope this properly before
+touching code, given the size (7 files) and a real architecture question:
+whether to reuse anything from the closed PR #54 ("Cursed Arena"). Two
+Explore agents confirmed PR #54 is a dead end — its token file uses
+entirely different key names (`ink950`, `curse600`...) than what main's
+`runtime-config.js` `COLORS` pipeline actually reads (`voidBlack`,
+`selectionGold`, `domainViolet`...), so swapping it in would silently
+break every `COLORS.*` lookup Combat's shipped code depends on; and its
+`components/plate.js` blade-cut geometry is a different shape/press-state
+system than the inline polygons Combat draws itself. Chose instead to
+extract Combat's own private rendering primitives into the shared
+`base-scene.js` and rebuild the other 6 scenes on those.
+
+Added 10 new primitives to `web/static/phaser/scenes/base-scene.js`,
+generalized from patterns Combat draws privately inline (`cutRectPoints`,
+`platePanel`, `worldBackdrop`, `renderAmbientParticles`, `dossierHeader`,
+`platePortrait`, `dossierTag`, `dossierSheet`, `railLabel`,
+`progressRail`) — all additive; the old rounded primitives
+(`drawAppBg`/`cardPanel`/`topBar`/`portrait`/`talismanLabel`) stay because
+`boot-scene.js` still calls `drawAppBg` directly and was kept out of scope.
+`combat-scene.js`/`combat-queue-review-scene.js` were never modified
+(confirmed via `git diff` afterward: byte-identical except the shared
+version-bump import lines) — they're the reference implementation these
+primitives were generalized *from*, read-only throughout.
+
+Rebuilt in the plan's staged order, verifying each live in real Chrome
+before starting the next (the sandboxed Browser-pane preview still can't
+render Phaser here — same `document.hidden` issue as the PR #54
+investigation — so used `claude-in-chrome` with the same one-line
+visibility-unfreeze patch each time):
+
+1. **Lobby** (pilot) — proved the primitives read correctly on a real
+   non-combat screen before investing further.
+2. **`draft-roster-scene.js` (shared mixin) + `draft-scene.js` together**
+   — the mixin isn't independently routable, so it shipped with its first
+   real consumer. `renderCharacterDetailSheet` rebuilt on the new
+   `dossierSheet` primitive — verified live (tapped a starter roster card,
+   confirmed the full dossier sheet renders and its close button/Add-to-
+   Trio button both work).
+3. **First Creation** — trio slots, preset tiles, mission-progress rail.
+4. **Mission Map** — mission cards, locked-routes placeholder (freely
+   restyled since it's hardcoded content with no store data).
+5. **Records** — W/L hero, stat tiles, record rows.
+6. **Result** — the one requiring the most care: preserved the
+   win/loss/draw/no_contest outcome-derivation branching fixed earlier
+   this session byte-for-byte (confirmed via `git diff` — only drawing
+   calls changed, zero logic lines touched) and verified all four outcome
+   states live by injecting synthetic `store.state` in the console
+   (had to disconnect the socket client first each time — a live CPU
+   match's async `battle_v2_update` broadcast kept overwriting the
+   synthetic state mid-test, unrelated to this change, just leftover
+   traffic from earlier verification passes in the same browser tab).
+
+Version bumped once for the whole pass (not per file, per the plan's own
+warning about `?v=NN` skew): `SHELL_VERSION` in `phaser-shell.js` and
+every `?v=17` → `?v=18` across all Phaser JS files plus the two
+`<script>` tags in `index.html`. This tripped two tests in
+`tests/test_app.py` that hardcode the literal `?v=17` string — fixed by
+bumping those same literals, not a real regression (confirmed by reading
+the failure: a plain string-literal mismatch, nothing behavioral).
+
+Verification: `python -m pytest -q` — 407 passed (up from 406 pre-bump;
+briefly 405 with 2 failures until the version-literal tests were fixed),
+1 skipped. `python -m compileall -q jjk_arena web run_server.py` and
+`node --check` across every touched JS file both clean. Every scene
+click-tested live (buttons, pagers, roster card taps, the character
+detail sheet) with zero new console errors at each step.
+
+Not yet committed/pushed as of writing this entry. Remaining, deliberately
+out of scope for this pass per the plan's non-goals: `boot-scene.js`'s
+splash screen (still needs the old primitives), new environment art for
+the 6 rebuilt scenes (all use `worldBackdrop`'s gradient-fallback path,
+same as Combat falls back to), and the dual condition-grammar / soak-test
+production-scaling items noted in earlier entries.

@@ -1340,10 +1340,10 @@ Verification:
   to `JJK_CORS_ORIGINS`'s port-derived default, unrelated to this branch
   or the rebase. Works cleanly on the default port 5000.
 
-Branch is now 1 commit ahead of a rebased `main` tip, verified clean and
-working. Not yet pushed — the rebase rewrote history, so landing it on
-`origin/wip/temporal-pr-combat-ui-2026-07-13` needs a force-push, which
-wasn't done without explicit confirmation. PR #54 remains open and
-unmerged; per the user's call this session, temporal-pr is the intended
-direction, not #54 — that decision, and what to do with #54, still needs
-to be acted on separately.
+Force-pushed the rebased branch to `origin/wip/temporal-pr-combat-ui-2026-07-13`
+(history rewrite, done with explicit user confirmation) and opened
+[PR #56](https://github.com/DylanElo/FantasyDraft/pull/56) against `main`.
+PR #54 remains open and unmerged; per the user's call this session,
+temporal-pr is the intended direction, not #54 — what to do with #54
+(close it, leave it parked, or mine specific ideas from it) still needs a
+decision.

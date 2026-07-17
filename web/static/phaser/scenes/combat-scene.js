@@ -335,12 +335,15 @@ export class CombatScene extends CombatQueueReviewScene {
       this.graphics.fillStyle(hpTone, dead ? 0.28 : 0.96);
       this.graphics.fillRect(barX, barY, barW * hpPct, 5);
 
-      this.text(x + 7, y + portraitH - 25, shortText((character && character.name) || 'Down', w < 110 ? 14 : 17), {
-        fontSize: w < 110 ? '10px' : '11px',
+      const fighterName = (character && character.name) || 'Down';
+      const fighterNameNode = this.text(x + 7, y + portraitH - 28, fighterName, {
+        fontSize: w < 110 ? '9px' : '10px',
         fontStyle: '800',
         color: dead ? COLORS.dim : COLORS.text,
+        wordWrap: { width: w - 14 },
       });
-      this.mono(x + 7, y + portraitH - 10, dead ? 'DOWN' : `${hp}/${maxHp}`, {
+      fighterNameNode.setMaxLines(2);
+      this.mono(x + 7, y + portraitH + 4, dead ? 'DOWN' : `${hp}/${maxHp}`, {
         color: dead ? COLORS.dim : COLORS.paperText,
         fontSize: '10px',
       });
@@ -401,9 +404,9 @@ export class CombatScene extends CombatQueueReviewScene {
 
       this.buttons.push({
         x: x - 3,
-        y: y - 10,
+        y: y - 4,
         w: w + 6,
-        h: h + 18,
+        h: h + 12,
         label: `${side} ${slot}`,
         onClick: () => store.target(side, slot),
         disabled: false,

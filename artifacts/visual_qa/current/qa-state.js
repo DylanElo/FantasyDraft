@@ -76,12 +76,21 @@
     current.toast = '';
   }
 
+  function seedLongNameTeam(current) {
+    current.playerTeam = [
+      'satoru_gojo_young',
+      'suguru_geto_young',
+      'shoko_ieiri_young',
+    ];
+  }
+
   window.applyJjkVisualQaState = (name) => {
     const current = store();
     resetTransient(current);
 
     if (name === 'first-creation-roster') {
       current.state = null;
+      seedLongNameTeam(current);
       current.draftPage = 999;
       current.changeScene('FirstCreationScene');
       return;
@@ -89,6 +98,7 @@
 
     if (name === 'first-creation-detail') {
       current.state = null;
+      seedLongNameTeam(current);
       current.detailCharacterId = 'yuta_okkotsu_jjk0';
       current.changeScene('FirstCreationScene');
       return;

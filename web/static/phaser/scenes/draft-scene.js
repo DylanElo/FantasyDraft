@@ -1,5 +1,5 @@
 import { BOOT, COLORS, TYPE_SCALE } from '../core/runtime-config.js?v=22';
-import { clamp, safeText, shortText } from '../core/text.js?v=22';
+import { clamp, safeText } from '../core/text.js?v=22';
 import { DraftRosterScene } from './draft-roster-scene.js?v=22';
 
 export class DraftScene extends DraftRosterScene {
@@ -9,26 +9,31 @@ export class DraftScene extends DraftRosterScene {
 
     renderTeamDock(frame, y) {
       const x = frame.x + frame.gutter;
-      const slotW = (frame.width - 64) / 3;
       this.railLabel(x, y - 14, this.store.matchMode === 'pvp' ? 'MY PRIVATE DOMAIN TRIO' : 'MY TRIO', COLORS.ally);
-      this.store.playerTeam.forEach((id, index) => this.renderDraftSlot(x + index * (slotW + 8), y, slotW, id, index, COLORS.ally));
+      this.renderTeamSummary(x, y, frame.width - 32, this.store.playerTeam, COLORS.ally);
       if (this.store.matchMode === 'cpu') {
         this.railLabel(x, y + 74, 'CPU TRIO', COLORS.enemy, { color: '#f1a0a0' });
-        this.store.enemyTeam.forEach((id, index) => this.renderDraftSlot(x + index * (slotW + 8), y + 88, slotW, id, index, COLORS.enemy));
+        this.renderTeamSummary(x, y + 88, frame.width - 32, this.store.enemyTeam, COLORS.enemy);
       } else if (this.store.lobbyStatus && this.store.lobbyStatus.status === 'waiting') {
         this.text(x, y + 76, `Waiting in room ${this.store.lobbyStatus.room_id}.`, { color: '#a3eadf', fontSize: `${TYPE_SCALE.body}px` });
       }
     }
 
-    renderDraftSlot(x, y, w, id, index, tone) {
-      const character = this.store.character(id);
+    renderTeamSummary(x, y, w, team, tone) {
       this.platePanel(x, y, w, 62, tone, { alpha: 0.78, edgeBar: 'left' });
-      this.platePortrait(character, x + 6, y + 8, 38, { tone });
-      this.mono(x + 8, y + 5, `S${index + 1}`, { color: COLORS.text, fontSize: `${TYPE_SCALE.micro}px` });
-      this.text(x + 50, y + 14, shortText(safeText(character.name, id), 16), {
-        fontSize: `${TYPE_SCALE.body}px`,
-        fontStyle: '800',
-        wordWrap: { width: w - 56 },
+      team.slice(0, 3).forEach((id, index) => {
+        const character = this.store.character(id);
+        const rowY = y + 5 + index * 18;
+        this.mono(x + 10, rowY + 2, `S${index + 1}`, {
+          color: tone,
+          fontSize: `${TYPE_SCALE.micro}px`,
+          fontStyle: '900',
+        });
+        this.text(x + 40, rowY, safeText(character.name, id), {
+          fontSize: `${TYPE_SCALE.body}px`,
+          fontStyle: '800',
+          wordWrap: { width: w - 52 },
+        });
       });
     }
 

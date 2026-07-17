@@ -150,6 +150,8 @@ def test_scoped_mobile_controls_and_copy_keep_accessibility_contracts():
     assert "diffW, 44" in draft
     assert "const navH = 44;" in draft
     assert "Math.max(0, Math.floor" in draft
+    assert "renderTeamSummary" in draft
+    assert "shortText(safeText(character.name" not in draft
 
     assert "104, 44, 'Mission Map'" in creation
     assert "72, 44, `Set " in creation
@@ -165,6 +167,9 @@ def test_scoped_mobile_controls_and_copy_keep_accessibility_contracts():
     assert "44, 44, '×'" in combat
     assert "const y = frame.top;" in combat
     assert "shortText(skill.name" not in combat
+    assert "shortText((character && character.name" not in combat
+    assert "fighterNameNode.setMaxLines(2);" in combat
+    assert "y: y - 4," in combat
 
     assert "shortText(character.name" not in roster
     assert "shortText(character.role" not in roster

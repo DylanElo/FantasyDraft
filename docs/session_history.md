@@ -2008,6 +2008,8 @@ captures remain pending because the in-app browser security policy rejected
 the required localhost reload after the cache bump and explicitly prohibited
 retry or alternate browser-control workarounds; no workaround was attempted.
 This supersedes preceding entries' claims that either former `current/`
-capture set is current evidence. The complete diff is on
-`codex/close-alpha-hardening`; commit, push, and draft-PR state are pending at
-the time of this entry.
+capture set is current evidence. The implementation and verification pass was
+committed as `b7bf729` on `codex/close-alpha-hardening`, pushed to `origin`,
+and opened as draft PR
+`https://github.com/DylanElo/FantasyDraft/pull/57`. This documentation-only
+delivery-state correction follows on the same branch and PR.

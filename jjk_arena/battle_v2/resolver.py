@@ -471,12 +471,18 @@ def _apply_melee_punishments(state: BattleState, events: list[BattleEvent], acti
             ))
             break
 
-def resolve_queue(
+def resolve_queue_prefix(
     state: BattleState,
     player_id: str,
     skills: Mapping[str, SkillSpec],
 ) -> list[BattleEvent]:
-    """Resolve a confirmed queue left-to-right and advance turn state."""
+    """Resolve queued actions left-to-right without running turn cleanup.
+
+    This is the authoritative action-resolution half of :func:`resolve_queue`.
+    It exists for viewer-safe CPU planning clones that need the exact board
+    after an action prefix while preserving the current turn's aggregate
+    damage-reduction budget, status clocks, cooldown clocks, and turn number.
+    """
 
     if not state.players[player_id].queue_confirmed:
         confirm_queue(state, player_id, skills)
@@ -641,6 +647,17 @@ def resolve_queue(
                 caster.statuses.append(StatusEffect("exposed", "Exposed", status.source_player_id, status.source_slot, action.player_id, action.caster_slot, 2))
         _apply_post_skill_punish(state, events, action, caster, skill)
 
+    return events
+
+
+def resolve_queue(
+    state: BattleState,
+    player_id: str,
+    skills: Mapping[str, SkillSpec],
+) -> list[BattleEvent]:
+    """Resolve a confirmed queue left-to-right and advance turn state."""
+
+    events = resolve_queue_prefix(state, player_id, skills)
     events.extend(finish_turn(state, player_id))
     events.extend(check_winner(state))
     return events

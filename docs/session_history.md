@@ -1832,3 +1832,242 @@ verified every rebuilt scene in real Chrome, including real interactive
 flows (queueing 3 actions through actual button clicks, opening Queue
 Review, injecting a synthetic Victory result) rather than only static
 screenshots — zero overlaps, zero console errors on final reload.
+
+## 2026-07-17 — Effective Hard outcomes, durable mission settlement, canonical contracts, and current mobile QA
+
+**What changed.** Hard CPU lethal evaluation now dry-runs each legal harmful
+candidate through the authoritative resolver on a deep clone. The clone removes
+opponent-owned unrevealed invisible statuses before resolution, preserving the
+same information boundary as a human viewer. Scoring uses actual HP damage,
+destructible-defense consumption, deaths, and statuses applied after aggregate
+DR, invulnerability, anti-domain conversion, every effect, and the shipping
+condition grammar. Soul/piercing heuristic premiums no longer become fake HP
+damage for lethal checks.
+
+Mission progress now enters a SQLite `mission_settlement_outbox` keyed by
+`match_id + player_id` before merge. Rows persist the terminal progression
+snapshot and transition through `pending`, `failed_retryable`, and `settled`
+with retry count, next attempt, and last error. Immediate settlement, startup
+recovery, and periodic runtime maintenance all drain due rows without requiring
+the source room; profile merge and mission analytics remain idempotent.
+Runtime schema is version 5.
+
+The root/battle instructions, `CODEX_PROJECT_MEMORY.md`, damage-reduction and
+anti-domain decision records, socket contract, kit grammar, and skill-audit
+contract now agree: fixed DR is a player-turn aggregate budget and anti-domain
+uses universal sure-hit conversion. `tests/test_canonical_decisions.py` rejects
+the stale open-decision markers. First Creation formally adopts the typed
+`EffectSpec.payload` condition/payoff DSL in `effect_payload.py`; all 18 used
+keys are registered and every one of the 78 skills is schema-validated.
+
+Meaningful Phaser text literals below 10 px were raised to a 10 px floor without
+changing scene architecture. Eighteen live PNGs were captured under
+`artifacts/ui-redesign/current/`: Lobby, Draft, First Creation, Mission Map,
+Combat, and Records at 360x800, 390x844, and 430x932. The browser console had
+zero warnings/errors. A later attempt to add a fresh Queue Review capture hit a
+browser screenshot timeout twice; the six-screen/three-viewport set is intact,
+but Queue Review and Result were not recaptured in this pass.
+
+**Verification actually run.** Final full suite: `411 passed, 1 skipped` in
+normal order and `411 passed, 1 skipped` with test files in reverse order.
+`python -m compileall -q jjk_arena web/app.py`, `node --check` for every Phaser
+JavaScript module, `git diff --check`, and the First Creation audit all passed;
+the audit reports 19 characters, 78 skills, 0 structural findings, 0 uncovered
+special mechanics, 18 registered conditional keys, and 0 unregistered keys.
+The adversarial CPU corpus covers 25 normal into a 50 shield, aggregate 10 DR,
+combined two-hit lethal, non-lethal piercing, invulnerability, anti-domain
+conversion, and condition-gated status application. The durable-outbox test
+fails a merge, recreates `SQLiteRuntimeStore`, advances to the due time, and
+then settles the preserved snapshot successfully.
+
+`python -m jjk_arena.battle_v2.lifecycle_stress --matches 1000 --seed 1`
+completed 1,000 matches in 98.04 seconds with 0 softlocks, 0 final rooms,
+83,480,576-byte RSS under the 419,430,400-byte ceiling, one scheduler worker
+during the run, and 0 scheduler worker threads after shutdown.
+
+**Remaining cautions / delivery state.** No balance numbers, characters,
+progression tiers, screens, art, audio, or layouts changed. Queue Review and
+Result still need current-revision screenshots if a complete ten-screen visual
+release pack is required. Changes and QA artifacts were committed locally on
+`codex/close-alpha-contracts`; the branch was not pushed and no PR was opened.
+
+## 2026-07-17 — Partial-queue CPU planning, atomic settlement claims, terminal simulation, and three-state mobile QA
+
+**What changed.** Hard CPU planning now resolves a viewer-safe clone of the
+partial queue before evaluating each later candidate. It predicts prior HP and
+defense damage, deaths, status/control application, ally and caster damage,
+healing, defense gains, and energy opportunity cost. Dead predicted targets
+are excluded, and the final queue's at most six left-to-right permutations are
+scored after selection. Easy and Normal no longer award offensive or lethal
+value to `target=self` damage. Regressions cover Yuji killing a 10-HP target
+before Nobara and Megumi retarget living enemies, and 5-HP Toge selecting
+Throat Medicine instead of a non-lethal suicidal Blast Away.
+
+Mission settlement schema 6 adds transactional `processing` claims with claim
+tokens, retry leases, terminal `dead_letter`, settled-row retention, status
+counts, and claimed/dead-letter operational counters. Initial SQLite enqueue
+failure writes an fsync'd JSONL sidecar which startup/maintenance restores.
+Terminal room cleanup reconstructs every missing human-player snapshot first
+and refuses cleanup if neither durable path succeeds. Concurrent-store and
+fallback/restart regressions prove a handler is invoked once and a failed
+initial enqueue remains recoverable.
+
+Headless simulation now loops on `result_type`, records explicit `WIN`, `DRAW`,
+`NO_CONTEST`, and `TURN_CAP`, and has deterministic winnerless DRAW and
+NO_CONTEST exit regressions. The First Creation roster dossier bounds its role
+line and preserves full skill names over two lines without changing the scene
+architecture.
+
+**Visual QA.** Queue Review, Skill Detail, and Result were captured under
+`artifacts/visual_qa/current/` at exact 360x800, 390x844, and 430x932. The
+in-app browser's Engine.IO proxy repeatedly produced unknown-SID POSTs against
+the local Werkzeug server, although a direct Socket.IO client connected
+successfully. The documented browser developer interface therefore injected
+temporary in-memory store state for these captures; no server data or source
+file was changed by the injection. The capture backend returned 843/931 rows
+for the taller viewports, so those six files were mechanically padded with one
+background row at the bottom; rendered game content is unchanged. The browser
+skill directly influenced this pass by enforcing exact viewport checks and
+live inspection of the dossier overflow correction.
+
+**Verification actually run.** Final full pytest passed in normal order and
+reverse file order: **420 passed, 1 skipped** in both. Targeted settlement,
+CPU, simulation, socket/production tests passed. Both independent lifecycle
+soaks completed 1,000 matches with zero softlocks and zero final rooms: seed 1
+in 130.44 s at 84,357,120-byte RSS, seed 2 in 131.89 s at 85,692,416-byte RSS;
+both remained below the 419,430,400-byte ceiling and left zero scheduler worker
+threads after shutdown. `python -m compileall -q jjk_arena web/app.py`,
+`node --check web/static/phaser/scenes/draft-roster-scene.js`, the 19-character
+/ 78-skill audit, and `git diff --check` passed. The final visual files were
+dimension-checked programmatically.
+
+**Remaining cautions / delivery state.** No character, balance number,
+progression tier, art, audio, or screen was added. Browser captures use
+temporary QA state rather than a live Socket.IO match for the documented proxy
+reason above. The worktree remains on local `main`, based on `832b0be`; changes
+and the nine intentional QA PNGs are not committed or pushed in this pass.
+
+## 2026-07-17 - Pre-publish hardening, replay integrity, prompt settlement recovery, and safe-area mobile contracts
+
+**What changed.** The pre-publish adversarial review closed the remaining
+cross-layer correctness gaps without changing the locked combat rules, First
+Creation roster, character balance, or progression tiers. Hard CPU planning
+now resolves viewer-safe partial queues without running turn cleanup between
+actions, preserves aggregate damage-reduction and status clocks, retargets
+after predicted deaths, and scores final left-to-right orderings through the
+authoritative resolver. Simulation and balance output use distinct `WIN`,
+`DRAW`, `NO_CONTEST`, and `TURN_CAP` results. Replay captures now persist the
+normalized Easy/Normal/Hard CPU policy and reconstruction restores it before a
+`cpu_turn`; missing format-v2 difficulty remains Normal-compatible and invalid
+values fail closed.
+
+Mission settlement schema 6 now supports direct deployed schema-4 and
+intermediate schema-5 upgrades. One-row expiring leases provide documented
+at-least-once ownership; operational failures retry indefinitely with capped
+backoff, malformed snapshots dead-letter for explicit redrive, and stale
+workers cannot report unguarded commits. Production profile, immutable mission
+analytics, and outbox settlement commit in one SQLite transaction. The fsync'd
+0600 JSONL fallback remains single-worker only. Stable finish timestamps keep
+newer starter-team choices while correcting chronological first-completion
+time. A separate in-memory durable-snapshot guard promptly reconstructs total
+or partial DB-plus-sidecar write failures from finished updates, relevant
+profile reads, and bounded maintenance, without duplicate fallback appends or
+mission credit; cleanup refuses to delete a room until every human snapshot is
+durable.
+
+The kit grammar now states the exact locked 19-character / 78-skill First
+Creation roster. Phaser cache references are consistently version 22. Shared
+headers, HUD, sheets, roster grids, queue review, and footer actions consume
+safe top/bottom insets; scoped controls expose at least 44x44 hit targets; full
+roles and skill names wrap instead of being pre-truncated. Geometry checks
+cover normal and 47px-top/34px-bottom safe frames at 360x800, 390x844, and
+430x932, including the required 2/2/4 First Creation entries per page. The nine
+Queue Review / Skill Detail / Result images were normalized to real PNGs and
+moved under `artifacts/visual_qa/pre-remediation/`. The earlier 18-screen
+six-scene set was moved to `artifacts/ui-redesign/pre-hardening-d250917/`.
+Both `current/` directories contain no screenshot and make no post-fix visual
+claim.
+
+**Verification actually run.** Full pytest passed in normal order and reverse
+test-file order: **451 passed, 1 skipped** in both runs. The successful runs
+used isolated workspace databases and base-temp directories; the temporary
+directory was removed afterward. `python -m compileall -q jjk_arena web/app.py`,
+`node --check` for all 21 changed production JavaScript files plus the QA-state
+fixture, and `git diff --check` passed. The First Creation audit reports 19
+characters, 78 skills, 0 structural findings, 0 special-mechanic coverage
+gaps, 18 registered conditional keys, and 0 unregistered keys. All nine
+27 historical QA files have valid PNG signatures and exact declared
+dimensions; the current-evidence directories have zero screenshots. A
+1,000-match lifecycle
+stress run (seed 3) finished in 152.22 seconds with 0 softlocks, 0 final rooms,
+one scheduler worker during the run, and none after shutdown; RSS was
+unavailable for that run and is not claimed.
+
+**Remaining cautions / delivery state.** Fresh post-remediation browser
+captures remain pending because the in-app browser security policy rejected
+the required localhost reload after the cache bump and explicitly prohibited
+retry or alternate browser-control workarounds; no workaround was attempted.
+This supersedes preceding entries' claims that either former `current/`
+capture set is current evidence. The implementation and verification pass was
+committed as `b7bf729` on `codex/close-alpha-hardening`, pushed to `origin`,
+and opened as draft PR
+`https://github.com/DylanElo/FantasyDraft/pull/57`. This documentation-only
+delivery-state correction follows on the same branch and PR.
+
+## 2026-07-17 - Fresh mobile evidence and screenshot-driven compact-layout fixes
+
+**Locked decisions and invariants touched.** This pass stayed UI-only. It did
+not change combat rules, authoritative server fields, the 19-character First
+Creation roster, balance, progression, or hidden-information behavior. It
+enforced the mobile constitution's full primary-name, 44px touch-target,
+non-overlap, safe-viewport, and progressive-disclosure requirements. Synthetic
+battle states remained browser-local and emitted no socket command.
+
+**What changed.** Live 360x800 and 390x844 review exposed issues that geometry
+tests had not made visually obvious. Draft team summaries still used three
+narrow portrait columns and pre-truncated long names, so they now use two
+full-width, three-row ally/CPU summaries that preserve every selected name.
+Combat fighter plates no longer call `shortText` for primary names; names wrap
+over two lines while HP moves into its own lower band. The compact fighter
+hitbox's unused top expansion was reduced by six pixels, removing a four-pixel
+overlap between the third enemy target and Transmute at 360x800. Regression
+assertions lock all three corrections. The QA fixture now seeds Young Gojo,
+Young Geto, and Young Shoko so long-name behavior remains reproducible.
+
+Fresh screenshots now cover Lobby, Draft, First Creation roster, First
+Creation detail, Mission Map, Combat planning, Queue Review, Skill Detail,
+Result, and Records at 360x800, 390x844, and 430x932. The 30 unique PNGs live
+under `artifacts/ui-redesign/current/` (18) and
+`artifacts/visual_qa/current/` (12). Their source revision is
+`cb38012b5c5c07854781d04028120a5ed2da6163`. Historical captures remain in the
+two labeled pre-hardening directories.
+
+**Visual QA.** Every capture used one authenticated in-app-browser localhost
+tab, Phaser cache v22, deterministic in-memory state, exact viewport/canvas
+checks, and a compositor-settled frame. All registered controls were at least
+44x44 CSS pixels, stayed inside the viewport, and had no non-modal overlap.
+The intentional full-screen modal catcher rectangles were excluded from the
+pairwise overlap failure. Browser warnings/errors were empty. Contact-sheet
+and original-size review confirmed all ten states at all three viewports.
+360x800 and 430x932 compositor frames were normalized from device pixels to
+CSS pixels. The native 390x844 API returned 390x843, so the final PNG adds one
+background row below safe content; no game content was cropped or stretched.
+
+**Verification actually run.** Full pytest passed: **451 passed, 1 skipped**
+in 109.97 seconds. Focused mobile-layout tests passed: **3 passed**. `python -m
+compileall -q jjk_arena web/app.py`, `node --check` for the two changed Phaser
+scenes and QA fixture, and `git diff --check` passed. All 30 current screenshots
+have real PNG signatures and exact declared dimensions. The final capture
+inventory is six core plus four interaction states at each of the three target
+viewports.
+
+**Remaining cautions / delivery state.** The screenshot fixture is
+presentation-only and does not prove a live Socket.IO match flow; gameplay and
+socket behavior remain covered by the full automated suite. The source fixes
+were committed as `cb38012`; the evidence pack was committed as `7cdb75d`.
+Both were pushed on `codex/close-alpha-hardening`. PR #57 was open, mergeable,
+and changed from draft to ready for review on the pushed evidence SHA. Its
+description now lists the 30 current screenshots and compact-layout fixes. At
+the readiness check it had no configured/reported checks, comments, reviews,
+or unresolved review threads. This delivery-state sentence is a docs-only
+follow-up on the same branch and PR.

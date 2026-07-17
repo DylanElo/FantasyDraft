@@ -44,17 +44,29 @@ If `player_team` is omitted, the starter trio Yuji/Nobara/Megumi is used. If
 `normal`. It only affects the CPU opponent's play and has no effect on
 legality — the CPU only ever selects among validated legal actions at every
 difficulty. Preserved across CPU rematches (see `battle_v2_rematch` below).
+Deterministic replay captures record the normalized difficulty so replayed
+`cpu_turn` commands use the same policy rather than silently reverting to
+Normal.
 
 Per-action cost aversion is lower on Hard than Normal/Easy (Hard: -1 per cost
 pip; Normal/Easy: -2), but Hard is not simply "less cost-averse" overall —
-`jjk_arena/battle_v2/manager.py`'s `_cpu_action_score` gives Hard three
+`jjk_arena/battle_v2/manager.py`'s `_cpu_action_score` gives Hard four
 signals Normal/Easy don't have at all, which can make it choose a *cheaper*
 or *less obviously strong* action than Normal in some states:
 
-- **Setup/payoff awareness**: a conditional damage effect's value is only
-  counted if its `condition_status`/`condition_missing_status` is actually
-  true of the live target. Normal/Easy always count the listed amount,
-  whether or not the condition would actually apply.
+- **Effective outcome awareness**: Hard dry-runs legal action prefixes through
+  the authoritative action resolver on a viewer-safe clone, without running
+  turn cleanup between queued actions. Its damage and lethal read therefore
+  preserves the current turn's aggregate DR budget and status clocks while
+  including every effect/condition, destructible defense, invulnerability,
+  and anti-domain conversion. Unrevealed invisible opponent statuses are
+  removed before both the scoring baseline and trial are derived. After
+  action selection, Hard scores every legal left-to-right queue permutation
+  with normal authoritative turn cleanup. Normal/Easy continue using listed
+  heuristic amounts.
+- **Friendly survival and utility**: Hard counts actual healing once, penalizes
+  self/friendly damage and deaths, and values successfully applied counters,
+  reflects, damage buffs, damage reduction, and destructible defense.
 - **Counter/reflect risk**: a harmful action against a target currently
   holding an active counter/reflect status is penalized on Hard, since it
   risks feeding the payload back at the caster's own team.

@@ -1,7 +1,12 @@
 from concurrent.futures import ThreadPoolExecutor
+import json
+import sqlite3
+import threading
+import time
 
 from jjk_arena.battle_v2.first_creation_profile import (
     load_first_creation_profile,
+    merge_first_creation_profile_snapshot,
     merge_first_creation_progress,
     save_first_creation_profile,
 )
@@ -64,7 +69,423 @@ def test_replay_retention_is_opt_in_storage_with_expiry(tmp_path):
 
 def test_runtime_store_healthcheck_reports_schema(tmp_path):
     store = SQLiteRuntimeStore(tmp_path / "runtime.sqlite3")
-    assert store.healthcheck() == {"ok": True, "schema_version": 4}
+    assert store.healthcheck() == {"ok": True, "schema_version": 6}
+
+
+def test_schema_v4_migrates_to_v6_without_losing_profiles_or_analytics(tmp_path):
+    """The deployed origin/main schema upgrades directly, without a v5 boot."""
+
+    path = tmp_path / "runtime.sqlite3"
+    profile = {
+        "completed_missions": ["welcome_to_jujutsu_high"],
+        "selected_starter_team": [
+            "yuji_itadori",
+            "megumi_fushiguro",
+            "nobara_kugisaki",
+        ],
+    }
+    analytics_payload = {
+        "result_type": "WIN",
+        "finish_reason": "elimination",
+        "vs_cpu": False,
+    }
+    with sqlite3.connect(path) as connection:
+        connection.executescript(
+            """
+            CREATE TABLE runtime_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+            INSERT INTO runtime_meta(key, value) VALUES('schema_version', '4');
+            CREATE TABLE first_creation_profiles (
+                player_id TEXT PRIMARY KEY,
+                payload_json TEXT NOT NULL,
+                updated_at REAL NOT NULL
+            );
+            CREATE TABLE battle_replays (
+                match_id TEXT PRIMARY KEY,
+                payload_json TEXT NOT NULL,
+                created_at REAL NOT NULL,
+                expires_at REAL NOT NULL
+            );
+            CREATE TABLE analytics_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_type TEXT NOT NULL,
+                match_id TEXT,
+                player_id TEXT,
+                payload_json TEXT NOT NULL,
+                created_at REAL NOT NULL,
+                event_key TEXT,
+                result_type TEXT,
+                finish_reason TEXT,
+                cpu_difficulty TEXT,
+                vs_cpu INTEGER,
+                outcome TEXT,
+                mission_id TEXT
+            );
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO first_creation_profiles(player_id, payload_json, updated_at)
+            VALUES('schema-v4-player', ?, 42)
+            """,
+            (json.dumps(profile),),
+        )
+        connection.execute(
+            """
+            INSERT INTO analytics_events(
+                event_type, match_id, player_id, payload_json, created_at,
+                event_key, result_type, finish_reason, vs_cpu
+            ) VALUES(
+                'match_finished', 'schema-v4-match', 'schema-v4-player', ?, 42,
+                'match_finished:schema-v4-match', 'WIN', 'elimination', 0
+            )
+            """,
+            (json.dumps(analytics_payload),),
+        )
+
+    store = SQLiteRuntimeStore(path)
+
+    assert store.healthcheck() == {"ok": True, "schema_version": 6}
+    assert store.load_profile("schema-v4-player") == profile
+    assert store.analytics_summary()["match_finished"] == {
+        "total": 1,
+        "vs_cpu": 0,
+        "by_difficulty": {},
+        "by_result_type": {"WIN": 1},
+        "wins": 0,
+        "losses": 0,
+        "draws": 0,
+        "no_contests": 0,
+    }
+    assert store.mission_settlement_rows() == []
+    with sqlite3.connect(path) as connection:
+        settlement_columns = {
+            row[1]
+            for row in connection.execute("PRAGMA table_info(mission_settlement_outbox)")
+        }
+    assert {"finished_at", "claim_token", "claim_expires_at"} <= settlement_columns
+
+
+def test_schema_v5_migrates_settlement_claim_and_finish_columns_without_losing_rows(tmp_path):
+    path = tmp_path / "runtime.sqlite3"
+    progress = {"completed_ids": ["welcome"]}
+    with sqlite3.connect(path) as connection:
+        connection.executescript(
+            """
+            CREATE TABLE runtime_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+            INSERT INTO runtime_meta(key, value) VALUES('schema_version', '5');
+            CREATE TABLE mission_settlement_outbox (
+                match_id TEXT NOT NULL,
+                player_id TEXT NOT NULL,
+                progress_json TEXT NOT NULL,
+                status TEXT NOT NULL,
+                retry_count INTEGER NOT NULL DEFAULT 0,
+                next_attempt_at REAL NOT NULL,
+                last_error TEXT,
+                updated_at REAL NOT NULL,
+                PRIMARY KEY(match_id, player_id)
+            );
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO mission_settlement_outbox(
+                match_id, player_id, progress_json, status,
+                retry_count, next_attempt_at, last_error, updated_at
+            ) VALUES('old-match', 'old-player', ?, 'pending', 0, 42, NULL, 42)
+            """,
+            (json.dumps(progress),),
+        )
+
+    store = SQLiteRuntimeStore(path)
+
+    row = store.mission_settlement_rows()[0]
+    assert store.healthcheck() == {"ok": True, "schema_version": 6}
+    assert row["match_id"] == "old-match"
+    assert row["finished_at"] == 42
+    assert row["claim_token"] is None
+    assert row["claim_expires_at"] is None
+
+
+def test_mission_settlement_outbox_retries_after_process_restart(tmp_path):
+    now = [100.0]
+    path = tmp_path / "runtime.sqlite3"
+    first = SQLiteRuntimeStore(path, clock=lambda: now[0])
+    progress = {"completed_ids": ["welcome"], "unlocked": ["mission_board"]}
+    first.enqueue_mission_settlement("match-1", "player-1", progress)
+
+    def fail(*_args):
+        raise RuntimeError("database is locked")
+
+    assert first.process_mission_settlements(fail) == []
+    failed = first.mission_settlement_rows()[0]
+    assert failed["status"] == "failed_retryable"
+    assert failed["retry_count"] == 1
+
+    now[0] = 101.0
+    restarted = SQLiteRuntimeStore(path, clock=lambda: now[0])
+    received = []
+    assert restarted.process_mission_settlements(
+        lambda match_id, player_id, snapshot: received.append((match_id, player_id, snapshot))
+    ) == [("match-1", "player-1")]
+    assert received == [("match-1", "player-1", progress)]
+    assert restarted.mission_settlement_rows()[0]["status"] == "settled"
+
+
+def test_initial_settlement_enqueue_failure_uses_retryable_durable_fallback(monkeypatch, tmp_path):
+    path = tmp_path / "runtime.sqlite3"
+    store = SQLiteRuntimeStore(path)
+    progress = {"completed_ids": ["welcome"]}
+
+    monkeypatch.setattr(store, "enqueue_mission_settlement", lambda *_args: (_ for _ in ()).throw(RuntimeError("locked")))
+    assert store.enqueue_mission_settlement_durable("match", "player", progress) == "fallback"
+    assert store.mission_settlement_fallback_path.exists()
+
+    restarted = SQLiteRuntimeStore(path)
+    assert restarted.restore_mission_settlement_fallback() == 1
+    received = []
+    restarted.process_mission_settlements(
+        lambda match_id, player_id, snapshot: received.append((match_id, player_id, snapshot))
+    )
+    assert received == [("match", "player", progress)]
+    assert not restarted.mission_settlement_fallback_path.exists()
+
+
+def test_concurrent_settlement_workers_claim_before_invoking_handler(tmp_path):
+    path = tmp_path / "runtime.sqlite3"
+    first = SQLiteRuntimeStore(path)
+    second = SQLiteRuntimeStore(path)
+    first.enqueue_mission_settlement("match", "player", {"completed_ids": ["welcome"]})
+    calls = []
+    lock = threading.Lock()
+
+    def handler(*args):
+        with lock:
+            calls.append(args)
+        # A repeated terminal hook may enqueue the same key while this worker
+        # owns it. That must not reset `processing` back to `pending` and let a
+        # concurrent worker invoke the handler a second time.
+        second.enqueue_mission_settlement("match", "player", {"completed_ids": ["welcome"]})
+        assert second.process_mission_settlements(lambda *_args: calls.append(("duplicate",))) == []
+        time.sleep(0.05)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(lambda store: store.process_mission_settlements(handler), (first, second)))
+
+    assert len(calls) == 1
+    assert sum(len(result) for result in results) == 1
+    assert first.mission_settlement_rows()[0]["status"] == "settled"
+
+
+def test_expired_lease_is_at_least_once_but_stale_worker_reports_no_commit(tmp_path):
+    now = [0.0]
+    path = tmp_path / "runtime.sqlite3"
+    first = SQLiteRuntimeStore(path, clock=lambda: now[0])
+    second = SQLiteRuntimeStore(path, clock=lambda: now[0])
+    first.enqueue_mission_settlement("lease", "player", {})
+    started = threading.Event()
+    release = threading.Event()
+    calls = []
+
+    def slow_handler(*_args):
+        calls.append("stale")
+        started.set()
+        assert release.wait(timeout=5)
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        stale_result = pool.submit(first.process_mission_settlements, slow_handler)
+        assert started.wait(timeout=5)
+        now[0] = 61.0
+        replacement_result = second.process_mission_settlements(
+            lambda *_args: calls.append("replacement")
+        )
+        release.set()
+
+    assert replacement_result == [("lease", "player")]
+    assert stale_result.result() == []
+    assert calls == ["stale", "replacement"]
+    assert first.mission_settlement_rows()[0]["status"] == "settled"
+
+
+def test_fallback_restore_does_not_rewrite_unchanged_fsyncd_records(monkeypatch, tmp_path):
+    store = SQLiteRuntimeStore(tmp_path / "runtime.sqlite3")
+    monkeypatch.setattr(
+        store,
+        "enqueue_mission_settlement",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("locked")),
+    )
+    assert store.enqueue_mission_settlement_durable("match", "player", {}) == "fallback"
+    before = store.mission_settlement_fallback_path.read_bytes()
+    before_mtime = store.mission_settlement_fallback_path.stat().st_mtime_ns
+
+    assert store.restore_mission_settlement_fallback() == 0
+
+    assert store.mission_settlement_fallback_path.read_bytes() == before
+    assert store.mission_settlement_fallback_path.stat().st_mtime_ns == before_mtime
+
+
+def test_atomic_profile_analytics_commit_rolls_back_and_retries_after_analytics_failure(tmp_path):
+    now = [100.0]
+    store = SQLiteRuntimeStore(tmp_path / "runtime.sqlite3", clock=lambda: now[0])
+    progress = {
+        "completed_ids": ["welcome"],
+        "unlocked": ["mission_board"],
+        "team": ["yuji", "megumi", "nobara"],
+    }
+    store.enqueue_mission_settlement("atomic", "player", progress, finished_at=90.0)
+    with sqlite3.connect(store.path) as connection:
+        connection.execute(
+            """
+            CREATE TRIGGER fail_mission_analytics
+            BEFORE INSERT ON analytics_events
+            WHEN NEW.event_type = 'mission_completed'
+            BEGIN
+                SELECT RAISE(ABORT, 'simulated analytics failure');
+            END
+            """
+        )
+
+    assert store.process_mission_settlements(
+        profile_updater=merge_first_creation_profile_snapshot
+    ) == []
+    assert store.load_profile("player") == {}
+    assert store.mission_settlement_rows()[0]["status"] == "failed_retryable"
+
+    with sqlite3.connect(store.path) as connection:
+        connection.execute("DROP TRIGGER fail_mission_analytics")
+    now[0] = 101.0
+    assert store.process_mission_settlements(
+        profile_updater=merge_first_creation_profile_snapshot
+    ) == [("atomic", "player")]
+    assert store.load_profile("player")["completed_missions"] == ["welcome"]
+    assert store.analytics_summary()["missions_completed"] == {"welcome": 1}
+    assert store.mission_settlement_rows()[0]["status"] == "settled"
+
+
+def test_out_of_order_settlement_preserves_newer_team_and_corrects_first_completion_time(tmp_path):
+    store = SQLiteRuntimeStore(tmp_path / "runtime.sqlite3", clock=lambda: 1_000.0)
+    newer = {
+        "completed_ids": ["welcome"],
+        "team": ["new-a", "new-b", "new-c"],
+    }
+    older = {
+        "completed_ids": ["welcome"],
+        "team": ["old-a", "old-b", "old-c"],
+    }
+    store.enqueue_mission_settlement("newer-match", "player", newer, finished_at=200.0)
+    assert store.process_mission_settlements(
+        profile_updater=merge_first_creation_profile_snapshot
+    ) == [("newer-match", "player")]
+    store.enqueue_mission_settlement("older-match", "player", older, finished_at=100.0)
+    assert store.process_mission_settlements(
+        profile_updater=merge_first_creation_profile_snapshot
+    ) == [("older-match", "player")]
+
+    profile = store.load_profile("player")
+    assert profile["selected_starter_team"] == ["new-a", "new-b", "new-c"]
+    completed_at = profile["mission_first_completed_at"]["welcome"]
+    assert completed_at == "1970-01-01T00:01:40+00:00"
+    assert store.analytics_summary()["missions_completed"] == {"welcome": 1}
+    with sqlite3.connect(store.path) as connection:
+        analytics_match = connection.execute(
+            "SELECT match_id FROM analytics_events WHERE event_type = 'mission_completed'"
+        ).fetchone()[0]
+    # Analytics records the match that first durably introduced the completion;
+    # a later chronological correction updates profile time without rewriting
+    # the immutable aggregate event.
+    assert analytics_match == "newer-match"
+
+
+def test_operational_settlement_failures_remain_retryable_until_recovery(tmp_path):
+    now = [100.0]
+    store = SQLiteRuntimeStore(tmp_path / "runtime.sqlite3", clock=lambda: now[0])
+    store.enqueue_mission_settlement("retry", "player", {})
+    for _ in range(8):
+        store.process_mission_settlements(
+            lambda *_args: (_ for _ in ()).throw(RuntimeError("database is locked"))
+        )
+        now[0] += 301.0
+
+    assert store.mission_settlement_rows()[0]["status"] == "failed_retryable"
+    assert store.mission_settlement_rows()[0]["retry_count"] == 8
+    assert store.process_mission_settlements(lambda *_args: None) == [("retry", "player")]
+    assert store.mission_settlement_rows()[0]["status"] == "settled"
+
+
+def test_force_due_bypasses_backoff_only_once_per_drain(tmp_path):
+    now = [100.0]
+    store = SQLiteRuntimeStore(tmp_path / "runtime.sqlite3", clock=lambda: now[0])
+    store.enqueue_mission_settlement("force-once", "player", {})
+    failure = lambda *_args: (_ for _ in ()).throw(RuntimeError("still unavailable"))
+    store.process_mission_settlements(failure)
+    calls = []
+
+    store.process_mission_settlements(
+        lambda *_args: calls.append("attempt") or failure(),
+        player_id="player",
+        force_due=True,
+    )
+
+    assert calls == ["attempt"]
+    row = store.mission_settlement_rows()[0]
+    assert row["status"] == "failed_retryable"
+    assert row["retry_count"] == 2
+
+
+def test_malformed_json_and_non_object_snapshots_dead_letter_and_can_be_redriven(tmp_path):
+    store = SQLiteRuntimeStore(tmp_path / "runtime.sqlite3")
+    store.enqueue_mission_settlement("bad-json", "player", {})
+    store.enqueue_mission_settlement("bad-shape", "player", {})
+    with sqlite3.connect(store.path) as connection:
+        connection.execute(
+            "UPDATE mission_settlement_outbox SET progress_json = 'not-json' WHERE match_id = 'bad-json'"
+        )
+        connection.execute(
+            "UPDATE mission_settlement_outbox SET progress_json = '\"string\"' WHERE match_id = 'bad-shape'"
+        )
+
+    assert store.process_mission_settlements(lambda *_args: None, limit=2) == []
+    assert store.mission_settlement_counts() == {"dead_letter": 2}
+    assert store.mission_settlement_dead_lettered_total == 2
+
+    store.enqueue_mission_settlement("bad-json", "player", {"completed_ids": ["welcome"]})
+    assert store.redrive_mission_settlement("bad-json", "player") is True
+    assert store.process_mission_settlements(lambda *_args: None) == [("bad-json", "player")]
+
+
+def test_unrepresentable_finish_timestamp_dead_letters_instead_of_retrying_forever(tmp_path):
+    store = SQLiteRuntimeStore(tmp_path / "runtime.sqlite3")
+    store.enqueue_mission_settlement(
+        "bad-finish-time",
+        "player",
+        {"completed_ids": ["welcome"]},
+        finished_at=1e308,
+    )
+
+    assert store.process_mission_settlements(
+        profile_updater=merge_first_creation_profile_snapshot
+    ) == []
+
+    row = store.mission_settlement_rows()[0]
+    assert row["status"] == "dead_letter"
+    assert row["retry_count"] == 1
+    assert "supported datetime range" in row["last_error"]
+
+
+def test_settled_rows_expire_but_dead_letters_remain_for_operator_redrive(tmp_path):
+    now = [100.0]
+    store = SQLiteRuntimeStore(tmp_path / "runtime.sqlite3", clock=lambda: now[0])
+    store.enqueue_mission_settlement("dead", "player", {})
+    with sqlite3.connect(store.path) as connection:
+        connection.execute(
+            "UPDATE mission_settlement_outbox SET progress_json = 'not-json' WHERE match_id = 'dead'"
+        )
+    store.process_mission_settlements(lambda *_args: None)
+
+    store.enqueue_mission_settlement("settled", "player", {})
+    store.process_mission_settlements(lambda *_args: None)
+    now[0] += 31 * 86400
+    assert store.prune_settled_mission_settlements(retention_days=30) == 1
+    assert store.mission_settlement_counts() == {"dead_letter": 1}
 
 
 def test_analytics_summary_uses_sql_aggregation_not_python_payload_decoding(tmp_path):

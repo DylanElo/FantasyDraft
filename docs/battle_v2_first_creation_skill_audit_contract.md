@@ -14,8 +14,9 @@ of its time on:
 ## 1. Structural completeness
 
 Flags empty/placeholder UI text, a skill with no effects and no conditions,
-missing skill classes, or a negative cooldown — things the type system
-doesn't catch. Current result: 0 flagged across all 78 skills.
+missing skill classes, a negative cooldown, or an invalid conditional payload
+key/value — things the base dataclasses don't catch. Current result: 0 flagged
+across all 78 skills.
 
 ## 2. Special-mechanic test coverage
 
@@ -34,17 +35,12 @@ its own flavor text ("gives an ally 10 destructible defense") — fixed in
 ## 3. Kit-grammar vocabulary drift
 
 Compares the effect/condition vocabulary `docs/jjk_kit_grammar.md` documents
-against what the roster actually uses. The most significant finding: **the
-documented `ConditionSpec`/`SkillSpec.conditions` mechanism
-(`conditions.py::evaluate_condition`, the "Condition Vocabulary" section) is
-used by zero of the 78 First Creation skills.** All conditional skill
-behavior instead uses an undocumented, parallel payload-key convention on
-`EffectSpec` (`condition_status`, `condition_user_status`,
-`condition_target_hp_below`, etc. — see `prepare_conditions` in
-`tests/test_first_creation_skill_execution.py` for the full vocabulary
-actually in use). This is a documentation gap, not an engine bug — the
-payload-key system is fully implemented, tested, and working; the doc
-describes a different, unused mechanism.
+against what the roster actually uses. First Creation canonically authors
+conditions on the exact `EffectSpec.payload` entry they gate. The complete
+typed vocabulary and runtime validator live in
+`jjk_arena/battle_v2/effect_payload.py`; all 78 skills are checked by the
+structural audit. `ConditionSpec` remains a legacy engine capability but is
+not a parallel authoring model for new First Creation content.
 
 Other vocabulary findings: `cost_modifier` and `damage_modifier` don't exist
 anywhere in the engine, not just unused by First Creation. `domain`,
@@ -62,9 +58,9 @@ python -m jjk_arena.battle_v2.skill_audit --json   # machine-readable
 ```
 
 `tests/test_first_creation_skill_audit.py` pins both structural completeness
-and special-mechanic coverage at 0 flagged, so a newly added skill with an
-untested counter/reflect/replacement/non-trivial-targeting mechanic fails
-loudly here instead of silently shipping without a dedicated test.
+and special-mechanic coverage at 0 flagged, so an invalid condition key/value
+or a newly added skill with an untested
+counter/reflect/replacement/non-trivial-targeting mechanic fails loudly.
 
 ## Limitations
 

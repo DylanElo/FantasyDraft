@@ -1,6 +1,6 @@
-import { COLORS, CORE_ENERGY, ENERGY_COLORS, ENERGY_LABELS, TOKEN_TYPE } from '../core/runtime-config.js?v=21';
-import { shortText } from '../core/text.js?v=21';
-import { CombatPlaybackScene } from '../fx/combat-playback-scene.js?v=21';
+import { COLORS, CORE_ENERGY, ENERGY_COLORS, ENERGY_LABELS, TOKEN_TYPE } from '../core/runtime-config.js?v=22';
+import { shortText } from '../core/text.js?v=22';
+import { CombatPlaybackScene } from '../fx/combat-playback-scene.js?v=22';
 
 export class CombatQueueReviewScene extends CombatPlaybackScene {
     actionMeta(action) {
@@ -45,7 +45,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         this.graphics.strokeCircle(cx, y, 5.5);
         this.mono(cx, y - 4, ENERGY_LABELS[color] || '?', {
           color: color === 'white' ? '#08080a' : COLORS.text,
-          fontSize: '8px',
+          fontSize: '10px',
         }).setOrigin(0.5, 0);
       });
     }
@@ -53,7 +53,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
     renderQueueReviewRow(frame, action, index, rowY, rowW) {
       const x = frame.x + 20;
       const meta = this.actionMeta(action);
-      const rowH = 76;
+      const rowH = 92;
       const tone = index === 0 ? COLORS.selection : index === 1 ? COLORS.ally : COLORS.talismanDim;
       const last = index >= this.store.actions.length - 1;
 
@@ -94,29 +94,33 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         fontStyle: '700',
       }).setOrigin(0.5, 0);
 
-      this.text(x + 46, rowY + 7, shortText(meta.skill ? meta.skill.name : action.skill_id, 26), {
+      const skillName = this.text(x + 46, rowY + 6, meta.skill ? meta.skill.name : action.skill_id, {
         fontSize: '11px',
         fontStyle: '900',
         wordWrap: { width: rowW - 154 },
       });
-      this.mono(x + 46, rowY + 26, `CASTER / ${shortText(meta.caster ? meta.caster.name : 'Unknown', 18).toUpperCase()}`, {
+      skillName.setMaxLines(2);
+      this.mono(x + 46, rowY + 34, `CASTER / ${shortText(meta.caster ? meta.caster.name : 'Unknown', 18).toUpperCase()}`, {
         color: COLORS.paperText,
         fontSize: '10px',
       });
-      this.mono(x + 46, rowY + 40, `TARGET / ${shortText(meta.targetName, 20).toUpperCase()}`, {
+      this.mono(x + 46, rowY + 48, `TARGET / ${shortText(meta.targetName, 20).toUpperCase()}`, {
         color: COLORS.text,
         fontSize: '10px',
       });
       if (meta.secondaryName || meta.alternateName) {
-        this.mono(x + 46, rowY + 54, shortText(meta.secondaryName ? `SECOND / ${meta.secondaryName}` : `FALLBACK / ${meta.alternateName}`, 31).toUpperCase(), {
+        this.mono(x + 46, rowY + 62, shortText(meta.secondaryName ? `SECOND / ${meta.secondaryName}` : `FALLBACK / ${meta.alternateName}`, 31).toUpperCase(), {
           color: COLORS.muted,
-          fontSize: '9px',
+          fontSize: '10px',
         });
       } else {
-        this.renderCostOrbs(x + 50, rowY + 61, meta.cost, 5);
+        this.renderCostOrbs(x + 50, rowY + 72, meta.cost, 5);
       }
 
-      this.button(x + rowW - 94, rowY + 9, 38, 28, '↑', () => this.store.moveQueuedAction(action.id, -1), {
+      const controlSize = 44;
+      const controlGap = 6;
+      const controlRight = x + rowW - 8;
+      this.button(controlRight - controlSize * 2 - controlGap, rowY, controlSize, controlSize, '↑', () => this.store.moveQueuedAction(action.id, -1), {
         fill: 0x05090c,
         stroke: index === 0 ? COLORS.line : COLORS.selection,
         color: index === 0 ? COLORS.dim : COLORS.text,
@@ -125,7 +129,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         radius: 3,
         disabled: index === 0,
       });
-      this.button(x + rowW - 46, rowY + 9, 38, 28, '↓', () => this.store.moveQueuedAction(action.id, 1), {
+      this.button(controlRight - controlSize, rowY, controlSize, controlSize, '↓', () => this.store.moveQueuedAction(action.id, 1), {
         fill: 0x05090c,
         stroke: last ? COLORS.line : COLORS.selection,
         color: last ? COLORS.dim : COLORS.text,
@@ -137,13 +141,14 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
 
       const wildCount = meta.cost.filter((color) => color === 'black').length;
       if (!wildCount) {
-        this.mono(x + rowW - 102, rowY + 58, 'FIXED COST', { color: COLORS.dim, fontSize: '9px' });
+        this.mono(x + rowW - 102, rowY + 74, 'FIXED COST', { color: COLORS.dim, fontSize: '10px' });
         return;
       }
-      this.mono(x + rowW - 112, rowY + 49, 'WILD PAY', { color: COLORS.paperText, fontSize: '9px' });
+      const wildButtonsLeft = controlRight - controlSize - (wildCount - 1) * (controlSize + controlGap);
+      this.mono(Math.max(x + 10, wildButtonsLeft - 64), rowY + 74, 'WILD PAY', { color: COLORS.paperText, fontSize: '10px' });
       for (let wildIndex = 0; wildIndex < wildCount; wildIndex += 1) {
         const pay = (this.store.actionWildPays[action.id] || [])[wildIndex] || 'black';
-        this.button(x + rowW - 64 + wildIndex * 32, rowY + 45, 28, 24, ENERGY_LABELS[pay] || 'X', () => this.store.cycleWildcardPay(action.id, wildIndex), {
+        this.button(controlRight - controlSize - wildIndex * (controlSize + controlGap), rowY + controlSize + 4, controlSize, controlSize, ENERGY_LABELS[pay] || 'X', () => this.store.cycleWildcardPay(action.id, wildIndex), {
           fill: pay === 'white' ? COLORS.focusIvory : (ENERGY_COLORS[pay] || COLORS.black),
           stroke: pay === 'black' ? COLORS.talismanPaper : (ENERGY_COLORS[pay] || COLORS.selection),
           color: pay === 'white' ? '#08080a' : COLORS.text,
@@ -225,16 +230,16 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         this.graphics.fillCircle(cx, sheetY + 38, 6.2);
         this.graphics.lineStyle(1, color === 'white' ? COLORS.talismanPaper : ENERGY_COLORS[color], count ? 0.78 : 0.3);
         this.graphics.strokeCircle(cx, sheetY + 38, 8.3);
-        this.mono(cx, sheetY + 49, String(count), { color: COLORS.text, fontSize: '9px' }).setOrigin(0.5, 0);
+        this.mono(cx, sheetY + 49, String(count), { color: COLORS.text, fontSize: '10px' }).setOrigin(0.5, 0);
       });
 
       const rowW = sheetW - 40;
       this.store.actions.slice(0, 3).forEach((action, index) => {
-        this.renderQueueReviewRow(frame, action, index, sheetY + 92 + index * 84, rowW);
+        this.renderQueueReviewRow(frame, action, index, sheetY + 92 + index * 100, rowW);
       });
 
       const queueFit = this.store.queueReviewFit();
-      const summaryY = sheetY + 92 + this.store.actions.slice(0, 3).length * 84 + 5;
+      const summaryY = sheetY + 92 + this.store.actions.slice(0, 3).length * 100 + 5;
       this.graphics.lineStyle(1, queueFit.ok ? COLORS.queued : COLORS.enemy, 0.44);
       this.graphics.beginPath();
       this.graphics.moveTo(x + 18, summaryY);
@@ -246,22 +251,22 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         fontStyle: '700',
       });
 
-      const footerY = frame.height - 50;
-      this.button(x + 12, footerY, 78, 36, 'Cancel', () => this.store.cancelQueue(), {
+      const footerY = frame.bottom - 44;
+      this.button(x + 12, footerY, 78, 44, 'Cancel', () => this.store.cancelQueue(), {
         fill: 0x080b0e,
         stroke: COLORS.enemy,
         mono: true,
         fontSize: '11px',
         radius: 3,
       });
-      this.button(x + 100, footerY, 68, 36, 'Back', () => this.store.closeQueueReview(), {
+      this.button(x + 100, footerY, 68, 44, 'Back', () => this.store.closeQueueReview(), {
         fill: 0x080b0e,
         stroke: COLORS.line,
         mono: true,
         fontSize: '11px',
         radius: 3,
       });
-      this.button(right - 146, footerY, 134, 36, this.store.queueSubmitting ? 'Resolving' : 'Confirm Queue', () => this.store.confirmQueue(), {
+      this.button(right - 146, footerY, 134, 44, this.store.queueSubmitting ? 'Resolving' : 'Confirm Queue', () => this.store.confirmQueue(), {
         fill: COLORS.selection,
         gradientTop: COLORS.talismanDim,
         stroke: COLORS.talismanPaper,

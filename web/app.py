@@ -19,7 +19,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from jjk_arena.battle_v2.first_creation_profile import (
     first_creation_profile_payload,
     load_first_creation_profile,
+    merge_first_creation_profile_snapshot,
     merge_first_creation_progress,
+    normalize_profile,
     save_first_creation_profile,
     update_first_creation_profile,
 )
@@ -87,6 +89,7 @@ room_last_activity: dict[str, float] = {}
 lobby_last_activity: dict[str, float] = {}
 archived_replays: set[str] = set()
 analytics_recorded_matches: set[str] = set()
+mission_match_finished_at: dict[str, float] = {}
 operational_counters = defaultdict(int)
 last_runtime_prune_at = 0.0
 CPU_V2_PLAYER_ID = "__cpu_v2__"
@@ -262,6 +265,9 @@ def runtime_status():
             # Aggregate counts only -- never the queued events themselves.
             "analytics_outbox_size": runtime_store.outbox_size(),
             "analytics_outbox_dropped_total": runtime_store.outbox_dropped_total,
+            "mission_settlements": runtime_store.mission_settlement_counts(),
+            "mission_settlement_dead_lettered_total": runtime_store.mission_settlement_dead_lettered_total,
+            "mission_settlement_claimed_total": runtime_store.mission_settlement_claimed_total,
         }
     )
 
@@ -312,7 +318,7 @@ def battle_v2_default_enemy_team(mode: str) -> list[str]:
 
 def first_creation_payload_for_player(player_id: str | None) -> dict:
     payload = first_creation_payload()
-    profile = load_first_creation_profile(player_id) if player_id else {}
+    profile = load_first_creation_profile_with_recovery(player_id) if player_id else {}
     payload["profile"] = first_creation_profile_payload(profile)
     return payload
 
@@ -320,6 +326,7 @@ def first_creation_payload_for_player(player_id: str | None) -> dict:
 def remember_first_creation_team(player_id: str, team: list[str]) -> None:
     def remember(profile):
         profile["selected_starter_team"] = list(team[:3])
+        profile["_selected_starter_team_at"] = time.time()
         return profile
 
     update_first_creation_profile(player_id, remember)
@@ -405,6 +412,70 @@ def record_match_finished_analytics(room_id: str) -> None:
 
 
 missions_settled_players: dict[str, set[str]] = defaultdict(set)
+missions_snapshotted_players: dict[str, set[str]] = defaultdict(set)
+mission_snapshot_retry_rooms: set[str] = set()
+
+
+def flush_mission_settlements(
+    *,
+    player_id: str | None = None,
+    force_due: bool = False,
+) -> list[tuple[str, str]]:
+    """Retry durable mission merges without requiring the source room."""
+
+    restored = runtime_store.restore_mission_settlement_fallback()
+    operational_counters["mission_settlement_fallback_restored"] += restored
+
+    def merge_snapshot(match_id: str, player_id: str, progress: dict) -> None:
+        merge_first_creation_progress(
+            player_id,
+            progress,
+            match_id=match_id,
+            analytics_store=runtime_store,
+            profile_store=runtime_store,
+        )
+
+    if os.getenv("JJK_FIRST_CREATION_PROFILE_STORE"):
+        # The JSON override exists for compatibility/tests. Production uses the
+        # atomic SQLite profile_updater path below.
+        settled = runtime_store.process_mission_settlements(
+            merge_snapshot,
+            player_id=player_id,
+            force_due=force_due,
+        )
+    else:
+        settled = runtime_store.process_mission_settlements(
+            player_id=player_id,
+            force_due=force_due,
+            profile_updater=merge_first_creation_profile_snapshot,
+        )
+    for match_id, player_id in settled:
+        missions_snapshotted_players[match_id].add(player_id)
+        missions_settled_players[match_id].add(player_id)
+    return settled
+
+
+def load_first_creation_profile_with_recovery(player_id: str) -> dict:
+    """Drain this player's durable credit before serving a profile read."""
+
+    try:
+        reconstruct_terminal_mission_snapshots(player_id=str(player_id), limit=8)
+        flush_mission_settlements(player_id=str(player_id), force_due=True)
+    except Exception:
+        operational_counters["mission_settlement_profile_read_errors"] += 1
+    if not os.getenv("JJK_FIRST_CREATION_PROFILE_STORE"):
+        return normalize_profile(runtime_store.load_profile(str(player_id)))
+    return load_first_creation_profile(player_id)
+
+
+def terminal_mission_progress_snapshot(room_id: str, player_id: str) -> tuple[dict, float]:
+    """Return a terminal snapshot with a stable per-match finish timestamp."""
+
+    finished_at = mission_match_finished_at.setdefault(room_id, time.time())
+    progress = battle_v2_manager.mission_progress_for_player(room_id, player_id)
+    snapshot = dict(progress or {})
+    snapshot["_match_finished_at"] = finished_at
+    return snapshot, finished_at
 
 
 def settle_first_creation_missions(room_id: str) -> None:
@@ -428,17 +499,34 @@ def settle_first_creation_missions(room_id: str) -> None:
         return
     if battle_v2_manager.room_roster_modes.get(room_id) != "first_creation":
         return
-    settled = missions_settled_players[room_id]
+    snapshotted = missions_snapshotted_players[room_id]
     for player_id in state.players:
-        if player_id == CPU_V2_PLAYER_ID or player_id in settled:
+        if player_id == CPU_V2_PLAYER_ID or player_id in snapshotted:
             continue
         try:
-            progress = battle_v2_manager.mission_progress_for_player(room_id, player_id)
-            merge_first_creation_progress(player_id, progress, match_id=room_id, analytics_store=runtime_store)
+            progress, finished_at = terminal_mission_progress_snapshot(room_id, player_id)
+            destination = runtime_store.enqueue_mission_settlement_durable(
+                room_id,
+                player_id,
+                progress,
+                finished_at=finished_at,
+            )
+            if destination == "fallback":
+                operational_counters["mission_settlement_fallback_writes"] += 1
+            snapshotted.add(player_id)
         except Exception:
+            mission_snapshot_retry_rooms.add(room_id)
             operational_counters["mission_settlement_errors"] += 1
-        else:
-            settled.add(player_id)
+    human_players = {player_id for player_id in state.players if player_id != CPU_V2_PLAYER_ID}
+    if human_players.issubset(snapshotted):
+        mission_snapshot_retry_rooms.discard(room_id)
+    try:
+        # An explicit repeat of the authoritative terminal hook is itself a
+        # prompt retry signal. Bypass backoff for at most the first claimed
+        # row; the store still schedules every subsequent failure normally.
+        flush_mission_settlements(force_due=True)
+    except Exception:
+        operational_counters["mission_settlement_errors"] += 1
 
 
 def on_battle_v2_match_finished(room_id: str) -> None:
@@ -453,6 +541,13 @@ def on_battle_v2_match_finished(room_id: str) -> None:
 # reconnect refresh must not be the thing deciding whether match analytics or
 # mission settlement ever happen.
 battle_v2_manager.on_match_finished = on_battle_v2_match_finished
+
+# Durable rows contain their own mission-progress snapshot, so recovery does
+# not depend on the finished room still existing after a process restart.
+try:
+    flush_mission_settlements()
+except Exception:
+    operational_counters["mission_settlement_errors"] += 1
 
 
 def clamp_int(value, minimum: int, maximum: int, default: int = 0) -> int:
@@ -603,7 +698,15 @@ def emit_battle_v2_update(room_id: str, viewer_id: str | None = None):
     room_last_activity[room_id] = time.monotonic()
     if state.phase.value == "finished":
         # Match-finished analytics are recorded by battle_v2_manager.on_match_finished
-        # at the authoritative _finish_match transition, not here.
+        # at the authoritative _finish_match transition. This finished-state
+        # path only reconstructs a snapshot when both initial durable writes
+        # failed; durable keys and atomic merges keep repeated broadcasts
+        # idempotent rather than making broadcast the primary settlement hook.
+        reconstruct_terminal_mission_snapshots(room_id=room_id, limit=1)
+        try:
+            flush_mission_settlements()
+        except Exception:
+            operational_counters["mission_settlement_errors"] += 1
         archive_finished_replay(room_id)
     viewer_ids = [player_id for player_id in state.players if player_id != CPU_V2_PLAYER_ID]
     if viewer_id and viewer_id not in viewer_ids and viewer_id in state.players:
@@ -613,11 +716,7 @@ def emit_battle_v2_update(room_id: str, viewer_id: str | None = None):
     for target_viewer_id in viewer_ids:
         payload = battle_v2_manager.serialize_for_player(room_id, target_viewer_id)
         if payload.get("roster_mode") == "first_creation":
-            # Mission settlement itself already ran once, synchronously, at
-            # the authoritative _finish_match transition (see
-            # settle_first_creation_missions / on_battle_v2_match_finished
-            # above) -- this just reads whatever profile state that produced.
-            profile = load_first_creation_profile(target_viewer_id)
+            profile = load_first_creation_profile_with_recovery(target_viewer_id)
             payload["first_creation_account"] = first_creation_profile_payload(profile)
         payload["match_id"] = room_id
         payload["lobby_code"] = lobby_code_by_match.get(room_id)
@@ -679,8 +778,75 @@ def battle_v2_has_cpu(room_id: str) -> bool:
     return CPU_V2_PLAYER_ID in state.players
 
 
-def remove_battle_v2_room(room_id: str) -> None:
+def ensure_terminal_mission_snapshots(room_id: str) -> bool:
+    """Reconstruct missing terminal rows before authoritative room cleanup."""
+
+    state = battle_v2_manager.rooms.get(room_id)
+    if state is None or battle_v2_manager.room_roster_modes.get(room_id) != "first_creation":
+        return True
+    phase = getattr(getattr(state, "phase", None), "value", None)
+    if phase != "finished" and not getattr(state, "result_type", None):
+        return True
+    snapshotted = missions_snapshotted_players[room_id]
+    for player_id in state.players:
+        if player_id == CPU_V2_PLAYER_ID or player_id in snapshotted:
+            continue
+        try:
+            progress, finished_at = terminal_mission_progress_snapshot(room_id, player_id)
+            destination = runtime_store.enqueue_mission_settlement_durable(
+                room_id,
+                player_id,
+                progress,
+                finished_at=finished_at,
+            )
+            if destination == "fallback":
+                operational_counters["mission_settlement_fallback_writes"] += 1
+            snapshotted.add(player_id)
+        except Exception:
+            mission_snapshot_retry_rooms.add(room_id)
+            operational_counters["mission_settlement_snapshot_failures"] += 1
+            return False
+    mission_snapshot_retry_rooms.discard(room_id)
+    return True
+
+
+def reconstruct_terminal_mission_snapshots(
+    *,
+    room_id: str | None = None,
+    player_id: str | None = None,
+    limit: int = 50,
+) -> int:
+    """Promptly retry missing durable snapshots while terminal rooms still live."""
+
+    reconstructed = 0
+    checked = 0
+    for candidate_room_id, state in list(battle_v2_manager.rooms.items()):
+        if checked >= max(1, int(limit)):
+            break
+        if room_id is not None and candidate_room_id != room_id:
+            continue
+        if player_id is not None and player_id not in state.players:
+            continue
+        if battle_v2_manager.room_roster_modes.get(candidate_room_id) != "first_creation":
+            continue
+        if candidate_room_id not in mission_snapshot_retry_rooms:
+            continue
+        phase = getattr(getattr(state, "phase", None), "value", None)
+        if phase != "finished" and not getattr(state, "result_type", None):
+            continue
+        checked += 1
+        before = len(missions_snapshotted_players[candidate_room_id])
+        ensure_terminal_mission_snapshots(candidate_room_id)
+        reconstructed += len(missions_snapshotted_players[candidate_room_id]) - before
+    operational_counters["mission_settlement_snapshots_reconstructed"] += reconstructed
+    return reconstructed
+
+
+def remove_battle_v2_room(room_id: str) -> bool:
     """Cancel timer work and remove room-owned authoritative runtime state."""
+
+    if not ensure_terminal_mission_snapshots(room_id):
+        return False
 
     battle_v2_timer_scheduler.cancel(room_id)
     lock = battle_v2_manager.room_locks.get(room_id)
@@ -712,6 +878,9 @@ def remove_battle_v2_room(room_id: str) -> None:
         archived_replays.discard(room_id)
         analytics_recorded_matches.discard(room_id)
         missions_settled_players.pop(room_id, None)
+        missions_snapshotted_players.pop(room_id, None)
+        mission_snapshot_retry_rooms.discard(room_id)
+        mission_match_finished_at.pop(room_id, None)
         rematch_receipts.pop(room_id, None)
         rematch_by_old_match.pop(room_id, None)
         for old_match_id, new_match in list(rematch_by_old_match.items()):
@@ -724,6 +893,7 @@ def remove_battle_v2_room(room_id: str) -> None:
         with lock:
             remove_state()
         battle_v2_manager.room_locks.pop(room_id, None)
+    return True
 
 
 def remove_v2_pvp_lobby_player(room_id: str, player_session: str) -> list[dict]:
@@ -754,6 +924,10 @@ def acknowledge_finished_match(match_id: str, player_id: str) -> None:
 
 def prune_stale_runtime(now: float | None = None) -> dict[str, int]:
     current = time.monotonic() if now is None else float(now)
+    try:
+        reconstruct_terminal_mission_snapshots(limit=50)
+    except Exception:
+        operational_counters["storage_maintenance_errors"] += 1
     removed_rooms = 0
     for room_id, last_activity in list(room_last_activity.items()):
         state = battle_v2_manager.rooms.get(room_id)
@@ -761,8 +935,8 @@ def prune_stale_runtime(now: float | None = None) -> dict[str, int]:
         terminal = state is not None and (phase == "finished" or bool(getattr(state, "winner_id", None)))
         ttl = FINISHED_ROOM_TTL_SECONDS if terminal else ACTIVE_ROOM_TTL_SECONDS
         if current - last_activity >= ttl:
-            remove_battle_v2_room(room_id)
-            removed_rooms += 1
+            if remove_battle_v2_room(room_id):
+                removed_rooms += 1
     removed_lobbies = 0
     for room_id, last_activity in list(lobby_last_activity.items()):
         if current - last_activity >= LOBBY_TTL_SECONDS:
@@ -790,6 +964,16 @@ def prune_stale_runtime(now: float | None = None) -> dict[str, int]:
         flushed_analytics = 0
         operational_counters["storage_maintenance_errors"] += 1
     try:
+        settled_missions = len(flush_mission_settlements())
+    except Exception:
+        settled_missions = 0
+        operational_counters["storage_maintenance_errors"] += 1
+    try:
+        pruned_settlements = runtime_store.prune_settled_mission_settlements()
+    except Exception:
+        pruned_settlements = 0
+        operational_counters["storage_maintenance_errors"] += 1
+    try:
         expired_analytics = runtime_store.prune_old_analytics_events()
     except Exception:
         expired_analytics = 0
@@ -798,6 +982,8 @@ def prune_stale_runtime(now: float | None = None) -> dict[str, int]:
     operational_counters["lobbies_pruned"] += removed_lobbies
     operational_counters["replays_pruned"] += expired_replays
     operational_counters["analytics_outbox_flushed"] += flushed_analytics
+    operational_counters["mission_settlements_flushed"] += settled_missions
+    operational_counters["mission_settlements_pruned"] += pruned_settlements
     operational_counters["analytics_events_pruned"] += expired_analytics
     return {
         "rooms": removed_rooms,
@@ -805,6 +991,8 @@ def prune_stale_runtime(now: float | None = None) -> dict[str, int]:
         "rate_limits": removed_limits,
         "replays": expired_replays,
         "analytics_flushed": flushed_analytics,
+        "mission_settlements_flushed": settled_missions,
+        "mission_settlements_pruned": pruned_settlements,
         "analytics_pruned": expired_analytics,
     }
 

@@ -1,9 +1,10 @@
 {
   "format_version": 2,
-  "rules_version": "battle-v2-2026-07-aggregate-dr",
+  "rules_version": "battle-v2-2026-07-cpu-planning",
   "match_id": "golden-two-turns",
   "roster_mode": "first_creation",
   "rng_seed": 17,
+  "cpu_difficulty": "normal",
   "players": [
     {"id": "p1", "name": "P1", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
     {"id": "p2", "name": "P2", "team": ["maki_zenin", "panda", "mai_zenin"]}

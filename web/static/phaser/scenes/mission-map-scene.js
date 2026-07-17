@@ -1,6 +1,6 @@
-import { COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=21';
-import { clamp, shortText, titleize } from '../core/text.js?v=21';
-import { BaseScene } from './base-scene.js?v=21';
+import { COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=22';
+import { clamp, shortText, titleize } from '../core/text.js?v=22';
+import { BaseScene } from './base-scene.js?v=22';
 
 export class MissionMapScene extends BaseScene {
     constructor() {
@@ -23,7 +23,7 @@ export class MissionMapScene extends BaseScene {
       (mission.recommended_team || []).slice(0, 3).forEach((id, portraitIndex) => {
         this.platePortrait(this.store.character(id), x + 14 + portraitIndex * 39, y + h - 36, 30, { tone });
       });
-      this.button(x + w - 114, y + h - 42, 96, 30, 'Use Team', () => this.store.applyRecommendedTeam(mission), {
+      this.button(x + w - 114, y + h - 50, 96, 44, 'Use Team', () => this.store.applyRecommendedTeam(mission), {
         fill: COLORS.surfaceRaised,
         stroke: tone,
         mono: true,
@@ -47,14 +47,15 @@ export class MissionMapScene extends BaseScene {
       const frame = this.layout.frame();
       this.clearSurface();
       this.worldBackdrop(frame, { textureKey: null, ambient: 'motes' });
-      this.dossierHeader(frame, { eyebrow: 'CURSED CLASH', title: 'Mission Map', backHandler: () => this.store.changeScene('LobbyScene') });
+      const header = this.dossierHeader(frame, { eyebrow: 'CURSED CLASH', title: 'Mission Map', backHandler: () => this.store.changeScene('LobbyScene') });
       const x = frame.x + frame.gutter;
       const missions = this.store.missions();
-      const pageSize = frame.height < 790 ? 1 : 2;
+      const usableHeight = frame.bottom - frame.top;
+      const pageSize = frame.width >= 430 && usableHeight >= 820 ? 2 : 1;
       const maxPage = Math.max(0, Math.ceil(missions.length / pageSize) - 1);
       this.store.missionPage = clamp(this.store.missionPage, 0, maxPage);
       const page = missions.slice(this.store.missionPage * pageSize, this.store.missionPage * pageSize + pageSize);
-      let y = 92;
+      let y = header.bottom + 14;
       this.platePanel(x, y, frame.width - 32, 78, COLORS.selection, { edgeBar: 'left' });
       this.text(x + 16, y + 13, 'Student Era Route', {
         fontFamily: TOKEN_TYPE.display || 'Georgia, serif',
@@ -67,18 +68,20 @@ export class MissionMapScene extends BaseScene {
         this.renderMissionCard(mission, x, y + index * 204, frame.width - 32, 190, this.store.missionPage * pageSize + index);
       });
       y += page.length * 204 + 4;
-      this.renderLockedRoutes(frame, Math.min(y, frame.height - 212));
+      const ctaY = frame.bottom - 44;
+      const navY = ctaY - 54;
+      this.renderLockedRoutes(frame, Math.min(y, navY - 104));
 
-      this.button(x, frame.height - 106, 78, 34, 'Prev', () => {
+      this.button(x, navY, 78, 44, 'Prev', () => {
         this.store.missionPage = Math.max(0, this.store.missionPage - 1);
         this.store.notify();
       }, { disabled: this.store.missionPage === 0, fill: COLORS.surfaceRaised, mono: true, fontSize: `${TYPE_SCALE.label}px` });
-      this.mono(x + 94, frame.height - 96, `Route ${this.store.missionPage + 1}/${maxPage + 1}`, { color: COLORS.muted, fontSize: `${TYPE_SCALE.label}px` });
-      this.button(x + frame.width - 108, frame.height - 106, 76, 34, 'Next', () => {
+      this.mono(x + 94, navY + 16, `Route ${this.store.missionPage + 1}/${maxPage + 1}`, { color: COLORS.muted, fontSize: `${TYPE_SCALE.label}px` });
+      this.button(x + frame.width - 108, navY, 76, 44, 'Next', () => {
         this.store.missionPage = Math.min(maxPage, this.store.missionPage + 1);
         this.store.notify();
       }, { disabled: this.store.missionPage === maxPage, fill: COLORS.surfaceRaised, mono: true, fontSize: `${TYPE_SCALE.label}px` });
-      this.button(x, frame.height - 58, frame.width - 32, 42, 'First Creation', () => this.store.changeScene('FirstCreationScene'), {
+      this.button(x, ctaY, frame.width - 32, 44, 'First Creation', () => this.store.changeScene('FirstCreationScene'), {
         fill: COLORS.selection,
         gradientTop: COLORS.talismanDim,
         stroke: COLORS.talismanPaper,

@@ -9,6 +9,11 @@ body {
   font-family: Inter, Arial, sans-serif;
 }
 
+:root {
+  --jjk-safe-top: env(safe-area-inset-top, 0px);
+  --jjk-safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;

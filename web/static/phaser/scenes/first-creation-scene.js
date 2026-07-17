@@ -1,6 +1,6 @@
-import { COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=21';
-import { clamp, shortText } from '../core/text.js?v=21';
-import { DraftScene } from './draft-scene.js?v=21';
+import { COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=22';
+import { clamp, shortText } from '../core/text.js?v=22';
+import { DraftScene } from './draft-scene.js?v=22';
 
 export class FirstCreationScene extends DraftScene {
     constructor() {
@@ -65,7 +65,7 @@ export class FirstCreationScene extends DraftScene {
       this.text(x + 16, y + 42, mission ? shortText(mission.title, 33) : 'Starter route ready', { color: COLORS.paperText, fontSize: `${TYPE_SCALE.body}px` });
       this.progressRail(x + 16, y + 65, frame.width - 172, 8, pct, COLORS.selection);
       this.mono(x + frame.width - 174, y + 64, `${completed}/${total} ROUTES`, { color: COLORS.text, fontSize: `${TYPE_SCALE.label}px` });
-      this.button(x + frame.width - 138, y + 22, 104, 36, 'Mission Map', () => this.store.changeScene('MissionMapScene'), {
+      this.button(x + frame.width - 138, y + 18, 104, 44, 'Mission Map', () => this.store.changeScene('MissionMapScene'), {
         fill: COLORS.surfaceRaised,
         stroke: COLORS.line,
         mono: true,
@@ -77,21 +77,22 @@ export class FirstCreationScene extends DraftScene {
       const frame = this.layout.frame();
       this.clearSurface();
       this.worldBackdrop(frame, { textureKey: null, ambient: 'motes' });
-      this.dossierHeader(frame, { eyebrow: 'CURSED CLASH', title: 'First Creation', backHandler: () => this.store.resetToLobby() });
+      const header = this.dossierHeader(frame, { eyebrow: 'CURSED CLASH', title: 'First Creation', backHandler: () => this.store.resetToLobby() });
       if (this.store.detailCharacterId) {
         this.renderCharacterDetailSheet(frame, 'playerTeam');
         this.toast(frame);
         return;
       }
       const x = frame.x + frame.gutter;
-      const compact = frame.height < 790;
+      const usableHeight = frame.bottom - frame.top;
+      const compact = !frame.desktop || frame.bottom < 918;
       // On very short viewports, presets (a shortcut, not essential --
       // every character is still reachable via the roster grid below) are
       // the first thing dropped, same principle as Draft's mission-preview
       // skip: free real space rather than let the roster grid get squeezed
       // below its safe minimum card height.
-      const ultraCompact = frame.height < 700;
-      let y = 86;
+      const ultraCompact = usableHeight < 740;
+      let y = header.bottom + 8;
 
       this.renderMissionHeader(frame, y);
       y += 118;
@@ -107,18 +108,19 @@ export class FirstCreationScene extends DraftScene {
         this.railLabel(x, y - 6, 'STARTER PRESETS', COLORS.line);
         const presetW = (frame.width - 44) / 2;
         const presetRowH = 88;
+        const presetTop = y + 38;
         presetPage.forEach((entry, index) => {
           const col = index % 2;
           const row = Math.floor(index / 2);
-          this.renderPresetTile(entry, x + col * (presetW + 12), y + 16 + row * (presetRowH + 12), presetW, presetRowH);
+          this.renderPresetTile(entry, x + col * (presetW + 12), presetTop + row * (presetRowH + 12), presetW, presetRowH);
         });
         if (presetMax > 0) {
-          this.button(x + frame.width - 100, y - 14, 68, 30, `Set ${this.store.creationPresetPage + 1}`, () => {
+          this.button(x + frame.width - 104, y - 14, 72, 44, `Set ${this.store.creationPresetPage + 1}`, () => {
             this.store.creationPresetPage = this.store.creationPresetPage >= presetMax ? 0 : this.store.creationPresetPage + 1;
             this.store.notify();
           }, { fill: COLORS.surfaceRaised, stroke: COLORS.line, mono: true, fontSize: `${TYPE_SCALE.label}px` });
         }
-        y += 16 + Math.ceil(presetPage.length / 2) * (presetRowH + 12) + 8;
+        y += 38 + Math.ceil(presetPage.length / 2) * (presetRowH + 12) + 8;
       }
       this.text(x, y, 'Tap a dossier to inspect skills', { color: COLORS.muted, fontSize: `${TYPE_SCALE.body}px` });
       const rosterLabelY = y;
@@ -128,22 +130,24 @@ export class FirstCreationScene extends DraftScene {
       // left, instead of a fixed height threshold that ignores how much
       // the mission header/trio/presets blocks already consumed above it.
       const ctaH = 46;
-      const ctaY = frame.height - ctaH - 14;
-      const navH = compact ? 32 : 36;
+      const ctaY = frame.bottom - ctaH;
+      const navH = 44;
       const navY = ctaY - (compact ? 8 : 10) - navH;
 
       const roster = this.store.rosterEntries();
       const cardGap = compact ? 10 : 12;
       const rosterCardTop = rosterLabelY + (compact ? 18 : 22);
-      // renderStarterRosterCard's internal content needs ~100px regardless
-      // of h -- never shrink below that, only the row count adapts.
-      const cardH = 100;
+      // Full role copy needs up to two lines and the complete first-skill
+      // name needs up to two. Keep the two-column pattern and adapt only the
+      // number of visible rows.
+      const cardH = 132;
       const available = navY - rosterCardTop;
-      const rows = Math.max(1, Math.floor((available + cardGap) / (cardH + cardGap)));
-      const pageSize = rows * 2;
+      const rowsThatFit = Math.max(0, Math.floor((available + cardGap) / (cardH + cardGap)));
+      const rows = Math.min(frame.width >= 430 ? 2 : 1, rowsThatFit);
+      const pageSize = Math.max(2, rows * 2);
       const pageMax = Math.max(0, Math.ceil(roster.length / pageSize) - 1);
       this.store.draftPage = clamp(this.store.draftPage, 0, pageMax);
-      const page = roster.slice(this.store.draftPage * pageSize, this.store.draftPage * pageSize + pageSize);
+      const page = rows > 0 ? roster.slice(this.store.draftPage * pageSize, this.store.draftPage * pageSize + pageSize) : [];
       const cardW = (frame.width - 44) / 2;
       page.forEach((character, index) => {
         const col = index % 2;

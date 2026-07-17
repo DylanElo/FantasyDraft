@@ -15,7 +15,7 @@ from .timers import BattleTimerPolicy
 
 
 REPLAY_FORMAT_VERSION = 2
-RULES_VERSION = "battle-v2-2026-07-aggregate-dr"
+RULES_VERSION = "battle-v2-2026-07-cpu-planning"
 HASH_EXCLUDED_FIELDS = {"phase_deadline", "room_id"}
 
 
@@ -73,6 +73,9 @@ def _new_manager(document: dict[str, Any]) -> tuple[BattleV2Manager, str, list[f
     seed = document.get("rng_seed")
     if isinstance(seed, bool) or not isinstance(seed, int):
         raise ReplayError("rng_seed must be an integer")
+    cpu_difficulty = document.get("cpu_difficulty", "normal")
+    if not isinstance(cpu_difficulty, str) or cpu_difficulty not in {"easy", "normal", "hard"}:
+        raise ReplayError("cpu_difficulty must be easy, normal, or hard")
     room_id = str(document.get("match_id") or "replay")
     logical_clock = [0.0]
     policy = dict(document.get("timer_policy") or {})
@@ -86,9 +89,9 @@ def _new_manager(document: dict[str, Any]) -> tuple[BattleV2Manager, str, list[f
     )
     players = list(document.get("players") or [])
     if document.get("roster_mode") == "first_creation":
-        manager.start_first_creation_match(room_id, players)
+        manager.start_first_creation_match(room_id, players, difficulty=cpu_difficulty)
     elif document.get("roster_mode") == "classic":
-        manager.start_classic_match(room_id, players)
+        manager.start_classic_match(room_id, players, difficulty=cpu_difficulty)
     else:
         raise ReplayError("roster_mode must be classic or first_creation")
     return manager, room_id, logical_clock

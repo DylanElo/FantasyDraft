@@ -16,10 +16,12 @@ SkillSpec(
     classes=[SkillClass.SOUL, SkillClass.INNATE, SkillClass.INSTANT],
     text="Deal 30 soul damage to a marked enemy.",
     effects=[
-        EffectSpec(type="damage", amount=30, damage_type=DamageType.SOUL),
-    ],
-    conditions=[
-        ConditionSpec(type="target_has", status="nail_mark"),
+        EffectSpec(
+            type="damage",
+            amount=30,
+            damage_type=DamageType.SOUL,
+            payload={"condition_status": "nail_mark"},
+        ),
     ],
 )
 ```
@@ -48,26 +50,35 @@ For the first v2 roster:
 - Avoid requiring players to read many hidden flags.
 - Do not allow a one-shot from full HP without at least one prior setup turn.
 
-## Condition Vocabulary
+## Canonical First Creation condition vocabulary
 
-Initial condition types should include:
+Shipping First Creation kits use the typed `EffectSpec.payload` grammar in
+`jjk_arena/battle_v2/effect_payload.py`. A condition belongs to the exact
+effect it gates or modifies; `SkillSpec.conditions`/`ConditionSpec` remains a
+legacy engine capability used by core tests, but it is not a second canonical
+authoring model for new First Creation content.
 
-- `user_has`
-- `target_has`
-- `target_stacks`
-- `user_damaged_enemy_last_turn`
-- `target_hp_below`
-- `skill_class_used`
-- `domain_active`
-- `not_stunned_for_class`
+Supported gates are `condition_status`, `condition_statuses`,
+`condition_missing_status`, `condition_user_status`, `condition_user_stacks`,
+`condition_target_hp_below`, `condition_original_has_status`,
+`condition_original_missing_status`, `condition_recipient_has_status`,
+`condition_recipient_missing_status`,
+`condition_ally_damaged_target_this_turn`, `condition_scope="original_target"`,
+and the registered `conditional_targeting="venom_bloom"` contract.
 
-Conditions may gate legality or provide payoff bonuses. The effect or resolver that consumes the condition should make that distinction explicit.
+Supported payoff keys are `bonus_status`, `bonus_user_status`,
+`bonus_user_missing_status`, `bonus_amount`, and `damage_bonus`.
 
-**Implementation note (2026-07-13):** the `ConditionSpec`/`SkillSpec.conditions`
-mechanism above is used by **zero of the 78 First Creation skills** — an
+Every First Creation skill is schema-validated by `skill_audit.py`; unknown
+conditional/bonus keys, invalid value types, and unregistered scopes or
+targeting contracts fail the structural audit.
+
+**Implementation note (updated 2026-07-17):** the legacy
+`ConditionSpec`/`SkillSpec.conditions` mechanism is used by **zero of the 78
+First Creation skills** — an
 automated audit (`jjk_arena/battle_v2/skill_audit.py`) confirmed
 `total_condition_spec_entries == 0` across the entire roster. All shipped
-conditional behavior instead uses payload keys directly on the `EffectSpec`
+conditional behavior uses the canonical typed payload keys directly on the `EffectSpec`
 that the condition gates or modifies, evaluated inline by the resolver/effects
 layer rather than by `conditions.py::evaluate_condition`. The keys actually in
 use (see `prepare_conditions` in
@@ -85,12 +96,10 @@ use (see `prepare_conditions` in
 - `bonus_status` / `bonus_user_status` / `bonus_user_missing_status` / `bonus_amount` — payoff-only variants that add `bonus_amount` to an effect (typically `damage`) rather than gating legality.
 - `conditional_targeting` — a named special-case targeting rule (e.g. `"venom_bloom"`) implemented directly in `resolver.py`, not a generic condition.
 
-This is a documentation gap, not an engine bug: the payload-key system is
-fully implemented, exercised by every skill that needs it, and covered by the
-blanket parametrized test's cold/warm comparison. A future pass should either
-migrate this vocabulary onto `ConditionSpec` for real, or replace the
-`ConditionSpec` example above with the payload-key convention so the doc
-matches what new kits should actually write.
+This payload-key system is the canonical First Creation grammar. It is fully
+implemented, exercised by every conditional shipping skill, covered by the
+blanket parametrized cold/warm comparison, and validated against the typed
+schema before roster expansion.
 
 ## Effect Vocabulary
 
@@ -148,20 +157,32 @@ Replacement duration should be controlled by statuses or transformations, not by
 - Sukuna: Shrine Setup to Cleave.
 - Higuruma: Trial to Executioner’s Sword.
 
-## Starter Roster Order
+## Locked First Creation roster
 
-First six:
+First Creation ships exactly 19 starter characters and 78 skills. Its canonical
+order is:
 
-- Yuji Itadori
-- Nobara Kugisaki
-- Megumi Fushiguro
-- Satoru Gojo
-- Ryomen Sukuna
-- Mahito
+1. Yuji Itadori
+2. Megumi Fushiguro
+3. Nobara Kugisaki
+4. Maki Zenin
+5. Toge Inumaki
+6. Panda
+7. Aoi Todo
+8. Noritoshi Kamo
+9. Momo Nishimiya
+10. Mai Zenin
+11. Kasumi Miwa
+12. Kokichi Muta / Mechamaru
+13. Junpei Yoshino
+14. Satoru Gojo (Young)
+15. Suguru Geto (Young)
+16. Shoko Ieiri (Young)
+17. Utahime Iori (Young)
+18. Mei Mei (Young)
+19. Yuta Okkotsu (JJK 0)
 
-Next four:
-
-- Aoi Todo
-- Maki Zenin
-- Yuta Okkotsu
-- Hiromi Higuruma
+Adult Gojo, Sukuna variants, Mahito, generic/advanced Yuta variants, Higuruma,
+and other advanced identities are mission unlocks rather than account-creation
+starters. Later variants may be more complex, but must not make these starters
+obsolete.

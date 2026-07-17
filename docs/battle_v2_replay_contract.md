@@ -5,11 +5,14 @@ diagnostics, simulation reproducibility, and future dispute investigation.
 
 ## Required match fields
 
-- `format_version`: replay schema version; currently `1`.
+- `format_version`: replay schema version; currently `2`.
 - `rules_version`: exact supported rules identifier.
 - `match_id`: stable replay identifier.
 - `roster_mode`: `classic` or `first_creation`.
 - `rng_seed`: required integer seed.
+- `cpu_difficulty`: normalized `easy`, `normal`, or `hard` CPU policy. New
+  captures always include it; version-2 documents that omit it reconstruct as
+  `normal` for backward compatibility. An explicit invalid value fails closed.
 - `players`: original player ids, names, and ordered teams.
 - `commands`: authoritative command transcript in execution order.
 
@@ -35,7 +38,8 @@ python -m jjk_arena.battle_v2.replay tests/fixtures/replays/first_creation_two_t
 Verification reconstructs the match with a frozen clock, executes commands
 through the same authoritative manager path, and fails at the first mismatched
 initial, command, or final hash. Unsupported replay or rules versions fail
-closed.
+closed. Reconstruction restores `cpu_difficulty` before executing commands so
+`cpu_turn` uses the same server-owned action policy as the captured match.
 
 The manager supports opt-in in-memory capture for successful player and CPU
 commands. Rejected commands are not recorded. Capture is disabled by default;

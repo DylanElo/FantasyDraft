@@ -1,7 +1,7 @@
-import { COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=21';
-import { initials, safeText } from '../core/text.js?v=21';
-import { LayoutService } from '../core/layout-service.js?v=21';
-import { costColors } from '../core/roster.js?v=21';
+import { COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=22';
+import { initials, safeText } from '../core/text.js?v=22';
+import { LayoutService } from '../core/layout-service.js?v=22';
+import { costColors } from '../core/roster.js?v=22';
 
 export class BaseScene extends Phaser.Scene {
     constructor(key) {
@@ -133,7 +133,7 @@ export class BaseScene extends Phaser.Scene {
         color: COLORS.text,
       });
       if (backHandler) {
-        this.iconButton(frame.x + frame.width - frame.gutter - 42, frame.top + 4, 42, 36, '<', backHandler);
+        this.iconButton(frame.x + frame.width - frame.gutter - 44, frame.top, 44, 44, '<', backHandler);
       }
     }
 
@@ -151,7 +151,7 @@ export class BaseScene extends Phaser.Scene {
       if (!this.store.toast) return;
       const g = this.graphics;
       const x = frame.x + 18;
-      const y = frame.height - 106;
+      const y = frame.bottom - 106;
       const w = frame.width - 36;
       g.fillStyle(COLORS.surfaceRaised, 0.96);
       g.fillRoundedRect(x, y, w, 48, 16);
@@ -336,7 +336,7 @@ export class BaseScene extends Phaser.Scene {
       this.graphics.fillTriangle(x, y, x + 16, y, x, y + 16);
       this.graphics.lineStyle(1, tone || COLORS.selection, 0.48);
       this.graphics.strokeRoundedRect(x, y, w, 22, 6);
-      this.mono(x + 12, y + 6, text, { color: COLORS.paperText, fontSize: '8px' });
+      this.mono(x + 12, y + 6, text, { color: COLORS.paperText, fontSize: '10px' });
       return w;
     }
 
@@ -464,7 +464,7 @@ export class BaseScene extends Phaser.Scene {
       const opts = options || {};
       const g = this.graphics;
       const x = frame.x + 10;
-      const y = 10;
+      const y = frame.top;
       const w = frame.width - 20;
       const tone = opts.tone || COLORS.selection;
       const points = [
@@ -502,7 +502,7 @@ export class BaseScene extends Phaser.Scene {
       }
       if (opts.rightSlot) opts.rightSlot(x + w, y);
       if (opts.backHandler) {
-        this.iconButton(x + w - 42, y + 23, 34, 34, '<', opts.backHandler, {
+        this.iconButton(x + w - 54, y + 16, 44, 44, '<', opts.backHandler, {
           fill: 0x0d1114,
           stroke: COLORS.line,
           fontSize: '11px',
@@ -610,11 +610,11 @@ export class BaseScene extends Phaser.Scene {
           wordWrap: { width: w - 88 },
         });
       }
-      if (opts.onClose) {
-        this.iconButton(x + w - 52, y + 16, 38, 36, '×', opts.onClose, { stroke: COLORS.enemy, fontSize: '14px', radius: 5 });
-      }
       if (opts.blockOverlay !== false) {
         this.buttons.push({ x: 0, y: 0, w: fullW, h: fullH, label: 'Sheet Overlay', onClick: () => {}, disabled: false });
+      }
+      if (opts.onClose) {
+        this.iconButton(x + w - 58, y + 14, 44, 44, '×', opts.onClose, { stroke: COLORS.enemy, fontSize: '14px', radius: 5 });
       }
       return { x: x + 18, y: y + 60, w: w - 36, h: h - 78, sheetX: x, sheetY: y, sheetW: w, sheetH: h };
     }

@@ -1,5 +1,5 @@
-import { COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=21';
-import { BaseScene } from './base-scene.js?v=21';
+import { COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=22';
+import { BaseScene } from './base-scene.js?v=22';
 
 export class LobbyScene extends BaseScene {
     constructor() {
@@ -10,9 +10,9 @@ export class LobbyScene extends BaseScene {
       const frame = this.layout.frame();
       this.clearSurface();
       this.worldBackdrop(frame, { textureKey: null, ambient: 'motes' });
-      this.dossierHeader(frame, { eyebrow: 'CURSED CLASH', title: 'Mobile Arena' });
+      const header = this.dossierHeader(frame, { eyebrow: 'CURSED CLASH', title: 'Mobile Arena' });
       const x = frame.x + frame.gutter;
-      let y = 92;
+      let y = header.bottom + 14;
       this.platePanel(x, y, frame.width - 32, 150, COLORS.talismanDim, { edgeBar: 'left' });
       const heroCx = x + frame.width - 92;
       const heroCy = y + 70;
@@ -74,7 +74,7 @@ export class LobbyScene extends BaseScene {
       this.button(x + half + 12, y, half, 56, 'Records', () => this.store.changeScene('RecordsScene'), { fill: COLORS.surfaceRaised, stroke: COLORS.line, fontSize: `${TYPE_SCALE.subtitle}px` });
 
       y += 76;
-      const recordsH = Math.max(96, frame.height - y - 24);
+      const recordsH = Math.max(96, frame.bottom - y);
       this.platePanel(x, y, frame.width - 32, recordsH, COLORS.line, { alpha: 0.9 });
       this.railLabel(x + 16, y + 16, 'RECENT RECORDS', COLORS.line, { width: frame.width - 64 });
       const records = this.store.records.slice(0, 3);

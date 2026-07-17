@@ -22,8 +22,37 @@
     textDim: '#8C8371',
   };
 
+  // Scoped light-system tokens. Legacy dark aliases above remain intact while
+  // Home and Combat migrate independently; remapping them globally would make
+  // unfinished scenes unreadable.
+  const cullingCurrent = {
+    warmIvory: '#F7F4EC',
+    paleConcrete: '#E6E8EC',
+    powderSky: '#BFD6F2',
+    cobalt: '#2566FF',
+    vermilion: '#E53935',
+    electricCyan: '#00E6F2',
+    sunGold: '#FFC94D',
+    charcoal: '#33363A',
+    mutedText: '#66707A',
+    softShadow: '#18233A',
+  };
+
   window.JJK_MOBILE_TOKENS = {
     colors,
+    cullingCurrent,
+    cullingCurrentPhaser: {
+      warmIvory: 0xf7f4ec,
+      paleConcrete: 0xe6e8ec,
+      powderSky: 0xbfd6f2,
+      cobalt: 0x2566ff,
+      vermilion: 0xe53935,
+      electricCyan: 0x00e6f2,
+      sunGold: 0xffc94d,
+      charcoal: 0x33363a,
+      mutedText: 0x66707a,
+      softShadow: 0x18233a,
+    },
     phaserColors: {
       voidBlack: 0x0b0c10,
       inkBlack: 0x101114,
@@ -58,6 +87,7 @@
     },
     type: {
       display: '"Shippori Mincho B1", "Noto Serif JP", Georgia, serif',
+      impact: '"Barlow Condensed", "Arial Narrow", Impact, sans-serif',
       ui: '"Zen Kaku Gothic New", Inter, Arial, sans-serif',
       mono: '"IBM Plex Mono", "JetBrains Mono", monospace',
     },

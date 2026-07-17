@@ -1,7 +1,7 @@
-import { COLORS, LOCAL_PORTRAIT_FILES, TOKEN_MOTION, TOKEN_TYPE } from '../core/runtime-config.js?v=22';
-import { LayoutService } from '../core/layout-service.js?v=22';
-import { firstCreationRoster, imageKeyFor, portraitFileFor } from '../core/roster.js?v=22';
-import { BaseScene } from './base-scene.js?v=22';
+import { COLORS, LOCAL_PORTRAIT_FILES, TOKEN_MOTION, TOKEN_TYPE } from '../core/runtime-config.js?v=23';
+import { LayoutService } from '../core/layout-service.js?v=23';
+import { firstCreationRoster, imageKeyFor, portraitFileFor } from '../core/roster.js?v=23';
+import { BaseScene } from './base-scene.js?v=23';
 
 export class BootScene extends BaseScene {
     constructor() {
@@ -15,6 +15,8 @@ export class BootScene extends BaseScene {
         this.loadProgress = value || 0;
       });
       this.load.image('combat-underpass-night', '/static/assets/environments/underpass-courtyard-night.png');
+      this.load.image('culling-current-home', '/static/assets/environments/culling-current-home.webp');
+      this.load.image('culling-current-rooftop', '/static/assets/environments/culling-current-rooftop.webp');
       Object.keys(firstCreationRoster()).forEach((id) => {
         const file = portraitFileFor(id);
         if (LOCAL_PORTRAIT_FILES.has(file)) {

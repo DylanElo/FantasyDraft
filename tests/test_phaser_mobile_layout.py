@@ -17,14 +17,14 @@ const { TOKEN_TOUCH } = await import('./web/static/phaser/core/runtime-config.js
 const sizes = [[360, 800], [390, 844], [430, 932]];
 const layouts = sizes.map(([width, height]) => {
   const service = new LayoutService({ scale: { width, height } });
-  return { width, height, frame: service.frame(), hud: service.topHud(), enemy: service.enemyLane(), center: service.centerStage(), ally: service.allyLane(), dock: service.commandDock() };
+  return { width, height, frame: service.frame(), home: service.homeScreen(), hud: service.topHud(), enemy: service.enemyLane(), center: service.centerStage(), ally: service.allyLane(), dock: service.commandDock() };
 });
 const scaledDisplay = new LayoutService({ scale: { width: 488, height: 1055 }, game: { canvas: { clientWidth: 390, clientHeight: 844 } } }).frame();
 globalThis.document = { documentElement: {} };
 globalThis.getComputedStyle = () => ({ getPropertyValue: (name) => name === '--jjk-safe-top' ? '47px' : name === '--jjk-safe-bottom' ? '34px' : '0px' });
 const safeLayouts = sizes.map(([width, height]) => {
   const service = new LayoutService({ scale: { width, height } });
-  return { width, height, frame: service.frame(), hud: service.topHud(), enemy: service.enemyLane(), dock: service.commandDock() };
+  return { width, height, frame: service.frame(), home: service.homeScreen(), hud: service.topHud(), enemy: service.enemyLane(), dock: service.commandDock() };
 });
 console.log(JSON.stringify({ layouts, safeLayouts, scaledDisplay, minTarget: TOKEN_TOUCH.minTarget }));
 """
@@ -49,6 +49,14 @@ console.log(JSON.stringify({ layouts, safeLayouts, scaledDisplay, minTarget: TOK
         assert layout["center"]["height"] >= 88
         assert layout["ally"]["y"] + layout["ally"]["height"] <= layout["dock"]["y"] + 60
         assert layout["dock"]["y"] + layout["dock"]["height"] == layout["frame"]["bottom"]
+        home = layout["home"]
+        assert home["profile"]["y"] >= layout["frame"]["top"]
+        assert home["profile"]["y"] + home["profile"]["h"] <= home["hero"]["y"]
+        assert home["hero"]["y"] + home["hero"]["h"] <= home["primary"]["y"]
+        assert home["primary"]["y"] + home["primary"]["h"] <= home["modes"]["y"]
+        assert home["modes"]["y"] + home["modes"]["h"] <= home["nav"]["y"]
+        assert home["nav"]["y"] + home["nav"]["h"] <= layout["frame"]["bottom"]
+        assert home["hero"]["h"] >= 180
     for layout in probe["safeLayouts"]:
         assert layout["frame"]["safeTop"] == 47
         assert layout["frame"]["safeBottom"] == 34
@@ -57,6 +65,10 @@ console.log(JSON.stringify({ layouts, safeLayouts, scaledDisplay, minTarget: TOK
         assert layout["hud"]["y"] >= layout["frame"]["top"]
         assert layout["enemy"]["y"] >= layout["frame"]["top"]
         assert layout["dock"]["y"] + layout["dock"]["height"] == layout["frame"]["bottom"]
+        home = layout["home"]
+        assert home["profile"]["y"] >= layout["frame"]["top"]
+        assert home["hero"]["y"] + home["hero"]["h"] <= home["primary"]["y"]
+        assert home["nav"]["y"] + home["nav"]["h"] <= layout["frame"]["bottom"]
 
 
 def _safe_frame(width, height, safe_top=0, safe_bottom=0):
@@ -66,6 +78,68 @@ def _safe_frame(width, height, safe_top=0, safe_bottom=0):
         "top": max(10, safe_top + 10),
         "bottom": height - max(14, safe_bottom + 10),
     }
+
+
+def _combat_geometry(frame):
+    usable = frame["bottom"] - frame["top"]
+    compressed = usable < 730
+    compact = usable < 800
+    dock_min = 244 if compressed else 260 if compact else 276
+    dock_height = min(304, max(dock_min, round(usable * 0.34)))
+    dock_y = frame["bottom"] - dock_height
+    card_height = 92 if compressed else 100 if compact else 120 if frame["height"] > 900 else 112
+    enemy_y = frame["top"] + (122 if compact else 130)
+    field_top = enemy_y + card_height + 12
+    lane_gap = 18 if compressed else 22 if compact else 28
+    ally_y = dock_y - card_height - lane_gap
+    field_bottom = ally_y - 12
+    return {
+        "dock_y": dock_y,
+        "dock_height": dock_height,
+        "card_height": card_height,
+        "enemy_y": enemy_y,
+        "field_top": field_top,
+        "field_bottom": field_bottom,
+        "field_height": field_bottom - field_top,
+        "replay_y": ally_y - 70,
+        "queue_y": ally_y - 32,
+        "ally_y": ally_y,
+    }
+
+
+def test_combat_center_stage_survives_normal_and_safe_phone_frames():
+    for safe_top, safe_bottom in ((0, 0), (47, 34)):
+        for width, height in ((360, 800), (390, 844), (430, 932)):
+            frame = _safe_frame(width, height, safe_top, safe_bottom)
+            frame["height"] = height
+            combat = _combat_geometry(frame)
+            assert combat["enemy_y"] >= frame["top"] + 122
+            assert combat["field_height"] >= 88
+            assert combat["field_top"] + 43 <= combat["replay_y"]
+            assert combat["replay_y"] + 22 <= combat["queue_y"] - 14
+            assert combat["queue_y"] <= combat["ally_y"] - 32
+            assert combat["ally_y"] + combat["card_height"] < combat["dock_y"]
+            assert combat["dock_y"] + combat["dock_height"] == frame["bottom"]
+
+
+def test_queue_review_keeps_enemy_lane_and_footer_clear_with_safe_insets():
+    for safe_top, safe_bottom in ((0, 0), (47, 34)):
+        for width, height in ((360, 800), (390, 844), (430, 932)):
+            frame = _safe_frame(width, height, safe_top, safe_bottom)
+            frame["height"] = height
+            combat = _combat_geometry(frame)
+            default_sheet_y = max(164, height - 582)
+            sheet_y = max(default_sheet_y, combat["enemy_y"] + combat["card_height"] + 8)
+            compact_rows = frame["bottom"] - sheet_y < 540
+            row_start = sheet_y + (72 if compact_rows else 84)
+            row_height = 100 if compact_rows else 112
+            row_step = 104 if compact_rows else 118
+            third_row_bottom = row_start + 2 * row_step + row_height
+            summary_y = row_start + 3 * row_step + 4
+            footer_y = frame["bottom"] - 44
+            assert combat["enemy_y"] + combat["card_height"] + 8 <= sheet_y
+            assert third_row_bottom <= summary_y
+            assert summary_y + 24 <= footer_y
 
 
 def _first_creation_geometry(frame):
@@ -138,6 +212,7 @@ def test_scoped_mobile_controls_and_copy_keep_accessibility_contracts():
     creation = (ROOT / "web/static/phaser/scenes/first-creation-scene.js").read_text(encoding="utf-8")
     queue = (ROOT / "web/static/phaser/scenes/combat-queue-review-scene.js").read_text(encoding="utf-8")
     combat = (ROOT / "web/static/phaser/scenes/combat-scene.js").read_text(encoding="utf-8")
+    lobby = (ROOT / "web/static/phaser/scenes/lobby-scene.js").read_text(encoding="utf-8")
 
     assert "const hitW = Math.max(w, minTarget);" in base
     assert "const hitH = Math.max(h, minTarget);" in base
@@ -160,16 +235,31 @@ def test_scoped_mobile_controls_and_copy_keep_accessibility_contracts():
 
     assert "const controlSize = 44;" in queue
     assert "rowY + controlSize + 4" in queue
-    assert "const rowH = 92;" in queue
+    assert "const rowH = compact ? 100 : 112;" in queue
+    assert "const sheetY = Math.max(defaultSheetY, enemyY + enemyCardH + 8);" in queue
     assert "shortText(meta.skill ? meta.skill.name" not in queue
+    assert "meta.secondaryName" in queue
+    assert "meta.alternateName" in queue
+    assert "this.renderCostOrbs" in queue
+    assert "queueFit.actionId === action.id" in queue
+    assert "rowError === 'Assign every Wild payment.'" in queue
 
-    assert "92, 44, 'Transmute'" in combat
+    assert "92, 44, 'TRANSMUTE'" in combat
     assert "44, 44, '×'" in combat
     assert "const y = frame.top;" in combat
     assert "shortText(skill.name" not in combat
     assert "shortText((character && character.name" not in combat
     assert "fighterNameNode.setMaxLines(2);" in combat
     assert "y: y - 4," in combat
+    assert "state.phase_seconds_remaining" in combat
+    assert "CULLING_COLORS.target" in combat
+    assert "const usableH = frame.bottom - frame.top;" in combat
+    assert "fieldH: Math.max(0, fieldBottom - fieldTop)" in combat
+    assert "image.setDepth(-1);" in combat
+
+    assert "shortText(this.store.playerName, nameLimit)" in lobby
+    assert "shortText(roomCode, 14)" in lobby
+    assert "this.store.setMatchMode('cpu');" in lobby
 
     assert "shortText(character.name" not in roster
     assert "shortText(character.role" not in roster

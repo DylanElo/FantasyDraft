@@ -1,93 +1,198 @@
-import { COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=22';
-import { BaseScene } from './base-scene.js?v=22';
+import { CULLING_COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=23';
+import { safeText, shortText } from '../core/text.js?v=23';
+import {
+  drawCurrentButton,
+  drawCurrentModeCard,
+  drawCurrentNav,
+  drawCurrentPanel,
+  drawCurrentPill,
+  drawCurrentWorld,
+} from '../ui/culling-current-ui.js?v=23';
+import { BaseScene } from './base-scene.js?v=23';
+
+const HOME_WORLD_KEY = 'culling-current-home';
 
 export class LobbyScene extends BaseScene {
     constructor() {
       super('LobbyScene');
     }
 
-    render() {
-      const frame = this.layout.frame();
-      this.clearSurface();
-      this.worldBackdrop(frame, { textureKey: null, ambient: 'motes' });
-      const header = this.dossierHeader(frame, { eyebrow: 'CURSED CLASH', title: 'Mobile Arena' });
-      const x = frame.x + frame.gutter;
-      let y = header.bottom + 14;
-      this.platePanel(x, y, frame.width - 32, 150, COLORS.talismanDim, { edgeBar: 'left' });
-      const heroCx = x + frame.width - 92;
-      const heroCy = y + 70;
-      [52, 36, 20].forEach((radius, index) => {
-        this.graphics.lineStyle(index === 1 ? 2 : 1, index === 1 ? COLORS.selection : COLORS.domain, index === 1 ? 0.38 : 0.18);
-        this.graphics.strokeCircle(heroCx, heroCy, radius);
+    editIdentity(type) {
+      const current = type === 'name' ? this.store.playerName : this.store.roomId;
+      const label = type === 'name' ? 'Player name' : 'Room code';
+      const next = window.prompt(label, current);
+      if (next !== null) this.store.setIdentity(type, next);
+    }
+
+    renderProfileStrip(region) {
+      drawCurrentPanel(this, region.x, region.y, region.w, region.h, {
+        fill: CULLING_COLORS.ivory,
+        accent: CULLING_COLORS.cobalt,
+        radius: 18,
+        alpha: 0.94,
+        shadowAlpha: 0.12,
       });
-      this.graphics.lineStyle(1, COLORS.talismanDim, 0.28);
-      this.graphics.beginPath();
-      this.graphics.moveTo(heroCx - 48, heroCy);
-      this.graphics.lineTo(heroCx + 48, heroCy);
-      this.graphics.moveTo(heroCx, heroCy - 48);
-      this.graphics.lineTo(heroCx, heroCy + 48);
-      this.graphics.strokePath();
-      this.text(x + 18, y + 16, 'JJK ARENA', {
-        fontFamily: TOKEN_TYPE.display || 'Georgia, serif',
-        fontSize: '31px',
+      const avatarX = region.x + 31;
+      const avatarY = region.y + region.h / 2;
+      this.graphics.fillStyle(CULLING_COLORS.cobalt, 0.96);
+      this.graphics.fillCircle(avatarX, avatarY, 18);
+      this.graphics.fillStyle(CULLING_COLORS.gold, 0.92);
+      this.graphics.fillCircle(avatarX + 10, avatarY - 11, 5);
+      const initial = safeText(this.store.playerName, 'P').slice(0, 1).toUpperCase();
+      this.text(avatarX, avatarY - 10, initial, {
+        fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui,
+        fontSize: '18px',
         fontStyle: '900',
+        color: CULLING_COLORS.inverseText,
+      }).setOrigin(0.5, 0);
+      this.mono(region.x + 58, region.y + 9, 'PLAYER', {
+        color: CULLING_COLORS.cobaltText,
+        fontSize: '10px',
+        fontStyle: '700',
       });
-      // Real readable copy uses the sans body font, not monospace -- mono
-      // stays reserved for short tags/numbers so the screen doesn't read
-      // as a spec sheet.
-      this.text(x + 20, y + 54, 'Cursed Clash / First Creation', { color: COLORS.muted, fontSize: `${TYPE_SCALE.body}px` });
-      this.text(x + 20, y + 76, 'Draft a trio. Break the domain.', { color: COLORS.paperText, fontSize: `${TYPE_SCALE.body}px` });
-      this.button(x + 18, y + 106, (frame.width - 72) / 2, 30, `Name: ${this.store.playerName}`, () => {
-        const next = window.prompt('Player name', this.store.playerName);
-        if (next !== null) this.store.setIdentity('name', next);
-      }, { fill: COLORS.surfaceRaised, stroke: COLORS.line, fontSize: `${TYPE_SCALE.label}px`, mono: true, radius: 14 });
-      this.button(x + 36 + (frame.width - 72) / 2, y + 106, (frame.width - 72) / 2, 30, `Room: ${this.store.roomId}`, () => {
-        const next = window.prompt('Room code', this.store.roomId);
-        if (next !== null) this.store.setIdentity('room', next);
-      }, { fill: COLORS.surfaceRaised, stroke: COLORS.line, fontSize: `${TYPE_SCALE.label}px`, mono: true, radius: 14 });
 
-      // Quick Play is the one primary action on this screen -- it's the
-      // only element that keeps the bright gold/selection treatment.
-      // Everything else below defaults to a neutral outline so the eye
-      // has one clear place to land.
-      y += 172;
-      this.button(x, y, frame.width - 32, 84, 'Quick Play', () => {
-        this.store.setMatchMode('cpu');
-        this.store.changeScene('DraftScene');
-      }, { fill: COLORS.selection, gradientTop: COLORS.talismanDim, stroke: COLORS.talismanPaper, color: '#08080a', fontSize: '22px', radius: 18, glowAlpha: 0.16 });
-      this.dossierTag(x + 16, y + 60, 'CPU PRACTICE', COLORS.selection);
+      // Identity values remain untouched in the store; only their compact Home
+      // presentation is shortened so the editable room pill and player name
+      // can never paint over one another.
+      const roomCode = safeText(this.store.roomId, 'lobby').toUpperCase();
+      const roomLabel = `ROOM ${shortText(roomCode, 14)}`;
+      const roomW = Math.min(132, Math.max(82, roomLabel.length * 6 + 20));
+      const roomX = region.x + region.w - roomW - 12;
+      const nameX = region.x + 58;
+      const nameW = Math.max(58, roomX - nameX - 10);
+      const nameLimit = Math.max(6, Math.floor(nameW / 8.5));
+      const name = this.text(nameX, region.y + 26, shortText(this.store.playerName, nameLimit), {
+        fontSize: `${TYPE_SCALE.subtitle}px`,
+        fontStyle: '900',
+        color: CULLING_COLORS.text,
+        wordWrap: { width: nameW },
+      });
+      name.setMaxLines(1);
 
-      y += 102;
-      const modeW = (frame.width - 44) / 2;
-      this.button(x, y, modeW, 66, 'Private PvP', () => {
-        this.store.setMatchMode('pvp');
-        this.store.changeScene('DraftScene');
-      }, { fill: COLORS.surfaceRaised, stroke: COLORS.line, fontSize: `${TYPE_SCALE.subtitle}px`, radius: 18 });
-      this.button(x + modeW + 12, y, modeW, 66, 'First Creation', () => {
-        this.store.setMatchMode('cpu');
-        this.store.changeScene('FirstCreationScene');
-      }, { fill: COLORS.surfaceRaised, stroke: COLORS.line, fontSize: `${TYPE_SCALE.subtitle}px`, radius: 18 });
+      drawCurrentPill(this, roomX, region.y + 16, roomLabel, {
+        w: roomW,
+        fill: CULLING_COLORS.charcoal,
+        color: CULLING_COLORS.inverseText,
+        fontSize: '10px',
+      });
+      this.registerHitTarget(region.x + 48, region.y + 4, Math.max(44, roomX - region.x - 54), region.h - 8, `Edit player name ${this.store.playerName}`, () => this.editIdentity('name'));
+      this.registerHitTarget(roomX, region.y + 6, roomW, 44, `Edit room code ${this.store.roomId}`, () => this.editIdentity('room'));
+    }
 
-      y += 88;
-      const half = (frame.width - 44) / 2;
-      this.button(x, y, half, 56, 'Mission Map', () => this.store.changeScene('MissionMapScene'), { fill: COLORS.surfaceRaised, stroke: COLORS.line, fontSize: `${TYPE_SCALE.subtitle}px` });
-      this.button(x + half + 12, y, half, 56, 'Records', () => this.store.changeScene('RecordsScene'), { fill: COLORS.surfaceRaised, stroke: COLORS.line, fontSize: `${TYPE_SCALE.subtitle}px` });
-
-      y += 76;
-      const recordsH = Math.max(96, frame.bottom - y);
-      this.platePanel(x, y, frame.width - 32, recordsH, COLORS.line, { alpha: 0.9 });
-      this.railLabel(x + 16, y + 16, 'RECENT RECORDS', COLORS.line, { width: frame.width - 64 });
-      const records = this.store.records.slice(0, 3);
-      if (!records.length) {
-        this.text(x + 16, y + 52, 'No finished domains yet.', { color: COLORS.muted, fontSize: `${TYPE_SCALE.body}px` });
-      } else {
-        records.forEach((record, index) => {
-          this.text(x + 16, y + 46 + index * 28, `${record.result} / ${record.turns}T / ${record.damage} DMG`, {
-            color: record.result === 'Victory' ? '#b7dbc0' : '#f1a0a0',
-            fontSize: `${TYPE_SCALE.body}px`,
-          });
+    renderHeroTrio(region) {
+      this.mono(region.x + 8, region.y + 2, 'YOUR ACTIVE TRIO', {
+        color: CULLING_COLORS.cobaltText,
+        fontSize: '11px',
+        fontStyle: '700',
+      });
+      const activeMission = this.store.activeMission();
+      if (activeMission) {
+        const missionLabel = safeText(activeMission.title || activeMission.name || 'First Creation');
+        this.text(region.x + 8, region.y + 20, missionLabel, {
+          color: CULLING_COLORS.text,
+          fontSize: `${TYPE_SCALE.label}px`,
+          fontStyle: '800',
         });
       }
-      this.toast(frame);
+
+      const trio = this.store.playerTeam.slice(0, 3);
+      const gap = 8;
+      const cardW = (region.w - gap * 2 - 12) / 3;
+      const cardH = Math.min(236, Math.max(174, region.h - 68));
+      const baseY = region.y + region.h - cardH - 4;
+      trio.forEach((characterId, index) => {
+        const character = this.store.character(characterId);
+        const x = region.x + 6 + index * (cardW + gap);
+        const y = baseY + (index === 1 ? -10 : 0);
+        const tone = index === 0 ? CULLING_COLORS.vermilion : index === 1 ? CULLING_COLORS.cobalt : CULLING_COLORS.gold;
+        drawCurrentPanel(this, x, y, cardW, cardH, {
+          fill: CULLING_COLORS.ivory,
+          accent: tone,
+          radius: 16,
+          alpha: 0.91,
+          shadowAlpha: 0.16,
+          highlight: false,
+        });
+        const key = `${this.store.portraitKey(characterId)}-card`;
+        const portraitH = cardH - 49;
+        if (this.textures.exists(key)) {
+          const image = this.add.image(x + cardW / 2, y + portraitH / 2 + 4, key);
+          image.setDisplaySize(cardW - 10, portraitH - 8);
+          image.setDepth(0);
+          image.setAlpha(0.97);
+          this.nodes.push(image);
+        } else {
+          this.platePortrait(character, x + 7, y + 7, cardW - 14, { h: portraitH - 10, tone });
+        }
+        this.graphics.fillStyle(CULLING_COLORS.ivory, 0.97);
+        this.graphics.fillRoundedRect(x + 4, y + cardH - 47, cardW - 8, 43, 11);
+        const characterName = this.text(x + cardW / 2, y + cardH - 40, character.name, {
+          fontFamily: TOKEN_TYPE.ui || 'Inter, Arial, sans-serif',
+          fontSize: cardW < 104 ? '10px' : '11px',
+          fontStyle: '900',
+          color: CULLING_COLORS.text,
+          align: 'center',
+          lineSpacing: 1,
+          wordWrap: { width: cardW - 12 },
+        }).setOrigin(0.5, 0);
+        characterName.setMaxLines(2);
+      });
+    }
+
+    renderQuickMatch(region) {
+      drawCurrentButton(this, region.x, region.y, region.w, region.h, 'READY FOR BATTLE', () => {
+        this.store.setMatchMode('cpu');
+        this.store.changeScene('DraftScene');
+      }, {
+        fill: CULLING_COLORS.cobalt,
+        stroke: CULLING_COLORS.charcoal,
+        subtitle: 'QUICK MATCH  ·  CPU PRACTICE',
+        fontSize: region.h < 80 ? '22px' : '25px',
+        brush: 'red',
+      });
+    }
+
+    renderModeCards(region) {
+      const gap = 8;
+      const cardW = (region.w - gap * 2) / 3;
+      drawCurrentModeCard(this, region.x, region.y, cardW, region.h, 'Private Room', 'PVP', () => {
+        this.store.setMatchMode('pvp');
+        this.store.changeScene('DraftScene');
+      }, { accent: CULLING_COLORS.vermilion, accentText: CULLING_COLORS.redText });
+      drawCurrentModeCard(this, region.x + cardW + gap, region.y, cardW, region.h, 'First Creation', 'ROSTER', () => {
+        this.store.setMatchMode('cpu');
+        this.store.changeScene('FirstCreationScene');
+      }, { accent: CULLING_COLORS.cobalt });
+      drawCurrentModeCard(this, region.x + (cardW + gap) * 2, region.y, cardW, region.h, 'Mission Map', 'STORY', () => {
+        this.store.changeScene('MissionMapScene');
+      }, { accent: CULLING_COLORS.gold, accentText: '#8A5A00' });
+    }
+
+    renderBottomNav(region) {
+      drawCurrentNav(this, region, [
+        { label: 'Home', active: true, disabled: true, onClick: () => {} },
+        { label: 'Roster', onClick: () => {
+          this.store.setMatchMode('cpu');
+          this.store.changeScene('FirstCreationScene');
+        } },
+        { label: 'Records', onClick: () => this.store.changeScene('RecordsScene') },
+      ]);
+    }
+
+    render() {
+      const layout = this.layout.homeScreen();
+      const frame = layout.frame;
+      this.clearSurface();
+      drawCurrentWorld(this, frame, HOME_WORLD_KEY, {
+        topWash: 0.14,
+        bottomWash: 0.18,
+        bottomHeight: frame.height - layout.hero.y - 24,
+      });
+      this.renderProfileStrip(layout.profile);
+      this.renderHeroTrio(layout.hero);
+      this.renderQuickMatch(layout.primary);
+      this.renderModeCards(layout.modes);
+      this.renderBottomNav(layout.nav);
+      this.toast(frame, { y: layout.primary.y - 54, theme: 'light' });
     }
   }

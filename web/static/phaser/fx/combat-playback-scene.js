@@ -1,7 +1,7 @@
-import { COLORS, TOKEN_TYPE } from '../core/runtime-config.js?v=22';
-import { safeText, shortText } from '../core/text.js?v=22';
-import { eventAmount, eventTone } from './event-metrics.js?v=22';
-import { BaseScene } from '../scenes/base-scene.js?v=22';
+import { COLORS, CULLING_COLORS, TOKEN_TYPE } from '../core/runtime-config.js?v=23';
+import { safeText, shortText } from '../core/text.js?v=23';
+import { eventAmount, eventTone } from './event-metrics.js?v=23';
+import { BaseScene } from '../scenes/base-scene.js?v=23';
 
 export class CombatPlaybackScene extends BaseScene {
     playEvents(frame) {
@@ -25,7 +25,7 @@ export class CombatPlaybackScene extends BaseScene {
         x: frame.x + frame.width / 2,
         y: fallbackY || frame.height * 0.42,
         size: 62,
-        tone: COLORS.selection,
+        tone: CULLING_COLORS.selected,
       };
     }
 
@@ -44,7 +44,7 @@ export class CombatPlaybackScene extends BaseScene {
         x: frame.x + frame.width / 2,
         y: frame.height * 0.36,
         size: 72,
-        tone: COLORS.selection,
+        tone: CULLING_COLORS.selected,
       };
     }
 
@@ -212,7 +212,9 @@ export class CombatPlaybackScene extends BaseScene {
       const y = frame.height * 0.31;
       const w = Math.min(frame.width - 44, 328);
       const panel = this.add.graphics({ x: x - w / 2, y }).setDepth(28);
-      panel.fillStyle(COLORS.inkBlack, 0.94);
+      panel.fillStyle(CULLING_COLORS.shadow, 0.16);
+      panel.fillRoundedRect(0, 5, w, 58, 18);
+      panel.fillStyle(CULLING_COLORS.ivory, 0.97);
       panel.fillRoundedRect(0, 0, w, 58, 18);
       panel.fillStyle(tone, 0.16);
       panel.fillRoundedRect(4, 4, w - 8, 18, 14);
@@ -235,13 +237,13 @@ export class CombatPlaybackScene extends BaseScene {
         fontFamily: TOKEN_TYPE.display || 'Cinzel, Inter, serif',
         fontSize: '15px',
         fontStyle: '900',
-        color: COLORS.text,
+        color: CULLING_COLORS.text,
       }).setDepth(29));
       nodes.push(this.add.text(x - w / 2 + (actionNumber ? 56 : 18), y + 34, shortText(subtitle, 42), {
         fontFamily: TOKEN_TYPE.mono || '"JetBrains Mono", monospace',
         fontSize: '10px',
         fontStyle: '700',
-        color: COLORS.paperText,
+        color: CULLING_COLORS.cobaltText,
       }).setDepth(29));
       this.tweens.add({
         targets: nodes,
@@ -256,9 +258,9 @@ export class CombatPlaybackScene extends BaseScene {
     playHpLag(point, tone) {
       const barW = 74;
       const bar = this.add.graphics({ x: point.x - barW / 2, y: point.y + (point.size || 62) / 2 + 18 }).setDepth(25);
-      bar.fillStyle(COLORS.inkBlack, 0.94);
+      bar.fillStyle(CULLING_COLORS.charcoal, 0.22);
       bar.fillRoundedRect(0, 0, barW, 8, 4);
-      bar.fillStyle(COLORS.selection, 0.82);
+      bar.fillStyle(CULLING_COLORS.gold, 0.82);
       bar.fillRoundedRect(0, 0, barW, 8, 4);
       bar.fillStyle(tone, 0.95);
       bar.fillRoundedRect(0, 0, barW * 0.36, 8, 4);
@@ -298,28 +300,28 @@ export class CombatPlaybackScene extends BaseScene {
       const tone = eventTone(event);
       const amount = eventAmount(event);
       const color = tone === 'damage'
-        ? '#f1a0a0'
+        ? CULLING_COLORS.redText
         : tone === 'heal'
-          ? '#b7dbc0'
+          ? '#357D4B'
           : tone === 'status'
-            ? '#c4b5fd'
-            : COLORS.paperText;
+            ? '#6240A8'
+            : CULLING_COLORS.text;
       const type = safeText(event && event.type);
       const message = safeText(event && event.message, type);
       const point = this.pointFromPayload(event, frame);
       const casterPoint = this.casterPointFromPayload(event, frame);
 
       if (type === 'skill_resolved') {
-        this.playCinematicCutIn(frame, message, COLORS.selection);
-        if (casterPoint) this.playRing(casterPoint, COLORS.selection, { radius: (casterPoint.size || 62) / 2 + 20, alpha: 0.86 });
-        if (casterPoint && point) this.playSlashLine(casterPoint, point, COLORS.selection);
+        this.playCinematicCutIn(frame, message, CULLING_COLORS.gold);
+        if (casterPoint) this.playRing(casterPoint, CULLING_COLORS.gold, { radius: (casterPoint.size || 62) / 2 + 20, alpha: 0.86 });
+        if (casterPoint && point) this.playSlashLine(casterPoint, point, CULLING_COLORS.gold);
         return;
       }
 
       if (type.includes('counter') || type.includes('reflect')) {
-        this.playActionBanner(frame, message, type.includes('reflect') ? 'REFLECT REVEAL' : 'COUNTER REVEAL', COLORS.enemy, actionNumber);
-        this.playRing(point, COLORS.enemy, { crosshair: true, radius: (point.size || 62) / 2 + 22, width: 3, alpha: 0.95, duration: 820 });
-        this.playFloatingText(point, type.includes('reflect') ? 'REFLECT' : 'COUNTER', '#f1a0a0', {
+        this.playActionBanner(frame, message, type.includes('reflect') ? 'REFLECT REVEAL' : 'COUNTER REVEAL', CULLING_COLORS.enemy, actionNumber);
+        this.playRing(point, CULLING_COLORS.enemy, { crosshair: true, radius: (point.size || 62) / 2 + 22, width: 3, alpha: 0.95, duration: 820 });
+        this.playFloatingText(point, type.includes('reflect') ? 'REFLECT' : 'COUNTER', CULLING_COLORS.redText, {
           fontSize: '19px',
           backgroundColor: '#3a0d0d',
           mono: true,
@@ -330,8 +332,8 @@ export class CombatPlaybackScene extends BaseScene {
 
       if (tone === 'damage' || tone === 'heal') {
         const text = amount ? (tone === 'heal' ? `+${amount}` : `-${amount}`) : safeText(type, 'EVENT').replace(/_/g, ' ').toUpperCase();
-        if (casterPoint && tone === 'damage') this.playSlashLine(casterPoint, point, COLORS.enemy);
-        this.playRing(point, tone === 'heal' ? COLORS.queued : COLORS.enemy, {
+        if (casterPoint && tone === 'damage') this.playSlashLine(casterPoint, point, CULLING_COLORS.enemy);
+        this.playRing(point, tone === 'heal' ? COLORS.queued : CULLING_COLORS.enemy, {
           crosshair: tone === 'damage',
           radius: (point.size || 62) / 2 + 18,
           alpha: 0.86,
@@ -340,7 +342,7 @@ export class CombatPlaybackScene extends BaseScene {
           fontSize: amount ? '31px' : '18px',
           rise: 48,
         });
-        this.playHpLag(point, tone === 'heal' ? COLORS.queued : COLORS.enemy);
+        this.playHpLag(point, tone === 'heal' ? COLORS.queued : CULLING_COLORS.enemy);
         if (tone === 'damage') {
           this.cameras.main.shake(150, 0.006);
         }
@@ -361,7 +363,7 @@ export class CombatPlaybackScene extends BaseScene {
         return;
       }
 
-      this.playActionBanner(frame, message, safeText(type, 'EVENT').replace(/_/g, ' ').toUpperCase(), COLORS.selection, actionNumber);
+      this.playActionBanner(frame, message, safeText(type, 'EVENT').replace(/_/g, ' ').toUpperCase(), CULLING_COLORS.gold, actionNumber);
       this.playFloatingText(point, safeText(type, 'EVENT').replace(/_/g, ' ').toUpperCase(), color, {
         fontSize: '18px',
         mono: true,

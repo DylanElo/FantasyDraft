@@ -2071,3 +2071,110 @@ description now lists the 30 current screenshots and compact-layout fixes. At
 the readiness check it had no configured/reported checks, comments, reviews,
 or unresolved review threads. This delivery-state sentence is a docs-only
 follow-up on the same branch and PR.
+
+## 2026-07-17 - Culling Current bright UI concept exploration
+
+**User direction and scope.** The user rejected the current UI's darkness,
+assets, structure, and color scheme and asked for a more artistic direction
+inspired by Jujutsu Kaisen Season 3, with Clash Royale and Subway Surfers City
+as the available mobile-game references. This pass is concept-only: it changes
+no Phaser code, server field, combat rule, balance number, progression rule,
+roster entry, or shipping asset.
+
+**Concept output.** A 70/30 direction was explored: bright, character-led,
+kinetic urban anime presentation supported by tactile mobile-game hierarchy.
+The resulting `Culling Current` set lives under
+`artifacts/ui-redesign/concepts/culling-current/`: a 1672x941 visual-direction
+board plus 853x1844 Home and Combat concepts whose aspect ratio closely matches
+390x844. The Home concept uses a large active-trio hero, light city scenery,
+one dominant battle CTA, secondary mode cards, and labeled navigation. Combat
+preserves three enemies, three allies, four visible skills, four core-energy
+types, targeting feedback, and Queue Review while opening most of the screen to
+a bright rooftop battlefield. Exact built-in generation prompts are recorded
+beside the images in `PROMPTS.md`.
+
+**Locked decisions and verification.** Portrait-first layout, 3v3 readability,
+four core energies, server authority, thumb-reachable controls, and the lower
+command dock remain concept invariants. The three PNGs were visually inspected
+and validated with Pillow as real RGB PNGs at their recorded dimensions. No
+automated gameplay or JavaScript checks were run because no production code
+changed.
+
+**Canonical conflict and delivery state.** The user's new direction conflicts
+with the dark Ink + Talisman visual language still prescribed by
+`docs/CODEX_PROJECT_MEMORY.md`, `docs/mobile_phaser_ui_ux_brief.md`, and the
+Phaser `AGENTS.md`. The concepts therefore do not silently replace canonical
+design. Production implementation must wait for explicit concept approval,
+then update those visual-direction sections in a focused UI-design pass while
+preserving their usability and server-parity rules. Character imagery is
+concept art, not licensed shipping art. The assets and this history entry are
+uncommitted; no PR was opened.
+
+## 2026-07-17 - Culling Current Home and Combat production vertical slice
+
+**Locked decisions and scope.** The user approved the bright Culling Current
+direction, superseding the preceding concept entry's pending-approval state.
+This remained a focused UI-only pass: Battle v2 rules, the exact 19-character
+First Creation roster, balance, progression, hidden information, replacement
+slot identity, target semantics, socket authority, B/T/F/C energy meanings,
+and X-as-Wild payment did not change. Runtime teams, rooms, phases, timers,
+costs, disabled reasons, targets, replacements, and queue state continue to
+come from the authoritative store/server contract. No concept currencies or
+fictional combat labels entered the client.
+
+**What changed.** Canonical visual-direction documents now define the scoped
+70/30 Culling Current system: luminous ivory/concrete/sky worlds, cobalt
+structure, restrained vermilion/gold/cyan accents, charcoal text, and darkness
+reserved for Domain or finisher moments. Phaser cache references moved
+consistently to v23. Reusable light primitives and responsive Home regions now
+support a bright city-led active-trio Home, dominant Quick Match CTA, real
+identity/room controls, secondary modes, and labeled bottom navigation. The
+Combat slice now uses a daylight rooftop, compact authoritative phase/timer and
+energy HUD, readable fighter plates, an open target lane, tactile 2x2 command
+dock, inspectable disabled skills, full Skill Detail, and a light Queue Review
+sheet with action order, primary/secondary/alternate targets, adjusted costs,
+available-to-remaining energy, Wild assignment, and exact action-local errors.
+The ordinary playback layer was rethemed while cinematic darkness remains.
+`queueReviewFit()` gained only display metadata (`actionId` and `remaining`);
+submission and legality semantics were preserved.
+
+Two character-free generated environment plates were added with exact prompts,
+result identifiers, hashes, dimensions, crop notes, and limitations in
+`web/static/assets/environments/PROVENANCE.md`. Final review also closed a stale
+PvP mode on the Home Roster route, long identity overflow, portrait-overlay
+depth, the 360px HUD squeeze, misleading non-Wild row errors, and normal/safe
+Combat and Queue Review center-stage collisions.
+
+**Visual QA.** Twenty current PNGs under
+`artifacts/ui-redesign/culling-current/qa/` cover Home, selected Combat, Skill
+Detail, invalid Queue Review, and valid Queue Review at 360x800, 390x844, and
+430x932, plus a long-profile stress state and safe-inset evidence. Safe captures
+use 47px top and 34px bottom insets at 360x800, with Queue Review also checked at
+safe 390x844. Every runtime texture was loaded before capture. All registered
+non-modal controls were at least 44x44 CSS pixels, inside the canvas, and free
+of pairwise overlap. The browser-local fixture uses the real character/skill
+catalog, changes in-memory presentation state only, and emits no gameplay
+socket command. A direct browser interaction also verified that Roster changes
+stale PvP mode back to CPU before entering `FirstCreationScene`.
+
+The local Windows Flask-SocketIO server returned HTTP 400 for WebSocket upgrade
+and subsequent polling-session requests. There were no page exceptions,
+non-Socket.IO resource failures, or missing textures. The captures therefore
+validate rendering/geometry; the automated suite remains the networking and
+gameplay authority.
+
+**Verification actually run.** `python -m pytest -q` passed with **453 passed,
+1 skipped** in 112.21 seconds. The focused app/mobile/parity set passed with
+**20 passed**. `node --check` passed for all 24 changed or added JavaScript
+files. `python -m compileall -q jjk_arena web/app.py`, `git diff --check`, the
+v23 cache-consistency audit, the concept-only-label audit, and Pillow validation
+of all 20 QA PNGs plus both 773x1672 WebP runtime assets passed.
+
+**Remaining cautions / delivery state.** The existing abstract character-card
+portraits remain intentional placeholders pending a coherent original or
+licensed 19-character art pass. Concept character images are not runtime
+assets. Untouched legacy scenes retain scoped dark tokens until migrated in
+separate UI work. The implementation is uncommitted on
+`codex/culling-current-ui`, based on
+`f8567d13075adebcfccded09c9b5ac43ebedb802`; it has not been pushed and no PR
+was opened.

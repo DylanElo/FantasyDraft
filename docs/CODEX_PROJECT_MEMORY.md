@@ -643,13 +643,28 @@ Distinct visual states are required for:
 
 ## Visual direction
 
-- Ink-black surfaces.
-- Talisman paper/gold for selection and commitment.
-- Teal for legal target feedback.
-- Blood red for danger/damage.
-- Violet only for Domain/cinematic moments.
-- Controlled effects and strong spacing rather than constant glow.
-- One coherent portrait/art treatment.
+- **Culling Current** is the internal codename for the approved visual system;
+  it is not a product-era, roster, or progression rename.
+- Use a 70/30 balance: bright, character/world-led urban anime art first;
+  tactile and immediately readable mobile controls second.
+- Routine screens are predominantly luminous: warm ivory, pale concrete,
+  powder sky, cobalt, vermilion, electric cyan, selective sun gold, and
+  charcoal text. Deep darkness is reserved for Domains, finishers, and short
+  cinematic transitions rather than default surfaces.
+- Manga brush strokes, speed lines, halftone, and printed/concrete texture are
+  restrained compositional accents, never substitutes for clear hierarchy.
+- Gold indicates selection/commitment, cyan indicates legal targets, red
+  indicates danger/damage, green indicates queued actions, and violet remains
+  reserved for Domain/cinematic states.
+- Environment and character art should lead the composition. UI surfaces may
+  be light, translucent, or tactile, but must preserve contrast and all combat
+  state semantics.
+- Use one coherent original or appropriately licensed production art system.
+  Concept imagery and placeholder portraits do not establish shipping asset
+  provenance.
+- During staged migration, untouched legacy scenes may retain their existing
+  dark tokens for legibility. New or migrated screens must use scoped Culling
+  Current tokens rather than globally remapping legacy aliases.
 
 ## Component architecture
 

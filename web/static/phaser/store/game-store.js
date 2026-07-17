@@ -1,9 +1,9 @@
-import { BOOT, CORE_ENERGY } from '../core/runtime-config.js?v=22';
-import { safeText } from '../core/text.js?v=22';
-import { readStorage, writeStorage } from '../core/storage.js?v=22';
-import { AssetRegistry } from '../core/asset-registry.js?v=22';
-import { firstCreationRoster, imageKeyFor, preset, presetTitle } from '../core/roster.js?v=22';
-import { eventAmount } from '../fx/event-metrics.js?v=22';
+import { BOOT, CORE_ENERGY } from '../core/runtime-config.js?v=23';
+import { safeText } from '../core/text.js?v=23';
+import { readStorage, writeStorage } from '../core/storage.js?v=23';
+import { AssetRegistry } from '../core/asset-registry.js?v=23';
+import { firstCreationRoster, imageKeyFor, preset, presetTitle } from '../core/roster.js?v=23';
+import { eventAmount } from '../fx/event-metrics.js?v=23';
 
 export class GameStore {
     constructor(socketClient) {
@@ -925,25 +925,30 @@ export class GameStore {
     }
 
     queueReviewFit() {
-      if (!this.actions.length) return { ok: false, reason: 'Queue is empty.' };
+      if (!this.actions.length) return { ok: false, reason: 'Queue is empty.', actionId: null, remaining: null };
       const me = this.me();
       const energy = { green: 0, blue: 0, white: 0, red: 0, ...((me && me.energy) || {}) };
       for (const action of this.actions) {
         const caster = me && me.team ? me.team[action.caster_slot] : null;
         const skill = caster ? this.skillFor(caster, action.skill_id) : null;
-        if (!caster || !skill) return { ok: false, reason: 'Queued action is no longer available.' };
+        if (!caster || !skill) return { ok: false, reason: 'Queued action is no longer available.', actionId: action.id, remaining: { ...energy } };
         const pays = this.actionWildPays[action.id] || [];
         let wildIndex = 0;
         for (const color of this.adjustedCost(caster, skill)) {
           const pay = color === 'black' ? pays[wildIndex++] : color;
           if (!CORE_ENERGY.includes(pay) || Number(energy[pay] || 0) <= 0) {
-            return { ok: false, reason: color === 'black' ? 'Assign every Wild payment.' : `Not enough ${pay} energy.` };
+            return {
+              ok: false,
+              reason: color === 'black' ? 'Assign every Wild payment.' : `Not enough ${pay} energy.`,
+              actionId: action.id,
+              remaining: { ...energy },
+            };
           }
           energy[pay] -= 1;
         }
-        if (pays.length !== wildIndex) return { ok: false, reason: 'Wild payment count changed.' };
+        if (pays.length !== wildIndex) return { ok: false, reason: 'Wild payment count changed.', actionId: action.id, remaining: { ...energy } };
       }
-      return { ok: true, reason: '' };
+      return { ok: true, reason: '', actionId: null, remaining: { ...energy } };
     }
 
     closeQueueReview() {

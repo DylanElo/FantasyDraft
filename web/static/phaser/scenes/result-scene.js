@@ -1,7 +1,7 @@
-import { COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=22';
-import { safeText, shortText } from '../core/text.js?v=22';
-import { eventAmount } from '../fx/event-metrics.js?v=22';
-import { BaseScene } from './base-scene.js?v=22';
+import { COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=23';
+import { safeText, shortText } from '../core/text.js?v=23';
+import { eventAmount } from '../fx/event-metrics.js?v=23';
+import { BaseScene } from './base-scene.js?v=23';
 
 export class ResultScene extends BaseScene {
     constructor() {

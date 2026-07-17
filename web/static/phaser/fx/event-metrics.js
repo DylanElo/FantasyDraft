@@ -1,4 +1,4 @@
-import { safeText } from '../core/text.js?v=22';
+import { safeText } from '../core/text.js?v=23';
 
 export function eventAmount(event) {
   const direct = Number(event && (event.amount || event.damage || (event.payload && (event.payload.amount || event.payload.damage))));

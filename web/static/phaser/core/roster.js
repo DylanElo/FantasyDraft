@@ -1,5 +1,5 @@
-import { BOOT } from './runtime-config.js?v=22';
-import { safeText, titleize } from './text.js?v=22';
+import { BOOT } from './runtime-config.js?v=23';
+import { safeText, titleize } from './text.js?v=23';
 
 export function firstCreationRoster() {
   return (BOOT.firstCreation && BOOT.firstCreation.roster) || BOOT.roster || {};

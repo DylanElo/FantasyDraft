@@ -50,13 +50,18 @@ Do not combine onboarding, locked progression, presets, roster browsing, team co
 
 ## Visual hierarchy
 
-- Use dark ink surfaces and restrained talisman/cursed-energy accents.
+- `Culling Current` is the internal visual-system codename, not a product-era or progression rename.
+- Use a 70/30 balance: bright character/world-led urban anime presentation, supported by tactile mobile-game structure.
+- Routine surfaces use warm ivory, pale concrete, powder sky, cobalt, vermilion, electric cyan, selective sun gold, and charcoal text. Reserve deep darkness for Domains, finishers, and brief cinematic transitions.
 - Gold indicates current selection/commitment.
-- Teal indicates legal targets.
-- Red indicates danger/damage.
+- Electric cyan indicates legal targets.
+- Vermilion indicates danger/damage.
+- Green indicates queued actions.
 - Violet is reserved for Domain/cinematic states, not routine chrome.
+- Manga brush strokes, speed lines, halftone, and concrete/print texture are restrained accents, not substitutes for hierarchy.
 - Decoration must support hierarchy. Do not cover weak information architecture with smoke, borders, or particles.
-- Portraits must use one coherent production system; placeholders must look intentionally temporary and must not define the final layout.
+- Portraits and environments must use one coherent original or appropriately licensed production system; placeholders must look intentionally temporary and must not define the final layout.
+- During staged migration, use scoped light tokens and preserve legacy aliases for untouched dark scenes.
 
 ## Combat interaction model
 

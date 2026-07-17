@@ -132,9 +132,20 @@ console.log(JSON.stringify({ missing, valid, overdrawn }));
         check=True,
     )
     probe = json.loads(result.stdout)
-    assert probe["missing"] == {"ok": False, "reason": "Assign every Wild payment."}
-    assert probe["valid"] == {"ok": True, "reason": ""}
+    assert probe["missing"] == {
+        "ok": False,
+        "reason": "Assign every Wild payment.",
+        "actionId": "a1",
+        "remaining": {"green": 1, "red": 0, "blue": 0, "white": 0},
+    }
+    assert probe["valid"] == {
+        "ok": True,
+        "reason": "",
+        "actionId": None,
+        "remaining": {"green": 0, "red": 0, "blue": 0, "white": 0},
+    }
     assert probe["overdrawn"]["ok"] is False
+    assert probe["overdrawn"]["actionId"] == "a1"
 
 
 def test_phaser_second_skill_tap_opens_detail_without_mutating_queue():

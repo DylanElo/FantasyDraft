@@ -53,9 +53,9 @@ def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
     assert 'v2-enemy-team' not in html
     assert 'v2-my-team' not in html
     assert 'vendor/phaser.min.js?v=3.90.0' in html
-    assert 'phaser-design-tokens.js?v=22' in html
-    assert 'phaser-shell.js?v=22' in html
-    assert 'phaser-shell.css?v=22' in html
+    assert 'phaser-design-tokens.js?v=23' in html
+    assert 'phaser-shell.js?v=23' in html
+    assert 'phaser-shell.css?v=23' in html
     assert 'phaser-battle.js' not in html
     assert 'app.js' not in html
     assert 'stitch-tokens.css' not in html
@@ -96,20 +96,25 @@ def test_battle_v2_public_surface_uses_production_copy(monkeypatch):
     design_tokens_js = Path(web_app.app.static_folder, "phaser-design-tokens.js").read_text(encoding="utf-8")
 
     assert "import(`./phaser/index.js?v=${SHELL_VERSION}`)" in shell_js
-    assert "import './legacy-shell.js?v=22';" in phaser_entry_js
-    assert "from './store/game-store.js?v=22';" in runtime_js
-    assert "from './network/socket-client.js?v=22';" in runtime_js
-    assert "from './scenes/scene-registry.js?v=22';" in runtime_js
+    assert "import './legacy-shell.js?v=23';" in phaser_entry_js
+    assert "from './store/game-store.js?v=23';" in runtime_js
+    assert "from './network/socket-client.js?v=23';" in runtime_js
+    assert "from './scenes/scene-registry.js?v=23';" in runtime_js
     assert "scene: SCENE_LIST" in runtime_js
-    assert "from './scenes/boot-scene.js?v=22';" not in runtime_js
-    assert "from './boot-scene.js?v=22';" in scene_registry_js
+    assert "from './scenes/boot-scene.js?v=23';" not in runtime_js
+    assert "from './boot-scene.js?v=23';" in scene_registry_js
     assert "export const SCENE_LIST" in scene_registry_js
     assert "export const COLORS" in runtime_config_js
+    assert "export const CULLING_COLORS" in runtime_config_js
     assert "selectionGold" in design_tokens_js
     assert "cursedTeal" in design_tokens_js
     assert "talismanPaper" in design_tokens_js
-    assert "COLORS.target" in combat_scene_js
-    assert "COLORS.selection" in combat_scene_js
+    assert "warmIvory: '#F7F4EC'" in design_tokens_js
+    assert "cobalt: '#2566FF'" in design_tokens_js
+    assert "vermilion: '#E53935'" in design_tokens_js
+    assert "electricCyan: '#00E6F2'" in design_tokens_js
+    assert "CULLING_COLORS.target" in combat_scene_js
+    assert "CULLING_COLORS.selected" in combat_scene_js
     assert "COLORS.domain" in combat_playback_js
     assert "export class AssetRegistry" in asset_registry_js
     assert "export class LayoutService" in layout_service_js
@@ -159,13 +164,18 @@ def test_battle_v2_public_surface_uses_production_copy(monkeypatch):
     assert "playEvent(event, frame, visibleActionNumber)" not in combat_scene_js
     assert "renderQueueReviewSheet(frame)" in combat_queue_review_js
     assert "renderQueueReviewRow(frame" in combat_queue_review_js
-    assert "Confirm Queue" in combat_queue_review_js
+    assert "CONFIRM QUEUE" in combat_queue_review_js
     assert "renderQueueReviewSheet(frame) {" not in combat_scene_js
     assert "consumePlaybackEvents" in game_store_js
     assert "renderReplayLine" in combat_scene_js
     assert "QUEUE ${this.store.actions.length}/3" in combat_scene_js
-    assert "Review ${this.store.actions.length}/3" in combat_scene_js
+    assert "REVIEW ${this.store.actions.length}/3" in combat_scene_js
     assert "YOUR FIELD" in combat_scene_js
+    assert "READY FOR BATTLE" in lobby_scene_js
+    assert "Private Room" in lobby_scene_js
+    assert "Edit room code" in lobby_scene_js
+    assert "culling-current-home" in boot_scene_js
+    assert "culling-current-rooftop" in boot_scene_js
     assert "BIGGEST STRIKES" in result_scene_js
     assert "MISSION PROGRESS" in result_scene_js
     assert "REWARD CHECK" in result_scene_js

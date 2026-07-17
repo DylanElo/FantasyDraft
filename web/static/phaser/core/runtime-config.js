@@ -1,5 +1,7 @@
 const DESIGN_TOKENS = globalThis.JJK_MOBILE_TOKENS || {};
 const TOKEN_COLORS = DESIGN_TOKENS.phaserColors || {};
+const CURRENT_TOKEN_COLORS = DESIGN_TOKENS.cullingCurrentPhaser || {};
+const CURRENT_TEXT_COLORS = DESIGN_TOKENS.cullingCurrent || {};
 const bootstrap = globalThis.JJK_BOOTSTRAP || {};
 
 export const TOKEN_TYPE = DESIGN_TOKENS.type || {};
@@ -53,6 +55,29 @@ export const COLORS = {
   blue: TOKEN_COLORS.techniqueBlue || 0x3d6bff,
   black: TOKEN_COLORS.surfaceRaised || 0x181715,
 };
+
+export const CULLING_COLORS = {
+  ivory: CURRENT_TOKEN_COLORS.warmIvory || 0xf7f4ec,
+  concrete: CURRENT_TOKEN_COLORS.paleConcrete || 0xe6e8ec,
+  sky: CURRENT_TOKEN_COLORS.powderSky || 0xbfd6f2,
+  cobalt: CURRENT_TOKEN_COLORS.cobalt || 0x2566ff,
+  vermilion: CURRENT_TOKEN_COLORS.vermilion || 0xe53935,
+  cyan: CURRENT_TOKEN_COLORS.electricCyan || 0x00e6f2,
+  gold: CURRENT_TOKEN_COLORS.sunGold || 0xffc94d,
+  charcoal: CURRENT_TOKEN_COLORS.charcoal || 0x33363a,
+  muted: CURRENT_TOKEN_COLORS.mutedText || 0x66707a,
+  shadow: CURRENT_TOKEN_COLORS.softShadow || 0x18233a,
+  text: CURRENT_TEXT_COLORS.charcoal || '#33363A',
+  mutedText: CURRENT_TEXT_COLORS.mutedText || '#66707A',
+  inverseText: CURRENT_TEXT_COLORS.warmIvory || '#F7F4EC',
+  cobaltText: CURRENT_TEXT_COLORS.cobalt || '#2566FF',
+  redText: CURRENT_TEXT_COLORS.vermilion || '#E53935',
+};
+CULLING_COLORS.selected = CULLING_COLORS.gold;
+CULLING_COLORS.target = CULLING_COLORS.cyan;
+CULLING_COLORS.enemy = CULLING_COLORS.vermilion;
+CULLING_COLORS.queued = COLORS.bodyGreen;
+CULLING_COLORS.domain = COLORS.domainViolet;
 COLORS.stageDeep = COLORS.voidBlack;
 COLORS.stageInk = COLORS.inkBlack;
 COLORS.panelInk = COLORS.surfaceDeep;
@@ -124,4 +149,3 @@ export const LOCAL_PORTRAIT_FILES = new Set([
   'yuta-okkotsu-jjk-0.svg',
   'yuta-okkotsu-sendai.svg',
 ]);
-

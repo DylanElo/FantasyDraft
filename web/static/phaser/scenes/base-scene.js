@@ -1,7 +1,7 @@
-import { COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=22';
-import { initials, safeText } from '../core/text.js?v=22';
-import { LayoutService } from '../core/layout-service.js?v=22';
-import { costColors } from '../core/roster.js?v=22';
+import { COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=23';
+import { initials, safeText } from '../core/text.js?v=23';
+import { LayoutService } from '../core/layout-service.js?v=23';
+import { costColors } from '../core/roster.js?v=23';
 
 export class BaseScene extends Phaser.Scene {
     constructor(key) {
@@ -53,6 +53,46 @@ export class BaseScene extends Phaser.Scene {
       this.nodes.forEach((node) => node.destroy());
       this.nodes = [];
       this.buttons = [];
+    }
+
+    syncButtonDebug() {
+      window.__phaserShellButtons = this.buttons.map((button) => ({
+        scene: this.keyName,
+        label: button.label || 'hotspot',
+        x: Math.round(button.x),
+        y: Math.round(button.y),
+        w: Math.round(button.w),
+        h: Math.round(button.h),
+        disabled: !!button.disabled,
+      }));
+    }
+
+    registerHitTarget(x, y, w, h, label, onClick, options) {
+      const opts = options || {};
+      const minTarget = TOKEN_TOUCH.minTarget || 44;
+      const hitW = Math.max(w, minTarget);
+      const hitH = Math.max(h, minTarget);
+      this.buttons.push({
+        x: x - (hitW - w) / 2,
+        y: y - (hitH - h) / 2,
+        w: hitW,
+        h: hitH,
+        label,
+        onClick,
+        disabled: !!opts.disabled,
+      });
+      this.syncButtonDebug();
+    }
+
+    coverImage(textureKey, x, y, w, h, options) {
+      if (!textureKey || !this.textures.exists(textureKey)) return null;
+      const opts = options || {};
+      const image = this.add.image(x + w / 2, y + h / 2, textureKey);
+      image.setDisplaySize(w, h);
+      image.setDepth(opts.depth === undefined ? -30 : opts.depth);
+      image.setAlpha(opts.alpha === undefined ? 1 : opts.alpha);
+      this.nodes.push(image);
+      return image;
     }
 
     text(x, y, value, style) {
@@ -137,34 +177,28 @@ export class BaseScene extends Phaser.Scene {
       }
     }
 
-    toast(frame) {
+    toast(frame, options) {
+      const opts = options || {};
       this.drawTapPulse();
-      window.__phaserShellButtons = this.buttons.map((button) => ({
-        scene: this.keyName,
-        label: button.label || 'hotspot',
-        x: Math.round(button.x),
-        y: Math.round(button.y),
-        w: Math.round(button.w),
-        h: Math.round(button.h),
-        disabled: !!button.disabled,
-      }));
+      this.syncButtonDebug();
       if (!this.store.toast) return;
       const g = this.graphics;
       const x = frame.x + 18;
-      const y = frame.bottom - 106;
+      const y = opts.y === undefined ? frame.bottom - 106 : opts.y;
       const w = frame.width - 36;
-      g.fillStyle(COLORS.surfaceRaised, 0.96);
+      const light = opts.theme === 'light';
+      g.fillStyle(light ? 0xf7f4ec : COLORS.surfaceRaised, 0.96);
       g.fillRoundedRect(x, y, w, 48, 16);
-      g.fillStyle(COLORS.talismanDim, 0.12);
+      g.fillStyle(light ? 0xbfd6f2 : COLORS.talismanDim, light ? 0.46 : 0.12);
       g.fillRoundedRect(x + 3, y + 3, w - 6, 18, 13);
-      g.lineStyle(1.5, COLORS.selection, 0.72);
+      g.lineStyle(1.5, light ? 0x2566ff : COLORS.selection, 0.72);
       g.strokeRoundedRect(x, y, w, 48, 16);
-      g.lineStyle(1, COLORS.talismanDim, 0.28);
+      g.lineStyle(1, light ? 0x33363a : COLORS.talismanDim, light ? 0.18 : 0.28);
       g.beginPath();
       g.moveTo(x + 12, y + 8);
       g.lineTo(x + w - 12, y + 8);
       g.strokePath();
-      this.mono(x + 14, y + 16, this.store.toast, { color: COLORS.paperText, fontSize: '11px' });
+      this.mono(x + 14, y + 16, this.store.toast, { color: light ? '#33363a' : COLORS.paperText, fontSize: '11px' });
     }
 
     drawTapPulse() {
@@ -205,27 +239,7 @@ export class BaseScene extends Phaser.Scene {
         align: 'center',
       }).setOrigin(0.5, 0);
       if (opts.maxWidth) text.setWordWrapWidth(opts.maxWidth);
-      const minTarget = TOKEN_TOUCH.minTarget || 44;
-      const hitW = Math.max(w, minTarget);
-      const hitH = Math.max(h, minTarget);
-      this.buttons.push({
-        x: x - (hitW - w) / 2,
-        y: y - (hitH - h) / 2,
-        w: hitW,
-        h: hitH,
-        label,
-        onClick,
-        disabled: !!opts.disabled,
-      });
-      window.__phaserShellButtons = this.buttons.map((button) => ({
-        scene: this.keyName,
-        label: button.label,
-        x: Math.round(button.x),
-        y: Math.round(button.y),
-        w: Math.round(button.w),
-        h: Math.round(button.h),
-        disabled: button.disabled,
-      }));
+      this.registerHitTarget(x, y, w, h, label, onClick, { disabled: opts.disabled });
     }
 
     iconButton(x, y, w, h, label, onClick, options) {

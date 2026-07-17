@@ -4,8 +4,8 @@ body {
   height: 100%;
   margin: 0;
   overflow: hidden;
-  background: #050711;
-  color: #f8fafc;
+  background: #f7f4ec;
+  color: #33363a;
   font-family: Inter, Arial, sans-serif;
 }
 
@@ -23,9 +23,10 @@ body {
 #v2-phaser-shell {
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   min-height: 100svh;
   overflow: hidden;
-  background: #050711;
+  background: #f7f4ec;
 }
 
 #v2-phaser-shell canvas {

@@ -1,6 +1,6 @@
-import { SocketClient } from './network/socket-client.js?v=22';
-import { GameStore } from './store/game-store.js?v=22';
-import { SCENE_LIST } from './scenes/scene-registry.js?v=22';
+import { SocketClient } from './network/socket-client.js?v=23';
+import { GameStore } from './store/game-store.js?v=23';
+import { SCENE_LIST } from './scenes/scene-registry.js?v=23';
 
 function startShell() {
   const element = document.getElementById('v2-phaser-shell');
@@ -11,7 +11,7 @@ function startShell() {
   const game = new Phaser.Game({
     type: Phaser.CANVAS,
     parent: element,
-    backgroundColor: '#050711',
+    backgroundColor: '#F7F4EC',
     scale: {
       mode: Phaser.Scale.RESIZE,
       autoCenter: Phaser.Scale.CENTER_BOTH,

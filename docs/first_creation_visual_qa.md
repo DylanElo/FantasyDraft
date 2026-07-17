@@ -1,6 +1,11 @@
 # First Creation Visual QA Plan
 
-The first-creation onboarding flow is now ready for browser-based screenshot QA once a browser runner is installed.
+> Historical opt-in plan. Browser tooling and fresh current evidence now exist.
+> See `artifacts/ui-redesign/current/`, `artifacts/visual_qa/current/`, and the
+> Culling Current Home/Combat slice under
+> `artifacts/ui-redesign/culling-current/qa/`. The command below remains useful
+> for rerunning the older First Creation-focused test, but it is no longer
+> blocked on runner installation.
 
 ## Required captures
 

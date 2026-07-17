@@ -3,19 +3,22 @@
 from __future__ import annotations
 
 import json
+import math
 import os
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from .first_creation_unlocks import first_creation_unlocks_payload, unknown_first_creation_unlocks
-from .runtime_store import SQLiteRuntimeStore
+from .runtime_store import MalformedMissionSettlementError, SQLiteRuntimeStore
 
 DEFAULT_PROFILE: dict[str, Any] = {
     "completed_missions": [],
     "unlocked": [],
     "mission_first_completed_at": {},
     "selected_starter_team": [],
+    "_selected_starter_team_at": 0.0,
 }
 
 
@@ -31,6 +34,7 @@ def _empty_profile() -> dict[str, Any]:
         "unlocked": [],
         "mission_first_completed_at": {},
         "selected_starter_team": [],
+        "_selected_starter_team_at": 0.0,
     }
 
 
@@ -70,7 +74,82 @@ def normalize_profile(raw: dict[str, Any] | None = None) -> dict[str, Any]:
     team = raw.get("selected_starter_team", [])
     if isinstance(team, list):
         profile["selected_starter_team"] = [str(character_id) for character_id in team[:3] if str(character_id)]
+    try:
+        selected_at = float(raw.get("_selected_starter_team_at", 0.0))
+    except (TypeError, ValueError):
+        selected_at = 0.0
+    profile["_selected_starter_team_at"] = selected_at if math.isfinite(selected_at) else 0.0
     return profile
+
+
+def _terminal_timestamp(progress: dict[str, Any], finished_at: float | None = None) -> float:
+    candidate = progress.get("_match_finished_at") if finished_at is None else finished_at
+    if candidate is None:
+        return time.time()
+    try:
+        parsed = float(candidate)
+    except (TypeError, ValueError) as exc:
+        raise MalformedMissionSettlementError("match finish timestamp must be numeric") from exc
+    if not math.isfinite(parsed) or parsed < 0:
+        raise MalformedMissionSettlementError("match finish timestamp must be finite and non-negative")
+    try:
+        datetime.fromtimestamp(parsed, timezone.utc)
+    except (OverflowError, OSError, ValueError) as exc:
+        raise MalformedMissionSettlementError(
+            "match finish timestamp is outside the supported datetime range"
+        ) from exc
+    return parsed
+
+
+def _validated_string_list(progress: dict[str, Any], key: str) -> list[str]:
+    value = progress.get(key, [])
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise MalformedMissionSettlementError(f"mission settlement {key} must be a list")
+    return [str(item) for item in value if str(item)]
+
+
+def merge_first_creation_profile_snapshot(
+    current: dict[str, Any],
+    progress: dict[str, Any],
+    finished_at: float | None = None,
+) -> tuple[dict[str, Any], list[str]]:
+    """Pure, validated profile merge used by both legacy and atomic storage paths."""
+
+    if not isinstance(progress, dict):
+        raise MalformedMissionSettlementError("mission settlement progress must be an object")
+    profile = normalize_profile(current)
+    terminal_at = _terminal_timestamp(progress, finished_at)
+    terminal_iso = datetime.fromtimestamp(terminal_at, timezone.utc).isoformat()
+    completed_ids = _validated_string_list(progress, "completed_ids")
+    unlock_ids = _validated_string_list(progress, "unlocked")
+    team = _validated_string_list(progress, "team")[:3]
+
+    newly_completed: list[str] = []
+    completed = set(profile["completed_missions"])
+    first_completed_at = dict(profile["mission_first_completed_at"])
+    for mission_id in completed_ids:
+        if mission_id not in completed:
+            completed.add(mission_id)
+            newly_completed.append(mission_id)
+        prior_timestamp = first_completed_at.get(mission_id)
+        try:
+            prior_instant = datetime.fromisoformat(str(prior_timestamp)).timestamp()
+        except (TypeError, ValueError):
+            prior_instant = math.inf
+        if terminal_at < prior_instant:
+            first_completed_at[mission_id] = terminal_iso
+
+    unlocked = set(profile["unlocked"])
+    unlocked.update(unlock_ids)
+    profile["completed_missions"] = sorted(completed)
+    profile["unlocked"] = sorted(unlocked)
+    profile["mission_first_completed_at"] = first_completed_at
+    if team and terminal_at >= float(profile.get("_selected_starter_team_at", 0.0)):
+        profile["selected_starter_team"] = team
+        profile["_selected_starter_team_at"] = terminal_at
+    return normalize_profile(profile), newly_completed
 
 
 def load_first_creation_profile(player_id: str) -> dict[str, Any]:
@@ -136,23 +215,9 @@ def merge_first_creation_progress(
     newly_completed: list[str] = []
 
     def merge(profile: dict[str, Any]) -> dict[str, Any]:
-        now = datetime.now(timezone.utc).isoformat()
-        completed = set(profile["completed_missions"])
-        first_completed_at = dict(profile["mission_first_completed_at"])
-        for mission_id in progress.get("completed_ids", []):
-            mission_id = str(mission_id)
-            if mission_id and mission_id not in completed:
-                completed.add(mission_id)
-                first_completed_at[mission_id] = now
-                newly_completed.append(mission_id)
-        unlocked = set(profile["unlocked"])
-        unlocked.update(str(unlock_id) for unlock_id in progress.get("unlocked", []) if str(unlock_id))
-        profile["completed_missions"] = sorted(completed)
-        profile["unlocked"] = sorted(unlocked)
-        profile["mission_first_completed_at"] = first_completed_at
-        if progress.get("team"):
-            profile["selected_starter_team"] = [str(character_id) for character_id in progress.get("team", [])[:3]]
-        return profile
+        updated, newly = merge_first_creation_profile_snapshot(profile, progress)
+        newly_completed.extend(newly)
+        return updated
 
     if profile_store is not None and not os.getenv("JJK_FIRST_CREATION_PROFILE_STORE"):
         updated = normalize_profile(profile_store.update_profile(
@@ -181,6 +246,7 @@ def first_creation_profile_payload(profile: dict[str, Any]) -> dict[str, Any]:
     """Return profile plus reward metadata for UI mission-board rendering."""
 
     normalized = normalize_profile(profile)
+    normalized.pop("_selected_starter_team_at", None)
     normalized["unlock_details"] = first_creation_unlocks_payload(normalized["unlocked"])
     normalized["unknown_unlocks"] = unknown_first_creation_unlocks(set(normalized["unlocked"]))
     return normalized

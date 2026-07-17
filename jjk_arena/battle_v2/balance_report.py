@@ -15,7 +15,7 @@ from .simulation import run_headless_match
 from .starter_roster import FIRST_CREATION_PRESETS
 
 
-REPORT_SCHEMA_VERSION = 1
+REPORT_SCHEMA_VERSION = 2
 
 
 def wilson_interval(wins: int, total: int, z: float = 1.96) -> list[float]:
@@ -44,6 +44,8 @@ def build_balance_report(
     first_seat_wins = 0
     decided_games = 0
     turn_caps = 0
+    draws = 0
+    no_contests = 0
     seed = seed_start
     for left_index, left_name in enumerate(names):
         for right_name in names[left_index + 1:]:
@@ -59,14 +61,26 @@ def build_balance_report(
                     turns.append(result["turns_executed"])
                     for character in first_team + second_team:
                         character_appearances[character] += 1
-                    if result["winner_side"] is None:
+                    result_type = result.get("result_type")
+                    winner_side = result.get("winner_side")
+                    if result_type == "TURN_CAP":
                         turn_caps += 1
                         wins["turn_cap"] += 1
                         continue
+                    if result_type == "DRAW":
+                        draws += 1
+                        wins["draw"] += 1
+                        continue
+                    if result_type == "NO_CONTEST":
+                        no_contests += 1
+                        wins["no_contest"] += 1
+                        continue
+                    if result_type != "WIN" or winner_side not in {"team_a", "team_b"}:
+                        raise ValueError(f"unsupported simulation result: {result_type!r}")
                     decided_games += 1
-                    winner_name = first_name if result["winner_side"] == "team_a" else second_name
+                    winner_name = first_name if winner_side == "team_a" else second_name
                     wins[winner_name] += 1
-                    if result["winner_side"] == "team_a":
+                    if winner_side == "team_a":
                         first_seat_wins += 1
                     for character in teams[winner_name]:
                         character_wins[character] += 1
@@ -78,6 +92,8 @@ def build_balance_report(
                 "wins": dict(sorted(wins.items())),
                 "average_turns": sum(turns) / total,
                 "turn_cap_rate": wins["turn_cap"] / total,
+                "draw_rate": wins["draw"] / total,
+                "no_contest_rate": wins["no_contest"] / total,
             })
     characters = {
         character: {
@@ -98,6 +114,10 @@ def build_balance_report(
         "total_games": total_games,
         "turn_caps": turn_caps,
         "turn_cap_rate": turn_caps / total_games if total_games else 0.0,
+        "draws": draws,
+        "draw_rate": draws / total_games if total_games else 0.0,
+        "no_contests": no_contests,
+        "no_contest_rate": no_contests / total_games if total_games else 0.0,
         "first_seat_win_rate": first_seat_wins / decided_games if decided_games else 0.0,
         "matchups": matchups,
         "characters": characters,
@@ -107,7 +127,8 @@ def build_balance_report(
 def report_csv(report: dict[str, Any]) -> str:
     output = io.StringIO()
     writer = csv.DictWriter(output, fieldnames=[
-        "team_a_name", "team_b_name", "games", "team_a_wins", "team_b_wins", "turn_caps", "average_turns",
+        "team_a_name", "team_b_name", "games", "team_a_wins", "team_b_wins",
+        "draws", "no_contests", "turn_caps", "average_turns",
     ])
     writer.writeheader()
     for matchup in report["matchups"]:
@@ -118,6 +139,8 @@ def report_csv(report: dict[str, Any]) -> str:
             "games": matchup["games"],
             "team_a_wins": wins.get(matchup["team_a_name"], 0),
             "team_b_wins": wins.get(matchup["team_b_name"], 0),
+            "draws": wins.get("draw", 0),
+            "no_contests": wins.get("no_contest", 0),
             "turn_caps": wins.get("turn_cap", 0),
             "average_turns": matchup["average_turns"],
         })

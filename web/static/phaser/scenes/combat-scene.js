@@ -1,7 +1,7 @@
-import { COLORS, ENERGY_COLORS, TOKEN_TYPE } from '../core/runtime-config.js?v=21';
-import { clamp, initials, shortText, titleize } from '../core/text.js?v=21';
-import { eventTone } from '../fx/event-metrics.js?v=21';
-import { CombatQueueReviewScene } from './combat-queue-review-scene.js?v=21';
+import { COLORS, ENERGY_COLORS, TOKEN_TYPE } from '../core/runtime-config.js?v=22';
+import { clamp, initials, shortText, titleize } from '../core/text.js?v=22';
+import { eventTone } from '../fx/event-metrics.js?v=22';
+import { CombatQueueReviewScene } from './combat-queue-review-scene.js?v=22';
 
 const WORLD_KEY = 'combat-underpass-night';
 const LOCATION_LINE = 'KASUMIGAOKA MUNICIPAL UNDERPASS';
@@ -14,9 +14,9 @@ export class CombatScene extends CombatQueueReviewScene {
     combatLayout(frame) {
       const compact = frame.height < 830;
       const dockH = clamp(Math.round(frame.height * 0.34), compact ? 270 : 286, 304);
-      const dockY = frame.height - dockH;
+      const dockY = frame.bottom - dockH;
       const cardH = compact ? 108 : frame.height > 900 ? 120 : 112;
-      const enemyY = compact ? 108 : 116;
+      const enemyY = frame.top + (compact ? 122 : 130);
       const fieldTop = enemyY + cardH + 12;
       // The tactical-directive panel drawn at fieldTop is ~43px tall; at
       // short viewports dockH clamps to its minimum and dockY-cardH-28
@@ -88,7 +88,7 @@ export class CombatScene extends CombatQueueReviewScene {
     renderTopHud(frame, state, me) {
       const g = this.graphics;
       const x = frame.x + 10;
-      const y = 10;
+      const y = frame.top;
       const w = frame.width - 20;
       const mine = this.store.isMyTurn();
       const queueCount = this.store.actions.length;
@@ -165,7 +165,7 @@ export class CombatScene extends CombatQueueReviewScene {
         g.strokeTriangle(px, y + 54, px + 6, y + 48, px + 12, y + 54);
       }
 
-      this.button(x + w - 42, y + 23, 34, 34, 'II', () => this.store.resetToLobby(), {
+      this.button(x + w - 54, y + 16, 44, 44, 'II', () => this.store.resetToLobby(), {
         fill: 0x0d1114,
         stroke: COLORS.enemy,
         fontSize: '11px',
@@ -501,7 +501,8 @@ export class CombatScene extends CombatQueueReviewScene {
       const disabled = cooldown > 0 || !!ruleReason || !fit.ok || this.store.queuedSlots().has(Number(this.store.selectedCasterSlot)) || this.store.controlsLocked();
       const selected = this.store.selectedSkillId === skill.id;
       const tone = selected ? COLORS.selection : (ENERGY_COLORS[(this.store.adjustedCost(caster, skill) || [])[0]] || COLORS.talismanDim);
-      const reason = cooldown > 0 ? `CD ${cooldown}` : ruleReason ? shortText(ruleReason, 23) : fit.ok ? shortText(this.store.effectLine(skill), 27) : shortText(fit.reason, 25);
+      const reasonLimit = w < 170 ? 15 : 18;
+      const reason = cooldown > 0 ? `CD ${cooldown}` : ruleReason ? shortText(ruleReason, reasonLimit) : fit.ok ? shortText(this.store.effectLine(skill), reasonLimit) : shortText(fit.reason, reasonLimit);
 
       this.graphics.fillStyle(0x080c0f, disabled ? 0.48 : 0.82);
       this.graphics.fillPoints([
@@ -535,21 +536,22 @@ export class CombatScene extends CombatQueueReviewScene {
         color: disabled ? COLORS.dim : COLORS.text,
         fontSize: '10px',
       });
-      this.text(x + 40, y + 7, shortText(skill.name, w < 170 ? 20 : 23), {
+      const skillName = this.text(x + 40, y + 7, skill.name, {
         fontSize: h < 52 ? '10px' : '11px',
         fontStyle: '800',
         wordWrap: { width: w - 48 },
       });
-      this.mono(x + 40, y + h - 18, reason, {
+      skillName.setMaxLines(2);
+      this.mono(x + 50, y + h - 18, reason, {
         color: cooldown > 0 ? '#e6b84a' : disabled ? COLORS.dim : COLORS.paperText,
         fontSize: '10px',
       });
       this.store.adjustedCost(caster, skill).slice(0, 4).forEach((color, costIndex) => {
-        const px = x + w - 13 - costIndex * 10;
+        const px = x + 13 + costIndex * 10;
         this.graphics.fillStyle(0x020405, 0.9);
-        this.graphics.fillCircle(px, y + 13, 4.5);
+        this.graphics.fillCircle(px, y + 38, 4.5);
         this.graphics.fillStyle(ENERGY_COLORS[color] || COLORS.selection, color === 'white' ? 0.9 : 0.98);
-        this.graphics.fillCircle(px, y + 13, 3.1);
+        this.graphics.fillCircle(px, y + 38, 3.1);
       });
       if (selected) {
         this.mono(x + w - 35, y + h - 17, 'INFO', { color: COLORS.paperText, fontSize: '10px' });
@@ -573,7 +575,7 @@ export class CombatScene extends CombatQueueReviewScene {
       const fit = this.store.skillFit(skill, caster);
       const reason = cooldown > 0 ? `Cooldown: ${cooldown} turns` : blocked || (!fit.ok ? fit.reason : 'Available now');
       const x = frame.x + 12;
-      const y = Math.max(168, frame.height * 0.34);
+      const y = Math.max(frame.top + 110, frame.height * 0.34);
       const w = frame.width - 24;
       const h = frame.height - y + 18;
 
@@ -598,6 +600,16 @@ export class CombatScene extends CombatQueueReviewScene {
         { x, y: y + 18 },
       ], true);
 
+      this.buttons.push({
+        x: 0,
+        y: 0,
+        w: frame.fullWidth,
+        h: frame.fullHeight,
+        label: 'Skill Detail Overlay',
+        onClick: () => {},
+        disabled: false,
+      });
+
       this.mono(x + 18, y + 18, 'TECHNIQUE DOSSIER / AUTHORITATIVE', { color: COLORS.paperText, fontSize: '10px' });
       this.text(x + 18, y + 40, skill.name, {
         fontFamily: TOKEN_TYPE.display || 'Georgia, serif',
@@ -605,7 +617,7 @@ export class CombatScene extends CombatQueueReviewScene {
         fontStyle: '700',
         wordWrap: { width: w - 88 },
       });
-      this.iconButton(x + w - 52, y + 16, 38, 36, '×', () => this.store.closeSkillDetail(), { stroke: COLORS.enemy, fontSize: '14px', radius: 5 });
+      this.iconButton(x + w - 58, y + 14, 44, 44, '×', () => this.store.closeSkillDetail(), { stroke: COLORS.enemy, fontSize: '14px', radius: 5 });
       this.mono(x + 18, y + 94, `${titleize((skill.target_rule && skill.target_rule.kind) || 'enemy')} target`, { color: COLORS.text, fontSize: '10px' });
       this.costPips(x + 24, y + 126, adjusted, 15);
       const classLine = (skill.classes || []).map((value) => titleize(value)).join(' / ') || 'Technique';
@@ -622,7 +634,7 @@ export class CombatScene extends CombatQueueReviewScene {
         lineSpacing: 5,
         wordWrap: { width: w - 36 },
       });
-      this.button(x + 18, frame.height - 54, w - 36, 40, 'Return to Battlefield', () => this.store.closeSkillDetail(), {
+      this.button(x + 18, frame.bottom - 44, w - 36, 44, 'Return to Battlefield', () => this.store.closeSkillDetail(), {
         fill: COLORS.selection,
         gradientTop: COLORS.talismanDim,
         stroke: COLORS.talismanPaper,
@@ -735,7 +747,7 @@ export class CombatScene extends CombatQueueReviewScene {
         });
 
         const cardW = (frame.width - 38) / 2;
-        const cardH = layout.compact ? 48 : frame.height > 900 ? 58 : 54;
+        const cardH = 64;
         const gridY = y + 74;
         skills.forEach((skill, index) => {
           const col = index % 2;
@@ -748,8 +760,8 @@ export class CombatScene extends CombatQueueReviewScene {
         this.mono(contentX, headerY + 47, 'TAP ONE OF THE THREE ALLY PLATES', { color: COLORS.muted, fontSize: '10px' });
       }
 
-      const buttonY = frame.height - 48;
-      this.button(contentX, buttonY, 82, 36, 'Withdraw', () => this.store.cancelQueue(), {
+      const buttonY = frame.bottom - 44;
+      this.button(contentX, buttonY, 82, 44, 'Withdraw', () => this.store.cancelQueue(), {
         fill: 0x0a0e11,
         stroke: COLORS.line,
         mono: true,
@@ -757,7 +769,7 @@ export class CombatScene extends CombatQueueReviewScene {
         radius: 5,
         disabled: !this.store.actions.length || this.store.controlsLocked(),
       });
-      this.button(contentX + 90, buttonY, 62, 36, 'Pass', () => this.store.endTurn(), {
+      this.button(contentX + 90, buttonY, 62, 44, 'Pass', () => this.store.endTurn(), {
         fill: 0x0a0e11,
         stroke: COLORS.line,
         mono: true,
@@ -765,7 +777,7 @@ export class CombatScene extends CombatQueueReviewScene {
         radius: 5,
         disabled: this.store.controlsLocked(),
       });
-      this.button(frame.x + frame.width - 14 - 128, buttonY, 128, 36, this.store.queueSubmitting ? 'Resolving' : `Review ${this.store.actions.length}/3`, () => this.store.openQueueReview(), {
+      this.button(frame.x + frame.width - 14 - 128, buttonY, 128, 44, this.store.queueSubmitting ? 'Resolving' : `Review ${this.store.actions.length}/3`, () => this.store.openQueueReview(), {
         fill: this.store.actions.length ? COLORS.selection : 0x0a0e11,
         gradientTop: this.store.actions.length ? COLORS.talismanDim : 0x0a0e11,
         stroke: this.store.actions.length ? COLORS.talismanPaper : COLORS.line,
@@ -809,7 +821,7 @@ export class CombatScene extends CombatQueueReviewScene {
         this.store.detailSkillId = null;
       }
 
-      this.button(frame.x + frame.width - 106, 82, 92, 30, 'Transmute', () => this.store.convertEnergy(), {
+      this.button(frame.x + frame.width - 106, frame.top + 72, 92, 44, 'Transmute', () => this.store.convertEnergy(), {
         fill: 0x071417,
         stroke: COLORS.ally,
         color: '#bcebe2',

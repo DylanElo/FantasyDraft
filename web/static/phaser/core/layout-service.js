@@ -1,4 +1,10 @@
-import { TOKEN_FRAMES } from './runtime-config.js?v=21';
+import { TOKEN_FRAMES } from './runtime-config.js?v=22';
+
+function cssPixels(name) {
+  if (typeof document === 'undefined' || typeof getComputedStyle !== 'function') return 0;
+  const value = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name));
+  return Number.isFinite(value) ? Math.max(0, value) : 0;
+}
 
 export class LayoutService {
   constructor(scene) {
@@ -11,6 +17,9 @@ export class LayoutService {
     const height = Math.round((canvas && canvas.clientHeight) || this.scene.scale.height);
     const gameWidth = Math.min(width, TOKEN_FRAMES.large ? TOKEN_FRAMES.large.width : 430);
     const x = Math.round((width - gameWidth) / 2);
+    const safeTop = cssPixels('--jjk-safe-top');
+    const safeBottom = cssPixels('--jjk-safe-bottom');
+    const bottomInset = Math.max(14, safeBottom + 10);
     return {
       fullWidth: width,
       fullHeight: height,
@@ -19,8 +28,10 @@ export class LayoutService {
       width: gameWidth,
       height,
       gutter: 16,
-      top: 22,
-      bottom: height - 22,
+      safeTop,
+      safeBottom,
+      top: Math.max(10, safeTop + 10),
+      bottom: height - bottomInset,
       desktop: width > (TOKEN_FRAMES.desktopCenterAt || 620),
     };
   }
@@ -31,20 +42,20 @@ export class LayoutService {
 
   topHud() {
     const frame = this.frame();
-    return { x: frame.x + 10, y: 12, width: frame.width - 20, height: 58 };
+    return { x: frame.x + 10, y: frame.top + 2, width: frame.width - 20, height: 58 };
   }
 
   enemyLane() {
     const frame = this.frame();
     const compact = frame.height < 730;
     const token = compact ? 58 : 66;
-    return { x: frame.x + frame.gutter, y: compact ? 86 : 92, width: frame.width - 32, height: token + 54 };
+    return { x: frame.x + frame.gutter, y: frame.top + (compact ? 76 : 82), width: frame.width - 32, height: token + 54 };
   }
 
   commandDock() {
     const frame = this.frame();
     const height = frame.height < 730 ? 248 : 268;
-    return { x: frame.x, y: frame.height - height, width: frame.width, height };
+    return { x: frame.x, y: frame.bottom - height, width: frame.width, height };
   }
 
   allyLane() {

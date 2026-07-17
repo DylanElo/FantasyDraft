@@ -42,15 +42,63 @@ SQLite uses WAL mode, a busy timeout, atomic profile transactions, and replay
 expiry indexes. It persists:
 
 - First Creation completion metadata and selected starter trio;
+- First Creation terminal mission snapshots and settlement state;
+- idempotent match/mission analytics events;
 - deterministic replay documents only when `JJK_CAPTURE_REPLAYS=1`.
+
+Runtime schema 6 migrates the deployed schema 4 and intermediate schema 5
+additively. Schema 4 gains the settlement outbox; existing schema-5 settlement
+rows gain the finish timestamp and claim-lease columns without losing their
+payload or retry state. Each terminal snapshot carries a stable match-finish
+timestamp so a delayed older retry may correct `mission_first_completed_at`
+without replacing the starter team chosen by a newer match. Production
+settlement commits the profile update, new mission analytics rows, and the
+outbox's `settled` transition in one SQLite transaction.
+
+Settlement rows move through `pending`, `processing`, `failed_retryable`,
+`settled`, or `dead_letter`. Handler and storage failures remain retryable with
+exponential backoff capped at five minutes; only structurally malformed
+snapshots dead-letter automatically. After repairing a malformed snapshot, an
+operator may explicitly redrive its exact key with
+`SQLiteRuntimeStore.redrive_mission_settlement(match_id, player_id)`. Settled
+audit rows expire after 30 days; dead letters remain until repaired/redriven.
+
+Claims use expiring leases and are **at least once**, not exactly once. A worker
+that exceeds its lease can overlap a replacement worker, so generic handlers
+must be idempotent. The production profile path additionally verifies the live
+claim inside its atomic SQLite transaction, and only token-guarded row updates
+are counted as successful settlement. Startup, periodic maintenance, and a
+player's relevant profile read drain pending credit; profile reads force one
+targeted retry even if no later socket event arrives.
+
+If the initial SQLite enqueue fails, the single authoritative worker appends an
+fsync'd JSONL sidecar beside the database. The sidecar is created with mode
+`0600` where supported, uses an in-process lock, and is deliberately rejected
+when `JJK_WEB_WORKERS` is not `1`; it is not a multi-process queue. Restore does
+not rewrite an unchanged sidecar during a continuing outage. Partial restores
+fsync the replacement file before atomic replace and sync the directory where
+the platform supports it.
+
+If both the database and sidecar are briefly unavailable at match finish, the
+live finished room is marked for prompt snapshot reconstruction. A subsequent
+finished-state update, relevant profile read, or bounded maintenance pass
+retries the missing per-player rows; cleanup refuses to remove the room until
+all human snapshots are durable. Durable `(match_id, player_id)` keys and the
+atomic profile merge make repeated reconstruction and broadcasts idempotent.
 
 Replay capture is disabled by default. Enabling it requires an approved player
 notice/consent and retention policy because replay documents contain player
 identifiers, names, teams, and command history. `JJK_REPLAY_RETENTION_DAYS`
 controls automatic expiry.
 
-Back up the database volume with a SQLite-aware snapshot or the online backup
-API. Test restoration into a separate environment before every public release.
+Back up the database with a SQLite-aware snapshot or the online backup API.
+That API does **not** include the settlement sidecar: quiesce/stop the single
+worker and separately copy any
+`*.mission-settlement-fallback.jsonl` file from the durable volume, preserving
+its restrictive permissions. Restore the database and sidecar together into a
+separate environment before every public release. The sidecar contains player
+identifiers and mission progress, so apply the same access, retention, and
+incident controls as the profile database.
 
 ## Health And Operations
 
@@ -62,6 +110,13 @@ API. Test restoration into a separate environment before every public release.
 Operational counters include starts, commands, replayed commands, command
 errors, rate limits, phase timeouts, archives, and lifecycle pruning. They are
 process-lifetime counters, reset on restart.
+
+Settlement operations expose aggregate status counts plus process-lifetime
+claimed/dead-letter totals; raw snapshots, claim tokens, and errors are never
+returned by `/ops/runtime`. Alert on any `dead_letter` row and on sustained
+`failed_retryable` growth. A transient row that later settles disappears from
+the retryable count, so operational incident notes should preserve the relevant
+process counters/logs across restarts.
 
 `/ops/runtime` also returns an `analytics` object backed by a durable SQLite
 table (`analytics_events`, same database as replays/profiles) that survives
@@ -117,6 +172,13 @@ typed `result_type`/`cpu_difficulty`/`outcome`/`mission_id` columns mirrored
 off each event's payload at write time) instead of loading and JSON-decoding
 every row in Python, so it stays cheap as the table grows.
 
+Mission analytics represent the match that first **durably introduced** a
+completion into the profile. If a chronologically older match settles later,
+the profile's first-completion timestamp is corrected to that older finish,
+but the existing immutable analytics event is not re-attributed. This keeps
+the aggregate mission-completion count exactly one while making the distinction
+between chronological completion time and durable event attribution explicit.
+
 Finished rooms, inactive rooms, waiting lobbies, expired replay rows, and stale
 rate-limit keys are pruned on bounded socket activity. The defaults are 15
 minutes for finished rooms/lobbies and two hours for inactive active rooms.
@@ -142,7 +204,10 @@ debug reset/state routes; they remain 404 unless `JJK_DEBUG=1`.
 7. Watch command errors, phase timeouts, rate limits, and room counts.
 
 Rollback uses the prior image against a restored or schema-compatible database
-snapshot. Schema version 1 is additive and compatible with an empty database.
+snapshot. Runtime schema 6 is additive from deployed schema 4 and intermediate
+schema 5, but an older image must still be tested against a restored copy
+before rollback; also restore any pending settlement sidecar alongside the
+database.
 
 ## External Launch Gates
 

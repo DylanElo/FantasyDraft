@@ -843,7 +843,11 @@ def test_hard_cpu_effective_outcome_handles_shield_aggregate_dr_and_multi_hit():
             id="p1:test", player_id="p1", caster_slot=0, skill_id=skill.id,
             target_player_id="p2", target_slot=0,
         )
-        return _cpu_effective_outcome(state, "p1", action, skill)
+        result = _cpu_effective_outcome(state, "p1", action, skill)
+        return {
+            key: result[key]
+            for key in ("hp_damage", "defense_damage", "kills", "statuses_applied", "control_statuses")
+        }
 
     shield = StatusEffect(
         "shield", "Shield", "p2", 0, "p2", 0, 2,
@@ -900,6 +904,221 @@ def test_hard_cpu_effective_outcome_handles_shield_aggregate_dr_and_multi_hit():
         "hp_damage": 0, "defense_damage": 0, "kills": 0,
         "statuses_applied": 1, "control_statuses": 1,
     }
+    for payload in ({"damage_output_delta": -10}, {"turn_end_damage": 10}):
+        assert outcome([
+            EffectSpec(type="apply_status", status="enemy_debuff", duration=2, payload=payload),
+        ]) == {
+            "hp_damage": 0, "defense_damage": 0, "kills": 0,
+            "statuses_applied": 1, "control_statuses": 1,
+        }
+
+
+def test_hard_cpu_effective_outcome_uses_one_viewer_safe_baseline():
+    from jjk_arena.battle_v2.manager import _cpu_effective_outcome
+    from jjk_arena.battle_v2.models import (
+        BattleState,
+        CharacterState,
+        EffectSpec,
+        PendingAction,
+        PlayerState,
+        SkillSpec,
+        TargetRule,
+    )
+
+    def outcome(*, hidden_shield: bool):
+        caster = CharacterState("attacker", "Attacker")
+        target = CharacterState("target", "Target")
+        if hidden_shield:
+            target.statuses.append(StatusEffect(
+                "secret_shield", "Secret Shield", "p2", 0, "p2", 0, 2,
+                payload={"destructible_defense": 50}, invisible=True,
+            ))
+        state = BattleState(
+            players={
+                "p1": PlayerState(id="p1", name="P1", team=[caster]),
+                "p2": PlayerState(id="p2", name="P2", team=[target]),
+            },
+            turn_player_id="p1",
+        )
+        skill = SkillSpec(
+            id="strike", name="Strike", text="", cost=[], cooldown=0,
+            target_rule=TargetRule(kind="enemy"), classes=[],
+            effects=[EffectSpec(type="damage", amount=25)],
+        )
+        action = PendingAction("strike", "p1", 0, skill.id, "p2", 0)
+        return _cpu_effective_outcome(state, "p1", action, skill)
+
+    public = outcome(hidden_shield=False)
+    hidden = outcome(hidden_shield=True)
+
+    assert (hidden["hp_damage"], hidden["defense_damage"]) == (25, 0)
+    assert hidden == public
+
+
+def test_hard_cpu_prefix_preserves_turn_and_aggregate_damage_reduction_budget():
+    from jjk_arena.battle_v2.manager import _cpu_effective_outcome, _cpu_simulate_queue
+    from jjk_arena.battle_v2.models import (
+        BattleState,
+        CharacterState,
+        EffectSpec,
+        PendingAction,
+        PlayerState,
+        SkillSpec,
+        TargetRule,
+    )
+
+    target = CharacterState("target", "Target")
+    target.statuses.append(StatusEffect(
+        "guard", "Guard", "p2", 0, "p2", 0, 2,
+        payload={"damage_reduction": 10},
+    ))
+    state = BattleState(
+        players={
+            "p1": PlayerState(
+                id="p1", name="P1",
+                team=[CharacterState("first", "First"), CharacterState("second", "Second")],
+            ),
+            "p2": PlayerState(id="p2", name="P2", team=[target]),
+        },
+        turn_player_id="p1",
+    )
+    strike = SkillSpec(
+        id="strike", name="Strike", text="", cost=[], cooldown=0,
+        target_rule=TargetRule(kind="enemy"), classes=[],
+        effects=[EffectSpec(type="damage", amount=15)],
+    )
+    first = PendingAction("first", "p1", 0, strike.id, "p2", 0)
+    second = PendingAction("second", "p1", 1, strike.id, "p2", 0)
+
+    prefix = _cpu_simulate_queue(state, "p1", [first], {strike.id: strike})
+
+    assert prefix is not None
+    assert prefix.turn_number == state.turn_number == 1
+    assert prefix.players["p2"].team[0].hp == 95
+    assert prefix.players["p2"].team[0].turn_damage_reduction_used == 10
+    assert prefix.players["p2"].team[0].statuses[0].duration == 2
+    assert _cpu_effective_outcome(prefix, "p1", second, strike)["hp_damage"] == 15
+
+
+def test_hard_cpu_preserves_defensive_status_value_and_counts_healing_once():
+    from jjk_arena.battle_v2.manager import _cpu_action_score
+    from jjk_arena.battle_v2.models import (
+        BattleState,
+        CharacterState,
+        EffectSpec,
+        PendingAction,
+        PlayerState,
+        SkillSpec,
+        TargetRule,
+    )
+
+    state = BattleState(
+        players={
+            "p1": PlayerState(
+                id="p1", name="P1",
+                team=[CharacterState("support", "Support"), CharacterState("ally", "Ally", hp=90)],
+            ),
+            "p2": PlayerState(id="p2", name="P2", team=[CharacterState("enemy", "Enemy")]),
+        },
+        turn_player_id="p1",
+    )
+    guard = SkillSpec(
+        id="guard", name="Guard", text="", cost=[], cooldown=0,
+        target_rule=TargetRule(kind="self"), classes=[],
+        effects=[EffectSpec(
+            type="apply_status", status="guarded", duration=2, target="self",
+            payload={"counter": True},
+        )],
+    )
+    guard_action = PendingAction("guard", "p1", 0, guard.id, "p1", 0)
+    heal = SkillSpec(
+        id="heal", name="Heal", text="", cost=[], cooldown=0,
+        target_rule=TargetRule(kind="ally"), classes=[],
+        effects=[EffectSpec(type="heal", amount=10)],
+    )
+    heal_action = PendingAction("heal", "p1", 0, heal.id, "p1", 1)
+
+    assert _cpu_action_score(state, "p1", guard_action, guard, difficulty="hard") > _cpu_action_score(
+        state, "p1", guard_action, guard, difficulty="normal"
+    )
+    assert _cpu_action_score(state, "p1", heal_action, heal, difficulty="normal") == 30
+    assert _cpu_action_score(state, "p1", heal_action, heal, difficulty="hard") == 32
+
+
+def test_hard_cpu_partial_queue_avoids_targets_yuji_already_killed():
+    manager = BattleV2Manager(rng_seed=1)
+    manager.start_first_creation_match(
+        "partial-queue",
+        [
+            {"id": "p1", "name": "Enemy", "team": ["maki_zenin", "panda", "mai_zenin"]},
+            {"id": "p2", "name": "CPU", "team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]},
+        ],
+        difficulty="hard",
+    )
+    state = manager.get_state("partial-queue")
+    state.turn_player_id = "p2"
+    state.players["p2"].energy = {energy: 0 for energy in EnergyType}
+    state.players["p2"].energy[EnergyType.GREEN] = 1
+    state.players["p2"].energy[EnergyType.BLUE] = 2
+    state.players["p1"].team[0].hp = 10
+
+    manager.take_cpu_turn("partial-queue", "p2")
+
+    damage_events = [event for event in state.event_log if event.type == "damage"]
+    assert [(event.payload["source_slot"], event.payload["target_slot"]) for event in damage_events] == [
+        (0, 0), (1, 1), (2, 1),
+    ]
+    assert state.players["p1"].team[0].alive is False
+
+
+def test_five_hp_hard_toge_chooses_survival_over_nonlethal_blast_away():
+    manager = BattleV2Manager(rng_seed=1)
+    manager.start_first_creation_match(
+        "toge-survival",
+        [
+            {"id": "p1", "name": "Enemy", "team": ["maki_zenin", "panda", "mai_zenin"]},
+            {"id": "p2", "name": "CPU", "team": ["toge_inumaki", "yuji_itadori", "megumi_fushiguro"]},
+        ],
+        difficulty="hard",
+    )
+    state = manager.get_state("toge-survival")
+    state.turn_player_id = "p2"
+    state.players["p2"].energy = {energy: 0 for energy in EnergyType}
+    state.players["p2"].energy[EnergyType.BLUE] = 1
+    state.players["p2"].energy[EnergyType.RED] = 1
+    state.players["p2"].team[0].hp = 5
+    for slot in (1, 2):
+        state.players["p2"].team[slot].hp = 0
+        state.players["p2"].team[slot].alive = False
+
+    manager.take_cpu_turn("toge-survival", "p2")
+
+    resolved = [event.message for event in state.event_log if event.type == "skill_resolved"]
+    assert resolved == ["Toge Inumaki used Throat Medicine"]
+    assert state.players["p2"].team[0].hp == 5
+    assert state.players["p2"].team[0].alive is True
+
+
+def test_easy_and_normal_never_value_self_damage_as_enemy_lethal_damage():
+    from jjk_arena.battle_v2.manager import _cpu_action_score
+    from jjk_arena.battle_v2.models import BattleState, CharacterState, EffectSpec, PendingAction, PlayerState, SkillSpec, TargetRule
+
+    state = BattleState(
+        players={
+            "p1": PlayerState(id="p1", name="P1", team=[CharacterState("caster", "Caster")]),
+            "p2": PlayerState(id="p2", name="P2", team=[CharacterState("target", "Target", hp=5)]),
+        },
+        turn_player_id="p1",
+    )
+    skill = SkillSpec(
+        id="self_cost", name="Self Cost", text="", cost=[], cooldown=0,
+        target_rule=TargetRule(kind="enemy"), classes=[],
+        effects=[EffectSpec(type="damage", amount=10, target="self")],
+    )
+    action = PendingAction("self-cost", "p1", 0, skill.id, "p2", 0)
+
+    assert _cpu_action_score(state, "p1", action, skill, difficulty="easy") == 0
+    assert _cpu_action_score(state, "p1", action, skill, difficulty="normal") == 0
 
 
 def test_cpu_action_score_hard_reacts_to_heal_urgency_earlier_than_normal():

@@ -12,7 +12,7 @@ from .replay import RULES_VERSION, authoritative_state_hash
 from .timers import BattleTimerPolicy
 
 
-SIMULATION_SCHEMA_VERSION = 1
+SIMULATION_SCHEMA_VERSION = 2
 
 
 def run_headless_match(
@@ -42,7 +42,7 @@ def run_headless_match(
     actions = Counter()
     event_cursor = 0
     turns_executed = 0
-    while manager.get_state(room_id).winner_id is None and turns_executed < max_turns:
+    while manager.get_state(room_id).result_type is None and turns_executed < max_turns:
         state = manager.get_state(room_id)
         acting_player = state.turn_player_id
         manager.take_cpu_turn(room_id, acting_player)
@@ -53,6 +53,8 @@ def run_headless_match(
         event_cursor = len(state.event_log)
 
     state = manager.get_state(room_id)
+    if state.result_type is None:
+        manager._finish_match(state, "TURN_CAP", None, "simulation_turn_cap")
     damage_received = Counter()
     healing_received = Counter()
     for event in state.event_log:
@@ -79,9 +81,10 @@ def run_headless_match(
         "rules_version": RULES_VERSION,
         "seed": seed,
         "turns_executed": turns_executed,
-        "outcome": state.winner_id or "turn_cap",
+        "outcome": state.winner_id if state.result_type == "WIN" else state.result_type,
+        "result_type": state.result_type,
         "winner_side": state.winner_id,
-        "turn_cap_reached": state.winner_id is None,
+        "turn_cap_reached": state.result_type == "TURN_CAP",
         "teams": {"team_a": team_result("team_a"), "team_b": team_result("team_b")},
         "final_state_hash": authoritative_state_hash(state),
     }

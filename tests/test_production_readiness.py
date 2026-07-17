@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 from web import app as web_app
+from jjk_arena.battle_v2.models import BattlePhase
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -46,6 +47,8 @@ def test_ops_runtime_is_hidden_without_configured_bearer(monkeypatch):
     assert set(response.get_json()) == {
         "active_rooms", "waiting_lobbies", "rate_limit_keys", "counters", "analytics",
         "analytics_outbox_size", "analytics_outbox_dropped_total",
+        "mission_settlements", "mission_settlement_dead_lettered_total",
+        "mission_settlement_claimed_total",
     }
     assert set(response.get_json()["analytics"]) == {"match_finished", "missions_completed"}
     # Aggregate counts only: no raw queued-event payloads are ever exposed.
@@ -95,10 +98,233 @@ def test_stale_runtime_prunes_finished_rooms_lobbies_and_rate_limits(monkeypatch
         "replays": 2,
         "analytics_flushed": 3,
         "mission_settlements_flushed": 0,
+        "mission_settlements_pruned": 0,
         "analytics_pruned": 4,
     }
     assert room_id not in web_app.battle_v2_manager.rooms
     assert lobby_id not in web_app.v2_pvp_lobbies
+
+
+def test_terminal_room_cleanup_reconstructs_missing_player_settlement_rows(monkeypatch):
+    room_id = "cleanup-settlement-reconstruction"
+    web_app.battle_v2_manager.start_first_creation_match(room_id, [
+        {"id": "cleanup-p1", "name": "P1", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
+        {"id": "cleanup-p2", "name": "P2", "team": ["maki_zenin", "toge_inumaki", "panda"]},
+    ])
+    state = web_app.battle_v2_manager.get_state(room_id)
+    state.phase = BattlePhase.FINISHED
+    state.result_type = "WIN"
+    state.winner_id = "cleanup-p1"
+    captured = []
+    monkeypatch.setattr(
+        web_app.runtime_store,
+        "enqueue_mission_settlement_durable",
+        lambda match_id, player_id, progress, **_kwargs: captured.append(
+            (match_id, player_id, progress)
+        ) or "fallback",
+    )
+
+    assert web_app.remove_battle_v2_room(room_id) is True
+    assert {(match_id, player_id) for match_id, player_id, _progress in captured} == {
+        (room_id, "cleanup-p1"), (room_id, "cleanup-p2"),
+    }
+    assert all(isinstance(progress, dict) for _match_id, _player_id, progress in captured)
+    assert room_id not in web_app.battle_v2_manager.rooms
+
+
+def test_terminal_room_cleanup_refuses_removal_when_database_and_sidecar_both_fail(monkeypatch):
+    room_id = "cleanup-settlement-both-paths-fail"
+    web_app.battle_v2_manager.start_first_creation_match(room_id, [
+        {"id": "cleanup-fail-p1", "name": "P1", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
+        {"id": "cleanup-fail-p2", "name": "P2", "team": ["maki_zenin", "toge_inumaki", "panda"]},
+    ])
+    state = web_app.battle_v2_manager.get_state(room_id)
+    state.phase = BattlePhase.FINISHED
+    state.result_type = "WIN"
+    state.winner_id = "cleanup-fail-p1"
+    monkeypatch.setattr(
+        web_app.runtime_store,
+        "enqueue_mission_settlement_durable",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("database and sidecar unavailable")),
+    )
+
+    assert web_app.remove_battle_v2_room(room_id) is False
+    assert room_id in web_app.battle_v2_manager.rooms
+
+
+def test_finished_update_recovers_initial_dual_snapshot_failure_without_duplicate_credit(monkeypatch):
+    """A brief outage of both durable paths must recover before room cleanup."""
+
+    monkeypatch.delenv("JJK_FIRST_CREATION_PROFILE_STORE", raising=False)
+    room_id = "finished-update-total-snapshot-recovery"
+    player_one = "finished-update-total-p1"
+    player_two = "finished-update-total-p2"
+    teams = {
+        player_one: ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"],
+        player_two: ["maki_zenin", "toge_inumaki", "panda"],
+    }
+    web_app.battle_v2_manager.start_first_creation_match(room_id, [
+        {"id": player_one, "name": "P1", "team": teams[player_one]},
+        {"id": player_two, "name": "P2", "team": teams[player_two]},
+    ])
+    state = web_app.battle_v2_manager.get_state(room_id)
+    state.phase = BattlePhase.FINISHED
+    state.result_type = "WIN"
+    state.winner_id = player_one
+    progress_by_player = {
+        player_one: {
+            "completed_ids": ["welcome"],
+            "unlocked": ["mission_board"],
+            "team": teams[player_one],
+        },
+        player_two: {
+            "completed_ids": [],
+            "unlocked": [],
+            "team": teams[player_two],
+        },
+    }
+    monkeypatch.setattr(
+        web_app.battle_v2_manager,
+        "mission_progress_for_player",
+        lambda _room_id, player_id: progress_by_player[player_id],
+    )
+    durable_enqueue = web_app.runtime_store.enqueue_mission_settlement_durable
+    monkeypatch.setattr(
+        web_app.runtime_store,
+        "enqueue_mission_settlement_durable",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            OSError("database and sidecar temporarily unavailable")
+        ),
+    )
+    before = web_app.runtime_store.analytics_summary()["missions_completed"].get("welcome", 0)
+
+    web_app.settle_first_creation_missions(room_id)
+
+    assert room_id in web_app.mission_snapshot_retry_rooms
+    assert room_id in web_app.battle_v2_manager.rooms
+    assert not [
+        row for row in web_app.runtime_store.mission_settlement_rows()
+        if row["match_id"] == room_id
+    ]
+
+    monkeypatch.setattr(
+        web_app.runtime_store,
+        "enqueue_mission_settlement_durable",
+        durable_enqueue,
+    )
+    with web_app.app.test_request_context():
+        web_app.emit_battle_v2_update(room_id, player_one)
+        web_app.emit_battle_v2_update(room_id, player_one)
+
+    rows = [
+        row for row in web_app.runtime_store.mission_settlement_rows()
+        if row["match_id"] == room_id
+    ]
+    after = web_app.runtime_store.analytics_summary()["missions_completed"].get("welcome", 0)
+    assert {(row["player_id"], row["status"]) for row in rows} == {
+        (player_one, "settled"),
+        (player_two, "settled"),
+    }
+    assert after - before == 1
+    assert web_app.runtime_store.load_profile(player_one)["completed_missions"] == ["welcome"]
+    assert room_id not in web_app.mission_snapshot_retry_rooms
+    assert web_app.remove_battle_v2_room(room_id) is True
+
+
+def test_finished_update_reconstructs_only_missing_player_after_partial_snapshot_failure(monkeypatch):
+    """A mixed enqueue result must preserve success and retry only the gap."""
+
+    monkeypatch.delenv("JJK_FIRST_CREATION_PROFILE_STORE", raising=False)
+    room_id = "finished-update-partial-snapshot-recovery"
+    player_one = "finished-update-partial-p1"
+    player_two = "finished-update-partial-p2"
+    teams = {
+        player_one: ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"],
+        player_two: ["maki_zenin", "toge_inumaki", "panda"],
+    }
+    web_app.battle_v2_manager.start_first_creation_match(room_id, [
+        {"id": player_one, "name": "P1", "team": teams[player_one]},
+        {"id": player_two, "name": "P2", "team": teams[player_two]},
+    ])
+    state = web_app.battle_v2_manager.get_state(room_id)
+    state.phase = BattlePhase.FINISHED
+    state.result_type = "WIN"
+    state.winner_id = player_one
+    monkeypatch.setattr(
+        web_app.battle_v2_manager,
+        "mission_progress_for_player",
+        lambda _room_id, player_id: {
+            "completed_ids": [],
+            "unlocked": [],
+            "team": teams[player_id],
+        },
+    )
+    durable_enqueue = web_app.runtime_store.enqueue_mission_settlement_durable
+    calls = []
+    fail_second_player_once = {"value": True}
+
+    def partially_failing_enqueue(match_id, player_id, progress, **kwargs):
+        calls.append(player_id)
+        if player_id == player_two and fail_second_player_once["value"]:
+            fail_second_player_once["value"] = False
+            raise OSError("database and sidecar temporarily unavailable")
+        return durable_enqueue(match_id, player_id, progress, **kwargs)
+
+    monkeypatch.setattr(
+        web_app.runtime_store,
+        "enqueue_mission_settlement_durable",
+        partially_failing_enqueue,
+    )
+
+    web_app.settle_first_creation_missions(room_id)
+
+    assert web_app.missions_snapshotted_players[room_id] == {player_one}
+    assert room_id in web_app.mission_snapshot_retry_rooms
+    with web_app.app.test_request_context():
+        web_app.emit_battle_v2_update(room_id, player_one)
+        web_app.emit_battle_v2_update(room_id, player_one)
+
+    rows = [
+        row for row in web_app.runtime_store.mission_settlement_rows()
+        if row["match_id"] == room_id
+    ]
+    assert calls.count(player_one) == 1
+    assert calls.count(player_two) == 2
+    assert {(row["player_id"], row["status"]) for row in rows} == {
+        (player_one, "settled"),
+        (player_two, "settled"),
+    }
+    assert room_id not in web_app.mission_snapshot_retry_rooms
+    assert web_app.remove_battle_v2_room(room_id) is True
+
+
+def test_profile_read_force_drains_retryable_credit_without_socket_traffic(monkeypatch):
+    monkeypatch.delenv("JJK_FIRST_CREATION_PROFILE_STORE", raising=False)
+    match_id = "profile-read-recovery-match"
+    player_id = "profile-read-recovery-player"
+    progress = {
+        "completed_ids": ["welcome"],
+        "unlocked": ["mission_board"],
+        "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"],
+    }
+    web_app.runtime_store.enqueue_mission_settlement(match_id, player_id, progress)
+    web_app.runtime_store.process_mission_settlements(
+        lambda *_args: (_ for _ in ()).throw(RuntimeError("temporary write failure")),
+        player_id=player_id,
+    )
+    assert next(
+        row for row in web_app.runtime_store.mission_settlement_rows()
+        if row["match_id"] == match_id
+    )["status"] == "failed_retryable"
+
+    profile = web_app.load_first_creation_profile_with_recovery(player_id)
+
+    assert profile["completed_missions"] == ["welcome"]
+    assert profile["unlocked"] == ["mission_board"]
+    assert next(
+        row for row in web_app.runtime_store.mission_settlement_rows()
+        if row["match_id"] == match_id
+    )["status"] == "settled"
 
 
 def test_readiness_rejects_unsafe_authoritative_worker_count(monkeypatch):

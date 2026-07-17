@@ -1,7 +1,7 @@
-import { COLORS, LOCAL_PORTRAIT_FILES, TOKEN_MOTION, TOKEN_TYPE } from '../core/runtime-config.js?v=21';
-import { LayoutService } from '../core/layout-service.js?v=21';
-import { firstCreationRoster, imageKeyFor, portraitFileFor } from '../core/roster.js?v=21';
-import { BaseScene } from './base-scene.js?v=21';
+import { COLORS, LOCAL_PORTRAIT_FILES, TOKEN_MOTION, TOKEN_TYPE } from '../core/runtime-config.js?v=22';
+import { LayoutService } from '../core/layout-service.js?v=22';
+import { firstCreationRoster, imageKeyFor, portraitFileFor } from '../core/roster.js?v=22';
+import { BaseScene } from './base-scene.js?v=22';
 
 export class BootScene extends BaseScene {
     constructor() {

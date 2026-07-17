@@ -6,7 +6,7 @@ import random
 import secrets
 from collections import Counter
 from collections import OrderedDict
-from itertools import product
+from itertools import permutations, product
 from copy import deepcopy
 from dataclasses import dataclass
 import json
@@ -17,7 +17,7 @@ from .energy import CORE_ENERGY, gain_turn_energy, normalize_energy, split_cost
 from .conditions import has_status
 from .models import BattleEvent, BattlePhase, BattleState, CharacterState, DamageType, PendingAction, PlayerState, SkillClass, SkillSpec, use_battle_v2
 from .first_creation_progression import evaluate_first_creation_progress, initial_first_creation_progress
-from .resolver import ResolverError, check_winner, finish_turn, get_skill_for_action, resolve_queue, validate_action_identity, validate_queue, validate_queue_identity
+from .resolver import ResolverError, check_winner, finish_turn, get_skill_for_action, resolve_queue, resolve_queue_prefix, validate_action_identity, validate_queue, validate_queue_identity
 from .serialization import serialize_battle_state
 from .targeting import invulnerability_blocks_skill
 from .starter_roster import (
@@ -280,19 +280,8 @@ def _target_slots_from_payload(target_payload: dict[str, Any]) -> list[int]:
     return []
 
 
-def _cpu_effective_outcome(
-    state: BattleState,
-    player_id: str,
-    action: PendingAction,
-    skill: SkillSpec,
-) -> dict[str, int]:
-    """Dry-run one action through the authoritative resolver for Hard CPU.
-
-    The clone contains only information the acting viewer may know. In
-    particular, an opponent's unrevealed invisible statuses are removed before
-    resolution, so a counter, reflect, condition, or defense hidden from a
-    human player cannot influence the CPU's choice.
-    """
+def _cpu_viewer_safe_clone(state: BattleState, player_id: str) -> BattleState:
+    """Return a clone containing only information visible to the CPU player."""
 
     trial = deepcopy(state)
     for owner in trial.players.values():
@@ -306,6 +295,71 @@ def _cpu_effective_outcome(
                     and status.source_player_id != player_id
                 )
             ]
+    return trial
+
+
+def _cpu_resolve_trial(
+    trial: BattleState,
+    player_id: str,
+    actions: list[PendingAction],
+    skills: dict[str, SkillSpec],
+    *,
+    finish_player_turn: bool,
+) -> BattleState | None:
+    """Resolve actions on an already viewer-safe trial state."""
+
+    trial.pending_actions[player_id] = deepcopy(actions)
+    trial.queue_order[player_id] = [action.id for action in actions]
+    trial.players[player_id].queue_confirmed = True
+    try:
+        if finish_player_turn:
+            resolve_queue(trial, player_id, skills)
+        else:
+            resolve_queue_prefix(trial, player_id, skills)
+    except (ResolverError, KeyError, ValueError):
+        return None
+    return trial
+
+
+def _cpu_simulate_queue(
+    state: BattleState,
+    player_id: str,
+    actions: list[PendingAction],
+    skills: dict[str, SkillSpec],
+    *,
+    finish_player_turn: bool = False,
+) -> BattleState | None:
+    """Resolve a viewer-safe queue clone and return its predicted state.
+
+    Prefix planning deliberately leaves the current turn open. Whole-queue
+    scoring opts into authoritative turn cleanup with ``finish_player_turn``.
+    """
+
+    baseline = _cpu_viewer_safe_clone(state, player_id)
+    return _cpu_resolve_trial(
+        baseline,
+        player_id,
+        actions,
+        skills,
+        finish_player_turn=finish_player_turn,
+    )
+
+
+def _cpu_effective_outcome(
+    state: BattleState,
+    player_id: str,
+    action: PendingAction | list[PendingAction],
+    skill: SkillSpec | dict[str, SkillSpec],
+) -> dict[str, int]:
+    """Dry-run a partial queue through the authoritative resolver for Hard CPU.
+
+    The clone contains only information the acting viewer may know. This makes
+    prior queued damage, deaths, marks, stuns, healing and defenses part of the
+    next decision without exposing an opponent's unrevealed invisible state.
+    """
+
+    actions = action if isinstance(action, list) else [action]
+    skills = skill if isinstance(skill, dict) else {skill.id: skill}
 
     def defense(character: CharacterState) -> int:
         return sum(
@@ -314,48 +368,84 @@ def _cpu_effective_outcome(
             if status.duration != 0
         )
 
+    baseline = _cpu_viewer_safe_clone(state, player_id)
     before = {
         (owner.id, slot): (character.hp, defense(character), character.alive)
-        for owner in trial.players.values()
+        for owner in baseline.players.values()
         for slot, character in enumerate(owner.team)
     }
     before_statuses = Counter(
         (owner.id, slot, status.id)
-        for owner in trial.players.values()
+        for owner in baseline.players.values()
         for slot, character in enumerate(owner.team)
         for status in character.statuses
         if status.duration != 0
     )
-    trial.pending_actions[player_id] = [deepcopy(action)]
-    trial.queue_order[player_id] = [action.id]
-    trial.players[player_id].queue_confirmed = True
-    try:
-        resolve_queue(trial, player_id, {skill.id: skill})
-    except (ResolverError, KeyError, ValueError):
-        return {"hp_damage": 0, "defense_damage": 0, "kills": 0, "statuses_applied": 0, "control_statuses": 0}
+    trial = _cpu_resolve_trial(
+        deepcopy(baseline),
+        player_id,
+        actions,
+        skills,
+        finish_player_turn=True,
+    )
+    empty = {
+        "hp_damage": 0, "defense_damage": 0, "kills": 0,
+        "statuses_applied": 0, "control_statuses": 0,
+        "friendly_hp_damage": 0, "caster_hp_damage": 0,
+        "friendly_deaths": 0, "caster_deaths": 0,
+        "friendly_healing": 0, "enemy_healing": 0,
+        "friendly_defense_gain": 0, "semantic_status_utility": 0,
+        "energy_spent": 0,
+    }
+    if trial is None:
+        return empty
 
     hp_damage = 0
     defense_damage = 0
     kills = 0
     statuses_applied = 0
     control_statuses = 0
+    friendly_hp_damage = 0
+    caster_hp_damage = 0
+    friendly_deaths = 0
+    caster_deaths = 0
+    friendly_healing = 0
+    enemy_healing = 0
+    friendly_defense_gain = 0
+    semantic_status_utility = 0
+    caster_slots = {queued.caster_slot for queued in actions}
     for owner in trial.players.values():
         for slot, character in enumerate(owner.team):
             old_hp, old_defense, was_alive = before[(owner.id, slot)]
             if owner.id != player_id:
                 hp_damage += max(0, old_hp - character.hp)
+                enemy_healing += max(0, character.hp - old_hp)
                 defense_damage += max(0, old_defense - defense(character))
                 if was_alive and not character.alive:
                     kills += 1
-            current_statuses = Counter(
-                status.id for status in character.statuses if status.duration != 0
-            )
+            else:
+                lost = max(0, old_hp - character.hp)
+                friendly_hp_damage += lost
+                friendly_healing += max(0, character.hp - old_hp)
+                friendly_defense_gain += max(0, defense(character) - old_defense)
+                if slot in caster_slots:
+                    caster_hp_damage += lost
+                if was_alive and not character.alive:
+                    friendly_deaths += 1
+                    if slot in caster_slots:
+                        caster_deaths += 1
+            remaining_preexisting = Counter({
+                status_id: before_statuses[(owner.id, slot, status_id)]
+                for status_id in {
+                    status.id for status in character.statuses if status.duration != 0
+                }
+            })
             for status in character.statuses:
                 if status.duration == 0 or status.id == "damaged_last_turn":
                     continue
-                if current_statuses[status.id] <= before_statuses[(owner.id, slot, status.id)]:
+                if remaining_preexisting[status.id] > 0:
+                    remaining_preexisting[status.id] -= 1
                     continue
-                current_statuses[status.id] -= 1
                 statuses_applied += 1
                 if owner.id != player_id and (
                     status.payload.get("stun_classes")
@@ -363,12 +453,32 @@ def _cpu_effective_outcome(
                     or int(status.payload.get("turn_end_damage", 0)) > 0
                 ):
                     control_statuses += 1
+                if owner.id == player_id:
+                    if status.payload.get("counter") or status.payload.get("reflect"):
+                        semantic_status_utility += 70
+                    if status.payload.get("damage_bonus"):
+                        semantic_status_utility += 45
+                    if status.payload.get("damage_reduction"):
+                        semantic_status_utility += 25
     return {
         "hp_damage": hp_damage,
         "defense_damage": defense_damage,
         "kills": kills,
         "statuses_applied": statuses_applied,
         "control_statuses": control_statuses,
+        "friendly_hp_damage": friendly_hp_damage,
+        "caster_hp_damage": caster_hp_damage,
+        "friendly_deaths": friendly_deaths,
+        "caster_deaths": caster_deaths,
+        "friendly_healing": friendly_healing,
+        "enemy_healing": enemy_healing,
+        "friendly_defense_gain": friendly_defense_gain,
+        "semantic_status_utility": semantic_status_utility,
+        "energy_spent": sum(
+            len(get_skill_for_action(skills, state.players[player_id].team[queued.caster_slot], queued).cost)
+            for queued in actions
+            if 0 <= queued.caster_slot < len(state.players[player_id].team)
+        ),
     }
 
 
@@ -380,6 +490,9 @@ def _cpu_action_score(
     *,
     difficulty: str = "normal",
     remaining_teammates: int = 0,
+    partial_actions: list[PendingAction] | None = None,
+    skills: dict[str, SkillSpec] | None = None,
+    planned_actions: list[PendingAction] | None = None,
 ) -> int:
     """Heuristic value of a candidate CPU action.
 
@@ -424,11 +537,14 @@ def _cpu_action_score(
         }
     )
     harmful_to_enemy = bool(target_player and target_player.id != player_id)
-    effective_outcome = (
-        _cpu_effective_outcome(state, player_id, action, skill)
-        if is_hard and harmful_to_enemy
-        else None
-    )
+    effective_outcome = None
+    if is_hard:
+        effective_outcome = _cpu_effective_outcome(
+            state,
+            player_id,
+            planned_actions or [*(partial_actions or []), action],
+            skills or {skill.id: skill},
+        )
     if is_hard and harmful_to_enemy:
         skill_is_uncounterable = SkillClass.UNCOUNTERABLE in skill.classes
         skill_is_unreflectable = SkillClass.UNREFLECTABLE in skill.classes
@@ -471,9 +587,11 @@ def _cpu_action_score(
                     amount += 10
                 elif effect.damage_type in {DamageType.PIERCING, DamageType.SURE_HIT, DamageType.HEALTH_STEAL}:
                     amount += 6
-            if not (is_hard and harmful_to_enemy):
+            # Easy and Normal must never mistake target=self damage for
+            # offensive value. Hard uses the authoritative dry-run below.
+            if not is_hard and effect.target != "self" and harmful_to_enemy:
                 score += amount
-            if target_player and target_player.id != player_id and not is_hard:
+            if target_player and target_player.id != player_id and not is_hard and effect.target != "self":
                 for slot in target_slots:
                     if 0 <= slot < len(target_player.team):
                         target = target_player.team[slot]
@@ -488,7 +606,8 @@ def _cpu_action_score(
                     if 0 <= slot < len(target_player.team):
                         target = target_player.team[slot]
                         missing = max(0, target.max_hp - target.hp)
-                        score += min(effect.amount or 0, missing) * 3
+                        if effective_outcome is None:
+                            score += min(effect.amount or 0, missing) * 3
                         if target.hp <= heal_urgency_threshold:
                             smart_bonus += 60
         elif effect.type == "apply_status":
@@ -518,6 +637,15 @@ def _cpu_action_score(
             lethal_secured = True
         score += effective_outcome["statuses_applied"] * 10
         smart_bonus += effective_outcome["control_statuses"] * 90
+        smart_bonus += effective_outcome["semantic_status_utility"]
+        score += effective_outcome["friendly_healing"] * 3
+        score += effective_outcome["friendly_defense_gain"]
+        score -= effective_outcome["enemy_healing"] * 3
+        score -= effective_outcome["friendly_hp_damage"] * 3
+        score -= effective_outcome["caster_hp_damage"] * 2
+        score -= effective_outcome["friendly_deaths"] * 450
+        score -= effective_outcome["caster_deaths"] * 300
+        score -= effective_outcome["energy_spent"] * max(1, remaining_teammates)
         if target_player:
             for slot in target_slots:
                 if 0 <= slot < len(target_player.team):
@@ -530,6 +658,55 @@ def _cpu_action_score(
     if is_hard and not lethal_secured and smart_bonus <= 0 and remaining_teammates > 0:
         score -= len(skill.cost) * remaining_teammates
     return score
+
+
+def _cpu_queue_targets_survive_prefixes(
+    state: BattleState,
+    player_id: str,
+    actions: list[PendingAction],
+    skills: dict[str, SkillSpec],
+) -> bool:
+    """Reject a queue whose later action already points at a predicted corpse."""
+
+    predicted = state
+    for index, action in enumerate(actions):
+        target_player = predicted.players.get(action.target_player_id)
+        target_slots = _target_slots_from_payload({
+            "target_slot": action.target_slot,
+            "target_slots": action.target_slots,
+        })
+        if target_player is not None and action.target_player_id != player_id:
+            if any(
+                slot < 0 or slot >= len(target_player.team) or not target_player.team[slot].alive
+                for slot in target_slots
+            ):
+                return False
+        if index + 1 < len(actions):
+            predicted = _cpu_simulate_queue(state, player_id, actions[: index + 1], skills)
+            if predicted is None:
+                return False
+    return True
+
+
+def _cpu_outcome_utility(outcome: dict[str, int]) -> int:
+    """Comparable whole-queue value used only for final Hard ordering."""
+
+    return (
+        outcome["hp_damage"]
+        + outcome["defense_damage"] // 2
+        + outcome["kills"] * 900
+        + outcome["control_statuses"] * 120
+        + outcome["statuses_applied"] * 10
+        + outcome["semantic_status_utility"]
+        + outcome["friendly_healing"] * 3
+        + outcome["friendly_defense_gain"]
+        - outcome["enemy_healing"] * 3
+        - outcome["friendly_hp_damage"] * 3
+        - outcome["caster_hp_damage"] * 2
+        - outcome["friendly_deaths"] * 450
+        - outcome["caster_deaths"] * 300
+        - outcome["energy_spent"]
+    )
 
 
 class BattleV2Manager:
@@ -632,6 +809,7 @@ class BattleV2Manager:
                 "match_id": room_id,
                 "roster_mode": "classic",
                 "rng_seed": seed,
+                "cpu_difficulty": self.room_cpu_difficulty[room_id],
                 "timer_policy": {"planning_seconds": self.timer_policy.planning_seconds, "queue_review_seconds": self.timer_policy.queue_review_seconds},
                 "players": [
                     {"id": config.id, "name": config.name, "team": list(config.team)}
@@ -1162,12 +1340,17 @@ class BattleV2Manager:
                 for other_slot in player.active_slots[slot_index + 1 :]
                 if 0 <= other_slot < len(player.team) and player.team[other_slot].alive
             )
-            best: tuple[int, PendingAction] | None = None
+            best: tuple[int, list[PendingAction]] | None = None
+            planning_state = state
+            if difficulty == "hard" and actions:
+                planning_state = _cpu_simulate_queue(
+                    state, player_id, actions, self._skills_for_room(room_id)
+                ) or state
             for base_skill_id in caster.base_skill_ids:
                 resolved_skill_id = caster.skill_replacements.get(base_skill_id, base_skill_id)
                 resolved_skill = self._skills_for_room(room_id)[resolved_skill_id]
                 for target_payload in _cpu_target_payloads(
-                    state, player_id, resolved_skill_id, slot, self._skills_for_room(room_id)
+                    planning_state, player_id, resolved_skill_id, slot, self._skills_for_room(room_id)
                 ):
                     for wildcard_pays in _wildcard_payment_options(player, resolved_skill_id, self._skills_for_room(room_id)):
                         candidate = PendingAction(
@@ -1184,23 +1367,41 @@ class BattleV2Manager:
                             alternate_target_slot=target_payload.get("alternate_target_slot"),
                             queue_index=len(actions),
                         )
+                        ordered = [*actions, candidate]
                         trial_state = deepcopy(state)
-                        trial_state.pending_actions[player_id] = actions + [candidate]
-                        trial_state.queue_order[player_id] = [
-                            action.id for action in trial_state.pending_actions[player_id]
-                        ]
+                        trial_state.pending_actions[player_id] = ordered
+                        trial_state.queue_order[player_id] = [queued.id for queued in ordered]
                         try:
                             validate_queue(trial_state, player_id, self._skills_for_room(room_id))
                         except ResolverError:
                             continue
                         score = _cpu_action_score(
-                            state, player_id, candidate, resolved_skill,
+                            planning_state, player_id, candidate, resolved_skill,
                             difficulty=difficulty, remaining_teammates=remaining_teammates,
+                            skills=self._skills_for_room(room_id),
                         )
                         if best is None or score > best[0]:
-                            best = (score, candidate)
+                            best = (score, deepcopy(ordered))
             if best is not None:
-                actions.append(best[1])
+                actions = best[1]
+        if difficulty == "hard" and len(actions) > 1:
+            best_order: tuple[int, list[PendingAction]] | None = None
+            for ordering in permutations(actions):
+                ordered = list(ordering)
+                if not _cpu_queue_targets_survive_prefixes(
+                    state, player_id, ordered, self._skills_for_room(room_id)
+                ):
+                    continue
+                outcome = _cpu_effective_outcome(
+                    state, player_id, ordered, self._skills_for_room(room_id)
+                )
+                utility = _cpu_outcome_utility(outcome)
+                if best_order is None or utility > best_order[0]:
+                    best_order = (utility, deepcopy(ordered))
+            if best_order is not None:
+                actions = best_order[1]
+        for queue_index, queued in enumerate(actions):
+            queued.queue_index = queue_index
         if not actions:
             return self.end_turn(room_id, player_id)
         state.pending_actions[player_id] = actions

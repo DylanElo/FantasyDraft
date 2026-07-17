@@ -6,11 +6,14 @@ economy, resolver, status clocks, and winner detection.
 
 ## Match summary schema
 
+The current simulation schema version is `2`.
+
 Every summary includes:
 
 - schema and rules versions;
 - RNG seed and executed turn count;
-- winner side or explicit `turn_cap` outcome;
+- explicit `result_type` (`WIN`, `DRAW`, `NO_CONTEST`, or `TURN_CAP`) and a
+  nullable winner side (`team_a`, `team_b`, or `null`);
 - ordered character ids for both anonymous sides;
 - living count and aggregate remaining HP;
 - resolved action count;
@@ -31,15 +34,19 @@ python -m jjk_arena.battle_v2.simulation \
 ```
 
 The same teams, seed range, rules version, and turn cap must produce identical
-JSON results. A turn cap is reported rather than silently inventing a draw or
-winner policy.
+JSON results. The simulation loop terminates on `result_type`, not
+`winner_id`, so winnerless `DRAW` and `NO_CONTEST` states exit cleanly. A
+`TURN_CAP` is reported explicitly rather than silently inventing a draw or
+winner policy. Balance-report consumers classify all three winnerless terminal
+types separately; only `TURN_CAP` contributes to turn-cap rates.
 
 ## Limitations
 
 CPU-vs-CPU results measure the current heuristic AI, not human balance. They
 must not justify balance changes without matchup review and human playtesting.
-The simulator does not persist or upload results and does not select the open
-fixed-damage-reduction or disconnect policies.
+The simulator does not persist or upload results. It follows the locked
+turn-aggregate fixed-damage-reduction and match-lifecycle policies implemented
+by the authoritative manager and resolver.
 
 Orientation-balanced aggregation and interpretation rules are defined in
 `docs/battle_v2_balance_report_contract.md`.

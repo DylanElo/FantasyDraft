@@ -4,6 +4,7 @@ import json
 import subprocess
 import sys
 
+from jjk_arena.battle_v2 import balance_report
 from jjk_arena.battle_v2.balance_report import build_balance_report, report_csv, wilson_interval
 
 
@@ -30,6 +31,26 @@ def test_report_is_deterministic_and_wilson_bounds_are_valid():
     assert first == second
     low, high = wilson_interval(5, 10)
     assert 0 < low < 0.5 < high < 1
+
+
+def test_report_keeps_draw_no_contest_and_turn_cap_distinct(monkeypatch):
+    results = iter([
+        {"turns_executed": 4, "result_type": "DRAW", "winner_side": None},
+        {"turns_executed": 5, "result_type": "TURN_CAP", "winner_side": None},
+        {"turns_executed": 1, "result_type": "NO_CONTEST", "winner_side": None},
+        {"turns_executed": 3, "result_type": "WIN", "winner_side": "team_a"},
+    ])
+    monkeypatch.setattr(balance_report, "run_headless_match", lambda *_args, **_kwargs: next(results))
+
+    report = build_balance_report(TEAMS, games_per_orientation=2, seed_start=1, max_turns=20)
+    matchup = report["matchups"][0]
+
+    assert report["schema_version"] == 2
+    assert (report["draws"], report["no_contests"], report["turn_caps"]) == (1, 1, 1)
+    assert matchup["wins"]["draw"] == 1
+    assert matchup["wins"]["no_contest"] == 1
+    assert matchup["wins"]["turn_cap"] == 1
+    assert sum(matchup["wins"].values()) == 4
 
 
 def test_csv_export_has_one_row_per_matchup():

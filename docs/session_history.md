@@ -1890,3 +1890,124 @@ progression tiers, screens, art, audio, or layouts changed. Queue Review and
 Result still need current-revision screenshots if a complete ten-screen visual
 release pack is required. Changes and QA artifacts were committed locally on
 `codex/close-alpha-contracts`; the branch was not pushed and no PR was opened.
+
+## 2026-07-17 — Partial-queue CPU planning, atomic settlement claims, terminal simulation, and three-state mobile QA
+
+**What changed.** Hard CPU planning now resolves a viewer-safe clone of the
+partial queue before evaluating each later candidate. It predicts prior HP and
+defense damage, deaths, status/control application, ally and caster damage,
+healing, defense gains, and energy opportunity cost. Dead predicted targets
+are excluded, and the final queue's at most six left-to-right permutations are
+scored after selection. Easy and Normal no longer award offensive or lethal
+value to `target=self` damage. Regressions cover Yuji killing a 10-HP target
+before Nobara and Megumi retarget living enemies, and 5-HP Toge selecting
+Throat Medicine instead of a non-lethal suicidal Blast Away.
+
+Mission settlement schema 6 adds transactional `processing` claims with claim
+tokens, retry leases, terminal `dead_letter`, settled-row retention, status
+counts, and claimed/dead-letter operational counters. Initial SQLite enqueue
+failure writes an fsync'd JSONL sidecar which startup/maintenance restores.
+Terminal room cleanup reconstructs every missing human-player snapshot first
+and refuses cleanup if neither durable path succeeds. Concurrent-store and
+fallback/restart regressions prove a handler is invoked once and a failed
+initial enqueue remains recoverable.
+
+Headless simulation now loops on `result_type`, records explicit `WIN`, `DRAW`,
+`NO_CONTEST`, and `TURN_CAP`, and has deterministic winnerless DRAW and
+NO_CONTEST exit regressions. The First Creation roster dossier bounds its role
+line and preserves full skill names over two lines without changing the scene
+architecture.
+
+**Visual QA.** Queue Review, Skill Detail, and Result were captured under
+`artifacts/visual_qa/current/` at exact 360x800, 390x844, and 430x932. The
+in-app browser's Engine.IO proxy repeatedly produced unknown-SID POSTs against
+the local Werkzeug server, although a direct Socket.IO client connected
+successfully. The documented browser developer interface therefore injected
+temporary in-memory store state for these captures; no server data or source
+file was changed by the injection. The capture backend returned 843/931 rows
+for the taller viewports, so those six files were mechanically padded with one
+background row at the bottom; rendered game content is unchanged. The browser
+skill directly influenced this pass by enforcing exact viewport checks and
+live inspection of the dossier overflow correction.
+
+**Verification actually run.** Final full pytest passed in normal order and
+reverse file order: **420 passed, 1 skipped** in both. Targeted settlement,
+CPU, simulation, socket/production tests passed. Both independent lifecycle
+soaks completed 1,000 matches with zero softlocks and zero final rooms: seed 1
+in 130.44 s at 84,357,120-byte RSS, seed 2 in 131.89 s at 85,692,416-byte RSS;
+both remained below the 419,430,400-byte ceiling and left zero scheduler worker
+threads after shutdown. `python -m compileall -q jjk_arena web/app.py`,
+`node --check web/static/phaser/scenes/draft-roster-scene.js`, the 19-character
+/ 78-skill audit, and `git diff --check` passed. The final visual files were
+dimension-checked programmatically.
+
+**Remaining cautions / delivery state.** No character, balance number,
+progression tier, art, audio, or screen was added. Browser captures use
+temporary QA state rather than a live Socket.IO match for the documented proxy
+reason above. The worktree remains on local `main`, based on `832b0be`; changes
+and the nine intentional QA PNGs are not committed or pushed in this pass.
+
+## 2026-07-17 - Pre-publish hardening, replay integrity, prompt settlement recovery, and safe-area mobile contracts
+
+**What changed.** The pre-publish adversarial review closed the remaining
+cross-layer correctness gaps without changing the locked combat rules, First
+Creation roster, character balance, or progression tiers. Hard CPU planning
+now resolves viewer-safe partial queues without running turn cleanup between
+actions, preserves aggregate damage-reduction and status clocks, retargets
+after predicted deaths, and scores final left-to-right orderings through the
+authoritative resolver. Simulation and balance output use distinct `WIN`,
+`DRAW`, `NO_CONTEST`, and `TURN_CAP` results. Replay captures now persist the
+normalized Easy/Normal/Hard CPU policy and reconstruction restores it before a
+`cpu_turn`; missing format-v2 difficulty remains Normal-compatible and invalid
+values fail closed.
+
+Mission settlement schema 6 now supports direct deployed schema-4 and
+intermediate schema-5 upgrades. One-row expiring leases provide documented
+at-least-once ownership; operational failures retry indefinitely with capped
+backoff, malformed snapshots dead-letter for explicit redrive, and stale
+workers cannot report unguarded commits. Production profile, immutable mission
+analytics, and outbox settlement commit in one SQLite transaction. The fsync'd
+0600 JSONL fallback remains single-worker only. Stable finish timestamps keep
+newer starter-team choices while correcting chronological first-completion
+time. A separate in-memory durable-snapshot guard promptly reconstructs total
+or partial DB-plus-sidecar write failures from finished updates, relevant
+profile reads, and bounded maintenance, without duplicate fallback appends or
+mission credit; cleanup refuses to delete a room until every human snapshot is
+durable.
+
+The kit grammar now states the exact locked 19-character / 78-skill First
+Creation roster. Phaser cache references are consistently version 22. Shared
+headers, HUD, sheets, roster grids, queue review, and footer actions consume
+safe top/bottom insets; scoped controls expose at least 44x44 hit targets; full
+roles and skill names wrap instead of being pre-truncated. Geometry checks
+cover normal and 47px-top/34px-bottom safe frames at 360x800, 390x844, and
+430x932, including the required 2/2/4 First Creation entries per page. The nine
+Queue Review / Skill Detail / Result images were normalized to real PNGs and
+moved under `artifacts/visual_qa/pre-remediation/`. The earlier 18-screen
+six-scene set was moved to `artifacts/ui-redesign/pre-hardening-d250917/`.
+Both `current/` directories contain no screenshot and make no post-fix visual
+claim.
+
+**Verification actually run.** Full pytest passed in normal order and reverse
+test-file order: **451 passed, 1 skipped** in both runs. The successful runs
+used isolated workspace databases and base-temp directories; the temporary
+directory was removed afterward. `python -m compileall -q jjk_arena web/app.py`,
+`node --check` for all 21 changed production JavaScript files plus the QA-state
+fixture, and `git diff --check` passed. The First Creation audit reports 19
+characters, 78 skills, 0 structural findings, 0 special-mechanic coverage
+gaps, 18 registered conditional keys, and 0 unregistered keys. All nine
+27 historical QA files have valid PNG signatures and exact declared
+dimensions; the current-evidence directories have zero screenshots. A
+1,000-match lifecycle
+stress run (seed 3) finished in 152.22 seconds with 0 softlocks, 0 final rooms,
+one scheduler worker during the run, and none after shutdown; RSS was
+unavailable for that run and is not claimed.
+
+**Remaining cautions / delivery state.** Fresh post-remediation browser
+captures remain pending because the in-app browser security policy rejected
+the required localhost reload after the cache bump and explicitly prohibited
+retry or alternate browser-control workarounds; no workaround was attempted.
+This supersedes preceding entries' claims that either former `current/`
+capture set is current evidence. The complete diff is on
+`codex/close-alpha-hardening`; commit, push, and draft-PR state are pending at
+the time of this entry.

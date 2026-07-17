@@ -157,20 +157,32 @@ Replacement duration should be controlled by statuses or transformations, not by
 - Sukuna: Shrine Setup to Cleave.
 - Higuruma: Trial to Executioner’s Sword.
 
-## Starter Roster Order
+## Locked First Creation roster
 
-First six:
+First Creation ships exactly 19 starter characters and 78 skills. Its canonical
+order is:
 
-- Yuji Itadori
-- Nobara Kugisaki
-- Megumi Fushiguro
-- Satoru Gojo
-- Ryomen Sukuna
-- Mahito
+1. Yuji Itadori
+2. Megumi Fushiguro
+3. Nobara Kugisaki
+4. Maki Zenin
+5. Toge Inumaki
+6. Panda
+7. Aoi Todo
+8. Noritoshi Kamo
+9. Momo Nishimiya
+10. Mai Zenin
+11. Kasumi Miwa
+12. Kokichi Muta / Mechamaru
+13. Junpei Yoshino
+14. Satoru Gojo (Young)
+15. Suguru Geto (Young)
+16. Shoko Ieiri (Young)
+17. Utahime Iori (Young)
+18. Mei Mei (Young)
+19. Yuta Okkotsu (JJK 0)
 
-Next four:
-
-- Aoi Todo
-- Maki Zenin
-- Yuta Okkotsu
-- Hiromi Higuruma
+Adult Gojo, Sukuna variants, Mahito, generic/advanced Yuta variants, Higuruma,
+and other advanced identities are mission unlocks rather than account-creation
+starters. Later variants may be more complex, but must not make these starters
+obsolete.

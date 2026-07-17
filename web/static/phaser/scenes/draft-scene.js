@@ -1,6 +1,6 @@
-import { BOOT, COLORS, TYPE_SCALE } from '../core/runtime-config.js?v=21';
-import { clamp, safeText, shortText } from '../core/text.js?v=21';
-import { DraftRosterScene } from './draft-roster-scene.js?v=21';
+import { BOOT, COLORS, TYPE_SCALE } from '../core/runtime-config.js?v=22';
+import { clamp, safeText, shortText } from '../core/text.js?v=22';
+import { DraftRosterScene } from './draft-roster-scene.js?v=22';
 
 export class DraftScene extends DraftRosterScene {
     constructor(key) {
@@ -36,66 +36,69 @@ export class DraftScene extends DraftRosterScene {
       const frame = this.layout.frame();
       this.clearSurface();
       this.worldBackdrop(frame, { textureKey: null, ambient: 'motes' });
-      this.dossierHeader(frame, { eyebrow: 'CURSED CLASH', title: 'Draft', backHandler: () => this.store.resetToLobby() });
+      const header = this.dossierHeader(frame, { eyebrow: 'CURSED CLASH', title: 'Draft', backHandler: () => this.store.resetToLobby() });
       const x = frame.x + frame.gutter;
-      const compact = frame.height < 760;
-      const ultraCompact = frame.height < 700;
+      const usableHeight = frame.bottom - frame.top;
+      const compact = usableHeight < 760;
+      const showMissionPreview = usableHeight >= 850;
       const isCpu = this.store.matchMode === 'cpu';
-      let y = 86;
-      // On very short viewports the mission-preview panel is the first thing
-      // dropped -- it's the least essential block (the same info is always
-      // reachable from Mission Map) and freeing its ~88px is what keeps the
-      // roster grid from being squeezed below its safe minimum card height.
-      if (!ultraCompact) y += this.renderMissionPreview(frame, y);
+      let y = header.bottom + 8;
+      // The mission preview is the first optional block dropped when the safe
+      // frame cannot fit full roster copy plus navigation and the primary CTA.
+      if (showMissionPreview) y += this.renderMissionPreview(frame, y);
 
       const presets = (BOOT.firstCreation && BOOT.firstCreation.presets) || {};
       const presetNames = Object.keys(presets).slice(0, 4);
-      this.railLabel(x, y, 'PRESETS', COLORS.line);
       const small = (frame.width - 44) / 2;
-      const presetBtnH = compact ? 30 : 36;
-      presetNames.slice(0, 2).forEach((name, index) => {
-        this.button(x + index * (small + 12), y + 16, small, presetBtnH, name.replace(/_/g, ' '), () => this.store.applyPreset(name, 'playerTeam'), {
-          fill: COLORS.surfaceRaised,
-          stroke: COLORS.ally,
-          fontSize: `${TYPE_SCALE.label}px`,
-          mono: true,
-        });
-      });
-      let presetsBottom = y + 16 + presetBtnH;
-      if (isCpu) {
-        const cpuPresetY = presetsBottom + (compact ? 6 : 8);
-        presetNames.slice(2, 4).forEach((name, index) => {
-          this.button(x + index * (small + 12), cpuPresetY, small, presetBtnH, `CPU ${name.replace(/_/g, ' ')}`, () => this.store.applyPreset(name, 'enemyTeam'), {
-            fill: COLORS.surfaceRaised,
-            stroke: COLORS.enemy,
-            fontSize: `${TYPE_SCALE.label}px`,
-            mono: true,
-          });
-        });
-        presetsBottom = cpuPresetY + presetBtnH;
-        const difficultyLabelY = presetsBottom + (compact ? 10 : 12);
+      const renderDifficulty = (difficultyLabelY) => {
         this.railLabel(x, difficultyLabelY, 'CPU DIFFICULTY', COLORS.enemy, { color: '#f1a0a0' });
-        const diffBtnY = difficultyLabelY + (compact ? 14 : 18);
-        const diffBtnH = compact ? 28 : 32;
+        const diffBtnY = difficultyLabelY + 18;
         const diffW = (frame.width - 44 - 16) / 3;
         ['easy', 'normal', 'hard'].forEach((level, index) => {
           const active = this.store.difficulty === level;
-          this.button(x + index * (diffW + 8), diffBtnY, diffW, diffBtnH, level.toUpperCase(), () => this.store.setDifficulty(level), {
+          this.button(x + index * (diffW + 8), diffBtnY, diffW, 44, level.toUpperCase(), () => this.store.setDifficulty(level), {
             fill: active ? COLORS.selection : COLORS.surfaceRaised,
             stroke: active ? COLORS.selection : COLORS.line,
             fontSize: `${TYPE_SCALE.label}px`,
             mono: true,
           });
         });
-        presetsBottom = diffBtnY + diffBtnH;
+        return diffBtnY + 44;
+      };
+      const showPresetShortcuts = usableHeight >= 720;
+      if (showPresetShortcuts) {
+        this.railLabel(x, y, 'PRESETS', COLORS.line);
+        presetNames.slice(0, 2).forEach((name, index) => {
+          this.button(x + index * (small + 12), y + 16, small, 44, name.replace(/_/g, ' '), () => this.store.applyPreset(name, 'playerTeam'), {
+            fill: COLORS.surfaceRaised,
+            stroke: COLORS.ally,
+            fontSize: `${TYPE_SCALE.label}px`,
+            mono: true,
+          });
+        });
+        let presetsBottom = y + 60;
+        if (isCpu) {
+          const cpuPresetY = presetsBottom + 8;
+          presetNames.slice(2, 4).forEach((name, index) => {
+            this.button(x + index * (small + 12), cpuPresetY, small, 44, `CPU ${name.replace(/_/g, ' ')}`, () => this.store.applyPreset(name, 'enemyTeam'), {
+              fill: COLORS.surfaceRaised,
+              stroke: COLORS.enemy,
+              fontSize: `${TYPE_SCALE.label}px`,
+              mono: true,
+            });
+          });
+          presetsBottom = renderDifficulty(cpuPresetY + 56);
+        }
+        y = presetsBottom + (compact ? 12 : 18);
+      } else if (isCpu) {
+        y = renderDifficulty(y) + 12;
       }
-      y = presetsBottom + (compact ? 12 : 18);
 
       this.renderTeamDock(frame, y);
       y += (isCpu ? 88 + 62 : 62) + (compact ? 12 : 16);
 
       const targetW = (frame.width - 44) / 2;
-      const editH = compact ? 30 : 34;
+      const editH = 44;
       this.button(x, y, targetW, editH, 'Edit Player', () => this.store.setDraftTarget('playerTeam'), {
         fill: this.store.draftTarget === 'playerTeam' ? COLORS.ally : COLORS.surfaceRaised,
         stroke: COLORS.ally,
@@ -120,26 +123,23 @@ export class DraftScene extends DraftRosterScene {
       // the overlap bug: pageSize used to come from a fixed frame.height
       // threshold that ignored how much variable content (CPU presets/
       // difficulty) had already consumed the space above it.
-      const ctaH = 40;
-      const ctaY = frame.height - ctaH - 14;
-      const navH = compact ? 30 : 38;
+      const ctaH = 44;
+      const ctaY = frame.bottom - ctaH;
+      const navH = 44;
       const navY = ctaY - (compact ? 8 : 10) - navH;
 
       const roster = this.store.rosterEntries();
       const cardGap = compact ? 8 : 12;
       const rosterCardTop = rosterLabelY + (compact ? 20 : 26);
-      // renderRosterCard's own internal content (portrait, name, role, skill
-      // preview) uses fixed offsets up to ~91px regardless of the h it's
-      // given -- shrinking cardH below that makes its own text spill out
-      // past the card's drawn edge. So cardH never shrinks; only the row
-      // count adapts to whatever space is actually available.
-      const cardH = 100;
+      // Full names, roles, and first-skill names are never pre-truncated.
+      // Pagination adapts instead of squeezing this legibility budget.
+      const cardH = 132;
       const available = navY - rosterCardTop;
-      const rows = Math.max(1, Math.floor((available + cardGap) / (cardH + cardGap)));
-      const pageSize = rows * 2;
+      const rows = Math.max(0, Math.floor((available + cardGap) / (cardH + cardGap)));
+      const pageSize = Math.max(2, rows * 2);
       const pageMax = Math.max(0, Math.ceil(roster.length / pageSize) - 1);
       this.store.draftPage = clamp(this.store.draftPage, 0, pageMax);
-      const page = roster.slice(this.store.draftPage * pageSize, this.store.draftPage * pageSize + pageSize);
+      const page = rows > 0 ? roster.slice(this.store.draftPage * pageSize, this.store.draftPage * pageSize + pageSize) : [];
       const cardW = (frame.width - 44) / 2;
       page.forEach((character, index) => {
         const col = index % 2;

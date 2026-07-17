@@ -1,7 +1,7 @@
-import { COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=21';
-import { safeText, shortText } from '../core/text.js?v=21';
-import { eventAmount } from '../fx/event-metrics.js?v=21';
-import { BaseScene } from './base-scene.js?v=21';
+import { COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=22';
+import { safeText, shortText } from '../core/text.js?v=22';
+import { eventAmount } from '../fx/event-metrics.js?v=22';
+import { BaseScene } from './base-scene.js?v=22';
 
 export class ResultScene extends BaseScene {
     constructor() {
@@ -27,10 +27,10 @@ export class ResultScene extends BaseScene {
       const heroLabel = { win: 'DOMAIN WON', loss: 'DOMAIN LOST', draw: 'DOMAIN CONTESTED', no_contest: 'NO CONTEST' }[outcome] || 'RESULT';
       const heroColor = victory ? COLORS.selection : outcome === 'loss' ? COLORS.enemy : COLORS.line;
       const heroTextColor = victory ? COLORS.paperText : outcome === 'loss' ? '#f1a0a0' : COLORS.text;
-      this.dossierHeader(frame, { eyebrow: 'CURSED CLASH', title: outcomeLabel, tone: heroColor, backHandler: () => this.store.resetToLobby() });
+      const header = this.dossierHeader(frame, { eyebrow: 'CURSED CLASH', title: outcomeLabel, tone: heroColor, backHandler: () => this.store.resetToLobby() });
       const x = frame.x + frame.gutter;
-      const compact = frame.height < 730;
-      const heroY = compact ? 84 : 108;
+      const compact = frame.bottom - frame.top < 760;
+      const heroY = header.bottom + (compact ? 6 : 30);
       const heroH = compact ? 144 : 180;
       this.platePanel(x, heroY, frame.width - 32, heroH, heroColor, { alpha: 0.9, edgeBar: 'left' });
       this.text(frame.x + frame.width / 2, heroY + (compact ? 22 : 26), heroLabel, {
@@ -86,13 +86,14 @@ export class ResultScene extends BaseScene {
       const unlocks = mission && mission.unlocks && mission.unlocks.length ? `Unlocks: ${mission.unlocks.join(' / ')}` : 'Progress saved to your profile.';
       this.mono(x + 16, missionY + 84, 'REWARD CHECK', { color: COLORS.paperText, fontSize: `${TYPE_SCALE.label}px` });
       this.text(x + 16, missionY + 100, shortText(victory ? unlocks : 'Replay the route to clear the objective.', 58), { color: COLORS.text, fontSize: `${TYPE_SCALE.body}px` });
-      this.button(x, frame.height - 120, frame.width - 32, 44, 'Rematch', () => this.store.changeScene('DraftScene'), {
+      const lobbyY = frame.bottom - 44;
+      this.button(x, lobbyY - 58, frame.width - 32, 44, 'Rematch', () => this.store.changeScene('DraftScene'), {
         fill: COLORS.selection,
         gradientTop: COLORS.talismanDim,
         stroke: COLORS.talismanPaper,
         color: '#08080a',
       });
-      this.button(x, frame.height - 62, frame.width - 32, 44, 'Lobby', () => this.store.resetToLobby(), {
+      this.button(x, lobbyY, frame.width - 32, 44, 'Lobby', () => this.store.resetToLobby(), {
         fill: COLORS.panel2,
         stroke: COLORS.line,
       });

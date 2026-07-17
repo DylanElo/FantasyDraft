@@ -2064,6 +2064,10 @@ viewports.
 **Remaining cautions / delivery state.** The screenshot fixture is
 presentation-only and does not prove a live Socket.IO match flow; gameplay and
 socket behavior remain covered by the full automated suite. The source fixes
-were committed as `cb38012` on `codex/close-alpha-hardening`. This evidence and
-documentation update is intended for existing PR #57; the PR remains draft
-until the evidence commit is pushed and its live GitHub state is rechecked.
+were committed as `cb38012`; the evidence pack was committed as `7cdb75d`.
+Both were pushed on `codex/close-alpha-hardening`. PR #57 was open, mergeable,
+and changed from draft to ready for review on the pushed evidence SHA. Its
+description now lists the 30 current screenshots and compact-layout fixes. At
+the readiness check it had no configured/reported checks, comments, reviews,
+or unresolved review threads. This delivery-state sentence is a docs-only
+follow-up on the same branch and PR.

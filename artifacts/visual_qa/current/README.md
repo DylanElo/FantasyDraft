@@ -1,25 +1,53 @@
-# Current mobile visual QA
+# Current interaction-state visual QA
 
-No screenshot in this directory is claimed as post-remediation evidence yet.
-The in-app browser loaded the local application before the cache-version bump,
-but its URL policy rejected the required reload afterward and explicitly
-forbade navigation retries or alternate browser-control workarounds. The prior
-captures were therefore moved to `../pre-remediation/` instead of being
-misrepresented as verification of the new layout.
+This directory contains fresh post-hardening evidence captured on 2026-07-17
+from source commit `cb38012b5c5c07854781d04028120a5ed2da6163` with
+Phaser cache version 22.
 
-`qa-state.js` is the reproducible, browser-local fixture for the next permitted
-capture run. On a local page built from the remediated source:
+The pack contains four interaction states at 360x800, 390x844, and 430x932:
 
-1. Evaluate `qa-state.js` through the browser developer console/CDP.
-2. Set the viewport to 360x800, 390x844, or 430x932.
-3. Invoke `window.applyJjkVisualQaState(name)` with each of:
+- First Creation character detail
+- Queue Review
+- Skill Detail
+- Result
+
+File names use `{state}-{width}x{height}.png`, for 12 screenshots total. First
+Creation roster evidence lives in `../../ui-redesign/current/` so the 30-file
+combined matrix has no duplicate state.
+
+`qa-state.js` is the reproducible browser-local fixture used for the capture.
+After the local v22 page and debug store are ready:
+
+1. Evaluate `qa-state.js` in the page main world through the documented CDP
+   developer interface.
+2. Freeze incoming battle updates in memory for the capture session.
+3. Set the viewport to 360x800, 390x844, or 430x932.
+4. Invoke `window.applyJjkVisualQaState(name)` with
    `first-creation-roster`, `first-creation-detail`, `queue-review`,
-   `skill-detail`, and `result`.
-4. Capture the full viewport as PNG with device scale factor 1.
-5. Verify the PNG signature, exact dimensions, console, and
-   `window.__phaserShellButtons` hit rectangles.
+   `skill-detail`, or `result`.
+5. Wait for the expected scene and canvas, force a compositor paint, and
+   capture the complete viewport.
 
-The fixture mutates only the in-memory Phaser store. It does not send socket
-commands, write server data, or modify production source. The remediated client
-uses Phaser cache version 22 and is based on repository commit `832b0be` plus
-the current UI/docs working-tree patch.
+Queue Review intentionally shows an unassigned Wild payment, its adjacent
+validation message, and disabled Confirm Queue button. The fixture mutates
+only the in-memory Phaser store. It sends no socket command and writes no
+server or browser storage data.
+
+Verification completed for this pack:
+
+- all 12 files have a real PNG signature and exact declared dimensions;
+- every registered control is at least 44x44 CSS pixels and remains inside the
+  viewport;
+- no non-modal registered hit rectangles overlap; full-screen sheet/review
+  catchers intentionally sit beneath their modal controls;
+- the browser console reported no warnings or errors;
+- all four states were visually inspected at all three sizes.
+
+The browser compositor used device-pixel scaling for 360x800 and 430x932, so
+those source frames were normalized to their exact CSS viewport dimensions.
+The native 390x844 capture API returned 390x843; one `#050711` background row
+was added below the safe content. No game content was cropped, stretched, or
+invented.
+
+The previous historical set remains under `../pre-remediation/` and is not
+current evidence.

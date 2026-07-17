@@ -2013,3 +2013,57 @@ committed as `b7bf729` on `codex/close-alpha-hardening`, pushed to `origin`,
 and opened as draft PR
 `https://github.com/DylanElo/FantasyDraft/pull/57`. This documentation-only
 delivery-state correction follows on the same branch and PR.
+
+## 2026-07-17 - Fresh mobile evidence and screenshot-driven compact-layout fixes
+
+**Locked decisions and invariants touched.** This pass stayed UI-only. It did
+not change combat rules, authoritative server fields, the 19-character First
+Creation roster, balance, progression, or hidden-information behavior. It
+enforced the mobile constitution's full primary-name, 44px touch-target,
+non-overlap, safe-viewport, and progressive-disclosure requirements. Synthetic
+battle states remained browser-local and emitted no socket command.
+
+**What changed.** Live 360x800 and 390x844 review exposed issues that geometry
+tests had not made visually obvious. Draft team summaries still used three
+narrow portrait columns and pre-truncated long names, so they now use two
+full-width, three-row ally/CPU summaries that preserve every selected name.
+Combat fighter plates no longer call `shortText` for primary names; names wrap
+over two lines while HP moves into its own lower band. The compact fighter
+hitbox's unused top expansion was reduced by six pixels, removing a four-pixel
+overlap between the third enemy target and Transmute at 360x800. Regression
+assertions lock all three corrections. The QA fixture now seeds Young Gojo,
+Young Geto, and Young Shoko so long-name behavior remains reproducible.
+
+Fresh screenshots now cover Lobby, Draft, First Creation roster, First
+Creation detail, Mission Map, Combat planning, Queue Review, Skill Detail,
+Result, and Records at 360x800, 390x844, and 430x932. The 30 unique PNGs live
+under `artifacts/ui-redesign/current/` (18) and
+`artifacts/visual_qa/current/` (12). Their source revision is
+`cb38012b5c5c07854781d04028120a5ed2da6163`. Historical captures remain in the
+two labeled pre-hardening directories.
+
+**Visual QA.** Every capture used one authenticated in-app-browser localhost
+tab, Phaser cache v22, deterministic in-memory state, exact viewport/canvas
+checks, and a compositor-settled frame. All registered controls were at least
+44x44 CSS pixels, stayed inside the viewport, and had no non-modal overlap.
+The intentional full-screen modal catcher rectangles were excluded from the
+pairwise overlap failure. Browser warnings/errors were empty. Contact-sheet
+and original-size review confirmed all ten states at all three viewports.
+360x800 and 430x932 compositor frames were normalized from device pixels to
+CSS pixels. The native 390x844 API returned 390x843, so the final PNG adds one
+background row below safe content; no game content was cropped or stretched.
+
+**Verification actually run.** Full pytest passed: **451 passed, 1 skipped**
+in 109.97 seconds. Focused mobile-layout tests passed: **3 passed**. `python -m
+compileall -q jjk_arena web/app.py`, `node --check` for the two changed Phaser
+scenes and QA fixture, and `git diff --check` passed. All 30 current screenshots
+have real PNG signatures and exact declared dimensions. The final capture
+inventory is six core plus four interaction states at each of the three target
+viewports.
+
+**Remaining cautions / delivery state.** The screenshot fixture is
+presentation-only and does not prove a live Socket.IO match flow; gameplay and
+socket behavior remain covered by the full automated suite. The source fixes
+were committed as `cb38012` on `codex/close-alpha-hardening`. This evidence and
+documentation update is intended for existing PR #57; the PR remains draft
+until the evidence commit is pushed and its live GitHub state is rechecked.

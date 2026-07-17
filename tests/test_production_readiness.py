@@ -88,7 +88,15 @@ def test_stale_runtime_prunes_finished_rooms_lobbies_and_rate_limits(monkeypatch
 
     result = web_app.prune_stale_runtime(now=10_000.0)
 
-    assert result == {"rooms": 1, "lobbies": 1, "rate_limits": 1, "replays": 2, "analytics_flushed": 3, "analytics_pruned": 4}
+    assert result == {
+        "rooms": 1,
+        "lobbies": 1,
+        "rate_limits": 1,
+        "replays": 2,
+        "analytics_flushed": 3,
+        "mission_settlements_flushed": 0,
+        "analytics_pruned": 4,
+    }
     assert room_id not in web_app.battle_v2_manager.rooms
     assert lobby_id not in web_app.v2_pvp_lobbies
 

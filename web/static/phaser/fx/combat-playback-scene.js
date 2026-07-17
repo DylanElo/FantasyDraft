@@ -134,7 +134,7 @@ export class CombatPlaybackScene extends BaseScene {
       const nodes = [panel];
       nodes.push(this.add.text(cx - w / 2 + 18, y + 12, 'CINEMATIC CUT-IN', {
         fontFamily: TOKEN_TYPE.mono || '"JetBrains Mono", monospace',
-        fontSize: '8px',
+        fontSize: '10px',
         fontStyle: '900',
         color: COLORS.paperText,
       }).setDepth(28));
@@ -226,7 +226,7 @@ export class CombatPlaybackScene extends BaseScene {
       if (actionNumber) {
         nodes.push(this.add.text(x - w / 2 + 29, y + 21, `Q${actionNumber}`, {
           fontFamily: TOKEN_TYPE.mono || '"JetBrains Mono", monospace',
-          fontSize: '9px',
+          fontSize: '10px',
           fontStyle: '800',
           color: '#08080a',
         }).setOrigin(0.5, 0.5).setDepth(29));
@@ -239,7 +239,7 @@ export class CombatPlaybackScene extends BaseScene {
       }).setDepth(29));
       nodes.push(this.add.text(x - w / 2 + (actionNumber ? 56 : 18), y + 34, shortText(subtitle, 42), {
         fontFamily: TOKEN_TYPE.mono || '"JetBrains Mono", monospace',
-        fontSize: '8px',
+        fontSize: '10px',
         fontStyle: '700',
         color: COLORS.paperText,
       }).setDepth(29));

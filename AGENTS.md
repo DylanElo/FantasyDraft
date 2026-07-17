@@ -63,11 +63,16 @@ JJK Arena is a portrait-first mobile 3v3 tactical battler inspired by Naruto Are
 - Piercing damage ignores normal damage reduction but still hits destructible defense.
 - Soul/Affliction damage ignores normal damage reduction and destructible defense.
 - Health steal ignores normal damage reduction, still hits destructible defense, and heals only actual HP stolen.
-- Sure-hit is Domain-specific. Its anti-domain interaction must be explicit and tested; never improvise a global shortcut.
+- Sure-hit is Domain-specific. Active anti-domain universally converts it to
+  normal damage and removes its invulnerability bypass; exceptions require a
+  new explicit decision record and tests.
 - Helpful ally skills may target an ally who is invulnerable to harmful skills unless a status explicitly blocks helpful skills or all skills.
 - Targeting legality is determined before effects are applied.
 
-The exact choice between per-hit and turn-aggregate fixed damage reduction remains an open design decision. Do not change that model without explicit user approval and migration tests.
+Fixed damage reduction is a turn-aggregate budget per player turn, never a
+fresh flat discount per hit. This and the universal anti-domain conversion are
+locked by `docs/decisions/battle_v2_damage_reduction.md` and
+`docs/decisions/battle_v2_anti_domain.md`.
 
 ## Hidden information and interaction rules
 

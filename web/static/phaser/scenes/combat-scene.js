@@ -193,9 +193,9 @@ export class CombatScene extends CombatQueueReviewScene {
         this.graphics.strokeCircle(cx, y, 8.5);
         this.mono(cx, y - 3.5, slot.label, {
           color: slot.color === 'white' ? '#08080a' : COLORS.text,
-          fontSize: '8px',
+          fontSize: '10px',
         }).setOrigin(0.5, 0);
-        this.mono(cx, y + 11, String(count), { color: COLORS.text, fontSize: '9px' }).setOrigin(0.5, 0);
+        this.mono(cx, y + 11, String(count), { color: COLORS.text, fontSize: '10px' }).setOrigin(0.5, 0);
       });
     }
 
@@ -395,7 +395,7 @@ export class CombatScene extends CombatQueueReviewScene {
         this.graphics.fillRect(sx - 5, y + 7, 10, 10);
         this.mono(sx, y + 7.5, shortText(status.name || status.id, 1).toUpperCase(), {
           color: '#ffffff',
-          fontSize: '9px',
+          fontSize: '10px',
         }).setOrigin(0.5, 0);
       });
 
@@ -533,7 +533,7 @@ export class CombatScene extends CombatQueueReviewScene {
       });
       this.mono(x + 12, y + h - 17, this.store.targetLabel(skill).slice(0, 5).toUpperCase(), {
         color: disabled ? COLORS.dim : COLORS.text,
-        fontSize: '9px',
+        fontSize: '10px',
       });
       this.text(x + 40, y + 7, shortText(skill.name, w < 170 ? 20 : 23), {
         fontSize: h < 52 ? '10px' : '11px',
@@ -552,7 +552,7 @@ export class CombatScene extends CombatQueueReviewScene {
         this.graphics.fillCircle(px, y + 13, 3.1);
       });
       if (selected) {
-        this.mono(x + w - 35, y + h - 17, 'INFO', { color: COLORS.paperText, fontSize: '9px' });
+        this.mono(x + w - 35, y + h - 17, 'INFO', { color: COLORS.paperText, fontSize: '10px' });
       }
 
       this.buttons.push({
@@ -651,12 +651,12 @@ export class CombatScene extends CombatQueueReviewScene {
         this.graphics.fillStyle(action ? COLORS.queued : COLORS.surfaceRaised, action ? 0.9 : 0.54);
         this.graphics.fillTriangle(slotX, y, slotX + 7, y - 7, slotX + 14, y);
         if (!action) {
-          this.mono(slotX + 22, y - 10, `Q${index + 1}`, { color: COLORS.dim, fontSize: '8px' });
+          this.mono(slotX + 22, y - 10, `Q${index + 1}`, { color: COLORS.dim, fontSize: '10px' });
           return;
         }
         const caster = me && me.team ? me.team[action.caster_slot] : null;
         const skill = caster ? this.store.skillFor(caster, action.skill_id) : null;
-        this.mono(slotX + 20, y - 10, shortText(skill ? skill.name : action.skill_id, 9), { color: COLORS.text, fontSize: '8px' });
+        this.mono(slotX + 20, y - 10, shortText(skill ? skill.name : action.skill_id, 9), { color: COLORS.text, fontSize: '10px' });
       });
     }
 

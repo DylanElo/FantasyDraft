@@ -407,6 +407,24 @@ def record_match_finished_analytics(room_id: str) -> None:
 missions_settled_players: dict[str, set[str]] = defaultdict(set)
 
 
+def flush_mission_settlements() -> list[tuple[str, str]]:
+    """Retry durable mission merges without requiring the source room."""
+
+    def merge_snapshot(match_id: str, player_id: str, progress: dict) -> None:
+        merge_first_creation_progress(
+            player_id,
+            progress,
+            match_id=match_id,
+            analytics_store=runtime_store,
+            profile_store=runtime_store,
+        )
+
+    settled = runtime_store.process_mission_settlements(merge_snapshot)
+    for match_id, player_id in settled:
+        missions_settled_players[match_id].add(player_id)
+    return settled
+
+
 def settle_first_creation_missions(room_id: str) -> None:
     """Merge every human player's mission progress into their durable profile.
 
@@ -434,11 +452,13 @@ def settle_first_creation_missions(room_id: str) -> None:
             continue
         try:
             progress = battle_v2_manager.mission_progress_for_player(room_id, player_id)
-            merge_first_creation_progress(player_id, progress, match_id=room_id, analytics_store=runtime_store)
+            runtime_store.enqueue_mission_settlement(room_id, player_id, progress)
         except Exception:
             operational_counters["mission_settlement_errors"] += 1
-        else:
-            settled.add(player_id)
+    try:
+        flush_mission_settlements()
+    except Exception:
+        operational_counters["mission_settlement_errors"] += 1
 
 
 def on_battle_v2_match_finished(room_id: str) -> None:
@@ -453,6 +473,13 @@ def on_battle_v2_match_finished(room_id: str) -> None:
 # reconnect refresh must not be the thing deciding whether match analytics or
 # mission settlement ever happen.
 battle_v2_manager.on_match_finished = on_battle_v2_match_finished
+
+# Durable rows contain their own mission-progress snapshot, so recovery does
+# not depend on the finished room still existing after a process restart.
+try:
+    flush_mission_settlements()
+except Exception:
+    operational_counters["mission_settlement_errors"] += 1
 
 
 def clamp_int(value, minimum: int, maximum: int, default: int = 0) -> int:
@@ -790,6 +817,11 @@ def prune_stale_runtime(now: float | None = None) -> dict[str, int]:
         flushed_analytics = 0
         operational_counters["storage_maintenance_errors"] += 1
     try:
+        settled_missions = len(flush_mission_settlements())
+    except Exception:
+        settled_missions = 0
+        operational_counters["storage_maintenance_errors"] += 1
+    try:
         expired_analytics = runtime_store.prune_old_analytics_events()
     except Exception:
         expired_analytics = 0
@@ -798,6 +830,7 @@ def prune_stale_runtime(now: float | None = None) -> dict[str, int]:
     operational_counters["lobbies_pruned"] += removed_lobbies
     operational_counters["replays_pruned"] += expired_replays
     operational_counters["analytics_outbox_flushed"] += flushed_analytics
+    operational_counters["mission_settlements_flushed"] += settled_missions
     operational_counters["analytics_events_pruned"] += expired_analytics
     return {
         "rooms": removed_rooms,
@@ -805,6 +838,7 @@ def prune_stale_runtime(now: float | None = None) -> dict[str, int]:
         "rate_limits": removed_limits,
         "replays": expired_replays,
         "analytics_flushed": flushed_analytics,
+        "mission_settlements_flushed": settled_missions,
         "analytics_pruned": expired_analytics,
     }
 

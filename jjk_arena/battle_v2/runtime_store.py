@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 # Retention policy for analytics_events: rows older than this are pruned by
 # prune_old_analytics_events(), called from web/app.py's existing periodic
@@ -92,6 +92,19 @@ class SQLiteRuntimeStore:
                 );
                 CREATE INDEX IF NOT EXISTS idx_analytics_events_type_created
                     ON analytics_events(event_type, created_at);
+                CREATE TABLE IF NOT EXISTS mission_settlement_outbox (
+                    match_id TEXT NOT NULL,
+                    player_id TEXT NOT NULL,
+                    progress_json TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    retry_count INTEGER NOT NULL DEFAULT 0,
+                    next_attempt_at REAL NOT NULL,
+                    last_error TEXT,
+                    updated_at REAL NOT NULL,
+                    PRIMARY KEY(match_id, player_id)
+                );
+                CREATE INDEX IF NOT EXISTS idx_mission_settlement_due
+                    ON mission_settlement_outbox(status, next_attempt_at);
                 """
             )
             existing_columns = {
@@ -187,6 +200,120 @@ class SQLiteRuntimeStore:
                 (str(player_id), payload, float(self.clock())),
             )
         return updated
+
+    def enqueue_mission_settlement(
+        self,
+        match_id: str,
+        player_id: str,
+        progress: dict[str, Any],
+    ) -> None:
+        """Durably snapshot one player's terminal mission progress."""
+
+        now = float(self.clock())
+        payload = json.dumps(progress, sort_keys=True, separators=(",", ":"))
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO mission_settlement_outbox(
+                    match_id, player_id, progress_json, status,
+                    retry_count, next_attempt_at, last_error, updated_at
+                ) VALUES(?, ?, ?, 'pending', 0, ?, NULL, ?)
+                ON CONFLICT(match_id, player_id) DO UPDATE SET
+                    progress_json = excluded.progress_json,
+                    status = CASE
+                        WHEN mission_settlement_outbox.status = 'settled' THEN 'settled'
+                        ELSE 'pending'
+                    END,
+                    next_attempt_at = CASE
+                        WHEN mission_settlement_outbox.status = 'settled'
+                        THEN mission_settlement_outbox.next_attempt_at
+                        ELSE excluded.next_attempt_at
+                    END,
+                    last_error = CASE
+                        WHEN mission_settlement_outbox.status = 'settled'
+                        THEN mission_settlement_outbox.last_error
+                        ELSE NULL
+                    END,
+                    updated_at = excluded.updated_at
+                """,
+                (str(match_id), str(player_id), payload, now, now),
+            )
+
+    def process_mission_settlements(
+        self,
+        handler: Callable[[str, str, dict[str, Any]], None],
+        *,
+        limit: int = 100,
+    ) -> list[tuple[str, str]]:
+        """Retry due settlement rows and return the keys merged successfully.
+
+        Profile merging is intentionally supplied by the application layer to
+        avoid coupling this storage boundary to First Creation rules. Rows stay
+        durable after success as an idempotency/audit record.
+        """
+
+        now = float(self.clock())
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT match_id, player_id, progress_json, retry_count
+                FROM mission_settlement_outbox
+                WHERE status IN ('pending', 'failed_retryable')
+                  AND next_attempt_at <= ?
+                ORDER BY next_attempt_at, match_id, player_id
+                LIMIT ?
+                """,
+                (now, max(1, int(limit))),
+            ).fetchall()
+
+        settled: list[tuple[str, str]] = []
+        for row in rows:
+            match_id = str(row["match_id"])
+            player_id = str(row["player_id"])
+            try:
+                progress = json.loads(row["progress_json"])
+                if not isinstance(progress, dict):
+                    raise ValueError("mission settlement progress must be an object")
+                handler(match_id, player_id, progress)
+            except Exception as exc:
+                retry_count = int(row["retry_count"]) + 1
+                delay = min(300.0, float(2 ** min(retry_count - 1, 8)))
+                with self._connect() as connection:
+                    connection.execute(
+                        """
+                        UPDATE mission_settlement_outbox
+                        SET status = 'failed_retryable', retry_count = ?,
+                            next_attempt_at = ?, last_error = ?, updated_at = ?
+                        WHERE match_id = ? AND player_id = ? AND status != 'settled'
+                        """,
+                        (retry_count, now + delay, str(exc)[:500], now, match_id, player_id),
+                    )
+                continue
+            with self._connect() as connection:
+                connection.execute(
+                    """
+                    UPDATE mission_settlement_outbox
+                    SET status = 'settled', next_attempt_at = ?,
+                        last_error = NULL, updated_at = ?
+                    WHERE match_id = ? AND player_id = ?
+                    """,
+                    (now, now, match_id, player_id),
+                )
+            settled.append((match_id, player_id))
+        return settled
+
+    def mission_settlement_rows(self) -> list[dict[str, Any]]:
+        """Return settlement metadata for tests and operational diagnostics."""
+
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT match_id, player_id, status, retry_count,
+                       next_attempt_at, last_error, updated_at
+                FROM mission_settlement_outbox ORDER BY match_id, player_id
+                """
+            ).fetchall()
+        return [dict(row) for row in rows]
 
     def save_replay(self, replay: dict[str, Any], *, retention_days: int) -> None:
         match_id = str(replay.get("match_id") or "").strip()

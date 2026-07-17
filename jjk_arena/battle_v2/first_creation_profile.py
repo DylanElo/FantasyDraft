@@ -113,6 +113,7 @@ def merge_first_creation_progress(
     *,
     match_id: str | None = None,
     analytics_store: "SQLiteRuntimeStore | None" = None,
+    profile_store: "SQLiteRuntimeStore | None" = None,
 ) -> dict[str, Any]:
     """Merge a completed room progress payload into durable player progress.
 
@@ -153,7 +154,13 @@ def merge_first_creation_progress(
             profile["selected_starter_team"] = [str(character_id) for character_id in progress.get("team", [])[:3]]
         return profile
 
-    updated = update_first_creation_profile(player_id, merge)
+    if profile_store is not None and not os.getenv("JJK_FIRST_CREATION_PROFILE_STORE"):
+        updated = normalize_profile(profile_store.update_profile(
+            str(player_id),
+            lambda current: normalize_profile(merge(normalize_profile(current))),
+        ))
+    else:
+        updated = update_first_creation_profile(player_id, merge)
     if newly_completed and match_id:
         store = analytics_store if analytics_store is not None else SQLiteRuntimeStore()
         for mission_id in newly_completed:

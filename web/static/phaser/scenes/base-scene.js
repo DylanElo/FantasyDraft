@@ -336,7 +336,7 @@ export class BaseScene extends Phaser.Scene {
       this.graphics.fillTriangle(x, y, x + 16, y, x, y + 16);
       this.graphics.lineStyle(1, tone || COLORS.selection, 0.48);
       this.graphics.strokeRoundedRect(x, y, w, 22, 6);
-      this.mono(x + 12, y + 6, text, { color: COLORS.paperText, fontSize: '8px' });
+      this.mono(x + 12, y + 6, text, { color: COLORS.paperText, fontSize: '10px' });
       return w;
     }
 

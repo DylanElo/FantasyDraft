@@ -810,6 +810,98 @@ def test_cpu_action_score_hard_lethal_bonus_requires_condition_to_actually_hold(
     assert conditional_score < real_score
 
 
+def test_hard_cpu_effective_outcome_handles_shield_aggregate_dr_and_multi_hit():
+    from jjk_arena.battle_v2.manager import _cpu_effective_outcome
+    from jjk_arena.battle_v2.models import (
+        BattleState,
+        CharacterState,
+        DamageType,
+        EffectSpec,
+        PendingAction,
+        PlayerState,
+        SkillSpec,
+        StatusEffect,
+        TargetRule,
+    )
+
+    def outcome(effects, statuses=None, hp=20):
+        caster = CharacterState(character_id="attacker", name="Attacker")
+        target = CharacterState(character_id="target", name="Target", hp=hp, max_hp=100)
+        target.statuses = list(statuses or [])
+        state = BattleState(
+            players={
+                "p1": PlayerState(id="p1", name="P1", team=[caster]),
+                "p2": PlayerState(id="p2", name="P2", team=[target]),
+            },
+            turn_player_id="p1",
+        )
+        skill = SkillSpec(
+            id="test_strike", name="Test Strike", text="", cost=[], cooldown=0,
+            target_rule=TargetRule(kind="enemy"), classes=[], effects=effects,
+        )
+        action = PendingAction(
+            id="p1:test", player_id="p1", caster_slot=0, skill_id=skill.id,
+            target_player_id="p2", target_slot=0,
+        )
+        return _cpu_effective_outcome(state, "p1", action, skill)
+
+    shield = StatusEffect(
+        "shield", "Shield", "p2", 0, "p2", 0, 2,
+        payload={"destructible_defense": 50},
+    )
+    reduction = StatusEffect(
+        "reduction", "Reduction", "p2", 0, "p2", 0, 2,
+        payload={"damage_reduction": 10},
+    )
+    invulnerable = StatusEffect(
+        "invulnerable", "Invulnerable", "p2", 0, "p2", 0, 2,
+        payload={"invulnerable": True},
+    )
+    anti_domain = StatusEffect(
+        "anti_domain", "Anti-Domain", "p2", 0, "p2", 0, 2,
+        payload={"anti_domain": True, "damage_reduction": 10},
+    )
+
+    assert outcome([EffectSpec(type="damage", amount=25)], [shield]) == {
+        "hp_damage": 0, "defense_damage": 25, "kills": 0,
+        "statuses_applied": 0, "control_statuses": 0,
+    }
+    assert outcome([EffectSpec(type="damage", amount=25)], [reduction]) == {
+        "hp_damage": 15, "defense_damage": 0, "kills": 0,
+        "statuses_applied": 0, "control_statuses": 0,
+    }
+    assert outcome([
+        EffectSpec(type="damage", amount=10),
+        EffectSpec(type="damage", amount=10),
+    ]) == {"hp_damage": 20, "defense_damage": 0, "kills": 1, "statuses_applied": 0, "control_statuses": 0}
+    assert outcome([
+        EffectSpec(type="damage", amount=15, damage_type=DamageType.PIERCING),
+    ]) == {"hp_damage": 15, "defense_damage": 0, "kills": 0, "statuses_applied": 0, "control_statuses": 0}
+    assert outcome([EffectSpec(type="damage", amount=25)], [invulnerable]) == {
+        "hp_damage": 0, "defense_damage": 0, "kills": 0,
+        "statuses_applied": 0, "control_statuses": 0,
+    }
+    assert outcome([
+        EffectSpec(type="damage", amount=25, damage_type=DamageType.SURE_HIT),
+    ], [anti_domain]) == {
+        "hp_damage": 15, "defense_damage": 0, "kills": 0,
+        "statuses_applied": 0, "control_statuses": 0,
+    }
+    marked = StatusEffect("marked", "Marked", "p1", 0, "p2", 0, 2)
+    conditional_stun = EffectSpec(
+        type="apply_status", status="stunned", duration=2,
+        payload={"condition_status": "marked", "stun_classes": ["all"]},
+    )
+    assert outcome([conditional_stun]) == {
+        "hp_damage": 0, "defense_damage": 0, "kills": 0,
+        "statuses_applied": 0, "control_statuses": 0,
+    }
+    assert outcome([conditional_stun], [marked]) == {
+        "hp_damage": 0, "defense_damage": 0, "kills": 0,
+        "statuses_applied": 1, "control_statuses": 1,
+    }
+
+
 def test_cpu_action_score_hard_reacts_to_heal_urgency_earlier_than_normal():
     """Hard should value topping off a mid-HP ally sooner than Normal does."""
 

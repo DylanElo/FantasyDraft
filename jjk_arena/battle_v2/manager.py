@@ -280,6 +280,98 @@ def _target_slots_from_payload(target_payload: dict[str, Any]) -> list[int]:
     return []
 
 
+def _cpu_effective_outcome(
+    state: BattleState,
+    player_id: str,
+    action: PendingAction,
+    skill: SkillSpec,
+) -> dict[str, int]:
+    """Dry-run one action through the authoritative resolver for Hard CPU.
+
+    The clone contains only information the acting viewer may know. In
+    particular, an opponent's unrevealed invisible statuses are removed before
+    resolution, so a counter, reflect, condition, or defense hidden from a
+    human player cannot influence the CPU's choice.
+    """
+
+    trial = deepcopy(state)
+    for owner in trial.players.values():
+        for character in owner.team:
+            character.statuses = [
+                status
+                for status in character.statuses
+                if not (
+                    status.invisible
+                    and not status.revealed
+                    and status.source_player_id != player_id
+                )
+            ]
+
+    def defense(character: CharacterState) -> int:
+        return sum(
+            max(0, int(status.payload.get("destructible_defense", 0)))
+            for status in character.statuses
+            if status.duration != 0
+        )
+
+    before = {
+        (owner.id, slot): (character.hp, defense(character), character.alive)
+        for owner in trial.players.values()
+        for slot, character in enumerate(owner.team)
+    }
+    before_statuses = Counter(
+        (owner.id, slot, status.id)
+        for owner in trial.players.values()
+        for slot, character in enumerate(owner.team)
+        for status in character.statuses
+        if status.duration != 0
+    )
+    trial.pending_actions[player_id] = [deepcopy(action)]
+    trial.queue_order[player_id] = [action.id]
+    trial.players[player_id].queue_confirmed = True
+    try:
+        resolve_queue(trial, player_id, {skill.id: skill})
+    except (ResolverError, KeyError, ValueError):
+        return {"hp_damage": 0, "defense_damage": 0, "kills": 0, "statuses_applied": 0, "control_statuses": 0}
+
+    hp_damage = 0
+    defense_damage = 0
+    kills = 0
+    statuses_applied = 0
+    control_statuses = 0
+    for owner in trial.players.values():
+        for slot, character in enumerate(owner.team):
+            old_hp, old_defense, was_alive = before[(owner.id, slot)]
+            if owner.id != player_id:
+                hp_damage += max(0, old_hp - character.hp)
+                defense_damage += max(0, old_defense - defense(character))
+                if was_alive and not character.alive:
+                    kills += 1
+            current_statuses = Counter(
+                status.id for status in character.statuses if status.duration != 0
+            )
+            for status in character.statuses:
+                if status.duration == 0 or status.id == "damaged_last_turn":
+                    continue
+                if current_statuses[status.id] <= before_statuses[(owner.id, slot, status.id)]:
+                    continue
+                current_statuses[status.id] -= 1
+                statuses_applied += 1
+                if owner.id != player_id and (
+                    status.payload.get("stun_classes")
+                    or int(status.payload.get("damage_output_delta", 0)) < 0
+                    or int(status.payload.get("turn_end_damage", 0)) > 0
+                ):
+                    control_statuses += 1
+    return {
+        "hp_damage": hp_damage,
+        "defense_damage": defense_damage,
+        "kills": kills,
+        "statuses_applied": statuses_applied,
+        "control_statuses": control_statuses,
+    }
+
+
 def _cpu_action_score(
     state: BattleState,
     player_id: str,
@@ -332,6 +424,11 @@ def _cpu_action_score(
         }
     )
     harmful_to_enemy = bool(target_player and target_player.id != player_id)
+    effective_outcome = (
+        _cpu_effective_outcome(state, player_id, action, skill)
+        if is_hard and harmful_to_enemy
+        else None
+    )
     if is_hard and harmful_to_enemy:
         skill_is_uncounterable = SkillClass.UNCOUNTERABLE in skill.classes
         skill_is_unreflectable = SkillClass.UNREFLECTABLE in skill.classes
@@ -374,8 +471,9 @@ def _cpu_action_score(
                     amount += 10
                 elif effect.damage_type in {DamageType.PIERCING, DamageType.SURE_HIT, DamageType.HEALTH_STEAL}:
                     amount += 6
-            score += amount
-            if target_player and target_player.id != player_id:
+            if not (is_hard and harmful_to_enemy):
+                score += amount
+            if target_player and target_player.id != player_id and not is_hard:
                 for slot in target_slots:
                     if 0 <= slot < len(target_player.team):
                         target = target_player.team[slot]
@@ -395,22 +493,36 @@ def _cpu_action_score(
                             smart_bonus += 60
         elif effect.type == "apply_status":
             payload = effect.payload
-            if payload.get("stun_classes"):
-                smart_bonus += 90
-            if payload.get("counter") or payload.get("reflect"):
-                smart_bonus += 70
-            if payload.get("damage_bonus"):
-                smart_bonus += 45
-            if payload.get("damage_reduction"):
-                smart_bonus += 25
-            if int(payload.get("damage_output_delta", 0)) < 0:
-                smart_bonus += 35
-            if payload.get("turn_end_damage"):
-                smart_bonus += int(payload["turn_end_damage"]) * 2
-            if effect.status:
-                score += 10
+            if effective_outcome is None:
+                if payload.get("stun_classes"):
+                    smart_bonus += 90
+                if payload.get("counter") or payload.get("reflect"):
+                    smart_bonus += 70
+                if payload.get("damage_bonus"):
+                    smart_bonus += 45
+                if payload.get("damage_reduction"):
+                    smart_bonus += 25
+                if int(payload.get("damage_output_delta", 0)) < 0:
+                    smart_bonus += 35
+                if payload.get("turn_end_damage"):
+                    smart_bonus += int(payload["turn_end_damage"]) * 2
+                if effect.status:
+                    score += 10
         elif effect.type == "remove_status":
             score += 20
+    if effective_outcome is not None:
+        score += effective_outcome["hp_damage"]
+        score += effective_outcome["defense_damage"] // 2
+        if effective_outcome["kills"]:
+            smart_bonus += lethal_bonus_amount * effective_outcome["kills"]
+            lethal_secured = True
+        score += effective_outcome["statuses_applied"] * 10
+        smart_bonus += effective_outcome["control_statuses"] * 90
+        if target_player:
+            for slot in target_slots:
+                if 0 <= slot < len(target_player.team):
+                    target = target_player.team[slot]
+                    score += max(0, target.max_hp - target.hp) // 5
     if skill.conditions:
         score += int(35 * condition_weight)
     score += int(smart_bonus * smart_bonus_weight)

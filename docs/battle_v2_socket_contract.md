@@ -51,10 +51,12 @@ pip; Normal/Easy: -2), but Hard is not simply "less cost-averse" overall —
 signals Normal/Easy don't have at all, which can make it choose a *cheaper*
 or *less obviously strong* action than Normal in some states:
 
-- **Setup/payoff awareness**: a conditional damage effect's value is only
-  counted if its `condition_status`/`condition_missing_status` is actually
-  true of the live target. Normal/Easy always count the listed amount,
-  whether or not the condition would actually apply.
+- **Effective outcome awareness**: Hard dry-runs the legal action through the
+  authoritative resolver on a viewer-safe clone. Its damage and lethal read
+  therefore includes every effect/condition, aggregate DR, destructible
+  defense, invulnerability, and anti-domain conversion. Unrevealed invisible
+  opponent statuses are removed from the clone. Normal/Easy continue using
+  listed heuristic amounts.
 - **Counter/reflect risk**: a harmful action against a target currently
   holding an active counter/reflect status is penalized on Hard, since it
   risks feeding the payload back at the caster's own team.

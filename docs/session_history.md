@@ -1832,3 +1832,61 @@ verified every rebuilt scene in real Chrome, including real interactive
 flows (queueing 3 actions through actual button clicks, opening Queue
 Review, injecting a synthetic Victory result) rather than only static
 screenshots — zero overlaps, zero console errors on final reload.
+
+## 2026-07-17 — Effective Hard outcomes, durable mission settlement, canonical contracts, and current mobile QA
+
+**What changed.** Hard CPU lethal evaluation now dry-runs each legal harmful
+candidate through the authoritative resolver on a deep clone. The clone removes
+opponent-owned unrevealed invisible statuses before resolution, preserving the
+same information boundary as a human viewer. Scoring uses actual HP damage,
+destructible-defense consumption, deaths, and statuses applied after aggregate
+DR, invulnerability, anti-domain conversion, every effect, and the shipping
+condition grammar. Soul/piercing heuristic premiums no longer become fake HP
+damage for lethal checks.
+
+Mission progress now enters a SQLite `mission_settlement_outbox` keyed by
+`match_id + player_id` before merge. Rows persist the terminal progression
+snapshot and transition through `pending`, `failed_retryable`, and `settled`
+with retry count, next attempt, and last error. Immediate settlement, startup
+recovery, and periodic runtime maintenance all drain due rows without requiring
+the source room; profile merge and mission analytics remain idempotent.
+Runtime schema is version 5.
+
+The root/battle instructions, `CODEX_PROJECT_MEMORY.md`, damage-reduction and
+anti-domain decision records, socket contract, kit grammar, and skill-audit
+contract now agree: fixed DR is a player-turn aggregate budget and anti-domain
+uses universal sure-hit conversion. `tests/test_canonical_decisions.py` rejects
+the stale open-decision markers. First Creation formally adopts the typed
+`EffectSpec.payload` condition/payoff DSL in `effect_payload.py`; all 18 used
+keys are registered and every one of the 78 skills is schema-validated.
+
+Meaningful Phaser text literals below 10 px were raised to a 10 px floor without
+changing scene architecture. Eighteen live PNGs were captured under
+`artifacts/ui-redesign/current/`: Lobby, Draft, First Creation, Mission Map,
+Combat, and Records at 360x800, 390x844, and 430x932. The browser console had
+zero warnings/errors. A later attempt to add a fresh Queue Review capture hit a
+browser screenshot timeout twice; the six-screen/three-viewport set is intact,
+but Queue Review and Result were not recaptured in this pass.
+
+**Verification actually run.** Final full suite: `411 passed, 1 skipped` in
+normal order and `411 passed, 1 skipped` with test files in reverse order.
+`python -m compileall -q jjk_arena web/app.py`, `node --check` for every Phaser
+JavaScript module, `git diff --check`, and the First Creation audit all passed;
+the audit reports 19 characters, 78 skills, 0 structural findings, 0 uncovered
+special mechanics, 18 registered conditional keys, and 0 unregistered keys.
+The adversarial CPU corpus covers 25 normal into a 50 shield, aggregate 10 DR,
+combined two-hit lethal, non-lethal piercing, invulnerability, anti-domain
+conversion, and condition-gated status application. The durable-outbox test
+fails a merge, recreates `SQLiteRuntimeStore`, advances to the due time, and
+then settles the preserved snapshot successfully.
+
+`python -m jjk_arena.battle_v2.lifecycle_stress --matches 1000 --seed 1`
+completed 1,000 matches in 98.04 seconds with 0 softlocks, 0 final rooms,
+83,480,576-byte RSS under the 419,430,400-byte ceiling, one scheduler worker
+during the run, and 0 scheduler worker threads after shutdown.
+
+**Remaining cautions / delivery state.** No balance numbers, characters,
+progression tiers, screens, art, audio, or layouts changed. Queue Review and
+Result still need current-revision screenshots if a complete ten-screen visual
+release pack is required. Changes and QA artifacts were committed locally on
+`codex/close-alpha-contracts`; the branch was not pushed and no PR was opened.

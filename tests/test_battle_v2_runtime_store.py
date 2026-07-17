@@ -64,7 +64,32 @@ def test_replay_retention_is_opt_in_storage_with_expiry(tmp_path):
 
 def test_runtime_store_healthcheck_reports_schema(tmp_path):
     store = SQLiteRuntimeStore(tmp_path / "runtime.sqlite3")
-    assert store.healthcheck() == {"ok": True, "schema_version": 4}
+    assert store.healthcheck() == {"ok": True, "schema_version": 5}
+
+
+def test_mission_settlement_outbox_retries_after_process_restart(tmp_path):
+    now = [100.0]
+    path = tmp_path / "runtime.sqlite3"
+    first = SQLiteRuntimeStore(path, clock=lambda: now[0])
+    progress = {"completed_ids": ["welcome"], "unlocked": ["mission_board"]}
+    first.enqueue_mission_settlement("match-1", "player-1", progress)
+
+    def fail(*_args):
+        raise RuntimeError("database is locked")
+
+    assert first.process_mission_settlements(fail) == []
+    failed = first.mission_settlement_rows()[0]
+    assert failed["status"] == "failed_retryable"
+    assert failed["retry_count"] == 1
+
+    now[0] = 101.0
+    restarted = SQLiteRuntimeStore(path, clock=lambda: now[0])
+    received = []
+    assert restarted.process_mission_settlements(
+        lambda match_id, player_id, snapshot: received.append((match_id, player_id, snapshot))
+    ) == [("match-1", "player-1")]
+    assert received == [("match-1", "player-1", progress)]
+    assert restarted.mission_settlement_rows()[0]["status"] == "settled"
 
 
 def test_analytics_summary_uses_sql_aggregation_not_python_payload_decoding(tmp_path):

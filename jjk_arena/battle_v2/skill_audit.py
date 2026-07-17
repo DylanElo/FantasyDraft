@@ -36,8 +36,9 @@ from pathlib import Path
 from typing import Any
 
 from .starter_roster import FIRST_CREATION_ROSTER, FIRST_CREATION_SKILLS_BY_ID
+from .effect_payload import CONDITIONAL_PAYLOAD_KEYS, validate_skill_conditional_payloads
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TESTS_DIR = REPO_ROOT / "tests"
@@ -53,10 +54,6 @@ DOCUMENTED_EFFECT_VOCABULARY = {
     "damage_reduction", "destructible_defense", "invulnerability",
     "stun_classes", "counter", "reflect", "cooldown_increase",
     "cost_modifier", "damage_modifier", "domain", "skill_replacement",
-}
-DOCUMENTED_CONDITION_VOCABULARY = {
-    "user_has", "target_has", "target_stacks", "user_damaged_enemy_last_turn",
-    "target_hp_below", "skill_class_used", "domain_active", "not_stunned_for_class",
 }
 # A documented vocabulary word can be implemented either as an EffectSpec.type
 # or as a payload key on a different effect (usually apply_status), and
@@ -119,6 +116,7 @@ def audit_structural_completeness() -> list[dict[str, Any]]:
                 issues.append("no skill classes assigned")
             if skill.cooldown < 0:
                 issues.append(f"negative cooldown ({skill.cooldown})")
+            issues.extend(validate_skill_conditional_payloads(skill))
             if issues:
                 findings.append({"character_id": character_id, "skill_id": skill.id, "issues": issues})
     return findings
@@ -187,9 +185,12 @@ def audit_grammar_vocabulary_drift() -> dict[str, Any]:
         "effect_vocabulary_used_under_a_different_name": used_under_different_name,
         "effect_vocabulary_genuinely_unused_in_first_creation": documented_but_unused,
         "condition_spec_mechanism_total_uses_across_all_78_skills": total_condition_spec_entries,
-        "condition_types_used_but_undocumented": sorted(used_condition_types - DOCUMENTED_CONDITION_VOCABULARY),
-        "condition_types_documented_but_unused": sorted(DOCUMENTED_CONDITION_VOCABULARY - used_condition_types),
-        "actual_undocumented_condition_payload_vocabulary_in_use": actual_condition_payload_vocabulary,
+        "legacy_condition_spec_types_in_use": sorted(used_condition_types),
+        "canonical_condition_payload_vocabulary_in_use": actual_condition_payload_vocabulary,
+        "conditional_payload_keys_used_but_unregistered": sorted(
+            set(actual_condition_payload_vocabulary) - CONDITIONAL_PAYLOAD_KEYS
+        ),
+        "conditional_payload_schema_keys": sorted(CONDITIONAL_PAYLOAD_KEYS),
     }
 
 
@@ -243,17 +244,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  - {finding['skill_id']} ({finding['character_id']}): {', '.join(finding['mechanics'])} -- no dedicated test")
 
     vocab = result["grammar_vocabulary_drift"]
-    if vocab["condition_spec_mechanism_total_uses_across_all_78_skills"] == 0:
-        print(
-            "\n*** The documented ConditionSpec/`SkillSpec.conditions` mechanism "
-            "(docs/jjk_kit_grammar.md 'Condition Vocabulary') is used by ZERO of "
-            "the 78 First Creation skills. All conditional skill behavior is "
-            "implemented via an undocumented, parallel payload-key convention "
-            "on EffectSpec instead (condition_status, condition_user_status, "
-            "condition_target_hp_below, etc. -- see "
-            "tests/test_first_creation_skill_execution.py::prepare_conditions "
-            "for the full key vocabulary actually in use). ***"
-        )
+    print(
+        "\nCanonical conditional payload schema: "
+        f"{len(vocab['conditional_payload_schema_keys'])} registered keys; "
+        f"{len(vocab['conditional_payload_keys_used_but_unregistered'])} unregistered keys in First Creation."
+    )
     print("\nKit-grammar vocabulary drift:")
     for key, values in vocab.items():
         if key == "condition_spec_mechanism_total_uses_across_all_78_skills":

@@ -204,7 +204,9 @@ Expensive skills consume the same shared pool that teammates need. A three-energ
 
 - Reserved for Domain/sure-hit contracts.
 - It is not a generic “ignore everything” flag.
-- Every anti-domain interaction must be explicit, readable, and tested.
+- Active anti-domain universally converts sure-hit to normal damage and
+  removes its invulnerability bypass. Any exception requires a new explicit
+  decision record and tests. See `docs/decisions/battle_v2_anti_domain.md`.
 
 ## Defense destruction
 
@@ -219,16 +221,12 @@ Default invulnerability means “not a valid target for new harmful enemy skills
 - Already-active instant effects may continue according to their persistence contract.
 - “Ignore” and “bypass” are distinct from invulnerability removal.
 
-## Open damage-reduction decision
+## Locked damage-reduction decision
 
-Naruto Arena aggregates fixed damage received during a turn before applying fixed reduction. The current project has historically used per-event reduction in places.
-
-This remains an explicit open design decision. Codex must not silently switch models. A change requires:
-
-- explicit user approval
-- migration notes
-- multi-hit tests
-- balance review for all reduction skills
+Fixed damage reduction is a turn-aggregate budget per player turn. Each
+normal hit consumes the remaining budget; later hits receive only what remains.
+Changing this model requires a new explicit decision record, migration tests,
+and balance review. See `docs/decisions/battle_v2_damage_reduction.md`.
 
 ---
 

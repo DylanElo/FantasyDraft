@@ -45,7 +45,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         this.graphics.strokeCircle(cx, y, 5.5);
         this.mono(cx, y - 4, ENERGY_LABELS[color] || '?', {
           color: color === 'white' ? '#08080a' : COLORS.text,
-          fontSize: '8px',
+          fontSize: '10px',
         }).setOrigin(0.5, 0);
       });
     }
@@ -110,7 +110,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
       if (meta.secondaryName || meta.alternateName) {
         this.mono(x + 46, rowY + 54, shortText(meta.secondaryName ? `SECOND / ${meta.secondaryName}` : `FALLBACK / ${meta.alternateName}`, 31).toUpperCase(), {
           color: COLORS.muted,
-          fontSize: '9px',
+          fontSize: '10px',
         });
       } else {
         this.renderCostOrbs(x + 50, rowY + 61, meta.cost, 5);
@@ -137,10 +137,10 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
 
       const wildCount = meta.cost.filter((color) => color === 'black').length;
       if (!wildCount) {
-        this.mono(x + rowW - 102, rowY + 58, 'FIXED COST', { color: COLORS.dim, fontSize: '9px' });
+        this.mono(x + rowW - 102, rowY + 58, 'FIXED COST', { color: COLORS.dim, fontSize: '10px' });
         return;
       }
-      this.mono(x + rowW - 112, rowY + 49, 'WILD PAY', { color: COLORS.paperText, fontSize: '9px' });
+      this.mono(x + rowW - 112, rowY + 49, 'WILD PAY', { color: COLORS.paperText, fontSize: '10px' });
       for (let wildIndex = 0; wildIndex < wildCount; wildIndex += 1) {
         const pay = (this.store.actionWildPays[action.id] || [])[wildIndex] || 'black';
         this.button(x + rowW - 64 + wildIndex * 32, rowY + 45, 28, 24, ENERGY_LABELS[pay] || 'X', () => this.store.cycleWildcardPay(action.id, wildIndex), {
@@ -225,7 +225,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         this.graphics.fillCircle(cx, sheetY + 38, 6.2);
         this.graphics.lineStyle(1, color === 'white' ? COLORS.talismanPaper : ENERGY_COLORS[color], count ? 0.78 : 0.3);
         this.graphics.strokeCircle(cx, sheetY + 38, 8.3);
-        this.mono(cx, sheetY + 49, String(count), { color: COLORS.text, fontSize: '9px' }).setOrigin(0.5, 0);
+        this.mono(cx, sheetY + 49, String(count), { color: COLORS.text, fontSize: '10px' }).setOrigin(0.5, 0);
       });
 
       const rowW = sheetW - 40;

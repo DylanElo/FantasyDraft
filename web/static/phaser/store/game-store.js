@@ -1,9 +1,9 @@
-import { BOOT, CORE_ENERGY } from '../core/runtime-config.js?v=31';
-import { safeText } from '../core/text.js?v=31';
-import { readStorage, writeStorage } from '../core/storage.js?v=31';
-import { AssetRegistry } from '../core/asset-registry.js?v=31';
-import { firstCreationRoster, preset, presetTitle } from '../core/roster.js?v=31';
-import { damageEventAmount } from '../fx/event-metrics.js?v=31';
+import { BOOT, CORE_ENERGY } from '../core/runtime-config.js?v=32';
+import { safeText } from '../core/text.js?v=32';
+import { readStorage, writeStorage } from '../core/storage.js?v=32';
+import { AssetRegistry } from '../core/asset-registry.js?v=32';
+import { firstCreationRoster, preset, presetTitle } from '../core/roster.js?v=32';
+import { damageEventAmount } from '../fx/event-metrics.js?v=32';
 
 export class GameStore {
     constructor(socketClient) {
@@ -42,6 +42,7 @@ export class GameStore {
       this.recentEvents = [];
       this.lastActionPayloads = [];
       this.commandNonceCounter = 0;
+      this.pendingCommand = null;
       this.resumeSession = this.loadResumeSession();
       this.ignoreBattleUpdates = false;
       // Live-updated from the most recent battle_v2_update's
@@ -85,6 +86,8 @@ export class GameStore {
       });
       this.socketClient.on('disconnect', () => {
         this.connectionState = 'disconnected';
+        this.pendingCommand = null;
+        this.queueSubmitting = false;
         this.setStatus('Reconnecting…');
         this.notify();
       });
@@ -96,9 +99,23 @@ export class GameStore {
       this.socketClient.on('battle_v2_update', (data) => this.receiveBattleState(data));
       this.socketClient.on('battle_v2_lobby', (data) => this.receiveLobbyState(data));
       this.socketClient.on('battle_v2_error', (data) => {
+        const failedCommand = this.pendingCommand;
+        this.pendingCommand = null;
         this.queueSubmitting = false;
         this.matchLaunchPending = false;
-        this.showToast(data && data.message ? data.message : 'Battle v2 error');
+        if (
+          failedCommand
+          && ['queue_update_before_confirm', 'queue_confirm'].includes(failedCommand.kind)
+          && this.actions.length
+          && this.state
+          && this.state.phase === 'queue_review'
+        ) {
+          this.queueReviewOpen = true;
+        }
+        const message = data && data.message ? String(data.message) : 'Battle command failed.';
+        this.showToast(message.toLowerCase().includes('stale state revision')
+          ? 'Battle state refreshed. Review your queue and try again.'
+          : message);
       });
       this.socketClient.on('battle_v2_finished', (data) => {
         this.showToast(this.finishedMessage(data));
@@ -144,14 +161,28 @@ export class GameStore {
       }, 2200);
     }
 
-    commandPayload(payload = {}, revisionOffset = 0) {
+    commandPayload(payload = {}) {
       this.commandNonceCounter += 1;
-      const revision = Number((this.state && this.state.state_revision) || 0) + revisionOffset;
+      const revision = Number((this.state && this.state.state_revision) || 0);
       return {
         ...payload,
         state_revision: revision,
         client_action_nonce: `${Date.now()}-${this.commandNonceCounter}`,
       };
+    }
+
+    beginCommand(eventName, payload = {}, kind = eventName) {
+      if (this.pendingCommand || !this.state) return false;
+      const envelope = this.commandPayload(payload);
+      this.pendingCommand = {
+        eventName,
+        kind,
+        stateRevision: envelope.state_revision,
+        nonce: envelope.client_action_nonce,
+        matchId: this.state.match_id || null,
+      };
+      this.socketClient.emit(eventName, envelope);
+      return true;
     }
 
     loadResumeSession() {
@@ -474,6 +505,7 @@ export class GameStore {
 
     receiveLobbyState(data) {
       this.state = null;
+      this.pendingCommand = null;
       this.disconnectDeadline = null;
       const cancelled = !!(data && data.status === 'cancelled');
       this.lobbyStatus = cancelled ? null : data;
@@ -490,7 +522,43 @@ export class GameStore {
     }
 
     receiveBattleState(data) {
-      if (this.ignoreBattleUpdates) return;
+      if (this.ignoreBattleUpdates || !data) return;
+      const currentMatchId = this.state && this.state.match_id;
+      const nextMatchId = data.match_id;
+      const sameMatch = !!this.state && (
+        currentMatchId && nextMatchId
+          ? currentMatchId === nextMatchId
+          : !currentMatchId && !nextMatchId
+      );
+      const currentRevision = Number(this.state && this.state.state_revision);
+      const nextRevision = Number(data.state_revision);
+      if (
+        sameMatch
+        && Number.isFinite(currentRevision)
+        && Number.isFinite(nextRevision)
+        && nextRevision < currentRevision
+      ) {
+        return;
+      }
+
+      if (!sameMatch && this.state) {
+        this.eventCursor = 0;
+        this.playbackEvents = [];
+        this.recentEvents = [];
+      }
+      const pendingCommand = this.pendingCommand;
+      const pendingMatches = !!pendingCommand && (
+        !pendingCommand.matchId || !nextMatchId || pendingCommand.matchId === nextMatchId
+      );
+      const completedCommand = pendingMatches
+        && Number.isFinite(nextRevision)
+        && nextRevision > pendingCommand.stateRevision
+        ? pendingCommand
+        : null;
+      if (completedCommand || (pendingCommand && !pendingMatches)) {
+        this.pendingCommand = null;
+      }
+
       const log = data && Array.isArray(data.event_log) ? data.event_log : [];
       const nextEvents = log.slice(this.eventCursor);
       this.eventCursor = log.length;
@@ -506,17 +574,40 @@ export class GameStore {
         ? Date.now() + Number(data.disconnect_grace_seconds_remaining) * 1000
         : null;
       this.lobbyStatus = null;
-      this.queueSubmitting = false;
       this.matchLaunchPending = false;
       const ownPending = (data.pending_actions && data.pending_actions[this.mineId()]) || [];
       const me = this.me();
       if (ownPending.length) {
-        this.actions = ownPending.map((action) => ({ ...action }));
+        const queueOrder = (data.queue_order && data.queue_order[this.mineId()]) || [];
+        const queueIndex = new Map(queueOrder.map((actionId, index) => [actionId, index]));
+        this.actions = ownPending
+          .map((action, index) => ({ ...action, _serverIndex: index }))
+          .sort((left, right) => (
+            (queueIndex.has(left.id) ? queueIndex.get(left.id) : queueOrder.length + left._serverIndex)
+            - (queueIndex.has(right.id) ? queueIndex.get(right.id) : queueOrder.length + right._serverIndex)
+          ))
+          .map(({ _serverIndex, ...action }) => action);
+        this.actionWildPays = Object.fromEntries(
+          this.actions
+            .filter((action) => Array.isArray(action.wildcard_pays) && action.wildcard_pays.length)
+            .map((action) => [action.id, action.wildcard_pays.slice()]),
+        );
         this.ensureWildcardPayments();
       } else if (data.phase === 'planning' || data.phase === 'finished' || data.turn_player_id !== this.mineId() || (me && me.queue_confirmed)) {
         this.actions = [];
         this.actionWildPays = {};
         this.queueReviewOpen = false;
+      }
+
+      const shouldConfirmQueue = !!completedCommand
+        && completedCommand.kind === 'queue_update_before_confirm'
+        && data.phase === 'queue_review'
+        && data.turn_player_id === this.mineId()
+        && this.actions.length > 0
+        && !(me && me.queue_confirmed)
+        && this.queueReviewFit().ok;
+      if (!shouldConfirmQueue && (!this.pendingCommand || completedCommand)) {
+        this.queueSubmitting = false;
       }
       this.ensureSelectedCaster();
       // Route every terminal result (WIN/FORFEIT/DRAW/NO_CONTEST) to
@@ -527,6 +618,16 @@ export class GameStore {
         this.changeScene('ResultScene');
       } else {
         this.changeScene('CombatScene');
+      }
+      if (shouldConfirmQueue) {
+        this.queueSubmitting = true;
+        this.queueReviewOpen = false;
+        if (!this.beginCommand('battle_v2_confirm_queue', {}, 'queue_confirm')) {
+          this.queueSubmitting = false;
+          this.queueReviewOpen = true;
+          this.showToast('Queue changed before confirmation. Review it and try again.');
+        }
+        this.notify();
       }
     }
 
@@ -564,6 +665,7 @@ export class GameStore {
         || !!(this.state && this.state.paused)
         || !!(this.state && this.state.result_type)
         || !this.isMyTurn()
+        || !!this.pendingCommand
         || this.queueSubmitting
         || !!(me && me.queue_confirmed)
       );
@@ -897,6 +999,7 @@ export class GameStore {
     }
 
     addAction(casterSlot, skillId, targetPlayerId, targetSlot, targetSlots, extras = {}) {
+      if (this.controlsLocked()) return false;
       const id = `phaser_${Date.now()}_${casterSlot}`;
       this.actions = this.actions.filter((action) => Number(action.caster_slot) !== Number(casterSlot));
       this.actionWildPays = Object.fromEntries(Object.entries(this.actionWildPays).filter(([actionId]) => this.actions.some((action) => action.id === actionId)));
@@ -916,8 +1019,12 @@ export class GameStore {
       this.ensureSelectedCaster();
       this.ensureWildcardPayments();
       this.lastActionPayloads = this.pendingActionPayloads();
-      this.socketClient.emit('battle_v2_submit_plan', this.commandPayload({ actions: this.lastActionPayloads }));
+      if (!this.beginCommand('battle_v2_submit_plan', { actions: this.lastActionPayloads }, 'submit_plan')) {
+        this.showToast('Wait for the battle state to finish updating.');
+        return false;
+      }
       this.notify();
+      return true;
     }
 
     skillFit(skill, caster = null) {
@@ -1108,11 +1215,15 @@ export class GameStore {
       this.queueSubmitting = true;
       this.queueReviewOpen = false;
       const payloads = this.pendingActionPayloads();
-      this.socketClient.emit('battle_v2_update_queue', this.commandPayload({
+      const started = this.beginCommand('battle_v2_update_queue', {
         queue_order: payloads.map((action) => action.id),
         wildcard_pays: Object.fromEntries(payloads.map((action) => [action.id, action.wildcard_pays || []])),
-      }));
-      this.socketClient.emit('battle_v2_confirm_queue', this.commandPayload({}, 1));
+      }, 'queue_update_before_confirm');
+      if (!started) {
+        this.queueSubmitting = false;
+        this.queueReviewOpen = true;
+        this.showToast('Wait for the battle state to finish updating.');
+      }
       this.notify();
     }
 
@@ -1124,7 +1235,7 @@ export class GameStore {
       this.detailSkillId = null;
       this.queueSubmitting = false;
       this.queueReviewOpen = false;
-      this.socketClient.emit('battle_v2_cancel_queue', this.commandPayload());
+      this.beginCommand('battle_v2_cancel_queue', {}, 'cancel_queue');
       this.notify();
     }
 
@@ -1134,7 +1245,7 @@ export class GameStore {
       this.actionWildPays = {};
       this.queueSubmitting = true;
       this.queueReviewOpen = false;
-      this.socketClient.emit('battle_v2_end_turn', this.commandPayload());
+      this.beginCommand('battle_v2_end_turn', {}, 'end_turn');
       this.notify();
     }
 
@@ -1153,8 +1264,9 @@ export class GameStore {
       const target = colors
         .filter((color) => color !== source)
         .sort((a, b) => Number((me.energy || {})[a] || 0) - Number((me.energy || {})[b] || 0))[0];
-      this.socketClient.emit('battle_v2_convert_energy', this.commandPayload({ source, target }));
-      this.showToast(`Converting ${source} to ${target}.`);
+      if (this.beginCommand('battle_v2_convert_energy', { source, target }, 'convert_energy')) {
+        this.showToast(`Converting ${source} to ${target}.`);
+      }
     }
 
     resetToLobby() {
@@ -1169,6 +1281,7 @@ export class GameStore {
         this.socketClient.emit('battle_v2_surrender', this.commandPayload());
       }
       this.state = null;
+      this.pendingCommand = null;
       this.disconnectDeadline = null;
       this.clearResumeSession();
       this.lobbyStatus = null;

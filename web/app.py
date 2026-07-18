@@ -730,6 +730,12 @@ def emit_battle_v2_error(exc: Exception):
     emit("battle_v2_error", {"message": str(exc)})
 
 
+def emit_battle_v2_command_error(exc: Exception, room_id: str, viewer_id: str) -> None:
+    """Reject the intent, then return the viewer's current authoritative snapshot."""
+    emit_battle_v2_error(exc)
+    emit_battle_v2_update(room_id, viewer_id)
+
+
 def issue_battle_v2_resume_sessions(room_id: str) -> None:
     state = battle_v2_manager.get_state(room_id)
     for player_id in state.players:
@@ -1359,7 +1365,7 @@ def on_battle_v2_submit_plan(data=None):
         )
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
-        emit_battle_v2_error(exc)
+        emit_battle_v2_command_error(exc, room_id, player_session)
 
 
 @socketio.on("battle_v2_update_queue")
@@ -1384,7 +1390,7 @@ def on_battle_v2_update_queue(data=None):
         )
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
-        emit_battle_v2_error(exc)
+        emit_battle_v2_command_error(exc, room_id, player_session)
 
 
 @socketio.on("battle_v2_confirm_queue")
@@ -1402,7 +1408,7 @@ def on_battle_v2_confirm_queue(data=None):
             run_battle_v2_cpu_turns(room_id)
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
-        emit_battle_v2_error(exc)
+        emit_battle_v2_command_error(exc, room_id, player_session)
 
 
 @socketio.on("battle_v2_cancel_queue")
@@ -1418,7 +1424,7 @@ def on_battle_v2_cancel_queue(data=None):
         execute_v2_player_command(room_id, player_session, "cancel_queue", data)
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
-        emit_battle_v2_error(exc)
+        emit_battle_v2_command_error(exc, room_id, player_session)
 
 
 @socketio.on("battle_v2_convert_energy")
@@ -1443,7 +1449,7 @@ def on_battle_v2_convert_energy(data=None):
         )
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
-        emit_battle_v2_error(exc)
+        emit_battle_v2_command_error(exc, room_id, player_session)
 
 
 @socketio.on("battle_v2_end_turn")
@@ -1461,7 +1467,7 @@ def on_battle_v2_end_turn(data=None):
             run_battle_v2_cpu_turns(room_id)
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
-        emit_battle_v2_error(exc)
+        emit_battle_v2_command_error(exc, room_id, player_session)
 
 
 @socketio.on("battle_v2_surrender")
@@ -1477,7 +1483,7 @@ def on_battle_v2_surrender(data=None):
         execute_v2_player_command(room_id, player_session, "surrender", data)
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
-        emit_battle_v2_error(exc)
+        emit_battle_v2_command_error(exc, room_id, player_session)
 
 
 @socketio.on("disconnect")

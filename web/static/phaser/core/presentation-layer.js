@@ -7,26 +7,26 @@ import {
   skillVisualCoverage,
   skillVisualEntries,
   skillVisualFor,
-} from './skill-visual-registry.js?v=31';
+} from './skill-visual-registry.js?v=32';
 import {
   InteractionSfx,
   INTERACTION_HAPTIC_CUES,
   INTERACTION_SFX_CUES,
   getPersistentInteractionSfx,
-} from './interaction-sfx.js?v=31';
+} from './interaction-sfx.js?v=32';
 import {
   DEFAULT_PRESENTATION_SETTINGS,
   PresentationSettings,
   getPersistentPresentationSettings,
-} from './presentation-settings.js?v=31';
-import { MotionVfx, MOTION_TIMINGS, prefersReducedMotion } from '../fx/motion-vfx.js?v=31';
+} from './presentation-settings.js?v=32';
+import { MotionVfx, MOTION_TIMINGS, prefersReducedMotion } from '../fx/motion-vfx.js?v=32';
 import {
   drawSkillArtCrop,
   drawSkillIcon,
   skillArtCropRect,
   skillAtlasFrameRect,
   skillIconFormFamily,
-} from '../ui/skill-visuals.js?v=31';
+} from '../ui/skill-visuals.js?v=32';
 
 export {
   INTERACTION_SFX_CUES,

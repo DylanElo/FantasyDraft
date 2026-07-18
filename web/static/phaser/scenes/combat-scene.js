@@ -1,8 +1,8 @@
-import { COLORS, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_TYPE } from '../core/runtime-config.js?v=31';
-import { clamp, initials, safeText, shortText, titleize } from '../core/text.js?v=31';
-import { eventTone } from '../fx/event-metrics.js?v=31';
-import { drawCurrentButton, drawCurrentPanel, drawCurrentWorld } from '../ui/culling-current-ui.js?v=31';
-import { CombatQueueReviewScene } from './combat-queue-review-scene.js?v=31';
+import { COLORS, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_TYPE } from '../core/runtime-config.js?v=32';
+import { clamp, initials, safeText, shortText, titleize } from '../core/text.js?v=32';
+import { eventTone } from '../fx/event-metrics.js?v=32';
+import { drawCurrentButton, drawCurrentPanel, drawCurrentWorld } from '../ui/culling-current-ui.js?v=32';
+import { CombatQueueReviewScene } from './combat-queue-review-scene.js?v=32';
 
 const WORLD_KEY = 'culling-current-rooftop';
 const LOCATION_LINE = 'TOKYO MUNICIPAL ROOFTOP';

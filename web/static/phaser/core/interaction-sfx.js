@@ -1,7 +1,7 @@
 // Small synthesized interaction cues. The service never creates or resumes an
 // AudioContext until unlockFromGesture() is called from an actual user input.
 
-import { getPersistentPresentationSettings } from './presentation-settings.js?v=31';
+import { getPersistentPresentationSettings } from './presentation-settings.js?v=32';
 
 export const INTERACTION_SFX_CUES = Object.freeze({
   press: Object.freeze({ voices: [{ wave: 'triangle', from: 230, to: 190, duration: 0.055, gain: 0.035 }] }),

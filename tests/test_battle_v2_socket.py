@@ -484,6 +484,18 @@ def test_battle_v2_socket_rejects_stale_revision_without_mutation(monkeypatch):
     client.emit("battle_v2_start_classic", {"room_id": "stale-v2"})
     start = received_payload(client, "battle_v2_update")
     state = web_app.battle_v2_manager.get_state("stale-v2")
+    state.players[start["turn_player_id"]].team[0].statuses.append(
+        StatusEffect(
+            "stale_resync_secret",
+            "Stale Resync Secret",
+            "__cpu_v2__",
+            0,
+            start["turn_player_id"],
+            0,
+            2,
+            invisible=True,
+        )
+    )
     before = deepcopy(web_app.battle_v2_manager.serialize_for_player("stale-v2", start["turn_player_id"]))
 
     client.emit("battle_v2_end_turn", {
@@ -491,9 +503,58 @@ def test_battle_v2_socket_rejects_stale_revision_without_mutation(monkeypatch):
         "client_action_nonce": "stale-command",
     })
 
-    error = received_payload(client, "battle_v2_error")
+    messages = client.get_received()
+    assert [message["name"] for message in messages] == ["battle_v2_error", "battle_v2_update"]
+    error = messages[0]["args"][0]
+    resync = messages[1]["args"][0]
     assert "stale state revision" in error["message"]
-    assert web_app.battle_v2_manager.serialize_for_player("stale-v2", start["turn_player_id"]) == before
+    after = web_app.battle_v2_manager.serialize_for_player("stale-v2", start["turn_player_id"])
+    assert after == before
+    assert resync["state_revision"] == before["state_revision"] == state.state_revision
+    assert resync["phase"] == before["phase"]
+    assert resync["turn_player_id"] == before["turn_player_id"]
+    assert resync["pending_actions"] == before["pending_actions"]
+    assert resync["queue_order"] == before["queue_order"]
+    assert resync["event_log"] == before["event_log"]
+    assert all(
+        status["id"] != "stale_resync_secret"
+        for status in resync["players"][start["turn_player_id"]]["team"][0]["statuses"]
+    )
+    assert any(
+        status.id == "stale_resync_secret"
+        for status in state.players[start["turn_player_id"]].team[0].statuses
+    )
+    room_receipts = web_app.battle_v2_manager.command_receipts.get(state.room_id, {})
+    assert "stale-command" not in room_receipts.get(start["turn_player_id"], {})
+
+
+def test_battle_v2_socket_resyncs_after_deadline_makes_command_revision_stale(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    client = socket_client()
+    client.emit("battle_v2_start_classic", {"room_id": "deadline-stale-v2"})
+    start = received_payload(client, "battle_v2_update")
+    player_id = start["turn_player_id"]
+    state = web_app.battle_v2_manager.get_state("deadline-stale-v2")
+    web_app.battle_v2_timer_scheduler.cancel("deadline-stale-v2")
+    state.phase_deadline = web_app.battle_v2_manager.clock() - 1
+
+    client.emit("battle_v2_end_turn", {
+        "state_revision": start["state_revision"],
+        "client_action_nonce": "deadline-stale-command",
+    })
+
+    messages = client.get_received()
+    assert [message["name"] for message in messages] == ["battle_v2_error", "battle_v2_update"]
+    error = messages[0]["args"][0]
+    resync = messages[1]["args"][0]
+    assert "stale state revision" in error["message"]
+    assert resync["state_revision"] == state.state_revision == start["state_revision"] + 1
+    assert resync["turn_player_id"] == "__cpu_v2__"
+    assert [event["type"] for event in resync["event_log"]].count("phase_timeout") == 1
+    assert [event["type"] for event in resync["event_log"]].count("auto_pass") == 1
+    assert not any(event["type"] == "turn_skipped" for event in resync["event_log"])
+    room_receipts = web_app.battle_v2_manager.command_receipts.get(state.room_id, {})
+    assert "deadline-stale-command" not in room_receipts.get(player_id, {})
 
 
 def test_battle_v2_socket_start_submit_confirm(monkeypatch):

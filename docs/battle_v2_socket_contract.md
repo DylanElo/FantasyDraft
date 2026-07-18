@@ -22,6 +22,15 @@ different command or payload is rejected. Successful commands and automatic
 authoritative continuations advance `state_revision`; rejected commands leave
 state, energy, cooldowns, queues, RNG, and logs unchanged.
 
+The browser keeps at most one mutating gameplay command in flight. It never
+predicts a future revision: the next command is built only after a newer
+viewer-specific `battle_v2_update` has been received. A late update with a
+lower revision for the same `match_id` is ignored. When a mutating command is
+rejected after match context has been established, the server emits
+`battle_v2_error` and then the current viewer-specific `battle_v2_update`, so
+the client can recover from a deadline advance or stale cached state without
+reloading the match.
+
 ## Client Events
 
 ### `battle_v2_start_classic`
@@ -123,9 +132,11 @@ rotated after every successful resume.
 Successful resume joins the original private socket room, emits a rotated
 `battle_v2_session`, and then emits a viewer-specific `battle_v2_update` with
 the current phase, revision, pending queue, and remaining time. Invalid,
-cross-room, cross-player, and already-rotated tokens are rejected. The token is
-only rotated after `reconnect_player` succeeds, so a rejected resume never
-consumes it. A successful resume also reconciles the player's one-live-match
+cross-room, cross-player, and already-rotated tokens are rejected. A valid
+token is atomically consumed and rotated before reconnect state changes or
+private-room admission. This ordering prevents concurrent replays from both
+passing verification and receiving private state or the newly rotated token.
+A successful resume also reconciles the player's one-live-match
 identity to this room, so a stale or desynced identity mapping cannot be used
 to join or start a second concurrent match.
 
@@ -197,6 +208,9 @@ Stores pending actions for queue review without spending energy.
 ### `battle_v2_update_queue`
 
 Sets queue order and wildcard payments. This validates the full queue.
+The client must wait for the resulting authoritative update before sending
+`battle_v2_confirm_queue`; it must not pipeline confirmation with a fabricated
+`state_revision + 1`.
 
 ```json
 {
@@ -321,7 +335,9 @@ state change.
 ### `battle_v2_error`
 
 Returned when the feature flag is disabled, the session is missing, validation
-fails, or the room/action is invalid.
+fails, or the room/action is invalid. For a rejected mutating gameplay command
+with valid match context, the server follows this error with the current
+viewer-specific `battle_v2_update` to resynchronize the client.
 
 ```json
 {

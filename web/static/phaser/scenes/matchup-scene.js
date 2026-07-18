@@ -1,13 +1,13 @@
-import { TOKEN_TYPE } from '../core/runtime-config.js?v=31';
-import { safeText } from '../core/text.js?v=31';
+import { TOKEN_TYPE } from '../core/runtime-config.js?v=32';
+import { safeText } from '../core/text.js?v=32';
 import {
   S3_COLORS,
   drawS3Button,
   drawS3Header,
   drawS3Panel,
   drawS3World,
-} from '../ui/season-three-ui.js?v=31';
-import { BaseScene } from './base-scene.js?v=31';
+} from '../ui/season-three-ui.js?v=32';
+import { BaseScene } from './base-scene.js?v=32';
 
 const MATCHUP_WORLD_KEY = 'culling-current-rooftop';
 

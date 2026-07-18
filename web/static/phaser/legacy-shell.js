@@ -1,6 +1,6 @@
-import { SocketClient } from './network/socket-client.js?v=31';
-import { GameStore } from './store/game-store.js?v=31';
-import { SCENE_LIST } from './scenes/scene-registry.js?v=31';
+import { SocketClient } from './network/socket-client.js?v=32';
+import { GameStore } from './store/game-store.js?v=32';
+import { SCENE_LIST } from './scenes/scene-registry.js?v=32';
 
 function startShell() {
   const element = document.getElementById('v2-phaser-shell');

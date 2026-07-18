@@ -2391,3 +2391,63 @@ is on `codex/culling-current-ui` through main implementation commit `735076c`
 and draft PR #58. The branch was pushed, the PR description was refreshed for
 the completed scope, GitHub reported a clean merge state, and its hosted CI
 `quality` check passed at that implementation commit.
+
+## 2026-07-19 - Queue Review stale-revision release blocker
+
+**User report and locked scope.** A real three-action Queue Review could not
+confirm and displayed `stale state revision: expected 14, got 15`. This pass
+changes command transport/recovery only. Battle v2 remains authoritative for
+phase timing, action legality, targeting, Wild payment, resolution, hidden
+information, and results; exact stale-intent rejection, per-player nonces, the
+three-active-character loop, and left-to-right resolution remain intact. No
+kit, balance, roster, progression, or visual-layout decision changed.
+
+**Root cause and correction.** The Phaser client emitted `update_queue(N)` and
+immediately emitted `confirm_queue(N+1)` even though it had not received the
+authoritative `N+1` state. Threaded Flask-SocketIO handlers may acquire the
+room lock in either order, so confirmation could arrive first and be rejected.
+Rapid skill taps could likewise submit multiple plan mutations at one cached
+revision, late lower-revision snapshots could roll the store backward, and an
+error did not return the current state after a deadline advance.
+
+The GameStore now permits one mutating command in flight, derives every command
+only from the last received authoritative revision, and chains Queue Review
+confirmation only after the queue update's newer snapshot arrives. It rejects
+lower revisions for the same match, preserves revision resets for a new match,
+restores authoritative queue order and Wild payments on update/resume, and
+keeps combat controls locked until the matching state advance. Rejected queue
+commands reopen review with a player-facing recovery message. Mutating socket
+handlers now emit the error followed by a viewer-safe current snapshot, so a
+stale or deadline-advanced client resynchronizes without reload; server stale
+rejection is unchanged. The socket contract now documents this sequencing and
+also corrects the resume-token ordering to match the existing atomic
+consume/rotate-before-private-admission implementation. First-party Phaser
+cache references advanced together from `v31` to `v32`.
+
+**Regression and live acceptance.** New Node-backed GameStore tests cover the
+authoritative queue-confirm handshake, rapid plan serialization, same-match
+monotonic state, new-match revision reset, and queue/Wild restoration. Socket
+tests require ordered `battle_v2_error` then private `battle_v2_update`, prove
+viewer privacy and nonce reuse after rejection, and cover a deterministic
+deadline-induced revision advance. Real-network HTTP/WebSocket acceptance
+passed for CPU resolution, PvP resume/token rotation, and authoritative
+timeout recovery.
+
+At 390x844 in the live in-app browser, a three-fighter turn submitted plan
+revisions `4`, `5`, and `6`, sent `update_queue` at `7`, and emitted
+`confirm_queue` only after receiving authoritative revision `8`. All three
+skills, including an explicit Wild payment, resolved. The same match continued
+through revision `64` and turn `37` to an actual server-authored ResultScene;
+the CPU won, proving terminal routing rather than assuming a player victory.
+The 430x932 reload also matched its portrait viewport and reported no portrait
+contract/load failures. The local listener was restarted on
+`http://127.0.0.1:5017` and serves `phaser-shell.js?v=32`.
+
+**Verification and delivery state.** Full pytest passed with **527 passed, 1
+skipped** in 111.14 seconds. `python -m compileall -q jjk_arena web/app.py
+tools/network_acceptance.py`, `python -m pip check`, `node --check` for all 40
+JavaScript files under `web/static`, the 101-import v32 consistency audit, and
+`git diff --check` passed. The existing untracked concept/QA artifacts were
+preserved and excluded. These corrections target `codex/culling-current-ui`
+and draft PR #58; they were not yet committed or pushed at the time of this
+entry.

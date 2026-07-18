@@ -1,5 +1,5 @@
-import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=31';
-import { titleize } from '../core/text.js?v=31';
+import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=32';
+import { titleize } from '../core/text.js?v=32';
 import {
   S3_COLORS,
   drawS3Button,
@@ -8,8 +8,8 @@ import {
   drawS3Portrait,
   drawS3Progress,
   drawS3World,
-} from '../ui/season-three-ui.js?v=31';
-import { BaseScene } from './base-scene.js?v=31';
+} from '../ui/season-three-ui.js?v=32';
+import { BaseScene } from './base-scene.js?v=32';
 
 const MISSION_WORLD_KEY = 'culling-current-map';
 const ROUTE_X = Object.freeze([0.22, 0.69, 0.31, 0.72, 0.25, 0.67, 0.48]);

@@ -1,9 +1,9 @@
-import { focalCoverCrop, portraitEntryFor, starterPortraitEntries } from '../core/portrait-registry.js?v=31';
-import { COLORS, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=31';
-import { initials, safeText } from '../core/text.js?v=31';
-import { LayoutService } from '../core/layout-service.js?v=31';
-import { costColors } from '../core/roster.js?v=31';
-import { SKILL_ACTION_ATLASES, createPresentationLayer } from '../core/presentation-layer.js?v=31';
+import { focalCoverCrop, portraitEntryFor, starterPortraitEntries } from '../core/portrait-registry.js?v=32';
+import { COLORS, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=32';
+import { initials, safeText } from '../core/text.js?v=32';
+import { LayoutService } from '../core/layout-service.js?v=32';
+import { costColors } from '../core/roster.js?v=32';
+import { SKILL_ACTION_ATLASES, createPresentationLayer } from '../core/presentation-layer.js?v=32';
 
 const COMBAT_SKILL_ASSETS = Object.freeze([
   Object.freeze({ key: 's3-skill-body', url: '/static/assets/skills/culling-current/body.webp' }),

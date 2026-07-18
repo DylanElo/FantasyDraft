@@ -2178,3 +2178,57 @@ separate UI work. The implementation is uncommitted on
 `codex/culling-current-ui`, based on
 `f8567d13075adebcfccded09c9b5ac43ebedb802`; it has not been pushed and no PR
 was opened.
+
+## 2026-07-18 - Season 3 structural Home, Combat, and Queue Review rewrite
+
+**User correction and supersession.** The user rejected the preceding
+production vertical slice because it began with a promising combat direction
+but ultimately reskinned the old UI hierarchy. The two supplied portrait
+references now define the required screen composition, not merely a palette or
+decorative style. This structural rewrite supersedes the preceding Home and
+Combat layout implementation; the rejected layout and its screenshots must not
+be presented as current design evidence.
+
+**Locked decisions and invariants touched.** This remains UI-only. Python
+Battle v2 and the socket/store contract remain authoritative. The exact 19
+First Creation entries, 3v3 teams, one queued skill per living fighter, phase
+flow, left-to-right resolution, B/T/F/C meanings, X-as-Wild payment, replacement
+slot identity, adjusted costs, disabled reasons, targeting fields, hidden and
+revealed state, and progression rules are unchanged. The new layouts must still
+fit 360x800, 390x844, and 430x932 with safe-area-aware, roughly 44px minimum
+controls and progressive skill disclosure.
+
+**What changed.** Home was rebuilt around a full-screen illustrated trio, a
+compact profile/currency strip, oversized editorial title, one giant battle
+CTA, exactly three feature cards, and a three-item labeled bottom navigation.
+Combat was rebuilt around a slim turn HUD, three large enemy fighter cards, an
+open directional battlefield lane, three large ally cards, a selected-fighter
+identity strip, four tall illustrated skill cards, and a dominant Review rail.
+Queue Review now preserves the battlefield and replaces the lower command
+region with an illustrated one-to-three-action deck plus touch-sized ordering,
+Wild-payment, Back, Clear, and Confirm controls. Phaser cache references for
+the completed structural pass are designated `v27`.
+
+The runtime visual set gained a character-led 853x1844 Home composition, a
+bright blue-sky 853x1844 rooftop, and four 418x941 Body/Technique/Focus/Curse
+skill textures. Exact revised prompts, result IDs, source and shipping hashes,
+input-reference disclosures, processing notes, and release limitations are
+recorded in `web/static/assets/environments/PROVENANCE.md` and
+`web/static/assets/skills/PROVENANCE.md`. The character-led Home image depicts
+named franchise characters and both generation sets used user-supplied
+franchise imagery as visual reference; neither provenance nor generation is a
+substitute for legal or commercial-release clearance.
+
+**Verification and delivery state.** The full suite passed with **492 passed,
+1 skipped** in 134.05 seconds, and the final focused UI set passed with **37
+passed**. `node --check` passed for all 27 changed or added JavaScript files.
+`python -m compileall -q jjk_arena web/app.py`, `git diff --check`, and the v27
+cache-consistency audit passed. Nine fresh implementation captures cover Home,
+Combat, and Queue Review at exact 360x800, 390x844, and 430x932 dimensions.
+Across all nine states, active scenes and canvas sizes matched, controls met the
+44x44 minimum, no non-modal control crossed the viewport or overlapped another,
+and the browser console was clean. The final capture traffic had no 400, 404,
+or 500 responses; two stale pre-restart tab-session requests returned 400
+before the v27 run began. Evidence and capture details live under
+`artifacts/ui-redesign/s3-structure-v2/qa/`. The verified delivery targets
+`codex/culling-current-ui` and existing draft PR #58.

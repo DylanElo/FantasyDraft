@@ -99,8 +99,9 @@ reason, while the sheet footer preserves the complete queue-level reason.
 
 ## Required Responsive Evidence
 
-The current Culling Current Home, Combat, Skill Detail, and valid/invalid Queue
-Review states are captured at 360x800, 390x844, and 430x932. A 47px-top/34px-
-bottom inset stress capture covers Home, Combat, and Queue Review at 360x800,
-with additional safe Queue Review evidence at 390x844. Executable layout tests
-cover normal and safe frames at all three target sizes.
+The 2026-07-17 Culling Current v23 Home, Combat, Skill Detail, and valid/invalid
+Queue Review states were captured at 360x800, 390x844, and 430x932. A
+47px-top/34px-bottom inset stress capture covered Home, Combat, and Queue Review
+at 360x800, with additional safe Queue Review evidence at 390x844. These images
+predate the Season 3 runtime; executable layout tests still cover normal and
+safe frames at all three target sizes.

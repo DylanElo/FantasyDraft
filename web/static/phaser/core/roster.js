@@ -1,5 +1,6 @@
-import { BOOT } from './runtime-config.js?v=23';
-import { safeText, titleize } from './text.js?v=23';
+import { BOOT } from './runtime-config.js?v=27';
+import { portraitFileFor as registeredPortraitFileFor, portraitTextureKeyFor } from './portrait-registry.js?v=27';
+import { safeText, titleize } from './text.js?v=27';
 
 export function firstCreationRoster() {
   return (BOOT.firstCreation && BOOT.firstCreation.roster) || BOOT.roster || {};
@@ -29,26 +30,9 @@ export function costColors(cost) {
 }
 
 export function imageKeyFor(id) {
-  return `portrait_${safeText(id).replace(/[^a-z0-9_]+/gi, '_')}`;
+  return portraitTextureKeyFor(id);
 }
 
 export function portraitFileFor(id) {
-  const explicit = {
-    aoi_todo: 'aoi-todo.svg',
-    hiromi_higuruma: 'hiromi-higuruma.svg',
-    mahito: 'mahito.svg',
-    maki_zenin: 'maki-zenin.svg',
-    megumi_fushiguro: 'megumi-fushiguro.svg',
-    nobara_kugisaki: 'nobara-kugisaki.svg',
-    satoru_gojo: 'gojo-unsealed.svg',
-    satoru_gojo_young: 'gojo-young.svg',
-    ryomen_sukuna: 'sukuna-full-power.svg',
-    sukuna_heian_era: 'sukuna-heian-era.svg',
-    yuji_itadori: 'yuji-black-flash.svg',
-    yuji_awakened: 'yuji-awakened.svg',
-    yuta_okkotsu: 'yuta-okkotsu-sendai.svg',
-    yuta_okkotsu_jjk0: 'yuta-okkotsu-jjk-0.svg',
-  };
-  return explicit[id] || `${safeText(id).replace(/_/g, '-')}.svg`;
+  return registeredPortraitFileFor(id);
 }
-

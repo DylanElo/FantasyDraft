@@ -22,36 +22,36 @@
     textDim: '#8C8371',
   };
 
-  // Scoped light-system tokens. Legacy dark aliases above remain intact while
-  // Home and Combat migrate independently; remapping them globally would make
-  // unfinished scenes unreadable.
+  // Season 3 Culling Game visual system. Routine surfaces stay bone/smoke
+  // light; indigo is structural ink, barrier red marks danger, cyan marks
+  // cursed energy, and ochre/gold carries the storm-lit city atmosphere.
   const cullingCurrent = {
-    warmIvory: '#F7F4EC',
-    paleConcrete: '#E6E8EC',
-    powderSky: '#BFD6F2',
-    cobalt: '#2566FF',
-    vermilion: '#E53935',
-    electricCyan: '#00E6F2',
-    sunGold: '#FFC94D',
-    charcoal: '#33363A',
-    mutedText: '#66707A',
-    softShadow: '#18233A',
+    warmIvory: '#F2E8D5',
+    paleConcrete: '#B7B5AD',
+    powderSky: '#B58B5B',
+    cobalt: '#101B36',
+    vermilion: '#E32620',
+    electricCyan: '#35DDE8',
+    sunGold: '#D8BF68',
+    charcoal: '#17191E',
+    mutedText: '#5F625F',
+    softShadow: '#101B36',
   };
 
   window.JJK_MOBILE_TOKENS = {
     colors,
     cullingCurrent,
     cullingCurrentPhaser: {
-      warmIvory: 0xf7f4ec,
-      paleConcrete: 0xe6e8ec,
-      powderSky: 0xbfd6f2,
-      cobalt: 0x2566ff,
-      vermilion: 0xe53935,
-      electricCyan: 0x00e6f2,
-      sunGold: 0xffc94d,
-      charcoal: 0x33363a,
-      mutedText: 0x66707a,
-      softShadow: 0x18233a,
+      warmIvory: 0xf2e8d5,
+      paleConcrete: 0xb7b5ad,
+      powderSky: 0xb58b5b,
+      cobalt: 0x101b36,
+      vermilion: 0xe32620,
+      electricCyan: 0x35dde8,
+      sunGold: 0xd8bf68,
+      charcoal: 0x17191e,
+      mutedText: 0x5f625f,
+      softShadow: 0x101b36,
     },
     phaserColors: {
       voidBlack: 0x0b0c10,

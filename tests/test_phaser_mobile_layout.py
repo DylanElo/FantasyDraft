@@ -82,28 +82,39 @@ def _safe_frame(width, height, safe_top=0, safe_bottom=0):
 
 def _combat_geometry(frame):
     usable = frame["bottom"] - frame["top"]
-    compressed = usable < 730
-    compact = usable < 800
-    dock_min = 244 if compressed else 260 if compact else 276
-    dock_height = min(304, max(dock_min, round(usable * 0.34)))
-    dock_y = frame["bottom"] - dock_height
-    card_height = 92 if compressed else 100 if compact else 120 if frame["height"] > 900 else 112
-    enemy_y = frame["top"] + (122 if compact else 130)
-    field_top = enemy_y + card_height + 12
-    lane_gap = 18 if compressed else 22 if compact else 28
-    ally_y = dock_y - card_height - lane_gap
-    field_bottom = ally_y - 12
+    compressed = usable < 740
+    compact = usable < 830
+    top_height = 58 if compressed else 60
+    review_height = 50
+    review_y = frame["bottom"] - review_height
+    skill_min = 132 if compressed else 140
+    skill_max = 166 if frame["height"] > 900 else 154
+    skill_height = min(skill_max, max(skill_min, round(usable * 0.18)))
+    skill_y = review_y - skill_height - 8
+    identity_height = 44
+    identity_y = skill_y - identity_height - 5
+    card_min = 118 if compressed else 126
+    card_max = 150 if frame["height"] > 900 else 142
+    card_height = min(card_max, max(card_min, round(usable * 0.165)))
+    enemy_y = frame["top"] + top_height + (38 if compressed else 44 if compact else 50)
+    ally_y = identity_y - card_height - 7
+    field_top = enemy_y + card_height + 2
+    field_bottom = ally_y - 2
     return {
-        "dock_y": dock_y,
-        "dock_height": dock_height,
+        "dock_y": identity_y,
+        "dock_height": frame["bottom"] - identity_y,
         "card_height": card_height,
         "enemy_y": enemy_y,
         "field_top": field_top,
         "field_bottom": field_bottom,
-        "field_height": field_bottom - field_top,
-        "replay_y": ally_y - 70,
-        "queue_y": ally_y - 32,
+        "field_height": max(96, field_bottom - field_top),
         "ally_y": ally_y,
+        "identity_y": identity_y,
+        "identity_height": identity_height,
+        "skill_y": skill_y,
+        "skill_height": skill_height,
+        "review_y": review_y,
+        "review_height": review_height,
     }
 
 
@@ -113,12 +124,14 @@ def test_combat_center_stage_survives_normal_and_safe_phone_frames():
             frame = _safe_frame(width, height, safe_top, safe_bottom)
             frame["height"] = height
             combat = _combat_geometry(frame)
-            assert combat["enemy_y"] >= frame["top"] + 122
-            assert combat["field_height"] >= 88
-            assert combat["field_top"] + 43 <= combat["replay_y"]
-            assert combat["replay_y"] + 22 <= combat["queue_y"] - 14
-            assert combat["queue_y"] <= combat["ally_y"] - 32
-            assert combat["ally_y"] + combat["card_height"] < combat["dock_y"]
+            assert combat["enemy_y"] >= frame["top"] + 96
+            assert combat["field_height"] >= 96
+            assert combat["enemy_y"] + combat["card_height"] + 2 == combat["field_top"]
+            assert combat["field_bottom"] + 2 == combat["ally_y"]
+            assert combat["ally_y"] + combat["card_height"] + 7 == combat["identity_y"]
+            assert combat["identity_y"] + combat["identity_height"] + 5 == combat["skill_y"]
+            assert combat["skill_y"] + combat["skill_height"] + 8 == combat["review_y"]
+            assert combat["review_y"] + combat["review_height"] == frame["bottom"]
             assert combat["dock_y"] + combat["dock_height"] == frame["bottom"]
 
 
@@ -128,18 +141,24 @@ def test_queue_review_keeps_enemy_lane_and_footer_clear_with_safe_insets():
             frame = _safe_frame(width, height, safe_top, safe_bottom)
             frame["height"] = height
             combat = _combat_geometry(frame)
-            default_sheet_y = max(164, height - 582)
-            sheet_y = max(default_sheet_y, combat["enemy_y"] + combat["card_height"] + 8)
-            compact_rows = frame["bottom"] - sheet_y < 540
-            row_start = sheet_y + (72 if compact_rows else 84)
-            row_height = 100 if compact_rows else 112
-            row_step = 104 if compact_rows else 118
-            third_row_bottom = row_start + 2 * row_step + row_height
-            summary_y = row_start + 3 * row_step + 4
+            compressed = frame["bottom"] - frame["top"] < 730
+            ally_bottom = combat["ally_y"] + combat["card_height"]
+            sheet_y = max(frame["top"] + 300, min(combat["dock_y"], ally_bottom + 8))
+            header_height = 42 if compressed else 46
+            cards_y = sheet_y + header_height + 4
             footer_y = frame["bottom"] - 44
-            assert combat["enemy_y"] + combat["card_height"] + 8 <= sheet_y
-            assert third_row_bottom <= summary_y
-            assert summary_y + 24 <= footer_y
+            cards_bottom = footer_y - 4
+            card_height = max(132, cards_bottom - cards_y)
+            three_card_width = (width - 16 - 12) / 3
+            assert combat["enemy_y"] + combat["card_height"] < combat["field_bottom"]
+            assert combat["field_bottom"] < combat["ally_y"]
+            assert ally_bottom < sheet_y
+            assert sheet_y <= combat["dock_y"]
+            assert cards_y + card_height == cards_bottom
+            assert card_height >= 132
+            assert three_card_width >= 44 * 2 + 8
+            assert cards_bottom + 4 == footer_y
+            assert footer_y + 44 == frame["bottom"]
 
 
 def _first_creation_geometry(frame):
@@ -213,6 +232,7 @@ def test_scoped_mobile_controls_and_copy_keep_accessibility_contracts():
     queue = (ROOT / "web/static/phaser/scenes/combat-queue-review-scene.js").read_text(encoding="utf-8")
     combat = (ROOT / "web/static/phaser/scenes/combat-scene.js").read_text(encoding="utf-8")
     lobby = (ROOT / "web/static/phaser/scenes/lobby-scene.js").read_text(encoding="utf-8")
+    season_three_ui = (ROOT / "web/static/phaser/ui/season-three-ui.js").read_text(encoding="utf-8")
 
     assert "const hitW = Math.max(w, minTarget);" in base
     assert "const hitH = Math.max(h, minTarget);" in base
@@ -220,12 +240,14 @@ def test_scoped_mobile_controls_and_copy_keep_accessibility_contracts():
     assert "44, 44, '<'" in base
     assert "44, 44, '×'" in base
 
-    assert "const editH = 44;" in draft
-    assert "small, 44" in draft
-    assert "diffW, 44" in draft
-    assert "const navH = 44;" in draft
-    assert "Math.max(0, Math.floor" in draft
+    assert "const difficulty = cpu ? { x, y, w, h: 44 } : null;" in season_three_ui
+    assert "const targets = { x, y, w, h: 44 };" in season_three_ui
+    assert "const pager = { x, y: cta.y - 52, w, h: 44 };" in season_three_ui
+    assert "drawS3Button(this, layout.targets.x" in draft
+    assert "drawS3Pager(this, layout.pager" in draft
+    assert "Math.max(1, Math.floor" in draft
     assert "renderTeamSummary" in draft
+    assert "name.setMaxLines(3);" in draft
     assert "shortText(safeText(character.name" not in draft
 
     assert "104, 44, 'Mission Map'" in creation
@@ -234,28 +256,41 @@ def test_scoped_mobile_controls_and_copy_keep_accessibility_contracts():
     assert "Math.max(0, Math.floor" in creation
 
     assert "const controlSize = 44;" in queue
-    assert "rowY + controlSize + 4" in queue
-    assert "const rowH = compact ? 100 : 112;" in queue
-    assert "const sheetY = Math.max(defaultSheetY, enemyY + enemyCardH + 8);" in queue
+    assert "const sheetY = Math.max(frame.top + 300" in queue
+    assert "allyBottom + 8" in queue
+    assert "this.renderBattlefield(frame, layout.battle" in queue
+    assert "this.renderFighterLane(me && me.team, 'mine'" in queue
+    assert "const cardW = (cardsW - cardGap" in queue
+    assert "'Queue Review Battlefield Lock'" in queue
+    assert "fillRect(0, 0, frame.fullWidth" not in queue
+    assert "'FINAL ORDER'" in queue
+    assert "subtitle: 'SERVER VALIDATES'" in queue
+    assert "SKILL_ART_BY_ENERGY" in queue
     assert "shortText(meta.skill ? meta.skill.name" not in queue
-    assert "meta.secondaryName" in queue
-    assert "meta.alternateName" in queue
+    assert "meta.secondaryRoute" in queue
+    assert "meta.alternateRoute" in queue
     assert "this.renderCostOrbs" in queue
     assert "queueFit.actionId === action.id" in queue
-    assert "rowError === 'Assign every Wild payment.'" in queue
+    assert "this.store.cycleWildcardPay(action.id, wildIndex)" in queue
+    assert "this.store.moveQueuedAction(action.id, -1)" in queue
+    assert "this.store.moveQueuedAction(action.id, 1)" in queue
 
-    assert "92, 44, 'TRANSMUTE'" in combat
+    assert "renderEnergyMeter(" in combat
+    assert "'Transmute energy'" in combat
+    assert "disabled: transmuteDisabled" in combat
     assert "44, 44, '×'" in combat
     assert "const y = frame.top;" in combat
     assert "shortText(skill.name" not in combat
     assert "shortText((character && character.name" not in combat
-    assert "fighterNameNode.setMaxLines(2);" in combat
-    assert "y: y - 4," in combat
+    assert "nameNode.setMaxLines(2);" in combat
+    assert "y: y - 3," in combat
     assert "state.phase_seconds_remaining" in combat
     assert "CULLING_COLORS.target" in combat
     assert "const usableH = frame.bottom - frame.top;" in combat
-    assert "fieldH: Math.max(0, fieldBottom - fieldTop)" in combat
-    assert "image.setDepth(-1);" in combat
+    assert "fieldH: Math.max(96, allyY - enemyY - cardH - 4)" in combat
+    assert "depth: -1," in combat
+    assert "this.topBar(frame, 'Opening Domain'" not in combat
+    assert "'JJK ARENA / CONNECTING'" in combat
 
     assert "shortText(this.store.playerName, nameLimit)" in lobby
     assert "shortText(roomCode, 14)" in lobby

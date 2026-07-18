@@ -50,18 +50,19 @@ Do not combine onboarding, locked progression, presets, roster browsing, team co
 
 ## Visual hierarchy
 
-- `Culling Current` is the internal visual-system codename, not a product-era or progression rename.
-- Use a 70/30 balance: bright character/world-led urban anime presentation, supported by tactile mobile-game structure.
-- Routine surfaces use warm ivory, pale concrete, powder sky, cobalt, vermilion, electric cyan, selective sun gold, and charcoal text. Reserve deep darkness for Domains, finishers, and brief cinematic transitions.
-- Gold indicates current selection/commitment.
-- Electric cyan indicates legal targets.
-- Vermilion indicates danger/damage.
+- `Culling Current` is the internal codename for the locked Season 3 Culling Game visual system, not a product-era or progression rename. Follow `docs/season3_visual_system.md`.
+- Every visible screen, illustration, environment, transition, VFX layer, and routine surface must use the same sharp-ink, raw-hatch, hard cel-shadow, painted-city system.
+- Routine surfaces use bone `#F2E8D5`, smoke `#B7B5AD`, storm ochre `#B58B5B`, deep indigo `#101B36`, barrier red `#E32620`, curse cyan `#35DDE8`, aged gold `#D8BF68`, and ink charcoal `#17191E`.
+- Routine navigation stays predominantly bone/smoke and world-led. Reserve deep darkness and black/red frames for Domains, finishers, damage, and brief cinematic punctuation.
+- Aged gold indicates current selection/commitment.
+- Curse cyan indicates legal targets.
+- Barrier red indicates danger/damage.
 - Green indicates queued actions.
 - Violet is reserved for Domain/cinematic states, not routine chrome.
-- Manga brush strokes, speed lines, halftone, and concrete/print texture are restrained accents, not substitutes for hierarchy.
+- Ink brush strokes, cross-hatching, barrier diagonals, hard cel-shadow cuts, and concrete/print texture are restrained accents, not substitutes for hierarchy.
 - Decoration must support hierarchy. Do not cover weak information architecture with smoke, borders, or particles.
-- Portraits and environments must use one coherent original or appropriately licensed production system; placeholders must look intentionally temporary and must not define the final layout.
-- During staged migration, use scoped light tokens and preserve legacy aliases for untouched dark scenes.
+- Portraits and environments must use one coherent original or appropriately licensed production system. Preserve aspect ratio with focal cover crops; never stretch illustration art.
+- Do not paste, trace, or regenerate official frames, manga panels, key visuals, logos, poses, or typography. Record prompts, result IDs, dimensions, processing, and hashes for generated runtime art.
 
 ## Combat interaction model
 

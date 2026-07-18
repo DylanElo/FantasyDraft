@@ -1,7 +1,8 @@
-import { COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=23';
-import { initials, safeText } from '../core/text.js?v=23';
-import { LayoutService } from '../core/layout-service.js?v=23';
-import { costColors } from '../core/roster.js?v=23';
+import { focalCoverCrop } from '../core/portrait-registry.js?v=27';
+import { COLORS, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=27';
+import { initials, safeText } from '../core/text.js?v=27';
+import { LayoutService } from '../core/layout-service.js?v=27';
+import { costColors } from '../core/roster.js?v=27';
 
 export class BaseScene extends Phaser.Scene {
     constructor(key) {
@@ -88,11 +89,82 @@ export class BaseScene extends Phaser.Scene {
       if (!textureKey || !this.textures.exists(textureKey)) return null;
       const opts = options || {};
       const image = this.add.image(x + w / 2, y + h / 2, textureKey);
-      image.setDisplaySize(w, h);
+      const sourceWidth = image.frame.realWidth || image.frame.width;
+      const sourceHeight = image.frame.realHeight || image.frame.height;
+      const crop = focalCoverCrop(sourceWidth, sourceHeight, w, h, opts.focal);
+      image.setOrigin(
+        (crop.x + crop.width / 2) / sourceWidth,
+        (crop.y + crop.height / 2) / sourceHeight,
+      );
+      image.setCrop(crop.x, crop.y, crop.width, crop.height);
+      image.setScale(crop.scale);
       image.setDepth(opts.depth === undefined ? -30 : opts.depth);
       image.setAlpha(opts.alpha === undefined ? 1 : opts.alpha);
+      image.setData('coverCrop', crop);
       this.nodes.push(image);
       return image;
+    }
+
+    portraitContextFor(w, h) {
+      if (h > w * 1.15) return 'hero';
+      if (w > h * 1.15) return 'combat';
+      return 'square';
+    }
+
+    drawPortraitFallback(characterOrId, x, y, w, h, options) {
+      const opts = options || {};
+      const id = typeof characterOrId === 'string'
+        ? characterOrId
+        : (characterOrId && (characterOrId.id || characterOrId.character_id));
+      const name = typeof characterOrId === 'string'
+        ? safeText(this.store.character(characterOrId).name, characterOrId)
+        : safeText(characterOrId && characterOrId.name, id);
+      const tone = opts.tone || this.store.assets.toneFor(id || name);
+      const alpha = opts.dead ? 0.42 : (opts.alpha === undefined ? 0.98 : opts.alpha);
+      const cx = x + w / 2;
+      const cy = y + h / 2;
+      const circle = opts.shape === 'circle';
+
+      this.graphics.fillStyle(CULLING_COLORS.ivory, alpha);
+      if (circle) this.graphics.fillCircle(cx, cy, Math.min(w, h) / 2);
+      else this.graphics.fillRect(x, y, w, h);
+      this.graphics.fillStyle(CULLING_COLORS.sky, opts.dead ? 0.12 : 0.46);
+      if (circle) this.graphics.fillCircle(cx, cy - h * 0.08, Math.min(w, h) * 0.34);
+      else this.graphics.fillTriangle(x, y, x + w, y, x, y + h);
+      this.graphics.fillStyle(tone, opts.dead ? 0.08 : 0.2);
+      this.graphics.fillCircle(cx, cy, Math.max(8, Math.min(w, h) * 0.28));
+      if (!circle) {
+        this.graphics.lineStyle(1, tone, opts.dead ? 0.18 : 0.52);
+        this.graphics.beginPath();
+        this.graphics.moveTo(x + 6, y + h - 7);
+        this.graphics.lineTo(x + w - 6, y + 7);
+        this.graphics.strokePath();
+      }
+      this.text(cx, cy - Math.max(7, Math.min(w, h) * 0.14), initials(name), {
+        fontFamily: TOKEN_TYPE.display || TOKEN_TYPE.ui || 'Inter, Arial, sans-serif',
+        fontSize: `${Math.max(14, Math.round(Math.min(w, h) * 0.3))}px`,
+        fontStyle: '900',
+        color: opts.dead ? CULLING_COLORS.mutedText : CULLING_COLORS.text,
+      }).setOrigin(0.5, 0);
+      return null;
+    }
+
+    portraitArtwork(characterOrId, x, y, w, h, options) {
+      const opts = options || {};
+      const id = typeof characterOrId === 'string'
+        ? characterOrId
+        : (characterOrId && (characterOrId.id || characterOrId.character_id));
+      const context = opts.context || this.portraitContextFor(w, h);
+      const key = opts.textureKey || this.store.portraitKey(id);
+      if (!this.textures.exists(key)) {
+        return this.drawPortraitFallback(characterOrId, x, y, w, h, { ...opts, context });
+      }
+      const focal = opts.focal || this.store.portraitFocal(id, context);
+      return this.coverImage(key, x, y, w, h, {
+        focal,
+        depth: opts.depth === undefined ? 0 : opts.depth,
+        alpha: opts.dead ? 0.35 : (opts.alpha === undefined ? 0.96 : opts.alpha),
+      });
     }
 
     text(x, y, value, style) {
@@ -312,7 +384,6 @@ export class BaseScene extends Phaser.Scene {
       const name = typeof characterOrId === 'string'
         ? safeText(this.store.character(characterOrId).name, characterOrId)
         : safeText(characterOrId && characterOrId.name, id);
-      const key = this.store.portraitKey(id);
       const tone = this.store.assets.toneFor(id || name);
       const cx = x + size / 2;
       const cy = y + size / 2;
@@ -329,17 +400,12 @@ export class BaseScene extends Phaser.Scene {
         this.graphics.lineStyle(opts.selected ? 2.5 : 1.25, opts.tone || tone, opts.targetable ? 0.92 : 0.68);
         this.graphics.strokeCircle(cx, cy, size / 2);
       }
-      if (this.textures.exists(key)) {
-        const image = this.add.image(cx, cy, key);
-        image.setDisplaySize(size - 6, size - 6);
-        image.setAlpha(opts.dead ? 0.38 : 0.96);
-        this.nodes.push(image);
-      } else {
-        this.text(cx, cy - 11, initials(name), {
-          fontSize: `${Math.max(18, Math.round(size * 0.32))}px`,
-          fontStyle: '900',
-        }).setOrigin(0.5, 0);
-      }
+      this.portraitArtwork(characterOrId, x + 3, y + 3, size - 6, size - 6, {
+        context: 'square',
+        dead: opts.dead,
+        shape: 'circle',
+        tone: opts.tone || tone,
+      });
     }
 
     talismanLabel(x, y, text, tone) {
@@ -546,26 +612,17 @@ export class BaseScene extends Phaser.Scene {
       const dead = !!opts.dead;
       const tone = opts.tone || this.store.assets.toneFor(id || name);
       const points = this.cutRectPoints(x, y, w, h, { cut: opts.cut === undefined ? 7 : opts.cut });
-      const key = this.store.portraitKey(id);
       this.graphics.fillStyle(0x05090c, dead ? 0.5 : 0.94);
       this.graphics.fillPoints(points, true);
       this.graphics.fillStyle(tone, dead ? 0.08 : 0.22);
       this.graphics.fillTriangle(x, y, x + w, y, x, y + h);
       this.graphics.lineStyle(opts.selected || opts.targetable ? 2 : 1, tone, dead ? 0.24 : (opts.targetable ? 0.9 : 0.68));
       this.graphics.strokePoints(points, true);
-      if (this.textures.exists(key)) {
-        const image = this.add.image(x + w / 2, y + h / 2, key);
-        image.setDisplaySize(w - 6, h - 6);
-        image.setAlpha(dead ? 0.35 : 0.96);
-        this.nodes.push(image);
-      } else {
-        this.text(x + w / 2, y + h / 2 - 10, initials(name), {
-          fontFamily: TOKEN_TYPE.display || 'Georgia, serif',
-          fontSize: `${Math.max(16, Math.round(Math.min(w, h) * 0.3))}px`,
-          fontStyle: '700',
-          color: dead ? COLORS.dim : COLORS.text,
-        }).setOrigin(0.5, 0);
-      }
+      this.portraitArtwork(characterOrId, x + 3, y + 3, w - 6, h - 6, {
+        context: opts.context || this.portraitContextFor(w, h),
+        dead,
+        tone,
+      });
     }
 
     /* Default state chip for the dossier language -- replaces

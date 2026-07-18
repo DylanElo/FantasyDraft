@@ -1,9 +1,9 @@
-import { BOOT, CORE_ENERGY } from '../core/runtime-config.js?v=23';
-import { safeText } from '../core/text.js?v=23';
-import { readStorage, writeStorage } from '../core/storage.js?v=23';
-import { AssetRegistry } from '../core/asset-registry.js?v=23';
-import { firstCreationRoster, imageKeyFor, preset, presetTitle } from '../core/roster.js?v=23';
-import { eventAmount } from '../fx/event-metrics.js?v=23';
+import { BOOT, CORE_ENERGY } from '../core/runtime-config.js?v=27';
+import { safeText } from '../core/text.js?v=27';
+import { readStorage, writeStorage } from '../core/storage.js?v=27';
+import { AssetRegistry } from '../core/asset-registry.js?v=27';
+import { firstCreationRoster, preset, presetTitle } from '../core/roster.js?v=27';
+import { damageEventAmount } from '../fx/event-metrics.js?v=27';
 
 export class GameStore {
     constructor(socketClient) {
@@ -67,6 +67,7 @@ export class GameStore {
           hasBattle: !!this.state,
           playbackEvents: this.playbackEvents.length,
           recentEvents: this.recentEvents.length,
+          portraitDiagnostics: this.assets.portraitLoadDiagnostics(),
         }),
       };
     }
@@ -196,10 +197,15 @@ export class GameStore {
     }
 
     portraitKey(characterOrId) {
-      const id = typeof characterOrId === 'string'
-        ? characterOrId
-        : (characterOrId && (characterOrId.id || characterOrId.character_id));
-      return imageKeyFor(id || '');
+      return this.assets.portraitKeyFor(characterOrId);
+    }
+
+    portraitMetadata(characterOrId) {
+      return this.assets.portraitFor(characterOrId);
+    }
+
+    portraitFocal(characterOrId, context = 'square') {
+      return this.assets.portraitFocalFor(characterOrId, context);
     }
 
     missions() {
@@ -252,9 +258,9 @@ export class GameStore {
         : state.winner_id === mine
           ? 'Victory'
           : 'Defeat';
-      const damage = (state.event_log || []).reduce((total, event) => total + eventAmount(event), 0);
+      const damage = (state.event_log || []).reduce((total, event) => total + damageEventAmount(event), 0);
       const biggest = (state.event_log || [])
-        .map((event) => ({ message: event.message || event.type, amount: eventAmount(event), type: event.type }))
+        .map((event) => ({ message: event.message || event.type, amount: damageEventAmount(event), type: event.type }))
         .filter((event) => event.amount > 0)
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 3);
@@ -319,15 +325,22 @@ export class GameStore {
       }
     }
 
+    openFirstCreation() {
+      // First Creation is always the CPU onboarding/starter route. Keep this
+      // transition atomic so visiting Private Room cannot leave a stale PvP
+      // mode behind when the player later enters through Mission Map.
+      this.matchMode = 'cpu';
+      this.draftTarget = 'playerTeam';
+      this.detailCharacterId = null;
+      this.changeScene('FirstCreationScene');
+    }
+
     applyRecommendedTeam(mission) {
       if (!mission || !Array.isArray(mission.recommended_team)) return;
       const team = mission.recommended_team.filter((id) => !!firstCreationRoster()[id]).slice(0, 3);
       if (team.length === 3) {
         this.playerTeam = team;
-        this.matchMode = 'cpu';
-        this.draftTarget = 'playerTeam';
-        this.detailCharacterId = null;
-        this.changeScene('FirstCreationScene');
+        this.openFirstCreation();
       } else {
         this.showToast('That mission team is not fully available yet.');
       }

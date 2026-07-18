@@ -1,5 +1,8 @@
 # Culling Current mobile QA evidence
 
+Status: historical v23 vertical-slice evidence. It does not validate the
+current Season 3 runtime or its replacement portrait/environment set.
+
 Captured 2026-07-17 from the uncommitted working-tree implementation on
 `codex/culling-current-ui`, based on `f8567d13075adebcfccded09c9b5ac43ebedb802`.
 The client used Phaser cache version 23 and the live local Flask page at
@@ -26,17 +29,21 @@ emits no gameplay socket command. For deterministic visual evidence, the local
 fixture pins its connection indicator to connected; this does not alter source
 code or server state.
 
-## Known local transport warning
+## Transport correction
 
-The Windows development server returned HTTP 400 for local Socket.IO WebSocket
-upgrade and subsequent polling-session requests during capture. There were no
-page exceptions, failed non-Socket.IO resources, or missing runtime textures.
-This evidence therefore validates rendering and interaction geometry, while
-the automated socket/gameplay suite remains the authority for networking.
+The HTTP 400 responses in this checkpoint were caused by starting the isolated
+QA server on port 5001 while the Flask-SocketIO CORS allowlist still contained
+only port 5000. They were not a Windows transport limitation. A valid isolated
+QA launch must set `JJK_CORS_ORIGINS` to both the chosen `127.0.0.1` and
+`localhost` origins before starting the process. This checkpoint therefore
+remains visual-only; no current Season 3 browser/networking claim should be
+inferred from it.
 
 ## Art limitation
 
-The bright environment plates are runtime assets with recorded provenance.
-The 19 character cards are still the existing abstract portrait placeholders;
-the concept character art is not shipped. A coherent original or licensed
-roster-art pass remains separate work.
+This folder records the earlier Home/Combat checkpoint. Its bright environment
+plates and abstract portraits were superseded by the full Season 3 environment
+and exact-19 portrait pass documented under `artifacts/ui-redesign/s3-style/`
+and `web/static/assets/*/PROVENANCE.md`. Current structural Home, Combat, and
+Queue Review implementation evidence lives under
+`artifacts/ui-redesign/s3-structure-v2/qa/`.

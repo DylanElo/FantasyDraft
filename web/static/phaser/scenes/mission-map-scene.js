@@ -1,93 +1,340 @@
-import { COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=23';
-import { clamp, shortText, titleize } from '../core/text.js?v=23';
-import { BaseScene } from './base-scene.js?v=23';
+import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=27';
+import { clamp, titleize } from '../core/text.js?v=27';
+import {
+  S3_COLORS,
+  drawS3Button,
+  drawS3Chip,
+  drawS3Header,
+  drawS3Pager,
+  drawS3Panel,
+  drawS3Portrait,
+  drawS3Progress,
+  drawS3World,
+  missionMapS3Layout,
+} from '../ui/season-three-ui.js?v=27';
+import { BaseScene } from './base-scene.js?v=27';
+
+const MISSION_WORLD_KEY = 'culling-current-map';
 
 export class MissionMapScene extends BaseScene {
     constructor() {
       super('MissionMapScene');
+      this.detailMissionId = null;
     }
 
-    renderMissionCard(mission, x, y, w, h, index) {
-      const tone = index === 0 ? COLORS.selection : COLORS.line;
-      this.platePanel(x, y, w, h, tone, { alpha: 0.9, edgeBar: 'left' });
-      this.dossierTag(x + 14, y + 20, titleize(mission.tier || 'starter').toUpperCase(), tone);
-      this.text(x + 14, y + 42, shortText(mission.title || mission.id, 31), { fontSize: `${TYPE_SCALE.subtitle}px`, fontStyle: '900' });
-      this.text(x + 14, y + 68, shortText(mission.description || 'Clear this route to unlock the next dossier.', 58), {
-        color: COLORS.muted,
-        fontSize: `${TYPE_SCALE.body}px`,
-      });
-      (mission.objectives || []).slice(0, 2).forEach((objective, objectiveIndex) => {
-        this.text(x + 16, y + 92 + objectiveIndex * 22, `- ${shortText(objective, 44)}`, { color: COLORS.text, fontSize: `${TYPE_SCALE.body}px` });
-      });
-      this.railLabel(x + 14, y + h - 51, 'RECOMMENDED TEAM', tone);
-      (mission.recommended_team || []).slice(0, 3).forEach((id, portraitIndex) => {
-        this.platePortrait(this.store.character(id), x + 14 + portraitIndex * 39, y + h - 36, 30, { tone });
-      });
-      this.button(x + w - 114, y + h - 50, 96, 44, 'Use Team', () => this.store.applyRecommendedTeam(mission), {
-        fill: COLORS.surfaceRaised,
-        stroke: tone,
-        mono: true,
+    renderS3Section(x, y, label, right, accent = S3_COLORS.red) {
+      this.mono(x, y, label, {
+        color: S3_COLORS.inkText,
         fontSize: `${TYPE_SCALE.label}px`,
+        fontStyle: '900',
+      });
+      const lineStart = Math.min(right - 18, x + Math.max(94, label.length * 7 + 16));
+      this.graphics.lineStyle(2, accent, 0.72);
+      this.graphics.beginPath();
+      this.graphics.moveTo(lineStart, y + 6);
+      this.graphics.lineTo(right, y + 6);
+      this.graphics.strokePath();
+    }
+
+    missionStatus(mission) {
+      const profile = this.store.firstCreationProfile();
+      const completed = new Set(profile.completed_missions || []);
+      const active = this.store.activeMission();
+      if (completed.has(mission.id)) {
+        return { label: 'CLEARED', fill: S3_COLORS.green, accent: S3_COLORS.cyan };
+      }
+      if (active && active.id === mission.id) {
+        return { label: 'ACTIVE ROUTE', fill: S3_COLORS.cyanDeep, accent: S3_COLORS.cyan };
+      }
+      return { label: titleize(mission.tier || 'starter').toUpperCase(), fill: S3_COLORS.ink, accent: S3_COLORS.gold };
+    }
+
+    renderMissionCard(mission, x, y, w, h) {
+      const status = this.missionStatus(mission);
+      drawS3Panel(this, x, y, w, h, {
+        fill: status.label === 'CLEARED' ? 0xe2ece2 : S3_COLORS.paper,
+        accent: status.accent,
+        strokeWidth: status.label === 'ACTIVE ROUTE' ? 3 : 2,
+        cut: 9,
+        washAlpha: 0.24,
+      });
+      this.registerHitTarget(x, y, w, h, `Inspect mission ${mission.title || mission.id}`, () => {
+        this.detailMissionId = mission.id;
+      });
+      drawS3Chip(this, x + 12, y + 10, status.label, {
+        fill: status.fill,
+        stroke: status.accent,
+        fontSize: '12px',
+      });
+      drawS3Chip(this, x + w - 116, y + 10, `${(mission.objectives || []).length} OBJECTIVES`, {
+        w: 104,
+        fill: S3_COLORS.bone,
+        color: S3_COLORS.inkText,
+        stroke: S3_COLORS.red,
+        fontSize: '12px',
+      });
+      const title = this.text(x + 12, y + 38, mission.title || mission.id, {
+        fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Arial, sans-serif',
+        color: S3_COLORS.inkText,
+        fontSize: '17px',
+        fontStyle: '900',
+        lineSpacing: 0,
+        wordWrap: { width: w - 24 },
+      });
+      title.setMaxLines(2);
+      const description = this.text(x + 12, y + 63, mission.description || 'Clear this route to reveal the next path.', {
+        color: S3_COLORS.mutedText,
+        fontSize: `${TYPE_SCALE.label}px`,
+        lineSpacing: 1,
+        wordWrap: { width: w - 24 },
+      });
+      description.setMaxLines(2);
+      (mission.objectives || []).slice(0, 2).forEach((objective, objectiveIndex) => {
+        const objectiveNode = this.text(x + 14, y + 98 + objectiveIndex * 27, `— ${objective}`, {
+          color: S3_COLORS.inkText,
+          fontSize: `${TYPE_SCALE.label}px`,
+          lineSpacing: 0,
+          wordWrap: { width: w - 28 },
+        });
+        objectiveNode.setMaxLines(1);
+      });
+      const teamY = y + h - 48;
+      this.mono(x + 12, teamY - 15, 'RECOMMENDED TRIO', {
+        color: S3_COLORS.inkText,
+        fontSize: '12px',
+        fontStyle: '900',
+      });
+      (mission.recommended_team || []).slice(0, 3).forEach((id, portraitIndex) => {
+        drawS3Portrait(this, this.store.character(id), x + 12 + portraitIndex * 32, teamY, 27, 27, {
+          accent: status.accent,
+        });
+      });
+      drawS3Button(this, x + w - 108, y + h - 52, 96, 44, 'Use Team', () => this.store.applyRecommendedTeam(mission), {
+        variant: status.label === 'ACTIVE ROUTE' ? 'primary' : 'bone',
+        accent: status.accent,
+        fontSize: '12px',
+        mono: true,
       });
     }
 
-    renderLockedRoutes(frame, y) {
-      const x = frame.x + frame.gutter;
-      this.platePanel(x, y, frame.width - 32, 92, COLORS.line, { alpha: 0.66 });
-      this.mono(x + 14, y + 12, 'LOCKED ROUTES', { color: COLORS.muted, fontSize: `${TYPE_SCALE.label}px` });
-      ['Shibuya Incident', 'Culling Game', 'Shinjuku Showdown'].forEach((route, index) => {
-        const rx = x + 14 + index * ((frame.width - 60) / 3);
-        const routeW = (frame.width - 76) / 3;
-        this.platePanel(rx, y + 35, routeW, 36, COLORS.line, { cut: 5, fill: 0x05070a, accentTriangle: false, highlight: false, alpha: 0.9 });
-        this.text(rx + 8, y + 46, shortText(route, 11), { color: COLORS.dim, fontSize: `${TYPE_SCALE.label}px` });
+    renderLockedRoutes(layout) {
+      const { x, y, w, h } = layout.locked;
+      drawS3Panel(this, x, y, w, h, {
+        fill: S3_COLORS.smoke,
+        accent: S3_COLORS.red,
+        alpha: 0.95,
+        cut: 7,
+        washAlpha: 0.28,
+      });
+      this.mono(x + 11, y + 8, 'LATER INCIDENT FILES / LOCKED', {
+        color: S3_COLORS.redText,
+        fontSize: '12px',
+        fontStyle: '900',
+      });
+      const gap = 6;
+      const halfW = (w - 28 - gap) / 2;
+      [
+        { label: 'Shibuya Incident', x: x + 11, y: y + 30, w: halfW },
+        { label: 'Culling Game', x: x + 11 + halfW + gap, y: y + 30, w: halfW },
+        { label: 'Shinjuku Showdown', x: x + 11, y: y + 58, w: w - 22 },
+      ].forEach((route) => {
+        drawS3Chip(this, route.x, route.y, route.label, {
+          w: route.w,
+          h: 23,
+          fill: S3_COLORS.paper,
+          color: S3_COLORS.mutedText,
+          stroke: S3_COLORS.ink,
+          fontSize: '12px',
+        });
+      });
+    }
+
+    renderMissionDetail(frame, mission) {
+      const status = this.missionStatus(mission);
+      const x = frame.x + 12;
+      const y = Math.max(frame.top + 80, Math.min(Math.round(frame.height * 0.22), frame.bottom - 610));
+      const w = frame.width - 24;
+      const h = frame.bottom - y + 6;
+      this.graphics.fillStyle(S3_COLORS.ink, 0.46);
+      this.graphics.fillRect(0, 0, frame.fullWidth, frame.fullHeight);
+      this.buttons.push({ x: 0, y: 0, w: frame.fullWidth, h: frame.fullHeight, label: 'Mission detail overlay', onClick: () => {}, disabled: false });
+      drawS3Panel(this, x, y, w, h, {
+        fill: S3_COLORS.paper,
+        accent: status.accent,
+        cut: 12,
+        strokeWidth: 2.5,
+        washAlpha: 0.3,
+      });
+      this.mono(x + 14, y + 12, 'AUTHORITATIVE ROUTE FILE', {
+        color: S3_COLORS.redText,
+        fontSize: '12px',
+        fontStyle: '900',
+      });
+      const title = this.text(x + 14, y + 31, mission.title || mission.id, {
+        fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Arial, sans-serif',
+        color: S3_COLORS.inkText,
+        fontSize: '20px',
+        fontStyle: '900',
+        lineSpacing: 0,
+        wordWrap: { width: w - 84 },
+      });
+      title.setMaxLines(2);
+      drawS3Button(this, x + w - 54, y + 10, 44, 44, '×', () => {
+        this.detailMissionId = null;
+      }, { variant: 'bone', accent: S3_COLORS.red, fontSize: '16px' });
+      drawS3Chip(this, x + 14, y + 61, status.label, {
+        fill: status.fill,
+        stroke: status.accent,
+        fontSize: '12px',
+      });
+      const description = this.text(x + 14, y + 88, mission.description || 'Clear this route to reveal the next path.', {
+        color: S3_COLORS.inkText,
+        fontSize: `${TYPE_SCALE.body}px`,
+        lineSpacing: 1,
+        wordWrap: { width: w - 28 },
+      });
+      description.setMaxLines(3);
+
+      const objectiveLabelY = y + 143;
+      this.renderS3Section(x + 14, objectiveLabelY, 'MISSION OBJECTIVES', x + w - 14, S3_COLORS.cyan);
+      const objectives = (mission.objectives || []).slice();
+      const buttonY = frame.bottom - 50;
+      const rewardY = buttonY - 126;
+      const objectiveStart = objectiveLabelY + 18;
+      const objectiveGap = 4;
+      const objectiveH = Math.max(34, Math.min(46, Math.floor((rewardY - objectiveStart - 8 - objectiveGap * Math.max(0, objectives.length - 1)) / Math.max(1, objectives.length))));
+      objectives.forEach((objective, index) => {
+        const rowY = objectiveStart + index * (objectiveH + objectiveGap);
+        drawS3Panel(this, x + 14, rowY, w - 28, objectiveH, {
+          fill: S3_COLORS.bone,
+          accent: S3_COLORS.red,
+          hatch: false,
+          wash: false,
+          cut: 4,
+          strokeWidth: 1.25,
+          shadowAlpha: 0.04,
+        });
+        const node = this.text(x + 23, rowY + 7, `${index + 1}. ${objective}`, {
+          color: S3_COLORS.inkText,
+          fontSize: `${TYPE_SCALE.label}px`,
+          lineSpacing: 0,
+          wordWrap: { width: w - 46 },
+        });
+        node.setMaxLines(2);
+      });
+
+      this.mono(x + 14, rewardY, 'ROUTE REWARDS', {
+        color: S3_COLORS.redText,
+        fontSize: '12px',
+        fontStyle: '900',
+      });
+      const rewards = (mission.unlocks || []).map((unlock) => titleize(unlock)).join(' / ') || 'Profile progress';
+      const rewardNode = this.text(x + 14, rewardY + 18, rewards, {
+        color: S3_COLORS.inkText,
+        fontSize: `${TYPE_SCALE.label}px`,
+        fontStyle: '800',
+        wordWrap: { width: w - 28 },
+      });
+      rewardNode.setMaxLines(2);
+      const teamY = buttonY - 72;
+      this.mono(x + 14, teamY, 'RECOMMENDED TRIO', {
+        color: S3_COLORS.inkText,
+        fontSize: '12px',
+        fontStyle: '900',
+      });
+      (mission.recommended_team || []).slice(0, 3).forEach((id, index) => {
+        drawS3Portrait(this, this.store.character(id), x + 14 + index * 34, teamY + 17, 29, 29, {
+          accent: status.accent,
+        });
+      });
+      drawS3Button(this, x + 14, buttonY, w - 28, 50, 'Use Recommended Trio', () => this.store.applyRecommendedTeam(mission), {
+        variant: 'primary',
+        accent: S3_COLORS.cyan,
+        fontSize: '17px',
       });
     }
 
     render() {
       const frame = this.layout.frame();
+      const layout = missionMapS3Layout(frame);
       this.clearSurface();
-      this.worldBackdrop(frame, { textureKey: null, ambient: 'motes' });
-      const header = this.dossierHeader(frame, { eyebrow: 'CURSED CLASH', title: 'Mission Map', backHandler: () => this.store.changeScene('LobbyScene') });
-      const x = frame.x + frame.gutter;
+      drawS3World(this, frame, MISSION_WORLD_KEY, { imageAlpha: 0.44, washAlpha: 0.72 });
+      drawS3Header(this, frame, {
+        eyebrow: 'STUDENT ERA / MISSION ARCHIVE',
+        title: 'Mission Map',
+        backHandler: () => this.store.changeScene('LobbyScene'),
+      });
+      const detailMission = this.detailMissionId
+        ? this.store.missions().find((mission) => mission.id === this.detailMissionId)
+        : null;
+      if (detailMission) {
+        this.renderMissionDetail(frame, detailMission);
+        this.toast(frame, { y: frame.bottom - 110, theme: 'light' });
+        return;
+      }
+
       const missions = this.store.missions();
-      const usableHeight = frame.bottom - frame.top;
-      const pageSize = frame.width >= 430 && usableHeight >= 820 ? 2 : 1;
-      const maxPage = Math.max(0, Math.ceil(missions.length / pageSize) - 1);
+      const profile = this.store.firstCreationProfile();
+      const completed = (profile.completed_missions || []).length;
+      const maxPage = Math.max(0, Math.ceil(missions.length / layout.cards.pageSize) - 1);
       this.store.missionPage = clamp(this.store.missionPage, 0, maxPage);
-      const page = missions.slice(this.store.missionPage * pageSize, this.store.missionPage * pageSize + pageSize);
-      let y = header.bottom + 14;
-      this.platePanel(x, y, frame.width - 32, 78, COLORS.selection, { edgeBar: 'left' });
-      this.text(x + 16, y + 13, 'Student Era Route', {
-        fontFamily: TOKEN_TYPE.display || 'Georgia, serif',
+      const page = missions.slice(
+        this.store.missionPage * layout.cards.pageSize,
+        this.store.missionPage * layout.cards.pageSize + layout.cards.pageSize,
+      );
+
+      drawS3Panel(this, layout.route.x, layout.route.y, layout.route.w, layout.route.h, {
+        fill: S3_COLORS.bone,
+        accent: S3_COLORS.red,
+        cut: 8,
+        washAlpha: 0.3,
+      });
+      this.text(layout.route.x + 12, layout.route.y + 7, 'Student Era Route', {
+        fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Arial, sans-serif',
+        color: S3_COLORS.inkText,
         fontSize: '18px',
         fontStyle: '900',
       });
-      this.text(x + 18, y + 46, 'Clear starter missions to reveal later arcs.', { color: COLORS.paperText, fontSize: `${TYPE_SCALE.body}px` });
-      y += 98;
-      page.forEach((mission, index) => {
-        this.renderMissionCard(mission, x, y + index * 204, frame.width - 32, 190, this.store.missionPage * pageSize + index);
+      this.text(layout.route.x + 12, layout.route.y + 32, 'Win with the listed trio. Every clear remains server-owned.', {
+        color: S3_COLORS.mutedText,
+        fontSize: '12px',
+        wordWrap: { width: layout.route.w - 112 },
+      }).setMaxLines(2);
+      drawS3Progress(this, layout.route.x + 12, layout.route.y + 53, layout.route.w - 108, 6, completed / Math.max(1, missions.length), {
+        fill: S3_COLORS.cyan,
       });
-      y += page.length * 204 + 4;
-      const ctaY = frame.bottom - 44;
-      const navY = ctaY - 54;
-      this.renderLockedRoutes(frame, Math.min(y, navY - 104));
+      this.mono(layout.route.x + layout.route.w - 86, layout.route.y + 49, `${completed}/${missions.length} CLEAR`, {
+        color: S3_COLORS.inkText,
+        fontSize: '12px',
+        fontStyle: '900',
+      });
 
-      this.button(x, navY, 78, 44, 'Prev', () => {
+      page.forEach((mission, index) => {
+        this.renderMissionCard(
+          mission,
+          layout.cards.x,
+          layout.cards.y + index * (layout.cards.h + layout.cards.gap),
+          layout.cards.w,
+          layout.cards.h,
+        );
+      });
+      this.renderLockedRoutes(layout);
+      drawS3Pager(this, layout.pager, `Route ${this.store.missionPage + 1}/${maxPage + 1}`, () => {
         this.store.missionPage = Math.max(0, this.store.missionPage - 1);
         this.store.notify();
-      }, { disabled: this.store.missionPage === 0, fill: COLORS.surfaceRaised, mono: true, fontSize: `${TYPE_SCALE.label}px` });
-      this.mono(x + 94, navY + 16, `Route ${this.store.missionPage + 1}/${maxPage + 1}`, { color: COLORS.muted, fontSize: `${TYPE_SCALE.label}px` });
-      this.button(x + frame.width - 108, navY, 76, 44, 'Next', () => {
+      }, () => {
         this.store.missionPage = Math.min(maxPage, this.store.missionPage + 1);
         this.store.notify();
-      }, { disabled: this.store.missionPage === maxPage, fill: COLORS.surfaceRaised, mono: true, fontSize: `${TYPE_SCALE.label}px` });
-      this.button(x, ctaY, frame.width - 32, 44, 'First Creation', () => this.store.changeScene('FirstCreationScene'), {
-        fill: COLORS.selection,
-        gradientTop: COLORS.talismanDim,
-        stroke: COLORS.talismanPaper,
-        color: '#08080a',
-        fontSize: `${TYPE_SCALE.subtitle}px`,
+      }, {
+        prevDisabled: this.store.missionPage === 0,
+        nextDisabled: this.store.missionPage === maxPage,
+        buttonW: 76,
       });
-      this.toast(frame);
+      drawS3Button(this, layout.cta.x, layout.cta.y, layout.cta.w, layout.cta.h, 'First Creation', () => this.store.openFirstCreation(), {
+        variant: 'primary',
+        accent: S3_COLORS.cyan,
+        fontSize: '18px',
+      });
+      this.toast(frame, { y: layout.toastY, theme: 'light' });
     }
   }

@@ -18,7 +18,7 @@ The next UI/UX step is to turn that shell from a functional developer interface 
 
 - Naruto Arena combat flow: 3v3 teams, one skill per living character, queue review, wildcard/random energy payment, and left-to-right resolution.
 - First Creation identity: Student Era + Hidden Inventory + JJK0. The first roster should feel like "Welcome to Jujutsu High," not endgame apocalypse.
-- Approved visual direction (internal codename `Culling Current`): bright, character/world-led urban anime composition with tactile mobile controls, restrained manga-print accents, and darkness reserved for Domain or finisher moments. This is a visual system, not a roster-era or progression rename.
+- Approved visual direction (internal codename `Culling Current`): the locked Season 3 Culling Game system in `docs/season3_visual_system.md`, with sharp ink/hatch work, hard cel shadows, storm-lit painted cities, light bone/smoke routine UI, and darkness reserved for Domain, damage, or finisher punctuation. This is a visual system, not a roster-era or progression rename.
 
 ## Design Pillars
 
@@ -82,31 +82,31 @@ Create these pages:
 
 | Token | Value |
 | --- | --- |
-| Warm Ivory | `#F7F4EC` |
-| Pale Concrete | `#E6E8EC` |
-| Powder Sky | `#BFD6F2` |
-| Current Cobalt | `#2566FF` |
-| Current Vermilion | `#E53935` |
-| Electric Cyan | `#00E6F2` |
-| Sun Gold | `#FFC94D` |
-| Charcoal | `#33363A` |
+| Bone / Ivory | `#F2E8D5` |
+| Smoke Gray | `#B7B5AD` |
+| Storm Ochre | `#B58B5B` |
+| Deep Indigo | `#101B36` |
+| Barrier Red | `#E32620` |
+| Curse Cyan | `#35DDE8` |
+| Aged Gold | `#D8BF68` |
+| Ink Charcoal | `#17191E` |
 | Domain Violet | `#7C3AED` |
 | Body Green | `#4FB06D` |
 | Technique Blue | `#3D6BFF` |
 | Focus Ivory | `#EDE9D5` |
-| Text Main | `#33363A` |
-| Text Muted | `#66707A` |
-| Soft Shadow | `#18233A` at low alpha |
+| Text Main | `#17191E` |
+| Text Muted | `#5F625F` |
+| Structural Shadow | `#101B36` at low alpha |
 
 ### Combat State Color Rules
 
-- Selected caster / selected skill: sun-gold commitment edge with cobalt support.
-- Legal target: electric-cyan pulse and explicit `LEGAL` mark.
+- Selected caster / selected skill: aged-gold commitment edge with deep-indigo support.
+- Legal target: curse-cyan pulse and explicit `LEGAL` mark.
 - Queued action: muted green order mark.
 - Protected / untargetable: pale-concrete/charcoal rim with an explicit `INVULN` or `WARD` chip.
-- Enemy threat and damage: vermilion only.
+- Enemy threat and damage: barrier red only.
 - Domain/cinematic effects: violet only during domain, status, or resolution moments.
-- Routine panel chrome should stay ivory, concrete, sky, cobalt, or charcoal; do not use violet or near-black as default decoration.
+- Routine panel chrome should stay bone, smoke, translucent off-white, or ink-outlined; do not use violet or near-black as default decoration.
 
 ### Energy Colors
 
@@ -126,11 +126,11 @@ Create these pages:
 
 ### Shape Language
 
-- Main panels: tactile 16-24 radius with restrained offset shadow
-- Skill cards: 12-18 radius with strong selection edge
+- Main panels: tactile clipped corners, thick ink outline, sparse hatching, and restrained offset shadow
+- Skill cards: compact clipped cards with a strong semantic selection edge
 - Energy orbs: circular
-- Queue pills: rounded 999
-- Manga accents: diagonal brush cuts, speed lines, halftone, and printed texture
+- Queue chips: compact clipped labels; rounded pills are exceptional rather than the default
+- Season 3 accents: barrier diagonals, raw hatch/brush marks, hard cel-shadow cuts, and paper/concrete grain
 - Domain overlays: rings and controlled dark/cinematic curtains
 
 ## Required Mobile Screens

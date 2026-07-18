@@ -643,28 +643,32 @@ Distinct visual states are required for:
 
 ## Visual direction
 
-- **Culling Current** is the internal codename for the approved visual system;
-  it is not a product-era, roster, or progression rename.
-- Use a 70/30 balance: bright, character/world-led urban anime art first;
-  tactile and immediately readable mobile controls second.
-- Routine screens are predominantly luminous: warm ivory, pale concrete,
-  powder sky, cobalt, vermilion, electric cyan, selective sun gold, and
-  charcoal text. Deep darkness is reserved for Domains, finishers, and short
-  cinematic transitions rather than default surfaces.
-- Manga brush strokes, speed lines, halftone, and printed/concrete texture are
-  restrained compositional accents, never substitutes for clear hierarchy.
+- **Culling Current** is the internal codename for the locked Season 3 Culling
+  Game visual system; it is not a product-era, roster, or progression rename.
+- `docs/season3_visual_system.md` is the detailed visual source of truth.
+  Every visible Phaser screen, illustration, environment, transition, VFX
+  layer, and routine surface must belong to that one coherent system.
+- Use sharp hand-inked contours, raw pencil/cross-hatch accents, large flat
+  cel-shadow masses, photographic-feeling painted urban depth, storm-ochre
+  light, barrier-red geometry, and selective curse-cyan emission. Avoid soft
+  glossy gacha airbrush, generic 3D rendering, neon cyberpunk, and gothic
+  parchment.
+- The locked core palette is bone `#F2E8D5`, smoke `#B7B5AD`, storm ochre
+  `#B58B5B`, deep indigo `#101B36`, barrier red `#E32620`, curse cyan
+  `#35DDE8`, aged gold `#D8BF68`, and ink charcoal `#17191E`.
+- Routine screens remain predominantly bone/smoke and world-led. Deep darkness
+  and stark black/red frames are reserved for Domains, finishers, damage, and
+  short cinematic punctuation rather than default dashboard surfaces.
 - Gold indicates selection/commitment, cyan indicates legal targets, red
   indicates danger/damage, green indicates queued actions, and violet remains
-  reserved for Domain/cinematic states.
-- Environment and character art should lead the composition. UI surfaces may
-  be light, translucent, or tactile, but must preserve contrast and all combat
-  state semantics.
-- Use one coherent original or appropriately licensed production art system.
-  Concept imagery and placeholder portraits do not establish shipping asset
-  provenance.
-- During staged migration, untouched legacy scenes may retain their existing
-  dark tokens for legibility. New or migrated screens must use scoped Culling
-  Current tokens rather than globally remapping legacy aliases.
+  reserved for Domain/cinematic states. B/T/F/C and X meanings never change.
+- Panels use ink outlines, clipped corners, sparse hatching, paper/concrete
+  grain, and restrained barrier cuts. Art leads; decoration never replaces
+  hierarchy or hides authoritative state.
+- Use fresh generated or appropriately licensed production compositions. Do
+  not paste, trace, or regenerate official frames, key visuals, manga panels,
+  logos, poses, or typography. Recorded provenance is required and is not a
+  substitute for release-rights review.
 
 ## Component architecture
 

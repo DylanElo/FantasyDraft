@@ -1,177 +1,208 @@
-import { BOOT, COLORS, TYPE_SCALE } from '../core/runtime-config.js?v=23';
-import { clamp, safeText } from '../core/text.js?v=23';
-import { DraftRosterScene } from './draft-roster-scene.js?v=23';
+import { TYPE_SCALE, TOKEN_TYPE } from '../core/runtime-config.js?v=27';
+import { clamp, safeText } from '../core/text.js?v=27';
+import {
+  S3_COLORS,
+  draftS3Layout,
+  drawS3Button,
+  drawS3Chip,
+  drawS3Cost,
+  drawS3Header,
+  drawS3Pager,
+  drawS3Panel,
+  drawS3Portrait,
+  drawS3World,
+} from '../ui/season-three-ui.js?v=27';
+import { DraftRosterScene } from './draft-roster-scene.js?v=27';
+
+const DRAFT_WORLD_KEY = 'culling-current-campus';
 
 export class DraftScene extends DraftRosterScene {
     constructor(key) {
       super(key || 'DraftScene');
     }
 
-    renderTeamDock(frame, y) {
-      const x = frame.x + frame.gutter;
-      this.railLabel(x, y - 14, this.store.matchMode === 'pvp' ? 'MY PRIVATE DOMAIN TRIO' : 'MY TRIO', COLORS.ally);
-      this.renderTeamSummary(x, y, frame.width - 32, this.store.playerTeam, COLORS.ally);
-      if (this.store.matchMode === 'cpu') {
-        this.railLabel(x, y + 74, 'CPU TRIO', COLORS.enemy, { color: '#f1a0a0' });
-        this.renderTeamSummary(x, y + 88, frame.width - 32, this.store.enemyTeam, COLORS.enemy);
-      } else if (this.store.lobbyStatus && this.store.lobbyStatus.status === 'waiting') {
-        this.text(x, y + 76, `Waiting in room ${this.store.lobbyStatus.room_id}.`, { color: '#a3eadf', fontSize: `${TYPE_SCALE.body}px` });
-      }
+    renderS3Section(x, y, label, right, accent = S3_COLORS.red) {
+      this.mono(x, y, label, {
+        color: S3_COLORS.inkText,
+        fontSize: `${TYPE_SCALE.label}px`,
+        fontStyle: '900',
+      });
+      const lineStart = Math.min(right - 18, x + Math.max(90, label.length * 7 + 16));
+      this.graphics.lineStyle(2, accent, 0.72);
+      this.graphics.beginPath();
+      this.graphics.moveTo(lineStart, y + 6);
+      this.graphics.lineTo(right, y + 6);
+      this.graphics.strokePath();
     }
 
-    renderTeamSummary(x, y, w, team, tone) {
-      this.platePanel(x, y, w, 62, tone, { alpha: 0.78, edgeBar: 'left' });
+    renderTeamSummary(region, team, options = {}) {
+      const accent = options.accent || S3_COLORS.cyan;
+      drawS3Panel(this, region.x, region.y, region.w, region.h, {
+        fill: options.fill || S3_COLORS.paper,
+        accent,
+        cut: 8,
+        washAlpha: 0.18,
+      });
+      this.mono(region.x + 10, region.y + 6, options.label || 'TEAM', {
+        color: options.labelColor || S3_COLORS.inkText,
+        fontSize: '12px',
+        fontStyle: '900',
+      });
+      const slotW = (region.w - 44) / 3;
       team.slice(0, 3).forEach((id, index) => {
         const character = this.store.character(id);
-        const rowY = y + 5 + index * 18;
-        this.mono(x + 10, rowY + 2, `S${index + 1}`, {
-          color: tone,
-          fontSize: `${TYPE_SCALE.micro}px`,
+        const x = region.x + 9 + index * (slotW + 13);
+        drawS3Portrait(this, character, x, region.y + 23, 30, 30, { accent, selected: options.selected });
+        const name = this.text(x + 36, region.y + 24, safeText(character.name, id), {
+          color: S3_COLORS.inkText,
+          fontSize: '10px',
           fontStyle: '900',
+          lineSpacing: 0,
+          wordWrap: { width: slotW - 37 },
         });
-        this.text(x + 40, rowY, safeText(character.name, id), {
-          fontSize: `${TYPE_SCALE.body}px`,
-          fontStyle: '800',
-          wordWrap: { width: w - 52 },
+        // Variant-bearing starter names can require a third compact line at
+        // 360px (for example Kokichi / Mechamaru and JJK0 Yuta).
+        name.setMaxLines(3);
+      });
+    }
+
+    renderDifficulty(region) {
+      const gap = 6;
+      const buttonW = (region.w - gap * 2) / 3;
+      ['easy', 'normal', 'hard'].forEach((level, index) => {
+        const active = this.store.difficulty === level;
+        drawS3Button(this, region.x + index * (buttonW + gap), region.y, buttonW, region.h, level.toUpperCase(), () => this.store.setDifficulty(level), {
+          variant: active ? 'primary' : 'bone',
+          accent: active ? S3_COLORS.cyan : S3_COLORS.red,
+          fontSize: '12px',
+          mono: true,
         });
       });
+    }
+
+    renderRosterCard(character, x, y, w, h, teamKey) {
+      const selected = this.store[teamKey].includes(character.id);
+      const accent = selected ? (teamKey === 'playerTeam' ? S3_COLORS.cyan : S3_COLORS.red) : S3_COLORS.gold;
+      drawS3Panel(this, x, y, w, h, {
+        fill: selected ? 0xe1eee9 : S3_COLORS.paper,
+        accent,
+        strokeWidth: selected ? 3 : 1.5,
+        cut: 7,
+        washAlpha: selected ? 0.14 : 0.24,
+      });
+      drawS3Portrait(this, character, x + 8, y + 8, 40, 40, { accent, selected });
+      const name = this.text(x + 55, y + 7, character.name, {
+        color: S3_COLORS.inkText,
+        fontSize: w < 175 ? '12px' : '13px',
+        fontStyle: '900',
+        lineSpacing: 0,
+        wordWrap: { width: w - 62 },
+      });
+      name.setMaxLines(2);
+      const role = this.text(x + 9, y + 51, character.role || 'Starter sorcerer', {
+        color: S3_COLORS.mutedText,
+        fontSize: `${TYPE_SCALE.label}px`,
+        lineSpacing: 0,
+        wordWrap: { width: w - 18 },
+      });
+      role.setMaxLines(2);
+      const firstSkill = ((character.skills || [])[0] || {});
+      drawS3Cost(this, x + 17, y + h - 14, firstSkill.cost || [], { size: 12, gap: 4 });
+      const skillName = this.text(x + 50, y + h - 32, firstSkill.name || 'Technique', {
+        color: selected ? S3_COLORS.cyanText : S3_COLORS.inkText,
+        fontSize: `${TYPE_SCALE.label}px`,
+        fontStyle: '800',
+        lineSpacing: 0,
+        wordWrap: { width: w - 58 },
+      });
+      skillName.setMaxLines(2);
+      if (selected) {
+        drawS3Chip(this, x + w - 58, y + 50, teamKey === 'playerTeam' ? 'MY TRIO' : 'CPU', {
+          w: 50,
+          h: 20,
+          fill: teamKey === 'playerTeam' ? S3_COLORS.cyanDeep : S3_COLORS.red,
+          stroke: accent,
+          fontSize: '11px',
+        });
+      }
+      this.registerHitTarget(x, y, w, h, `Roster ${character.name}`, () => this.store.toggleTeamPick(teamKey, character.id));
     }
 
     render() {
       const frame = this.layout.frame();
-      this.clearSurface();
-      this.worldBackdrop(frame, { textureKey: null, ambient: 'motes' });
-      const header = this.dossierHeader(frame, { eyebrow: 'CURSED CLASH', title: 'Draft', backHandler: () => this.store.resetToLobby() });
-      const x = frame.x + frame.gutter;
-      const usableHeight = frame.bottom - frame.top;
-      const compact = usableHeight < 760;
-      const showMissionPreview = usableHeight >= 850;
       const isCpu = this.store.matchMode === 'cpu';
-      let y = header.bottom + 8;
-      // The mission preview is the first optional block dropped when the safe
-      // frame cannot fit full roster copy plus navigation and the primary CTA.
-      if (showMissionPreview) y += this.renderMissionPreview(frame, y);
+      const layout = draftS3Layout(frame, { cpu: isCpu });
+      const activeTarget = isCpu && this.store.draftTarget === 'enemyTeam' ? 'enemyTeam' : 'playerTeam';
+      this.clearSurface();
+      drawS3World(this, frame, DRAFT_WORLD_KEY, { imageAlpha: 0.48, washAlpha: 0.7 });
+      drawS3Header(this, frame, {
+        eyebrow: isCpu ? 'JJK ARENA / CPU MATCHUP' : 'JJK ARENA / PRIVATE ROOM',
+        title: 'Draft Your Trio',
+        backHandler: () => this.store.resetToLobby(),
+      });
 
-      const presets = (BOOT.firstCreation && BOOT.firstCreation.presets) || {};
-      const presetNames = Object.keys(presets).slice(0, 4);
-      const small = (frame.width - 44) / 2;
-      const renderDifficulty = (difficultyLabelY) => {
-        this.railLabel(x, difficultyLabelY, 'CPU DIFFICULTY', COLORS.enemy, { color: '#f1a0a0' });
-        const diffBtnY = difficultyLabelY + 18;
-        const diffW = (frame.width - 44 - 16) / 3;
-        ['easy', 'normal', 'hard'].forEach((level, index) => {
-          const active = this.store.difficulty === level;
-          this.button(x + index * (diffW + 8), diffBtnY, diffW, 44, level.toUpperCase(), () => this.store.setDifficulty(level), {
-            fill: active ? COLORS.selection : COLORS.surfaceRaised,
-            stroke: active ? COLORS.selection : COLORS.line,
-            fontSize: `${TYPE_SCALE.label}px`,
-            mono: true,
-          });
+      this.renderTeamSummary(layout.player, this.store.playerTeam, {
+        label: isCpu ? 'PLAYER TRIO' : 'YOUR PRIVATE-ROOM TRIO',
+        accent: S3_COLORS.cyan,
+        selected: activeTarget === 'playerTeam',
+      });
+      if (layout.enemy) {
+        this.renderTeamSummary(layout.enemy, this.store.enemyTeam, {
+          label: 'CPU TRIO',
+          accent: S3_COLORS.red,
+          fill: S3_COLORS.bone,
+          selected: activeTarget === 'enemyTeam',
         });
-        return diffBtnY + 44;
-      };
-      const showPresetShortcuts = usableHeight >= 720;
-      if (showPresetShortcuts) {
-        this.railLabel(x, y, 'PRESETS', COLORS.line);
-        presetNames.slice(0, 2).forEach((name, index) => {
-          this.button(x + index * (small + 12), y + 16, small, 44, name.replace(/_/g, ' '), () => this.store.applyPreset(name, 'playerTeam'), {
-            fill: COLORS.surfaceRaised,
-            stroke: COLORS.ally,
-            fontSize: `${TYPE_SCALE.label}px`,
-            mono: true,
-          });
-        });
-        let presetsBottom = y + 60;
-        if (isCpu) {
-          const cpuPresetY = presetsBottom + 8;
-          presetNames.slice(2, 4).forEach((name, index) => {
-            this.button(x + index * (small + 12), cpuPresetY, small, 44, `CPU ${name.replace(/_/g, ' ')}`, () => this.store.applyPreset(name, 'enemyTeam'), {
-              fill: COLORS.surfaceRaised,
-              stroke: COLORS.enemy,
-              fontSize: `${TYPE_SCALE.label}px`,
-              mono: true,
-            });
-          });
-          presetsBottom = renderDifficulty(cpuPresetY + 56);
-        }
-        y = presetsBottom + (compact ? 12 : 18);
-      } else if (isCpu) {
-        y = renderDifficulty(y) + 12;
       }
+      if (layout.difficulty) this.renderDifficulty(layout.difficulty);
 
-      this.renderTeamDock(frame, y);
-      y += (isCpu ? 88 + 62 : 62) + (compact ? 12 : 16);
-
-      const targetW = (frame.width - 44) / 2;
-      const editH = 44;
-      this.button(x, y, targetW, editH, 'Edit Player', () => this.store.setDraftTarget('playerTeam'), {
-        fill: this.store.draftTarget === 'playerTeam' ? COLORS.ally : COLORS.surfaceRaised,
-        stroke: COLORS.ally,
-        color: this.store.draftTarget === 'playerTeam' ? '#08080a' : COLORS.text,
-        fontSize: `${TYPE_SCALE.label}px`,
+      const targetW = (layout.targets.w - 8) / 2;
+      drawS3Button(this, layout.targets.x, layout.targets.y, targetW, layout.targets.h, 'Edit Player', () => this.store.setDraftTarget('playerTeam'), {
+        variant: activeTarget === 'playerTeam' ? 'primary' : 'bone',
+        accent: S3_COLORS.cyan,
+        fontSize: '12px',
         mono: true,
       });
-      this.button(x + targetW + 12, y, targetW, editH, isCpu ? 'Edit CPU' : 'PvP Opponent', () => this.store.setDraftTarget('enemyTeam'), {
-        fill: this.store.draftTarget === 'enemyTeam' ? COLORS.enemy : COLORS.surfaceRaised,
-        stroke: isCpu ? COLORS.enemy : COLORS.line,
-        fontSize: `${TYPE_SCALE.label}px`,
+      drawS3Button(this, layout.targets.x + targetW + 8, layout.targets.y, targetW, layout.targets.h, isCpu ? 'Edit CPU' : 'PvP Opponent', () => this.store.setDraftTarget('enemyTeam'), {
+        variant: activeTarget === 'enemyTeam' ? 'primary' : 'bone',
+        accent: S3_COLORS.red,
+        fontSize: '12px',
         mono: true,
         disabled: !isCpu,
       });
-      y += editH + (compact ? 10 : 14);
 
-      this.text(x, y, this.store.draftTarget === 'enemyTeam' ? 'Tap a roster card to edit the CPU team' : 'Tap a roster card to edit your team', { color: COLORS.muted, fontSize: `${TYPE_SCALE.body}px` });
-      const rosterLabelY = y;
-
-      // Footer is bottom-anchored first so the roster grid can size itself to
-      // whatever real space remains above it -- this is what actually fixes
-      // the overlap bug: pageSize used to come from a fixed frame.height
-      // threshold that ignored how much variable content (CPU presets/
-      // difficulty) had already consumed the space above it.
-      const ctaH = 44;
-      const ctaY = frame.bottom - ctaH;
-      const navH = 44;
-      const navY = ctaY - (compact ? 8 : 10) - navH;
-
+      this.renderS3Section(layout.roster.x, layout.rosterLabelY, activeTarget === 'enemyTeam' ? 'EDIT CPU TEAM' : 'SELECT YOUR STARTERS', layout.roster.x + layout.roster.w, activeTarget === 'enemyTeam' ? S3_COLORS.red : S3_COLORS.cyan);
       const roster = this.store.rosterEntries();
-      const cardGap = compact ? 8 : 12;
-      const rosterCardTop = rosterLabelY + (compact ? 20 : 26);
-      // Full names, roles, and first-skill names are never pre-truncated.
-      // Pagination adapts instead of squeezing this legibility budget.
-      const cardH = 132;
-      const available = navY - rosterCardTop;
-      const rows = Math.max(0, Math.floor((available + cardGap) / (cardH + cardGap)));
+      const cardGap = layout.roster.gap;
+      const available = layout.pager.y - layout.roster.y;
+      const rows = Math.max(1, Math.floor((available + cardGap) / (layout.roster.cardH + cardGap)));
       const pageSize = Math.max(2, rows * 2);
       const pageMax = Math.max(0, Math.ceil(roster.length / pageSize) - 1);
       this.store.draftPage = clamp(this.store.draftPage, 0, pageMax);
-      const page = rows > 0 ? roster.slice(this.store.draftPage * pageSize, this.store.draftPage * pageSize + pageSize) : [];
-      const cardW = (frame.width - 44) / 2;
+      const page = roster.slice(this.store.draftPage * pageSize, this.store.draftPage * pageSize + pageSize);
+      const cardW = (layout.roster.w - 8) / 2;
       page.forEach((character, index) => {
         const col = index % 2;
         const row = Math.floor(index / 2);
-        const teamKey = this.store.draftTarget;
-        this.renderRosterCard(character, x + col * (cardW + 12), rosterCardTop + row * (cardH + cardGap), cardW, cardH, teamKey);
+        this.renderRosterCard(character, layout.roster.x + col * (cardW + 8), layout.roster.y + row * (layout.roster.cardH + cardGap), cardW, layout.roster.cardH, activeTarget);
       });
 
-      this.button(x, navY, 74, navH, 'Prev', () => {
+      drawS3Pager(this, layout.pager, `Roster ${this.store.draftPage + 1}/${pageMax + 1}`, () => {
         this.store.draftPage = Math.max(0, this.store.draftPage - 1);
         this.store.notify();
-      }, { disabled: this.store.draftPage === 0, fill: COLORS.surfaceRaised, mono: true, fontSize: `${TYPE_SCALE.label}px` });
-      this.mono(x + 88, navY + navH / 2 - 6, `Page ${this.store.draftPage + 1}/${pageMax + 1}`, { color: COLORS.muted, fontSize: `${TYPE_SCALE.label}px` });
-      this.button(x + frame.width - 106, navY, 74, navH, 'Next', () => {
+      }, () => {
         this.store.draftPage = Math.min(pageMax, this.store.draftPage + 1);
         this.store.notify();
-      }, { disabled: this.store.draftPage === pageMax, fill: COLORS.surfaceRaised, mono: true, fontSize: `${TYPE_SCALE.label}px` });
-
-      this.button(x, ctaY, frame.width - 32, ctaH, this.store.lobbyStatus ? 'Waiting For Opponent' : 'Ignite Battle', () => this.store.startMatch(), {
-        fill: this.store.lobbyStatus ? COLORS.surfaceRaised : COLORS.selection,
-        gradientTop: this.store.lobbyStatus ? COLORS.surfaceRaised : COLORS.talismanDim,
-        stroke: this.store.lobbyStatus ? COLORS.ally : COLORS.talismanPaper,
-        color: this.store.lobbyStatus ? COLORS.text : '#08080a',
-        fontSize: `${TYPE_SCALE.subtitle}px`,
-        disabled: !!this.store.lobbyStatus,
+      }, {
+        prevDisabled: this.store.draftPage === 0,
+        nextDisabled: this.store.draftPage === pageMax,
       });
-
-      this.toast(frame);
+      drawS3Button(this, layout.cta.x, layout.cta.y, layout.cta.w, layout.cta.h, this.store.lobbyStatus ? 'Waiting For Opponent' : 'Ignite Battle', () => this.store.startMatch(), {
+        variant: this.store.lobbyStatus ? 'smoke' : 'primary',
+        accent: this.store.lobbyStatus ? S3_COLORS.gold : S3_COLORS.cyan,
+        disabled: !!this.store.lobbyStatus,
+        fontSize: '18px',
+      });
+      this.toast(frame, { y: layout.toastY, theme: 'light' });
     }
   }

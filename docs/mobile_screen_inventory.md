@@ -56,7 +56,7 @@ This inventory converts the mobile Phaser UI/UX brief into implementation-ready 
 
 - The browser page remains a pure Phaser canvas host.
 - The Phaser shell uses shared design tokens for colors, type, radii, motion, and mobile frame targets.
-- Migrated screens follow the Culling Current system: luminous ivory/concrete/sky surfaces, cobalt structure, gold for selection, electric cyan for legal targets, green for queued actions, vermilion for enemy/damage, charcoal text, and violet only for Domain/cinematic moments. Untouched legacy screens may retain scoped dark tokens until migrated.
+- Every maintained Phaser screen follows the locked Season 3 Culling Current system in `docs/season3_visual_system.md`: bone/smoke routine surfaces, storm-ochre painted worlds, deep-indigo structure, aged gold for selection, curse cyan for legal targets, green for queued actions, barrier red for enemy/damage, ink-charcoal text, and violet only for Domain/cinematic moments.
 - Desktop and tablet viewports center a phone-shaped canvas rather than stretching battle UI.
 - Combat screen always exposes turn, living fighters, selected fighter, selected skill, legal targets, energy, queue, and latest resolution feedback.
 - Server authority remains unchanged: legality, damage, cooldowns, hidden info, winner, and mission progress stay server-owned.

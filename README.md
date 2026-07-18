@@ -6,6 +6,14 @@ Players enter the Phaser arena, choose a three-fighter Battle v2 team, and resol
 
 ## Run Locally
 
+On Windows, double-click `start_server.bat`. The launcher creates the local
+virtual environment when needed, synchronizes dependencies whenever
+`requirements.txt` changes, waits for the server readiness check, and opens the
+arena in the default browser. Set `JJK_NO_BROWSER=1` before launching if you do
+not want it to open a browser automatically.
+
+The equivalent manual launch is:
+
 ```bash
 pip install -r requirements.txt
 python run_server.py

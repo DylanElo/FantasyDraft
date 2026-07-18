@@ -2289,3 +2289,35 @@ atlas passed. The main implementation is commit `0e07e88` on
 been refreshed with this commit at the time of this entry. Generated assets
 and franchise-directed references still require commercial-release rights
 review; provenance is not licensing clearance.
+
+## 2026-07-18 - Windows one-click launcher refresh
+
+**Scope and invariants.** Refreshed `start_server.bat` without changing combat,
+roster, progression, or socket contracts. The launcher explicitly rejects any
+runtime other than maintained Battle v2, starts the Flask-SocketIO
+`run_server.py` entry point, uses the threaded local transport, and introduces
+no Node or frontend build step. Phaser continues to load directly from the
+current working tree.
+
+**What changed.** Replaced the obsolete `eventlet` import probe and the unsafe
+parenthesized `%ERRORLEVEL%` branch with label-based Python discovery. The
+launcher now fingerprints `requirements.txt`, synchronizes dependencies only
+when its SHA-256 changes or validation fails, checks the actual Flask,
+Flask-SocketIO, and simple-websocket imports, and runs `pip check` before
+startup. It validates the configured port, rejects an unavailable listener,
+derives the local CORS allowlist from `JJK_PORT`, polls `/readyz`, and opens the
+default browser only after readiness. `JJK_NO_BROWSER=1` provides a documented
+opt-out. `README.md` now identifies the BAT file as the primary Windows local
+launch path, and `tests/test_start_server_launcher.py` locks the maintained
+runtime, dependency, readiness, browser, and no-Node contracts.
+
+**Verification and delivery state.** A real `start_server.bat` smoke run on
+isolated port 5022 synchronized the dependency fingerprint, returned HTTP 200
+from `/readyz`, served the current `phaser-shell.js?v=28`, and released the
+listener during cleanup. The browser-open opt-out was used for automation so
+the test did not disturb the user's active browser. Focused launcher and
+production-readiness coverage passed with **17 passed**. The full suite passed
+with **510 passed, 1 skipped** in 75.99 seconds;
+`python -m compileall -q jjk_arena web/app.py` and `git diff --check` also
+passed. Delivery targets `codex/culling-current-ui` and draft PR #58; the
+launcher changes were not yet committed at the time of this entry.

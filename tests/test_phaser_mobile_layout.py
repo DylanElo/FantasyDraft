@@ -162,22 +162,37 @@ def test_queue_review_keeps_enemy_lane_and_footer_clear_with_safe_insets():
 
 
 def _first_creation_geometry(frame):
-    usable = frame["bottom"] - frame["top"]
-    compact = True  # all three supported phone widths are non-desktop
-    y = frame["top"] + 68 + 8
-    y += 118  # mission header
-    y += 100  # trio slots
-    if usable >= 740:
-        preset_page_size = 2 if compact else 4
-        y += 38 + math.ceil(preset_page_size / 2) * 100 + 8
-    card_gap = 10 if compact else 12
-    card_height = 132
-    roster_top = y + (18 if compact else 22)
-    cta_y = frame["bottom"] - 46
-    nav_y = cta_y - (8 if compact else 10) - 44
-    rows_that_fit = max(0, math.floor((nav_y - roster_top + card_gap) / (card_height + card_gap)))
-    rows = min(2 if frame["width"] >= 430 else 1, rows_that_fit)
-    return {"rows": rows, "card_top": roster_top, "card_height": card_height, "card_gap": card_gap, "nav_y": nav_y, "cta_y": cta_y}
+    header_bottom = frame["top"] + 62
+    trio_y = header_bottom + 8 + 18
+    trio_h = 98
+    filters_y = trio_y + trio_h + 8
+    filters_h = 44
+    cta_y = frame["bottom"] - 50
+    pager_y = cta_y - 52
+    featured_y = filters_y + filters_h + 8
+    featured_h = pager_y - featured_y - 8
+
+    study_content_y = header_bottom + 8
+    study_content_bottom = pager_y - 8
+    study_content_h = study_content_bottom - study_content_y
+    study_hero_h = max(280, min(320, round(study_content_h * 0.54)))
+    study_skill_y = study_content_y + study_hero_h + 8
+    study_skill_h = study_content_bottom - study_skill_y
+    return {
+        "header_bottom": header_bottom,
+        "trio_y": trio_y,
+        "trio_h": trio_h,
+        "filters_y": filters_y,
+        "filters_h": filters_h,
+        "featured_y": featured_y,
+        "featured_h": featured_h,
+        "pager_y": pager_y,
+        "cta_y": cta_y,
+        "study_content_y": study_content_y,
+        "study_hero_h": study_hero_h,
+        "study_skill_y": study_skill_y,
+        "study_skill_h": study_skill_h,
+    }
 
 
 def _draft_geometry(frame):
@@ -201,28 +216,31 @@ def _draft_geometry(frame):
     return {"rows": rows, "card_top": roster_top, "card_height": card_height, "card_gap": card_gap, "nav_y": nav_y}
 
 
-def test_roster_cards_and_detail_cta_fit_normal_and_safe_phone_frames():
-    expected_creation_entries = {360: 2, 390: 2, 430: 4}
+def test_character_led_creation_browser_and_study_fit_normal_and_safe_phone_frames():
     for safe_top, safe_bottom in ((0, 0), (47, 34)):
         for width, height in ((360, 800), (390, 844), (430, 932)):
             frame = _safe_frame(width, height, safe_top, safe_bottom)
             creation = _first_creation_geometry(frame)
-            assert creation["rows"] * 2 == expected_creation_entries[width]
-            creation_cards_bottom = creation["card_top"] + creation["rows"] * creation["card_height"] + max(0, creation["rows"] - 1) * creation["card_gap"]
-            assert creation_cards_bottom <= creation["nav_y"]
-            assert creation["nav_y"] + 44 <= creation["cta_y"]
+            assert creation["trio_y"] >= creation["header_bottom"]
+            assert creation["trio_h"] >= 98
+            assert creation["filters_y"] >= creation["trio_y"] + creation["trio_h"]
+            assert creation["filters_h"] >= 44
+            assert creation["featured_y"] >= creation["filters_y"] + creation["filters_h"]
+            assert creation["featured_h"] >= 343
+            assert creation["featured_y"] + creation["featured_h"] <= creation["pager_y"]
+            assert creation["pager_y"] + 44 <= creation["cta_y"]
+            assert creation["cta_y"] + 50 <= frame["bottom"]
+
+            assert creation["study_content_y"] >= creation["header_bottom"]
+            assert creation["study_hero_h"] >= 280
+            assert creation["study_skill_y"] >= creation["study_content_y"] + creation["study_hero_h"]
+            assert creation["study_skill_h"] >= 231
+            assert creation["study_skill_y"] + creation["study_skill_h"] <= creation["pager_y"]
 
             draft = _draft_geometry(frame)
             assert draft["rows"] >= 1
             draft_cards_bottom = draft["card_top"] + draft["rows"] * draft["card_height"] + max(0, draft["rows"] - 1) * draft["card_gap"]
             assert draft_cards_bottom <= draft["nav_y"]
-
-            default_sheet_y = max(168, height * 0.34)
-            sheet_y = max(150, min(default_sheet_y, frame["bottom"] - 504))
-            fourth_skill_bottom = sheet_y + 452
-            detail_cta_y = frame["bottom"] - 44
-            assert fourth_skill_bottom + 8 <= detail_cta_y
-
 
 def test_scoped_mobile_controls_and_copy_keep_accessibility_contracts():
     base = (ROOT / "web/static/phaser/scenes/base-scene.js").read_text(encoding="utf-8")
@@ -250,10 +268,15 @@ def test_scoped_mobile_controls_and_copy_keep_accessibility_contracts():
     assert "name.setMaxLines(3);" in draft
     assert "shortText(safeText(character.name" not in draft
 
-    assert "104, 44, 'Mission Map'" in creation
-    assert "72, 44, `Set " in creation
-    assert "const navH = 44;" in creation
-    assert "Math.max(0, Math.floor" in creation
+    assert "const trio = { x, y: trioLabelY + 18, w, h: 98 };" in creation
+    assert "const filters = { x, y: trio.y + trio.h + 8, w, h: 44 };" in creation
+    assert "const pager = { x, y: cta.y - 52, w, h: 44 };" in creation
+    assert "const cta = { x, y: frame.bottom - 50, w, h: 50 };" in creation
+    assert "renderFeaturedCharacter" in creation
+    assert "renderCharacterStudy" in creation
+    assert "renderAuthoritativeSkill" in creation
+    assert "this.store.presetEntries()" not in creation
+    assert "Mission Map" not in creation
 
     assert "const controlSize = 44;" in queue
     assert "const sheetY = Math.max(frame.top + 300" in queue

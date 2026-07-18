@@ -1,5 +1,5 @@
-import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=27';
-import { safeText, shortText } from '../core/text.js?v=27';
+import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=28';
+import { safeText, shortText } from '../core/text.js?v=28';
 import {
   S3_COLORS,
   drawS3Button,
@@ -11,8 +11,8 @@ import {
   outcomeVisual,
   resultLayout,
   resultModel,
-} from '../ui/season3-master-ui.js?v=27';
-import { BaseScene } from './base-scene.js?v=27';
+} from '../ui/season3-master-ui.js?v=28';
+import { BaseScene } from './base-scene.js?v=28';
 
 const STORM_WORLD_KEY = 'culling-current-rooftop';
 

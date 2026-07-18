@@ -121,6 +121,24 @@ implementation of this direction.
   hidden/revealed state, queued state, and primary/secondary/alternate targeting
   remain explicit even when their presentation is progressive.
 
+### First Creation and Character Study
+
+- First Creation is an art-led roster browser, not a mission dashboard, preset
+  selector, dense card grid, or recolored version of the deprecated layout.
+- The three active slots remain visible above one large featured-character
+  composition. `All 19`, Tokyo, Kyoto, and Special filters change the browsing
+  route without changing the canonical locked roster order.
+- Tapping the featured character opens a full-screen Character Study within
+  the same illustrated world. It exposes large character art, name, era,
+  difficulty, role, tactical state, canonical tags, and an Add/Remove Trio CTA.
+- Every authoritative primary and replacement skill is pageable in Character
+  Study. The profile shows original slot identity, generated presentation art,
+  exact cost, cooldown, target count, self/downed eligibility, required status,
+  classes, and shipping description. Replacement skills never appear as a
+  fifth slot merely because they are a fifth profile page.
+- Profile entry and skill paging receive short reduced-motion-aware transitions;
+  they are not hard cuts or eligibility-changing animations.
+
 ### Queue Review
 
 - Queue Review keeps the battlefield visible and replaces the lower command
@@ -141,10 +159,32 @@ implementation of this direction.
 | `culling-current-map.webp` | Mission Map |
 | `culling-current-rooftop-v2.webp` | Combat, Queue Review, Result |
 
-The four semantic command-card textures live under
-`web/static/assets/skills/culling-current/`. They provide coherent Body,
-Technique, Focus, and Curse illustrations; the server-provided skill name,
-cost, legality, and effect text remain the authority rather than the image.
+`web/static/assets/skills/culling-current/skill-action-atlas-v2.png` is the
+current runtime action source. A stable presentation registry maps all 78
+shipping skill IDs to an authored atlas crop, affinity palette, sigil, motion
+profile, original slot, and replacement identity. The earlier four semantic
+Body/Technique/Focus/Curse textures remain graceful fallbacks; they are not the
+primary skill art system. Server-provided skill identity, adjusted cost,
+legality, targeting, replacement, and effect text remain authoritative rather
+than any image or presentation metadata.
+
+## Motion, VFX, and audio contract
+
+- Ambient print motes and shallow parallax keep illustrated worlds alive
+  without veiling names or rules.
+- Scene/profile reveals, skill selection commitment, queued-card sheen, legal
+  target rings, queue commitment, impacts, healing, status, and reveal events
+  use reusable presentation hooks. These hooks animate authoritative state;
+  they never resolve an effect or advance a phase.
+- `prefers-reduced-motion` removes continuous and decorative motion while
+  retaining immediate state clarity.
+- Gesture-gated WebAudio cues cover press, select, target, queue, confirm,
+  error, reveal, and impact. Audio is synthesized locally, has persistent mute
+  state, creates no context before a user gesture, and fails silently when
+  audio is unavailable.
+- Compact battle cards prioritize illustration, skill name, target, cost, and
+  actionable disabled/queued/replacement ribbons. Classes and effect prose use
+  the second-tap technique dossier instead of unreadably small card overlays.
 
 The maintained asset registry is
 `web/static/phaser/core/portrait-registry.js`. Full generation prompts,
@@ -154,7 +194,7 @@ identifiers, hashes, processing, and limitations are recorded under
 `web/static/assets/skills/PROVENANCE.md`, and
 `artifacts/ui-redesign/s3-style/PROMPTS.md`.
 
-The maintained Phaser cache version for this structural pass is `v27`.
+The maintained Phaser cache version for this structural pass is `v28`.
 
 ## Gameplay invariants
 

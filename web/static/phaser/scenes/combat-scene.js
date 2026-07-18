@@ -1,8 +1,8 @@
-import { COLORS, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_TYPE } from '../core/runtime-config.js?v=27';
-import { clamp, initials, safeText, shortText, titleize } from '../core/text.js?v=27';
-import { eventTone } from '../fx/event-metrics.js?v=27';
-import { drawCurrentButton, drawCurrentPanel, drawCurrentWorld } from '../ui/culling-current-ui.js?v=27';
-import { CombatQueueReviewScene } from './combat-queue-review-scene.js?v=27';
+import { COLORS, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_TYPE } from '../core/runtime-config.js?v=28';
+import { clamp, initials, safeText, shortText, titleize } from '../core/text.js?v=28';
+import { eventTone } from '../fx/event-metrics.js?v=28';
+import { drawCurrentButton, drawCurrentPanel, drawCurrentWorld } from '../ui/culling-current-ui.js?v=28';
+import { CombatQueueReviewScene } from './combat-queue-review-scene.js?v=28';
 
 const WORLD_KEY = 'culling-current-rooftop';
 const LOCATION_LINE = 'TOKYO MUNICIPAL ROOFTOP';
@@ -34,27 +34,60 @@ export class CombatScene extends CombatQueueReviewScene {
     super('CombatScene');
   }
 
+  renderIntegratedSkillArtwork(skill, region, options = {}) {
+    const layer = this.presentationLayer;
+    if (!layer || typeof layer.skillVisualFor !== 'function') return false;
+    const visual = layer.skillVisualFor(skill, {
+      context: options.context || 'combat-card',
+      slot: options.slot,
+      cost: options.cost || [],
+      caster: options.caster || null,
+    });
+    if (!visual) return false;
+    if (typeof layer.renderSkillVisual === 'function') {
+      const artDepth = options.depth === undefined ? -1 : options.depth;
+      const iconDepth = options.iconDepth == null
+        ? (artDepth >= 0 ? Math.min(0.9, artDepth + 0.25) : 0)
+        : options.iconDepth;
+      return layer.renderSkillVisual(this, visual, region, {
+        ...options,
+        depth: artDepth,
+        iconDepth,
+      }) !== false;
+    }
+    const textureKey = typeof visual === 'string' ? visual : visual.textureKey;
+    if (!textureKey || !this.textures.exists(textureKey)) return false;
+    this.coverImage(textureKey, region.x, region.y, region.w, region.h, {
+      focal: visual.focal || options.focal || { x: 0.5, y: 0.45 },
+      depth: options.depth === undefined ? -1 : options.depth,
+      alpha: options.alpha === undefined ? 1 : options.alpha,
+    });
+    return true;
+  }
+
   combatLayout(frame) {
     const usableH = frame.bottom - frame.top;
     const compressed = usableH < 740;
     const compact = usableH < 830;
-    const topH = compressed ? 58 : 60;
-    const reviewH = 50;
+    const topH = compressed ? 54 : 56;
+    const reviewH = compressed ? 50 : 54;
     const reviewY = frame.bottom - reviewH;
-    const skillH = clamp(Math.round(usableH * 0.18), compressed ? 132 : 140, frame.height > 900 ? 166 : 154);
-    const skillY = reviewY - skillH - 8;
-    const identityH = 44;
-    const identityY = skillY - identityH - 5;
-    const cardH = clamp(Math.round(usableH * 0.165), compressed ? 118 : 126, frame.height > 900 ? 150 : 142);
-    const enemyY = frame.top + topH + (compressed ? 38 : compact ? 44 : 50);
-    const allyY = identityY - cardH - 7;
-    const contentX = frame.x + 10;
-    const contentW = frame.width - 20;
-    const gap = frame.width < 380 ? 5 : 7;
+    const skillH = clamp(Math.round(usableH * 0.21), compressed ? 158 : 164, frame.height > 900 ? 194 : 178);
+    const skillY = reviewY - skillH - 6;
+    const identityH = 48;
+    const identityY = skillY - identityH;
+    const cardH = clamp(Math.round(usableH * 0.16), compressed ? 118 : 126, frame.height > 900 ? 148 : 138);
+    const enemyY = frame.top + topH + (compressed ? 28 : compact ? 58 : 68);
+    const allyY = identityY - cardH - 6;
+    const contentX = frame.x + (frame.width < 380 ? 12 : 15);
+    const contentW = frame.width - (contentX - frame.x) * 2;
+    const gap = frame.width < 380 ? 7 : 9;
     const cardW = (contentW - gap * 2) / 3;
-    const skillX = frame.x + 8;
-    const skillGap = 5;
-    const skillW = (frame.width - 16 - skillGap * 3) / 4;
+    const identityW = clamp(Math.round(frame.width * 0.245), 86, 106);
+    const skillX = frame.x + identityW - 7;
+    const skillGap = 4;
+    const skillRight = frame.x + frame.width - 8;
+    const skillW = (skillRight - skillX - skillGap * 3) / 4;
     return {
       usableH,
       compressed,
@@ -72,6 +105,7 @@ export class CombatScene extends CombatQueueReviewScene {
       fieldH: Math.max(96, allyY - enemyY - cardH - 4),
       identityY,
       identityH,
+      identityW,
       dockY: identityY,
       skillX,
       skillY,
@@ -273,7 +307,7 @@ export class CombatScene extends CombatQueueReviewScene {
     const key = this.store.portraitKey(id);
     if (this.textures.exists(key)) {
       this.portraitArtwork(character || id || '', x, y, w, h, {
-        context: 'hero',
+        context: options.context || 'hero',
         dead,
         alpha: options.alpha === undefined ? 0.98 : options.alpha,
         depth: -1,
@@ -340,13 +374,14 @@ export class CombatScene extends CombatQueueReviewScene {
           : queuedIndex >= 0
             ? CULLING_COLORS.queued
             : baseTone;
-    const artH = h - 29;
+    const artH = h - 8;
+    const nameBandY = y + h - 42;
     const playerId = side === 'mine' ? store.mineId() : store.enemyId();
     if (playerId) {
       this.playbackTargets = this.playbackTargets || {};
       this.playbackTargets[`${playerId}:${slot}`] = {
         x: x + w / 2,
-        y: y + artH / 2,
+        y: y + (nameBandY - y) / 2,
         side,
         slot,
         size: Math.min(w, artH),
@@ -354,25 +389,31 @@ export class CombatScene extends CombatQueueReviewScene {
       };
     }
 
-    this.graphics.fillStyle(CULLING_COLORS.shadow, targetable || selected ? 0.24 : 0.14);
-    this.graphics.fillPoints(clippedPoints(x + 2, y + 4, w, h, 9), true);
-    this.renderPortraitPlate(character, x + 3, y + 3, w - 6, artH - 3, {
+    this.graphics.fillStyle(CULLING_COLORS.shadow, targetable || selected ? 0.26 : 0.13);
+    this.graphics.fillPoints(clippedPoints(x + 2, y + 4, w, h, 10), true);
+    this.renderPortraitPlate(character, x + 2, y + 2, w - 4, artH - 2, {
       alpha: dead ? 0.3 : targetable ? 1 : 0.98,
+      context: 'hero',
     });
 
-    // Paper corner cuts visually clip the rectangular portrait crop.
+    // The portrait owns the card. Paper is limited to a slashed name plate
+    // and the HP track, matching the art-first battle reference.
     this.graphics.fillStyle(CULLING_COLORS.ivory, 0.98);
-    this.graphics.fillTriangle(x, y, x + 10, y, x, y + 10);
-    this.graphics.fillTriangle(x + w, y + artH, x + w - 10, y + artH, x + w, y + artH - 10);
-    this.graphics.fillStyle(CULLING_COLORS.ivory, 0.96);
-    this.graphics.fillRect(x, y + artH, w, h - artH);
-    this.graphics.fillStyle(tone, dead ? 0.15 : selected || targetable ? 0.95 : 0.64);
-    this.graphics.fillRect(x, y + artH - 3, w, 3);
-    this.graphics.lineStyle(selected || targetable ? 2.5 : 1.25, tone, dead ? 0.24 : 0.9);
-    this.graphics.strokePoints(clippedPoints(x, y, w, h, 9), true);
+    this.graphics.fillTriangle(x, y, x + 11, y, x, y + 11);
+    this.graphics.fillTriangle(x + w, y + h, x + w - 11, y + h, x + w, y + h - 11);
+    this.graphics.fillPoints([
+      { x: x + 2, y: nameBandY + 7 },
+      { x: x + w - 2, y: nameBandY },
+      { x: x + w - 2, y: y + h - 10 },
+      { x: x + 2, y: y + h - 10 },
+    ], true);
+    this.graphics.fillStyle(tone, dead ? 0.15 : selected || targetable ? 0.98 : 0.72);
+    this.graphics.fillRect(x + 2, y + h - 10, w - 4, 3);
+    this.graphics.lineStyle(selected || targetable ? 3 : 1.4, tone, dead ? 0.24 : 0.92);
+    this.graphics.strokePoints(clippedPoints(x, y, w, h, 10), true);
 
-    const markerX = x + 11;
-    const markerY = y + 8;
+    const markerX = x + 14;
+    const markerY = nameBandY + 13;
     this.graphics.fillStyle(CULLING_COLORS.charcoal, 0.9);
     this.graphics.fillPoints([
       { x: markerX, y: markerY - 9 },
@@ -407,7 +448,7 @@ export class CombatScene extends CombatQueueReviewScene {
                 : '');
     if (stateLabel) {
       const chipW = clamp(stateLabel.length * 5 + 12, 30, w - 27);
-      const chipX = x + w - chipW - 3;
+      const chipX = x + w - chipW - 4;
       this.graphics.fillStyle(tone, protectedTarget ? 0.74 : 0.94);
       this.graphics.fillPoints(clippedPoints(chipX, y + 3, chipW, 17, 4), true);
       this.mono(chipX + chipW / 2, y + 7, stateLabel, {
@@ -418,13 +459,13 @@ export class CombatScene extends CombatQueueReviewScene {
     }
 
     const fighterName = (character && character.name) || 'Down';
-    const nameNode = this.text(x + 5, y + artH - 24, fighterName, {
-      fontSize: w < 110 ? '9px' : '10px',
+    const nameNode = this.text(x + 28, nameBandY + 3, fighterName, {
+      fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
+      fontSize: fighterName.length > 22 ? (w < 110 ? '8px' : '9px') : w < 110 ? '10px' : '11px',
       fontStyle: '900',
       color: dead ? CULLING_COLORS.mutedText : CULLING_COLORS.text,
-      backgroundColor: '#F2E8D5',
-      padding: { x: 3, y: 1 },
-      wordWrap: { width: w - 10 },
+      lineSpacing: -1,
+      wordWrap: { width: w - 34 },
     });
     nameNode.setMaxLines(2);
 
@@ -432,25 +473,29 @@ export class CombatScene extends CombatQueueReviewScene {
     const maxHp = Math.max(1, Number(character && character.max_hp ? character.max_hp : 1));
     const hpPct = clamp(hp / maxHp, 0, 1);
     const hpTone = hpPct <= 0.3 ? CULLING_COLORS.enemy : hpPct <= 0.6 ? CULLING_COLORS.gold : CULLING_COLORS.queued;
-    const barX = x + 5;
-    const barY = y + h - 10;
-    const barW = w - 10;
+    const barX = x + 4;
+    const barY = y + h - 7;
+    const barW = w - 8;
+    const hpLabel = dead ? 'DOWN' : `${hp}/${maxHp}`;
+    const hpLabelW = Math.min(w - 8, Math.max(34, hpLabel.length * 5 + 9));
+    this.graphics.fillStyle(CULLING_COLORS.ivory, 0.9);
+    this.graphics.fillPoints(clippedPoints(x + 3, y + 3, hpLabelW, 16, 4), true);
+    this.mono(x + 7, y + 6, hpLabel, {
+      color: dead ? CULLING_COLORS.mutedText : CULLING_COLORS.text,
+      fontSize: '7px',
+      fontStyle: '700',
+    });
     this.graphics.fillStyle(CULLING_COLORS.concrete, 0.96);
     this.graphics.fillRect(barX, barY, barW, 5);
     this.graphics.fillStyle(hpTone, dead ? 0.25 : 0.98);
     this.graphics.fillRect(barX, barY, barW * hpPct, 5);
-    this.mono(x + 5, y + artH + 3, dead ? 'DOWN' : `${hp}/${maxHp}`, {
-      color: dead ? CULLING_COLORS.mutedText : CULLING_COLORS.text,
-      fontSize: '8px',
-      fontStyle: '700',
-    });
 
     this.visibleStatusLabels(character).forEach((label, index) => {
       const visibility = label.startsWith('HIDDEN ') || label.startsWith('REVEALED ');
       const chipW = Math.min(w - 8, visibility ? Math.max(64, label.length * 4.2) : 34);
       const chipLabel = visibility ? shortText(label, Math.max(14, Math.floor((chipW - 4) / 3.5))) : label;
       const chipX = x + w - chipW - 4;
-      const chipY = y + artH - 43 - index * 17;
+      const chipY = y + 24 + index * 17;
       this.graphics.fillStyle(visibility ? COLORS.domain : CULLING_COLORS.charcoal, 0.82);
       this.graphics.fillRect(chipX, chipY, chipW, 14);
       this.mono(chipX + chipW / 2, chipY + 3, chipLabel, {
@@ -478,36 +523,41 @@ export class CombatScene extends CombatQueueReviewScene {
       });
     }
 
+    this.presentationLayerCall('renderFighterState', {
+      character,
+      side,
+      slot,
+      region: { x, y, w, h },
+      selected,
+      targetable,
+      protected: protectedTarget,
+      queuedIndex,
+      targetMark,
+      dead,
+    });
+
     this.buttons.push({
       x: x - 2,
       y: y - 3,
       w: w + 4,
       h: h + 6,
       label: `${side} fighter ${slot + 1}`,
-      onClick: () => store.target(side, slot),
+      onClick: () => {
+        this.presentationLayerCall('interactionCue', {
+          cue: targetable ? 'target-lock' : side === 'mine' ? 'fighter-select' : 'fighter-tap',
+          character,
+          side,
+          slot,
+          targetable,
+        });
+        store.target(side, slot);
+      },
       disabled: false,
     });
   }
 
   renderFighterLane(team, side, frame, layout) {
     const y = side === 'enemy' ? layout.enemyY : layout.allyY;
-    const tone = side === 'enemy' ? CULLING_COLORS.enemy : CULLING_COLORS.cobalt;
-    const label = side === 'enemy' ? 'ENEMY TEAM' : 'YOUR FIELD';
-    this.graphics.fillStyle(CULLING_COLORS.ivory, 0.88);
-    this.graphics.fillPoints([
-      { x: layout.contentX, y: y - 20 },
-      { x: layout.contentX + 74, y: y - 20 },
-      { x: layout.contentX + 84, y: y - 10 },
-      { x: layout.contentX + 74, y: y - 2 },
-      { x: layout.contentX, y: y - 2 },
-    ], true);
-    this.graphics.fillStyle(tone, 0.9);
-    this.graphics.fillRect(layout.contentX, y - 20, 3, 18);
-    this.mono(layout.contentX + 9, y - 15, label, {
-      color: side === 'enemy' ? CULLING_COLORS.redText : CULLING_COLORS.cobaltText,
-      fontSize: '8px',
-      fontStyle: '700',
-    });
     (team || []).slice(0, 3).forEach((character, slot) => {
       const x = layout.contentX + slot * (layout.cardW + layout.gap);
       this.renderFighterPlate(character, side, slot, x, y, layout.cardW, layout.cardH);
@@ -604,40 +654,71 @@ export class CombatScene extends CombatQueueReviewScene {
     g.fillTriangle(centerX, layout.fieldTop + 20, centerX - 11, laneTop + 3, centerX + 11, laneTop + 3);
     g.fillTriangle(centerX, centerY - ringRadius - 8, centerX - 8, centerY - ringRadius + 7, centerX + 8, centerY - ringRadius + 7);
 
-    const promptW = Math.min(276, frame.width - 44);
-    const promptY = layout.fieldTop + 2;
-    g.fillStyle(CULLING_COLORS.ivory, 0.88);
-    g.fillPoints([
-      { x: centerX - promptW / 2 + 8, y: promptY },
-      { x: centerX + promptW / 2, y: promptY },
-      { x: centerX + promptW / 2 - 8, y: promptY + 30 },
-      { x: centerX - promptW / 2, y: promptY + 30 },
-    ], true);
-    g.lineStyle(1.5, laneTone, selectedSkill ? 0.96 : 0.68);
-    g.strokePoints([
-      { x: centerX - promptW / 2 + 8, y: promptY },
-      { x: centerX + promptW / 2, y: promptY },
-      { x: centerX + promptW / 2 - 8, y: promptY + 30 },
-      { x: centerX - promptW / 2, y: promptY + 30 },
-    ], true);
-    this.text(centerX, promptY + 7, prompt, {
+    // The instruction floats in the world instead of sitting in a legacy
+    // prompt panel. A short ink underline keeps it legible over the rooftop.
+    const promptW = Math.min(292, frame.width - 44);
+    const promptY = layout.fieldTop + 4;
+    g.lineStyle(3, CULLING_COLORS.ivory, 0.72);
+    g.beginPath();
+    g.moveTo(centerX - promptW * 0.38, promptY + 18);
+    g.lineTo(centerX + promptW * 0.38, promptY + 14);
+    g.strokePath();
+    g.lineStyle(1.5, laneTone, selectedSkill ? 0.98 : 0.72);
+    g.beginPath();
+    g.moveTo(centerX - promptW * 0.34, promptY + 20);
+    g.lineTo(centerX + promptW * 0.34, promptY + 16);
+    g.strokePath();
+    this.text(centerX, promptY, prompt, {
+      fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
       fontSize: layout.compressed ? '10px' : '11px',
       fontStyle: '900',
-      color: CULLING_COLORS.text,
+      color: selectedSkill ? '#006B75' : CULLING_COLORS.cobaltText,
+      stroke: CULLING_COLORS.inverseText,
+      strokeThickness: 3,
       align: 'center',
       wordWrap: { width: promptW - 24 },
     }).setOrigin(0.5, 0);
 
+    this.presentationLayerCall('renderTargetLane', {
+      frame,
+      layout,
+      prompt,
+      selectedSkill,
+      centerX,
+      centerY,
+      ringRadius,
+    });
     this.renderReplayLine(frame, layout);
     this.renderQueueMarks(frame, layout, layout.fieldBottom - 13);
   }
 
-  renderTechniqueArtwork(skill, index, x, y, w, h, tone, disabled, cost) {
+  renderTechniqueArtwork(skill, index, x, y, w, h, tone, disabled, cost, selected = false) {
     const g = this.graphics;
     const seed = stableHash(skill.id || skill.name || String(index));
     const cx = x + w / 2;
     const cy = y + h * 0.52;
     const semanticCost = (cost || []).find((color) => color !== 'black') || 'white';
+    const integrated = this.renderIntegratedSkillArtwork(skill, { x, y, w, h }, {
+      context: 'planning-card',
+      slot: index,
+      cost,
+      focal: { x: 0.5, y: 0.45 },
+      depth: -1,
+      alpha: disabled ? 0.42 : 1,
+      disabled,
+      state: disabled ? 'disabled' : selected ? 'selected' : 'available',
+      sheen: selected,
+    });
+    if (integrated) {
+      g.fillStyle(CULLING_COLORS.cobalt, disabled ? 0.3 : 0.06);
+      g.fillRect(x, y, w, h);
+      g.lineStyle(1.5, tone, disabled ? 0.18 : 0.72);
+      g.beginPath();
+      g.moveTo(x + 4, y + h - 5);
+      g.lineTo(x + w - 4, y + 5);
+      g.strokePath();
+      return;
+    }
     const textureKey = {
       green: 's3-skill-body',
       blue: 's3-skill-technique',
@@ -693,7 +774,8 @@ export class CombatScene extends CombatQueueReviewScene {
     const cooldown = this.store.skillCooldown(caster, skill);
     const fit = this.store.skillFit(skill, caster);
     const ruleReason = this.store.statusBlocksSkill(caster, skill);
-    const casterQueued = this.store.queuedSlots().has(Number(this.store.selectedCasterSlot));
+    const queuedIndex = this.store.actions.findIndex((action) => Number(action.caster_slot) === Number(this.store.selectedCasterSlot));
+    const casterQueued = queuedIndex >= 0;
     const locked = this.store.controlsLocked();
     const disabled = cooldown > 0 || !!ruleReason || !fit.ok || casterQueued || locked;
     let reason = '';
@@ -702,7 +784,7 @@ export class CombatScene extends CombatQueueReviewScene {
     else if (!fit.ok) reason = fit.reason;
     else if (casterQueued) reason = 'FIGHTER QUEUED';
     else if (locked) reason = 'CONTROLS LOCKED';
-    return { cooldown, fit, ruleReason, casterQueued, locked, disabled, reason };
+    return { cooldown, fit, ruleReason, casterQueued, queuedIndex, locked, disabled, reason };
   }
 
   renderSkillButton(skill, caster, index, x, y, w, h) {
@@ -711,26 +793,28 @@ export class CombatScene extends CombatQueueReviewScene {
     const cost = this.store.adjustedCost(caster, skill);
     const firstCost = cost[0];
     const tone = selected ? CULLING_COLORS.selected : (ENERGY_COLORS[firstCost] || CULLING_COLORS.cobalt);
-    const artH = Math.max(78, Math.round(h * 0.6));
-    const nameH = Math.max(34, Math.round(h * 0.24));
-    const classTag = (skill.classes || []).slice(0, 2).map((value) => titleize(value)).join('/').toUpperCase();
-    const compactSummary = shortText(this.store.effectLine(skill), w < 90 ? 34 : 42);
+    const artH = Math.max(92, Math.round(h * 0.58));
 
     this.graphics.fillStyle(CULLING_COLORS.shadow, selected ? 0.28 : 0.16);
-    this.graphics.fillPoints(clippedPoints(x + 2, y + 4, w, h, 8), true);
-    this.renderTechniqueArtwork(skill, index, x + 3, y + 3, w - 6, h - 6, tone, state.disabled, cost);
+    this.graphics.fillPoints(clippedPoints(x + 2, y + 4, w, h, 7), true);
+    this.renderTechniqueArtwork(skill, index, x + 2, y + 2, w - 4, artH - 1, tone, state.disabled, cost, selected);
     this.graphics.fillStyle(CULLING_COLORS.ivory, 0.98);
-    this.graphics.fillTriangle(x, y, x + 9, y, x, y + 9);
-    this.graphics.fillTriangle(x + w, y + h, x + w - 9, y + h, x + w, y + h - 9);
+    this.graphics.fillTriangle(x, y, x + 8, y, x, y + 8);
+    this.graphics.fillTriangle(x + w, y + h, x + w - 8, y + h, x + w, y + h - 8);
     this.graphics.fillStyle(CULLING_COLORS.ivory, state.disabled ? 0.82 : 0.98);
-    this.graphics.fillRect(x + 3, y + artH, w - 6, nameH);
+    this.graphics.fillPoints([
+      { x: x + 2, y: y + artH + 7 },
+      { x: x + w - 2, y: y + artH },
+      { x: x + w - 2, y: y + h - 2 },
+      { x: x + 2, y: y + h - 2 },
+    ], true);
     this.graphics.fillStyle(tone, selected ? 0.98 : state.disabled ? 0.28 : 0.74);
-    this.graphics.fillRect(x + 3, y + artH, w - 6, 3);
-    this.graphics.lineStyle(selected ? 3 : 1.25, tone, state.disabled ? 0.34 : selected ? 1 : 0.82);
-    this.graphics.strokePoints(clippedPoints(x, y, w, h, 8), true);
+    this.graphics.fillRect(x + 2, y + artH, w - 4, 3);
+    this.graphics.lineStyle(selected ? 3 : 1.25, tone, state.disabled ? 0.34 : selected ? 1 : 0.86);
+    this.graphics.strokePoints(clippedPoints(x, y, w, h, 7), true);
 
-    const numberX = x + 12;
-    const numberY = y + 12;
+    const numberX = x + 11;
+    const numberY = y + 11;
     this.graphics.fillStyle(selected ? CULLING_COLORS.gold : CULLING_COLORS.charcoal, 0.96);
     this.graphics.fillPoints([
       { x: numberX, y: numberY - 9 },
@@ -744,101 +828,95 @@ export class CombatScene extends CombatQueueReviewScene {
       fontStyle: '700',
     }).setOrigin(0.5, 0);
 
-    if (skill.effective_skill_id) {
-      const ribbonW = Math.min(56, w - 24);
-      this.graphics.fillStyle(CULLING_COLORS.vermilion, 0.92);
-      this.graphics.fillRect(x + w - ribbonW - 3, y + 4, ribbonW, 14);
-      this.mono(x + w - ribbonW / 2 - 3, y + 7, 'REPLACED', {
+    if (skill.effective_skill_id || state.casterQueued) {
+      const ribbonW = Math.max(34, w - 25);
+      const ribbonLabel = skill.effective_skill_id
+        ? state.casterQueued ? `REPLACED / Q${state.queuedIndex + 1}` : 'REPLACED'
+        : `QUEUED Q${state.queuedIndex + 1}`;
+      this.graphics.fillStyle(skill.effective_skill_id ? CULLING_COLORS.vermilion : CULLING_COLORS.queued, 0.94);
+      this.graphics.fillRect(x + w - ribbonW - 2, y + 3, ribbonW, 14);
+      this.mono(x + w - ribbonW / 2 - 2, y + 6, ribbonLabel, {
         color: CULLING_COLORS.inverseText,
-        fontSize: '7px',
+        fontSize: w < 70 ? '5px' : '6px',
         fontStyle: '700',
       }).setOrigin(0.5, 0);
     }
 
-    if (classTag) {
-      const tagY = y + 25;
-      this.graphics.fillStyle(CULLING_COLORS.charcoal, 0.78);
-      this.graphics.fillRect(x + 3, tagY, w - 6, 14);
-      this.mono(x + w / 2, tagY + 3.5, `${shortText(classTag, w < 90 ? 12 : 16)} / CD${state.cooldown}`, {
-        color: CULLING_COLORS.inverseText,
-        fontSize: '6px',
-        fontStyle: '700',
-      }).setOrigin(0.5, 0);
-    }
-
-    const summaryY = y + artH - 38;
-    this.graphics.fillStyle(CULLING_COLORS.charcoal, state.disabled ? 0.68 : 0.78);
-    this.graphics.fillRect(x + 3, summaryY, w - 6, 20);
-    const summaryNode = this.text(x + 7, summaryY + 3, compactSummary, {
-      fontFamily: TOKEN_TYPE.mono || 'monospace',
-      fontSize: '6px',
-      fontStyle: '700',
-      color: state.disabled ? '#D1D1CE' : CULLING_COLORS.inverseText,
-      lineSpacing: 0,
-      wordWrap: { width: w - 14 },
-    });
-    summaryNode.setMaxLines(2);
-
+    // Compact cards follow the approved illustrated-card grammar. Detailed
+    // classes, cooldown rules, and effect prose remain in the second-tap
+    // technique dossier instead of becoming unreadable six-pixel overlays.
     if (state.disabled) {
-      const reasonY = y + artH - 18;
-      this.graphics.fillStyle(CULLING_COLORS.charcoal, 0.84);
-      this.graphics.fillRect(x + 3, reasonY, w - 6, 18);
-      this.mono(x + w / 2, reasonY + 5, shortText(state.reason, w < 90 ? 12 : 15).toUpperCase(), {
+      const reasonY = y + artH - 24;
+      this.graphics.fillStyle(CULLING_COLORS.charcoal, 0.88);
+      this.graphics.fillRect(x + 2, reasonY, w - 4, 22);
+      const reasonNode = this.text(x + w / 2, reasonY + 3, state.reason, {
+        fontFamily: TOKEN_TYPE.mono || 'monospace',
+        fontSize: w < 70 ? '7px' : '8px',
+        fontStyle: '800',
         color: '#F2C5C1',
-        fontSize: '7px',
-        fontStyle: '700',
+        align: 'center',
+        wordWrap: { width: w - 8 },
       }).setOrigin(0.5, 0);
-    } else if (selected) {
-      this.graphics.fillStyle(CULLING_COLORS.gold, 0.94);
-      this.graphics.fillRect(x + 3, y + artH - 17, w - 6, 17);
-      this.mono(x + w / 2, y + artH - 13, 'SELECTED / TAP INFO', {
+      reasonNode.setMaxLines(2);
+    }
+
+    if (selected && !state.disabled) {
+      this.graphics.fillStyle(CULLING_COLORS.gold, 0.96);
+      this.graphics.fillRect(x + 2, y + artH - 19, w - 4, 17);
+      this.mono(x + w / 2, y + artH - 15, 'TAP AGAIN / INFO', {
         color: CULLING_COLORS.text,
-        fontSize: '7px',
+        fontSize: w < 70 ? '7px' : '8px',
         fontStyle: '700',
       }).setOrigin(0.5, 0);
     }
 
     const skillName = this.text(x + w / 2, y + artH + 7, skill.name, {
       fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
-      fontSize: skill.name.length > 22 ? '7px' : w < 88 ? '9px' : '10px',
+      fontSize: skill.name.length > 22 ? (w < 70 ? '8px' : '9px') : (w < 70 ? '10px' : '11px'),
       fontStyle: '900',
       color: state.disabled ? CULLING_COLORS.mutedText : CULLING_COLORS.text,
       align: 'center',
-      wordWrap: { width: w - 10 },
+      lineSpacing: -1,
+      wordWrap: { width: w - 8 },
     }).setOrigin(0.5, 0);
-    skillName.setMaxLines(2);
+    skillName.setMaxLines(3);
 
-    const pipY = y + h - 15;
+    const targetNode = this.text(x + w / 2, y + h - 34, this.store.targetLabel(skill).toUpperCase(), {
+      fontFamily: TOKEN_TYPE.mono || 'monospace',
+      color: state.disabled ? CULLING_COLORS.mutedText : CULLING_COLORS.cobaltText,
+      fontSize: w < 70 ? '7px' : '8px',
+      fontStyle: '700',
+      align: 'center',
+      wordWrap: { width: w - 8 },
+    }).setOrigin(0.5, 0);
+    targetNode.setMaxLines(2);
+
+    const pipY = y + h - 13;
     const pipCount = Math.max(1, cost.length);
-    const pipGap = Math.min(13, (w - 18) / pipCount);
+    const pipGap = Math.min(12, (w - 16) / pipCount);
     const pipStart = x + w / 2 - ((pipCount - 1) * pipGap) / 2;
     if (!cost.length) {
       this.mono(x + w / 2, pipY - 4, 'FREE', {
         color: state.disabled ? CULLING_COLORS.mutedText : CULLING_COLORS.cobaltText,
-        fontSize: '8px',
+        fontSize: '7px',
         fontStyle: '700',
       }).setOrigin(0.5, 0);
     }
     cost.forEach((color, costIndex) => {
       const px = pipStart + costIndex * pipGap;
       const pipTone = ENERGY_COLORS[color] || CULLING_COLORS.charcoal;
-      this.graphics.fillStyle(CULLING_COLORS.charcoal, 0.2);
-      this.graphics.fillCircle(px, pipY, 6.4);
+      this.graphics.fillStyle(CULLING_COLORS.charcoal, 0.22);
+      this.graphics.fillCircle(px, pipY, 6);
       this.graphics.fillStyle(pipTone, state.disabled ? 0.34 : color === 'white' ? 0.94 : 0.98);
-      this.graphics.fillCircle(px, pipY, 5.2);
+      this.graphics.fillCircle(px, pipY, 4.8);
       this.graphics.lineStyle(1, color === 'white' ? CULLING_COLORS.charcoal : pipTone, 0.82);
-      this.graphics.strokeCircle(px, pipY, 6);
-      this.mono(px, pipY - 5, ENERGY_LABELS[color] || 'X', {
+      this.graphics.strokeCircle(px, pipY, 5.6);
+      this.mono(px, pipY - 4.7, ENERGY_LABELS[color] || 'X', {
         color: color === 'white' ? CULLING_COLORS.text : CULLING_COLORS.inverseText,
         fontSize: '8px',
         fontStyle: '700',
       }).setOrigin(0.5, 0);
     });
-    this.mono(x + w / 2, y + h - 30, this.store.targetLabel(skill).toUpperCase(), {
-      color: state.disabled ? CULLING_COLORS.mutedText : CULLING_COLORS.cobaltText,
-      fontSize: '7px',
-      fontStyle: '700',
-    }).setOrigin(0.5, 0);
 
     this.registerHitTarget(
       x,
@@ -846,78 +924,104 @@ export class CombatScene extends CombatQueueReviewScene {
       w,
       h,
       state.disabled ? `Inspect disabled skill ${skill.name}: ${state.reason}` : `Skill ${skill.name}`,
-      () => state.disabled ? this.store.openSkillDetail(skill.id) : this.store.selectSkill(skill.id),
+      () => {
+        this.presentationLayerCall('interactionCue', {
+          cue: selected || state.disabled ? 'skill-inspect' : 'skill-select',
+          skill,
+          caster,
+          slot: index,
+        });
+        if (selected || state.disabled) this.store.openSkillDetail(skill.id);
+        else this.store.selectSkill(skill.id);
+      },
     );
   }
 
   renderIdentityStrip(frame, layout, selected) {
-    const x = frame.x + 8;
+    const x = frame.x;
     const y = layout.identityY;
-    const w = frame.width - 16;
+    const w = frame.width;
     const h = layout.identityH;
     const tone = selected ? CULLING_COLORS.gold : CULLING_COLORS.cobalt;
-    this.graphics.fillStyle(CULLING_COLORS.shadow, 0.14);
-    this.graphics.fillPoints(clippedPoints(x + 2, y + 3, w, h, 8), true);
-    this.graphics.fillStyle(CULLING_COLORS.ivory, 0.96);
+    const identityW = layout.identityW;
+    const identityArtH = layout.identityH + layout.skillH;
+
+    if (selected) {
+      this.portraitArtwork(selected, x - 8, y + 2, identityW + 35, identityArtH - 3, {
+        context: 'hero',
+        depth: -2,
+        alpha: 0.98,
+      });
+      this.graphics.fillStyle(CULLING_COLORS.cobalt, 0.38);
+      this.graphics.fillTriangle(x, y + 12, x + identityW + 18, y + identityArtH, x, y + identityArtH);
+      this.graphics.fillStyle(CULLING_COLORS.cobalt, 0.9);
+      this.graphics.fillPoints([
+        { x, y: y + identityArtH - 58 },
+        { x: x + identityW + 12, y: y + identityArtH - 72 },
+        { x: x + identityW + 4, y: y + identityArtH },
+        { x, y: y + identityArtH },
+      ], true);
+    } else {
+      this.graphics.fillStyle(CULLING_COLORS.cobalt, 0.72);
+      this.graphics.fillTriangle(x, y, x + identityW + 18, y + identityArtH, x, y + identityArtH);
+    }
+
+    // A single editorial slash carries selection guidance. There is no
+    // full-width command panel behind the character art or technique cards.
+    this.graphics.fillStyle(CULLING_COLORS.ivory, 0.93);
     this.graphics.fillPoints([
-      { x: x + 40, y },
+      { x: x + identityW - 10, y: y + 8 },
       { x: x + w, y },
-      { x: x + w, y: y + h - 8 },
-      { x: x + w - 8, y: y + h },
-      { x: x + 40, y: y + h },
+      { x: x + w, y: y + h - 6 },
+      { x: x + identityW + 3, y: y + h },
     ], true);
     this.graphics.fillStyle(tone, 0.86);
-    this.graphics.fillRect(x, y, 3, h);
-    this.graphics.lineStyle(1.5, tone, 0.84);
-    this.graphics.strokePoints(clippedPoints(x, y, w, h, 8), true);
+    this.graphics.fillRect(x + identityW - 4, y + h - 4, w - identityW + 4, 3);
 
     if (!selected) {
-      this.graphics.fillStyle(CULLING_COLORS.cobalt, 0.92);
-      this.graphics.fillPoints([
-        { x, y: y + 8 },
-        { x: x + 136, y },
-        { x: x + 149, y: y + h },
-        { x, y: y + h },
-      ], true);
-      this.text(x + 13, y + 7, 'SELECT A FIGHTER', {
+      this.text(x + identityW + 10, y + 10, 'SELECT A FIGHTER', {
         fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
-        fontSize: '15px',
+        fontSize: '16px',
         fontStyle: '900',
-        color: CULLING_COLORS.inverseText,
-      });
-      this.mono(x + 164, y + 16, 'TAP YOUR TEAM', {
         color: CULLING_COLORS.cobaltText,
-        fontSize: '9px',
+      });
+      this.mono(x + identityW + 11, y + 31, 'TAP ONE OF THE THREE ALLY PORTRAITS', {
+        color: CULLING_COLORS.cobaltText,
+        fontSize: '8px',
         fontStyle: '700',
       });
       return;
     }
 
-    this.portraitArtwork(selected, x + 3, y + 3, 39, h - 6, {
-      context: 'square',
-      depth: -1,
-      alpha: 0.98,
+    this.mono(x + 8, y + identityArtH - 52, 'SELECTED FIGHTER', {
+      color: '#CDE6FF',
+      fontSize: '7px',
+      fontStyle: '700',
     });
-    this.text(x + 48, y + 5, selected.name, {
+    const identityName = this.text(x + 8, y + identityArtH - 38, selected.name, {
       fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
-      fontSize: frame.width < 380 ? '12px' : '13px',
+      fontSize: selected.name.length > 20 ? '9px' : frame.width < 380 ? '11px' : '12px',
       fontStyle: '900',
-      color: CULLING_COLORS.text,
-      wordWrap: { width: Math.max(94, frame.width - 224) },
-    }).setMaxLines(2);
+      color: CULLING_COLORS.inverseText,
+      lineSpacing: -1,
+      wordWrap: { width: identityW - 12 },
+    });
+    identityName.setMaxLines(3);
     const selectedSkill = this.store.selectedSkill();
     const instruction = selectedSkill
       ? `TARGET / ${this.store.targetLabel(selectedSkill).toUpperCase()}`
       : this.store.queuedSlots().has(Number(this.store.selectedCasterSlot))
         ? 'ORDER COMMITTED'
-        : 'Choose technique';
-    this.mono(x + 48, y + 29, instruction, {
+        : 'CHOOSE TECHNIQUE';
+    this.text(x + identityW + 8, y + 11, instruction, {
+      fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
       color: selectedSkill ? '#007C84' : CULLING_COLORS.cobaltText,
-      fontSize: '8px',
-      fontStyle: '700',
+      fontSize: frame.width < 380 ? '12px' : '14px',
+      fontStyle: '900',
+      wordWrap: { width: frame.width - identityW - 108 },
     });
 
-    const queueX = x + w - 91;
+    const queueX = x + w - 82;
     this.mono(queueX, y + 5, 'ORDER', {
       color: CULLING_COLORS.mutedText,
       fontSize: '7px',
@@ -925,8 +1029,8 @@ export class CombatScene extends CombatQueueReviewScene {
     });
     [0, 1, 2].forEach((index) => {
       const filled = index < this.store.actions.length;
-      const cx = queueX + 10 + index * 25;
-      const cy = y + 28;
+      const cx = queueX + 9 + index * 22;
+      const cy = y + 29;
       this.graphics.fillStyle(filled ? CULLING_COLORS.queued : CULLING_COLORS.concrete, filled ? 0.94 : 0.62);
       this.graphics.fillPoints([
         { x: cx, y: cy - 8 },
@@ -939,6 +1043,13 @@ export class CombatScene extends CombatQueueReviewScene {
         fontSize: '8px',
         fontStyle: '700',
       }).setOrigin(0.5, 0);
+    });
+
+    this.presentationLayerCall('renderSelectedFighter', {
+      character: selected,
+      region: { x, y, w: identityW + 18, h: identityArtH },
+      selectedSkill,
+      queued: this.store.queuedSlots().has(Number(this.store.selectedCasterSlot)),
     });
   }
 
@@ -970,8 +1081,14 @@ export class CombatScene extends CombatQueueReviewScene {
       this.registerHitTarget(bx, y, bw, h - 4, hitLabel, onClick, { disabled });
     };
 
-    drawAction(x, sideW, 'CLEAR', CULLING_COLORS.vermilion, clearDisabled, () => this.store.cancelQueue(), 'Clear queue');
-    drawAction(passX, sideW, 'PASS', CULLING_COLORS.cobalt, passDisabled, () => this.store.endTurn(), 'Pass turn');
+    drawAction(x, sideW, 'CLEAR', CULLING_COLORS.vermilion, clearDisabled, () => {
+      this.presentationLayerCall('interactionCue', { cue: 'queue-clear' });
+      this.store.cancelQueue();
+    }, 'Clear queue');
+    drawAction(passX, sideW, 'PASS', CULLING_COLORS.cobalt, passDisabled, () => {
+      this.presentationLayerCall('interactionCue', { cue: 'turn-pass' });
+      this.store.endTurn();
+    }, 'Pass turn');
 
     const reviewTone = this.store.actions.length ? CULLING_COLORS.cobalt : CULLING_COLORS.concrete;
     this.graphics.fillStyle(CULLING_COLORS.shadow, reviewDisabled ? 0.08 : 0.22);
@@ -983,7 +1100,7 @@ export class CombatScene extends CombatQueueReviewScene {
       { x: reviewX + 12, y: y + h - 1 },
       { x: reviewX, y: y + h / 2 + 2 },
     ], true);
-    this.graphics.fillStyle(reviewDisabled ? CULLING_COLORS.concrete : CULLING_COLORS.ivory, 0.98);
+    this.graphics.fillStyle(reviewDisabled ? CULLING_COLORS.ivory : CULLING_COLORS.cobalt, 0.98);
     this.graphics.fillPoints([
       { x: reviewX + 12, y },
       { x: reviewX + reviewW - 12, y },
@@ -1001,16 +1118,24 @@ export class CombatScene extends CombatQueueReviewScene {
       { x: reviewX + 12, y: y + h - 4 },
       { x: reviewX, y: y + h / 2 },
     ], true);
-    this.graphics.fillStyle(reviewDisabled ? CULLING_COLORS.muted : CULLING_COLORS.cobalt, reviewDisabled ? 0.2 : 0.94);
+    this.graphics.fillStyle(reviewDisabled ? CULLING_COLORS.muted : CULLING_COLORS.gold, reviewDisabled ? 0.2 : 0.96);
     this.graphics.fillTriangle(reviewX + 16, y + h / 2, reviewX + 25, y + 11, reviewX + 25, y + h - 15);
     this.graphics.fillTriangle(reviewX + reviewW - 16, y + h / 2, reviewX + reviewW - 25, y + 11, reviewX + reviewW - 25, y + h - 15);
     this.text(reviewX + reviewW / 2, y + 10, this.store.queueSubmitting ? 'RESOLVING' : `REVIEW ${this.store.actions.length}/3`, {
       fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
       fontSize: frame.width < 380 ? '17px' : '19px',
       fontStyle: '900',
-      color: reviewDisabled ? CULLING_COLORS.mutedText : CULLING_COLORS.text,
+      color: reviewDisabled ? CULLING_COLORS.mutedText : CULLING_COLORS.inverseText,
     }).setOrigin(0.5, 0);
-    this.registerHitTarget(reviewX, y, reviewW, h - 4, 'Review queue', () => this.store.openQueueReview(), {
+    this.mono(reviewX + reviewW / 2, y + h - 15, 'ORDER / WILD / CONFIRM', {
+      color: reviewDisabled ? CULLING_COLORS.mutedText : '#CDE6FF',
+      fontSize: '7px',
+      fontStyle: '700',
+    }).setOrigin(0.5, 0);
+    this.registerHitTarget(reviewX, y, reviewW, h - 4, 'Review queue', () => {
+      this.presentationLayerCall('interactionCue', { cue: 'queue-review-open', queueSize: this.store.actions.length });
+      this.store.openQueueReview();
+    }, {
       disabled: reviewDisabled,
     });
   }
@@ -1224,6 +1349,13 @@ export class CombatScene extends CombatQueueReviewScene {
             : this.store.selectedCasterSlot !== null
               ? 'SELECT ONE OF FOUR TECHNIQUES'
               : 'SELECT ONE OF YOUR FIGHTERS';
+
+    if (this.store.queueReviewOpen) {
+      // Queue Review replaces the planning command deck. Clear any persistent
+      // planning-only ring handles so they cannot drift over FINAL ORDER.
+      this.presentationLayerCall('renderTargetLane', { selectedSkill: null });
+      this.presentationLayerCall('renderSelectedFighter', { character: null });
+    }
 
     this.renderFighterLane(foe && foe.team, 'enemy', frame, layout);
     if (!this.store.queueReviewOpen) {

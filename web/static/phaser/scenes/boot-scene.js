@@ -3,10 +3,11 @@ import {
   PORTRAIT_SOURCE_WIDTH,
   starterPortraitContractIssues,
   starterPortraitEntries,
-} from '../core/portrait-registry.js?v=27';
-import { TOKEN_MOTION, TOKEN_TYPE } from '../core/runtime-config.js?v=27';
-import { LayoutService } from '../core/layout-service.js?v=27';
-import { firstCreationRoster } from '../core/roster.js?v=27';
+} from '../core/portrait-registry.js?v=28';
+import { TOKEN_MOTION, TOKEN_TYPE } from '../core/runtime-config.js?v=28';
+import { LayoutService } from '../core/layout-service.js?v=28';
+import { firstCreationRoster } from '../core/roster.js?v=28';
+import { preloadPresentationAssets } from '../core/presentation-layer.js?v=28';
 import {
   S3_COLORS,
   bootS3Layout,
@@ -14,8 +15,8 @@ import {
   drawS3Panel,
   drawS3Progress,
   drawS3World,
-} from '../ui/season-three-ui.js?v=27';
-import { BaseScene } from './base-scene.js?v=27';
+} from '../ui/season-three-ui.js?v=28';
+import { BaseScene } from './base-scene.js?v=28';
 
 export class BootScene extends BaseScene {
     constructor() {
@@ -41,6 +42,7 @@ export class BootScene extends BaseScene {
       this.load.image('s3-skill-technique', '/static/assets/skills/culling-current/technique.webp');
       this.load.image('s3-skill-focus', '/static/assets/skills/culling-current/focus.webp');
       this.load.image('s3-skill-curse', '/static/assets/skills/culling-current/curse.webp');
+      preloadPresentationAssets(this);
       starterPortraitContractIssues(firstCreationRoster()).forEach((issue) => {
         if (assets && assets.reportPortraitContractIssue) assets.reportPortraitContractIssue(issue);
       });

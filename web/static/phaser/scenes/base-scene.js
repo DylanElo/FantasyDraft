@@ -1,8 +1,9 @@
-import { focalCoverCrop } from '../core/portrait-registry.js?v=27';
-import { COLORS, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=27';
-import { initials, safeText } from '../core/text.js?v=27';
-import { LayoutService } from '../core/layout-service.js?v=27';
-import { costColors } from '../core/roster.js?v=27';
+import { focalCoverCrop } from '../core/portrait-registry.js?v=28';
+import { COLORS, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=28';
+import { initials, safeText } from '../core/text.js?v=28';
+import { LayoutService } from '../core/layout-service.js?v=28';
+import { costColors } from '../core/roster.js?v=28';
+import { createPresentationLayer } from '../core/presentation-layer.js?v=28';
 
 export class BaseScene extends Phaser.Scene {
     constructor(key) {
@@ -15,12 +16,15 @@ export class BaseScene extends Phaser.Scene {
       this.graphics = null;
       this.unsubscribe = null;
       this.lastTap = null;
+      this.presentationLayer = null;
+      this.presentationIntroPlayed = false;
     }
 
     create() {
       this.store = window.JJKPhaserShell.store;
       this.layout = new LayoutService(this);
       this.graphics = this.add.graphics();
+      this.presentationLayer = createPresentationLayer(this);
       this.input.on('pointerdown', (pointer) => this.handlePointer(pointer));
       this.scale.on('resize', () => this.render());
       this.unsubscribe = this.store.onChange(() => {
@@ -39,6 +43,18 @@ export class BaseScene extends Phaser.Scene {
         if (pointer.x >= button.x && pointer.x <= button.x + button.w && pointer.y >= button.y && pointer.y <= button.y + button.h) {
           this.lastTap = { x: pointer.x, y: pointer.y, t: this.time.now, disabled: !!button.disabled };
           window.dispatchEvent(new CustomEvent('jjk:ui-tap', { detail: { scene: this.keyName, disabled: !!button.disabled } }));
+          const cue = button.disabled ? 'disabled' : (button.cue || 'press');
+          const playCue = () => {
+            if (this.presentationLayer && !this.presentationLayer.isDestroyed()) {
+              this.presentationLayer.interactionCue(this, { cue });
+            }
+          };
+          const audio = this.presentationLayer && this.presentationLayer.audio;
+          if (audio && audio.isUnlocked && !audio.isUnlocked() && audio.unlockFromGesture) {
+            Promise.resolve(audio.unlockFromGesture()).then(playCue).catch(() => {});
+          } else {
+            playCue();
+          }
           if (!button.disabled) button.onClick();
           if (this.scene.isActive(this.keyName)) this.render();
           this.time.delayedCall(180, () => {
@@ -54,6 +70,34 @@ export class BaseScene extends Phaser.Scene {
       this.nodes.forEach((node) => node.destroy());
       this.nodes = [];
       this.buttons = [];
+    }
+
+    presentSurface(region, options = {}) {
+      if (!this.presentationLayer || this.presentationLayer.isDestroyed()) return;
+      if (options.ambient !== false) {
+        this.presentationLayer.ambientWorld(this, {
+          region,
+          options: {
+            count: options.moteCount || 7,
+            parallax: options.parallax == null ? 3 : options.parallax,
+            depth: options.ambientDepth == null ? -10 : options.ambientDepth,
+            colors: options.colors,
+          },
+        });
+      }
+      if (this.presentationIntroPlayed) return;
+      this.presentationIntroPlayed = true;
+      const targets = (options.targets || this.nodes.filter((node) => node && (node.type === 'Text' || node.type === 'Container')))
+        .filter((node) => node && node.active !== false && node.setAlpha)
+        .slice(0, options.maxIntroTargets || 20);
+      this.presentationLayer.sceneIntro(this, {
+        targets,
+        options: {
+          distance: options.introDistance || 14,
+          stagger: options.introStagger || 28,
+          duration: options.introDuration || 320,
+        },
+      });
     }
 
     syncButtonDebug() {
@@ -81,6 +125,7 @@ export class BaseScene extends Phaser.Scene {
         label,
         onClick,
         disabled: !!opts.disabled,
+        cue: opts.cue || null,
       });
       this.syncButtonDebug();
     }

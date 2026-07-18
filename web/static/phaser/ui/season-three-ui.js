@@ -1,5 +1,5 @@
-import { ENERGY_COLORS, ENERGY_LABELS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=27';
-import { safeText } from '../core/text.js?v=27';
+import { ENERGY_COLORS, ENERGY_LABELS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=28';
+import { safeText } from '../core/text.js?v=28';
 
 export const S3_COLORS = {
   bone: 0xf2e8d5,
@@ -31,42 +31,6 @@ function clipPoints(x, y, w, h, cut = 8) {
     { x, y: y + h - cut },
     { x, y: y + cut },
   ];
-}
-
-export function firstCreationS3Layout(frame) {
-  const x = frame.x + frame.gutter;
-  const w = frame.width - frame.gutter * 2;
-  const header = { x: frame.x + 10, y: frame.top, w: frame.width - 20, h: 62 };
-  header.bottom = header.y + header.h;
-  const cta = { x, y: frame.bottom - 50, w, h: 50 };
-  const pager = { x, y: cta.y - 52, w, h: 44 };
-  const mission = { x, y: header.bottom + 8, w, h: 82 };
-  const trioLabelY = mission.y + mission.h + 8;
-  const trio = { x, y: trioLabelY + 18, w, h: 88 };
-  const presetLabelY = trio.y + trio.h + 8;
-  const presets = { x, y: presetLabelY + 44, w, h: 72 };
-  const rosterLabelY = presets.y + presets.h + 8;
-  const roster = {
-    x,
-    y: rosterLabelY + 18,
-    w,
-    cardH: 110,
-    gap: 8,
-  };
-  return {
-    frame,
-    header,
-    cta,
-    pager,
-    mission,
-    trioLabelY,
-    trio,
-    presetLabelY,
-    presets,
-    rosterLabelY,
-    roster,
-    toastY: pager.y - 54,
-  };
 }
 
 export function missionMapS3Layout(frame) {
@@ -266,7 +230,7 @@ export function drawS3Button(scene, x, y, w, h, label, onClick, options = {}) {
     wordWrap: { width: w - 16 },
   }).setOrigin(0.5, 0);
   node.setMaxLines(2);
-  scene.registerHitTarget(x, y, w, h, safeText(label), onClick, { disabled });
+  scene.registerHitTarget(x, y, w, h, safeText(label), onClick, { disabled, cue: options.cue });
 }
 
 export function drawS3Header(scene, frame, options = {}) {

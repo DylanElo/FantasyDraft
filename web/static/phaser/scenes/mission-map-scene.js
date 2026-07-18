@@ -1,5 +1,5 @@
-import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=27';
-import { clamp, titleize } from '../core/text.js?v=27';
+import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=28';
+import { clamp, titleize } from '../core/text.js?v=28';
 import {
   S3_COLORS,
   drawS3Button,
@@ -11,8 +11,8 @@ import {
   drawS3Progress,
   drawS3World,
   missionMapS3Layout,
-} from '../ui/season-three-ui.js?v=27';
-import { BaseScene } from './base-scene.js?v=27';
+} from '../ui/season-three-ui.js?v=28';
+import { BaseScene } from './base-scene.js?v=28';
 
 const MISSION_WORLD_KEY = 'culling-current-map';
 

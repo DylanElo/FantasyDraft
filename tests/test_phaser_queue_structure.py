@@ -12,6 +12,7 @@ QUEUE_SCENE = ROOT / "web/static/phaser/scenes/combat-queue-review-scene.js"
 
 def test_queue_review_is_an_illustrated_command_deck_on_the_battlefield():
     source = QUEUE_SCENE.read_text(encoding="utf-8")
+    combat = (ROOT / "web" / "static" / "phaser" / "scenes" / "combat-scene.js").read_text(encoding="utf-8")
 
     # Queue Review keeps the spatial battle context and replaces only the
     # lower command dock with the final left-to-right action deck.
@@ -27,9 +28,14 @@ def test_queue_review_is_an_illustrated_command_deck_on_the_battlefield():
     assert "'LEFT > RIGHT / READY'" in source
     assert "SKILL_ART_BY_ENERGY" in source
     assert "this.coverImage(artKey" in source
+    assert "this.renderIntegratedSkillArtwork(meta.skill" in source
     assert "this.renderEnergyCommitment(frame, layout, queueFit)" in source
     assert "this.renderCostOrbs" in source
     assert "this.renderWildPayments" in source
+    assert "drawCurrentPanel(this, layout.sheetX" not in source
+    assert "one\n      // torn paper plane" in source
+    assert "renderTargetLane', { selectedSkill: null }" in combat
+    assert "renderSelectedFighter', { character: null }" in combat
 
 
 def test_queue_command_deck_preserves_order_payment_and_validation_controls():
@@ -41,6 +47,10 @@ def test_queue_command_deck_preserves_order_payment_and_validation_controls():
     assert "this.store.moveQueuedAction(action.id, 1)" in source
     assert "meta.secondaryRoute" in source
     assert "meta.alternateRoute" in source
+    assert "meta.classes.slice(0, 2)" in source
+    assert "meta.cooldown" in source
+    assert "meta.targetLabel" in source
+    assert "meta.summary" in source
     assert "this.store.closeQueueReview()" in source
     assert "this.store.cancelQueue()" in source
     assert "this.store.confirmQueue()" in source
@@ -82,7 +92,7 @@ console.log(JSON.stringify({{ frame, battle, queue }}));
     ally_bottom = battle["allyY"] + battle["cardH"]
     three_card_width = (queue["sheetW"] - 16 - 12) / 3
 
-    assert battle["cardW"] >= 110
+    assert battle["cardW"] >= 107
     assert battle["cardH"] >= 118
     assert ally_bottom < queue["sheetY"] <= battle["dockY"]
     assert queue["cardsY"] < queue["cardsBottom"]

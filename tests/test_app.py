@@ -53,9 +53,9 @@ def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
     assert 'v2-enemy-team' not in html
     assert 'v2-my-team' not in html
     assert 'vendor/phaser.min.js?v=3.90.0' in html
-    assert 'phaser-design-tokens.js?v=27' in html
-    assert 'phaser-shell.js?v=27' in html
-    assert 'phaser-shell.css?v=27' in html
+    assert 'phaser-design-tokens.js?v=28' in html
+    assert 'phaser-shell.js?v=28' in html
+    assert 'phaser-shell.css?v=28' in html
     assert 'phaser-battle.js' not in html
     assert 'app.js' not in html
     assert 'stitch-tokens.css' not in html
@@ -96,14 +96,14 @@ def test_battle_v2_public_surface_uses_production_copy(monkeypatch):
     design_tokens_js = Path(web_app.app.static_folder, "phaser-design-tokens.js").read_text(encoding="utf-8")
 
     assert "import(`./phaser/index.js?v=${SHELL_VERSION}`)" in shell_js
-    assert "const SHELL_VERSION = '27';" in shell_js
-    assert "import './legacy-shell.js?v=27';" in phaser_entry_js
-    assert "from './store/game-store.js?v=27';" in runtime_js
-    assert "from './network/socket-client.js?v=27';" in runtime_js
-    assert "from './scenes/scene-registry.js?v=27';" in runtime_js
+    assert "const SHELL_VERSION = '28';" in shell_js
+    assert "import './legacy-shell.js?v=28';" in phaser_entry_js
+    assert "from './store/game-store.js?v=28';" in runtime_js
+    assert "from './network/socket-client.js?v=28';" in runtime_js
+    assert "from './scenes/scene-registry.js?v=28';" in runtime_js
     assert "scene: SCENE_LIST" in runtime_js
-    assert "from './scenes/boot-scene.js?v=27';" not in runtime_js
-    assert "from './boot-scene.js?v=27';" in scene_registry_js
+    assert "from './scenes/boot-scene.js?v=28';" not in runtime_js
+    assert "from './boot-scene.js?v=28';" in scene_registry_js
     assert "export const SCENE_LIST" in scene_registry_js
     assert "export const COLORS" in runtime_config_js
     assert "export const CULLING_COLORS" in runtime_config_js
@@ -171,7 +171,8 @@ def test_battle_v2_public_surface_uses_production_copy(monkeypatch):
     assert "renderReplayLine" in combat_scene_js
     assert "QUEUE ${this.store.actions.length}/3" in combat_scene_js
     assert "REVIEW ${this.store.actions.length}/3" in combat_scene_js
-    assert "YOUR FIELD" in combat_scene_js
+    assert "YOUR FIELD" not in combat_scene_js
+    assert "renderTargetLane" in combat_scene_js
     assert "READY FOR BATTLE" in lobby_scene_js
     assert "Private Room" in lobby_scene_js
     assert "Edit room code" in lobby_scene_js
@@ -224,13 +225,14 @@ def test_index_exposes_first_creation_payload_when_battle_v2_enabled(monkeypatch
     assert "renderStarterRosterCard" in draft_roster_scene_js
     assert "renderCharacterDetailSheet" in draft_roster_scene_js
     assert "MISSION OBJECTIVE" in draft_roster_scene_js
-    assert "renderStarterRosterCard" in first_creation_scene_js
-    assert "renderCharacterDetailSheet" in first_creation_scene_js
+    assert "renderFeaturedCharacter" in first_creation_scene_js
+    assert "renderCharacterStudy" in first_creation_scene_js
+    assert "renderAuthoritativeSkill" in first_creation_scene_js
     assert "ACTIVE TRIO" in first_creation_scene_js
-    assert "ROUTES" in first_creation_scene_js
+    assert "CHARACTER STUDY" in first_creation_scene_js
     assert "Choose ${3 - this.store.playerTeam.length} More" in first_creation_scene_js
     assert "renderSkillButton" in combat_scene_js
-    assert "Choose technique" in combat_scene_js
+    assert "CHOOSE TECHNIQUE" in combat_scene_js
     assert "completed_missions" in html
     assert "unlock_registry" in html
     assert "first_creation_account" not in runtime_js

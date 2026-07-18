@@ -25,27 +25,22 @@ def test_season_three_creation_and_mission_regions_fit_supported_safe_frames():
         r"""
 globalThis.JJK_MOBILE_TOKENS = {};
 globalThis.JJK_BOOTSTRAP = {};
-const { firstCreationS3Layout, missionMapS3Layout } = await import('./web/static/phaser/ui/season-three-ui.js');
+globalThis.Phaser = { Scene: class { constructor() {} } };
+const { FirstCreationScene } = await import('./web/static/phaser/scenes/first-creation-scene.js');
+const { missionMapS3Layout } = await import('./web/static/phaser/ui/season-three-ui.js');
+const creationScene = new FirstCreationScene();
 const frames = [];
 for (const safe of [false, true]) {
   for (const [width, height] of [[360, 800], [390, 844], [430, 932]]) {
     const top = safe ? 57 : 10;
     const bottom = safe ? height - 44 : height - 14;
     const frame = { x: 0, width, height, gutter: 16, top, bottom, fullWidth: width, fullHeight: height };
-    const creation = firstCreationS3Layout(frame);
+    const creation = creationScene.firstCreationLayout(frame);
     const mission = missionMapS3Layout(frame);
-    const rowsThatFit = Math.max(0, Math.floor(
-      (creation.pager.y - creation.roster.y + creation.roster.gap)
-      / (creation.roster.cardH + creation.roster.gap)
-    ));
-    const rows = Math.min(width >= 430 ? 2 : 1, rowsThatFit);
-    const creationCardsBottom = creation.roster.y
-      + rows * creation.roster.cardH
-      + Math.max(0, rows - 1) * creation.roster.gap;
     const missionCardsBottom = mission.cards.y
       + mission.cards.pageSize * mission.cards.h
       + Math.max(0, mission.cards.pageSize - 1) * mission.cards.gap;
-    frames.push({ width, height, safe, top, bottom, rows, creation, creationCardsBottom, mission, missionCardsBottom });
+    frames.push({ width, height, safe, top, bottom, creation, mission, missionCardsBottom });
   }
 }
 console.log(JSON.stringify({ frames }));
@@ -56,9 +51,10 @@ console.log(JSON.stringify({ frames }));
         creation = entry["creation"]
         mission = entry["mission"]
         assert creation["header"]["y"] >= entry["top"]
-        assert creation["mission"]["y"] >= creation["header"]["bottom"]
-        assert entry["rows"] >= 1
-        assert entry["creationCardsBottom"] <= creation["pager"]["y"]
+        assert creation["trio"]["y"] >= creation["header"]["bottom"]
+        assert creation["filters"]["y"] >= creation["trio"]["y"] + creation["trio"]["h"]
+        assert creation["featured"]["y"] >= creation["filters"]["y"] + creation["filters"]["h"]
+        assert creation["featured"]["y"] + creation["featured"]["h"] <= creation["pager"]["y"]
         assert creation["pager"]["h"] >= 44
         assert creation["pager"]["y"] + creation["pager"]["h"] <= creation["cta"]["y"]
         assert creation["cta"]["h"] >= 44
@@ -238,11 +234,22 @@ def test_creation_and_mission_scenes_use_scoped_s3_components_without_data_drift
     assert "dossierHeader" not in creation
     assert "platePanel" not in creation
     assert "shortText(" not in creation
-    assert "this.store.rosterEntries()" in creation
-    assert "this.store.presetEntries()" in creation
-    assert "renderStarterRosterCard" in creation
-    assert "renderCharacterDetailSheet" in creation
-    assert "(character.skills || []).slice(0, 4)" in creation
+    assert "const FIRST_CREATION_ORDER = Object.freeze([" in creation
+    assert "FIRST_CREATION_ORDER.map((characterId) => roster[characterId]).filter(Boolean)" in creation
+    assert "Object.values(firstCreationRoster())" not in creation
+    assert "this.store.presetEntries()" not in creation
+    assert "renderStarterRosterCard" not in creation
+    assert "renderFeaturedCharacter" in creation
+    assert "renderCharacterStudy" in creation
+    assert "renderAuthoritativeSkill" in creation
+    assert "const skills = character.skills || [];" in creation
+    assert "slice(0, 4)" not in creation
+    assert "skill.text" in creation
+    assert "skill.cost || []" in creation
+    assert "skill.cooldown" in creation
+    assert "skill.target_rule" in creation
+    assert "skill.classes || []" in creation
+    assert "REPLACEMENT" in creation
     assert "this.store.startMatch()" in creation
 
     assert "worldBackdrop" not in missions

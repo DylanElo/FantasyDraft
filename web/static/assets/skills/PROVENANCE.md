@@ -1,5 +1,54 @@
 # Season 3 semantic skill-art provenance
 
+## Per-skill action atlas v2
+
+`culling-current/skill-action-atlas-v2.png` is the current illustrated action
+source for the shipping skill-card system. It is a 1254 x 1254 RGB PNG created
+on 2026-07-18 with OpenAI built-in image generation. The generated source and
+shipping file are byte-identical: 3,588,212 bytes with SHA-256
+`1E4D76797147BC506D3E94CA4360602A939B3A32CDEA89C4208A407E2722CBE2`.
+The built-in result artifact is
+`exec-1bd5f982-a914-42c2-b6dd-d65fc21ea2dd.png`; no crop, resampling, format
+conversion, paint-over, or compositing was performed before the file was
+copied into the workspace.
+
+The generation used two user-supplied images as style and composition
+references:
+
+- `codex-clipboard-464e9758-4aab-4619-ba26-38cc42eaf98a.png` — the approved
+  visual-system board;
+- `codex-clipboard-b4199638-6865-4231-bc3f-341c471e5aa3.png` — the approved
+  battle command-card and VFX composition.
+
+The source contains a strict four-by-four grid. Phaser selects one of its 16
+normalized cells, then combines that raster action art with stable,
+data-driven sigil, accent, motion, and variant metadata keyed by shipping
+skill ID. The resulting 78-skill coverage is presentation only; authoritative
+skill name, slot, cost, cooldown, replacement, target rule, classes, legality,
+description, and outcome continue to come from Battle v2 state.
+
+### Exact action-atlas prompt
+
+> Use case: stylized-concept
+>
+> Asset type: production mobile game skill-art atlas
+>
+> Input images: Image 1 is the approved visual-system reference; Image 2 is the approved battle command-card and VFX composition reference.
+>
+> Primary request: Create one strict 4-by-4 atlas of sixteen distinct square skill-action illustrations for JJK Arena. Every cell must be a self-contained action artwork suitable for a tall mobile skill card crop. The sixteen cells should cover: cyan reinforced fist impact; black-and-red precision energy burst; blue shadow/shikigami rush; red nail-and-hammer detonation; sweeping cursed weapon slash; concentric cursed-speech shockwave; heavy guardian block; clap/teleport spatial distortion; blood arrow and binding; wind scythe; revolver muzzle impact; simple-domain sword draw; puppet cannon beam; poisonous jellyfish bloom; blue infinity compression versus red reversal force; black curse swarm with pale healing/ritual/crow/protector energy variants blended into the final cell.
+>
+> Style/medium: sharp hand-inked anime game illustration, raw brush and cross-hatch accents, large hard cel-shadow masses, painted impact effects, bone paper highlights, deep indigo structure, barrier red, curse cyan, aged gold. Match the energy and print texture of the references without copying their layouts or characters.
+>
+> Composition/framing: portrait-oriented atlas, exactly four equal columns and four equal rows, straight uniform gutters, every cell edge clearly separated, central readable silhouette in each cell, no element crossing a cell boundary.
+>
+> Constraints: no characters or recognizable faces; no text; no letters; no numbers; no logos; no UI labels; no watermark; no official frames or copied poses; no soft glossy gacha rendering; no rounded app icons. Keep all sixteen cells visually distinct and readable at small mobile size.
+
+The atlas is character-free, but its two user-supplied references contain
+franchise characters and franchise-directed concept art. This provenance
+record does not provide commercial-release or licensing clearance.
+
+## Earlier four-family source textures
+
 The four runtime skill textures under `culling-current/` were cut from one
 original 1672 x 941 RGB PNG generated on 2026-07-18 with OpenAI built-in image
 generation. The call used the user-supplied Combat screenshot

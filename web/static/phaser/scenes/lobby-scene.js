@@ -1,7 +1,7 @@
-import { CULLING_COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=27';
-import { safeText, shortText } from '../core/text.js?v=27';
-import { drawCurrentWorld } from '../ui/culling-current-ui.js?v=27';
-import { BaseScene } from './base-scene.js?v=27';
+import { CULLING_COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=28';
+import { safeText, shortText } from '../core/text.js?v=28';
+import { drawCurrentWorld } from '../ui/culling-current-ui.js?v=28';
+import { BaseScene } from './base-scene.js?v=28';
 
 const HOME_WORLD_KEY = 'culling-current-home-hero';
 
@@ -451,5 +451,6 @@ export class LobbyScene extends BaseScene {
       this.renderFeatureTiles(layout.features);
       this.renderBottomNav(layout.nav);
       this.toast(frame, { y: layout.battle.y - 54, theme: 'light' });
+      this.presentSurface(frame, { moteCount: 8, parallax: 4 });
     }
   }

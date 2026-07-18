@@ -1,6 +1,6 @@
-import { CULLING_COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=27';
-import { safeText, titleize } from '../core/text.js?v=27';
-import { damageEventAmount } from '../fx/event-metrics.js?v=27';
+import { CULLING_COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=28';
+import { safeText, titleize } from '../core/text.js?v=28';
+import { damageEventAmount } from '../fx/event-metrics.js?v=28';
 
 export const S3_COLORS = {
   bone: 0xf2e8d5,

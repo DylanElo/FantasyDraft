@@ -1,7 +1,7 @@
-import { COLORS, CULLING_COLORS, TOKEN_TYPE } from '../core/runtime-config.js?v=27';
-import { safeText, shortText } from '../core/text.js?v=27';
-import { eventAmount, eventTone } from './event-metrics.js?v=27';
-import { BaseScene } from '../scenes/base-scene.js?v=27';
+import { COLORS, CULLING_COLORS, TOKEN_TYPE } from '../core/runtime-config.js?v=28';
+import { safeText, shortText } from '../core/text.js?v=28';
+import { eventAmount, eventTone } from './event-metrics.js?v=28';
+import { BaseScene } from '../scenes/base-scene.js?v=28';
 
 export class CombatPlaybackScene extends BaseScene {
     playEvents(frame) {
@@ -312,6 +312,7 @@ export class CombatPlaybackScene extends BaseScene {
       const casterPoint = this.casterPointFromPayload(event, frame);
 
       if (type === 'skill_resolved') {
+        if (this.presentationLayer) this.presentationLayer.interactionCue(this, { cue: 'select' });
         this.playCinematicCutIn(frame, message, CULLING_COLORS.gold);
         if (casterPoint) this.playRing(casterPoint, CULLING_COLORS.gold, { radius: (casterPoint.size || 62) / 2 + 20, alpha: 0.86 });
         if (casterPoint && point) this.playSlashLine(casterPoint, point, CULLING_COLORS.gold);
@@ -319,6 +320,7 @@ export class CombatPlaybackScene extends BaseScene {
       }
 
       if (type.includes('counter') || type.includes('reflect')) {
+        if (this.presentationLayer) this.presentationLayer.interactionCue(this, { cue: 'reveal' });
         this.playActionBanner(frame, message, type.includes('reflect') ? 'REFLECT REVEAL' : 'COUNTER REVEAL', CULLING_COLORS.enemy, actionNumber);
         this.playRing(point, CULLING_COLORS.enemy, { crosshair: true, radius: (point.size || 62) / 2 + 22, width: 3, alpha: 0.95, duration: 820 });
         this.playFloatingText(point, type.includes('reflect') ? 'REFLECT' : 'COUNTER', CULLING_COLORS.redText, {
@@ -344,12 +346,22 @@ export class CombatPlaybackScene extends BaseScene {
         });
         this.playHpLag(point, tone === 'heal' ? COLORS.queued : CULLING_COLORS.enemy);
         if (tone === 'damage') {
+          if (this.presentationLayer) {
+            this.presentationLayer.impactFlash(this, {
+              x: point.x,
+              y: point.y,
+              options: { tone: CULLING_COLORS.enemy, radius: Math.max(32, (point.size || 62) * 0.58) },
+            });
+          }
           this.cameras.main.shake(150, 0.006);
+        } else if (this.presentationLayer) {
+          this.presentationLayer.interactionCue(this, { cue: 'reveal' });
         }
         return;
       }
 
       if (tone === 'status' || type.includes('status') || type.includes('energy')) {
+        if (this.presentationLayer) this.presentationLayer.interactionCue(this, { cue: 'reveal' });
         const status = event && event.payload && (event.payload.status || event.payload.energy || event.payload.name);
         const label = status ? safeText(status).replace(/_/g, ' ').toUpperCase() : safeText(type, 'STATUS').replace(/_/g, ' ').toUpperCase();
         this.playRing(point, COLORS.domain, { radius: (point.size || 62) / 2 + 18, alpha: 0.72 });

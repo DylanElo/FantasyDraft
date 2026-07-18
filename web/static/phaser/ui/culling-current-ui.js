@@ -1,4 +1,4 @@
-import { CULLING_COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=27';
+import { CULLING_COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=28';
 
 function clipPoints(x, y, w, h, cut = 9) {
   const safeCut = Math.max(0, Math.min(cut, w / 4, h / 3));

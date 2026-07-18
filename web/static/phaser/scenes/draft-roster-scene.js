@@ -1,6 +1,6 @@
-import { COLORS, TYPE_SCALE } from '../core/runtime-config.js?v=27';
-import { shortText, titleize } from '../core/text.js?v=27';
-import { BaseScene } from './base-scene.js?v=27';
+import { COLORS, TYPE_SCALE } from '../core/runtime-config.js?v=28';
+import { shortText, titleize } from '../core/text.js?v=28';
+import { BaseScene } from './base-scene.js?v=28';
 
 export class DraftRosterScene extends BaseScene {
     renderRosterCard(character, x, y, w, h, teamKey) {

@@ -1,6 +1,6 @@
-import { SocketClient } from './network/socket-client.js?v=27';
-import { GameStore } from './store/game-store.js?v=27';
-import { SCENE_LIST } from './scenes/scene-registry.js?v=27';
+import { SocketClient } from './network/socket-client.js?v=28';
+import { GameStore } from './store/game-store.js?v=28';
+import { SCENE_LIST } from './scenes/scene-registry.js?v=28';
 
 function startShell() {
   const element = document.getElementById('v2-phaser-shell');
@@ -18,7 +18,7 @@ function startShell() {
       width: Math.max(320, element.clientWidth || window.innerWidth || 390),
       height: Math.max(640, element.clientHeight || window.innerHeight || 844),
     },
-    audio: { noAudio: true },
+    audio: { noAudio: false },
     render: { antialias: true, pixelArt: false },
     loader: { maxParallelDownloads: 64 },
     scene: SCENE_LIST,

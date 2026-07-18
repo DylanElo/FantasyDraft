@@ -1,5 +1,5 @@
-import { TYPE_SCALE, TOKEN_TYPE } from '../core/runtime-config.js?v=27';
-import { clamp, safeText } from '../core/text.js?v=27';
+import { TYPE_SCALE, TOKEN_TYPE } from '../core/runtime-config.js?v=28';
+import { clamp, safeText } from '../core/text.js?v=28';
 import {
   S3_COLORS,
   draftS3Layout,
@@ -11,8 +11,8 @@ import {
   drawS3Panel,
   drawS3Portrait,
   drawS3World,
-} from '../ui/season-three-ui.js?v=27';
-import { DraftRosterScene } from './draft-roster-scene.js?v=27';
+} from '../ui/season-three-ui.js?v=28';
+import { DraftRosterScene } from './draft-roster-scene.js?v=28';
 
 const DRAFT_WORLD_KEY = 'culling-current-campus';
 

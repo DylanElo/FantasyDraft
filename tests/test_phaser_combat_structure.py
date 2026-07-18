@@ -15,7 +15,8 @@ def test_combat_scene_is_a_battlefield_composition_not_the_old_dashboard():
 
     assert "const cardW = (contentW - gap * 2) / 3;" in source
     assert "(team || []).slice(0, 3).forEach" in source
-    assert "const skillW = (frame.width - 16 - skillGap * 3) / 4;" in source
+    assert "const identityW = clamp(Math.round(frame.width * 0.245), 86, 106);" in source
+    assert "const skillW = (skillRight - skillX - skillGap * 3) / 4;" in source
     assert "this.store.skillsFor(selected).slice(0, 4)" in source
     assert "renderFighterLane(foe && foe.team, 'enemy'" in source
     assert "renderFighterLane(me && me.team, 'mine'" in source
@@ -23,12 +24,19 @@ def test_combat_scene_is_a_battlefield_composition_not_the_old_dashboard():
     assert "renderIdentityStrip(frame, layout, selected)" in source
     assert "renderBottomActions(frame, layout)" in source
     assert "REVIEW ${this.store.actions.length}/3" in source
+    assert "identityArtH = layout.identityH + layout.skillH" in source
+    assert "context: 'hero'" in source
+    assert "'SELECTED FIGHTER'" in source
+    assert "'ORDER / WILD / CONFIRM'" in source
 
-    # Regression guards for the removed two-column dashboard technique grid.
+    # Regression guards for removed dashboard/dock traces. Fighter art and the
+    # open targeting lane carry hierarchy without lane-header prompt panels.
     assert "index % 2" not in source
     assert "Math.floor(index / 2)" not in source
     assert "CLEAR QUEUE" not in source
     assert "gridY" not in source
+    assert "'ENEMY TEAM'" not in source
+    assert "'YOUR FIELD'" not in source
 
 
 def test_combat_scene_preserves_authoritative_state_affordances():
@@ -69,9 +77,17 @@ def test_combat_skill_hand_uses_the_shipping_season_three_art():
     assert "red: 's3-skill-curse'" in source
     assert "this.coverImage(textureKey" in source
     assert "context: 'hero'" in source
-    assert "this.store.effectLine(skill)" in source
-    assert "const classTag = (skill.classes || [])" in source
-    assert "CD${state.cooldown}" in source
+    assert "skill.description || this.store.effectLine(skill)" in source
+    assert "const classTag = (skill.classes || [])" not in source
+    assert "const compactSummary = this.store.effectLine(skill)" not in source
+    assert "if (state.disabled)" in source
+    assert "state.reason" in source
+    assert "TAP AGAIN / INFO" in source
+    assert "this.renderIntegratedSkillArtwork(skill" in source
+    assert "layer.skillVisualFor(skill" in source
+    assert "'planning-card'" in source
+    assert "`QUEUED Q${state.queuedIndex + 1}`" in source
+    assert "if (selected || state.disabled) this.store.openSkillDetail(skill.id);" in source
 
 
 @pytest.mark.parametrize(
@@ -115,17 +131,18 @@ console.log(JSON.stringify({{ frame, layout }}));
     assert layout["fieldTop"] < layout["fieldBottom"]
     assert layout["fieldH"] >= 96
     assert ally_bottom < layout["identityY"]
-    assert identity_bottom < layout["skillY"]
+    assert identity_bottom == layout["skillY"]
     assert skills_bottom < layout["reviewY"]
     assert review_bottom <= frame["bottom"]
 
     # The six fighters and four illustrated techniques are presentation cards,
     # not token-sized legacy dashboard controls.
-    assert layout["cardW"] >= 110
+    assert layout["cardW"] >= 107
     assert layout["cardH"] >= 118
-    assert layout["skillW"] >= 82
-    assert layout["skillH"] >= 132
-    assert layout["identityH"] >= 44
+    assert layout["skillW"] >= 64
+    assert layout["skillH"] >= 158
+    assert 86 <= layout["identityW"] <= 106
+    assert layout["identityH"] >= 48
     assert layout["reviewH"] >= 44
     assert cards_right <= frame["width"] - 10 + 0.01
     assert skills_right <= frame["width"] - 8 + 0.01
@@ -159,5 +176,6 @@ console.log(JSON.stringify(cases));
         assert layout["enemyY"] >= frame["top"] + layout["topH"]
         assert layout["enemyY"] + layout["cardH"] < layout["allyY"]
         assert layout["allyY"] + layout["cardH"] < layout["identityY"]
+        assert layout["identityY"] + layout["identityH"] == layout["skillY"]
         assert layout["skillY"] + layout["skillH"] < layout["reviewY"]
         assert layout["reviewY"] + layout["reviewH"] <= frame["bottom"]

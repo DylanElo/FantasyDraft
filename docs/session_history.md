@@ -2233,3 +2233,59 @@ before the v27 run began. Evidence and capture details live under
 `artifacts/ui-redesign/s3-structure-v2/qa/`. The verified delivery targets
 `codex/culling-current-ui`; the structural implementation was committed as
 `e49f0ff` and delivered through updated draft PR #58.
+
+## 2026-07-18 - First Creation, per-skill art, motion, and audio correction
+
+**User correction and locked scope.** The user clarified that the Season 3
+asset direction was successful; the failure was preserving deprecated layout
+hierarchies beneath it. This pass therefore replaces the First Creation and
+combat presentation structures without changing Battle v2 rules, socket
+authority, balance, progression, the exact 19-character starter roster,
+B/T/F/C semantics, X-as-Wild payment, hidden-information rules, target
+legality, or replacement-slot identity.
+
+**What changed.** First Creation is now a single-featured-character art browser
+with three visible active slots, All/Tokyo/Kyoto/Special routes, canonical
+locked ordering independent of sorted JSON keys, and a full-screen Character
+Study. Character Study exposes art, identity, era, difficulty, role, state,
+tags, all 78 authoritative skill pages, exact target-rule details, classes,
+cost, cooldown, and descriptions. The two replacement pages retain their
+original slot rather than presenting as techniques five. Profile entry and
+skill paging receive short, reduced-motion-aware transitions.
+
+Combat now follows the approved spatial composition: slim HUD, three large
+enemy cards, open targeting lane, three large ally cards, selected-fighter art,
+four tall illustrated skills, and a dominant Review rail. Compact skill cards
+use progressive disclosure instead of six-pixel class/effect walls. Queue
+Review retains the battlefield and presents a left-to-right three-action deck;
+planning-only target and selection VFX handles are cleared on entry.
+
+A 1254x1254 character-free action atlas and data-driven presentation registry
+cover all 78 shipping skill IDs with stable crops, sigils, palettes, motion
+profiles, and replacement metadata. Reusable motion/VFX hooks cover ambient
+worlds, scene/profile entry, selection, legal targets, queue commitment,
+impacts, healing, status, and reveal. Gesture-gated synthesized WebAudio covers
+press, select, target, queue, confirm, error, reveal, and impact with persistent
+mute and no-audio fallback. Phaser cache references moved in lockstep to v28.
+
+**Visual QA.** Twelve current captures under
+`artifacts/ui-redesign/s3-structure-v3/qa/` cover First Creation, Character
+Study, selected Combat, and valid Queue Review at exact 360x800, 390x844, and
+430x932 viewport/canvas pairs. All registered non-modal controls were at least
+44x44, inside the canvas, and non-overlapping. The 78-skill atlas and
+presentation services were active; Queue Review had a concrete Wild payment,
+enabled confirmation, and no stale selection ring. The final browser run had
+no warning or error console entries. Browser automation cannot constitute a
+trusted audible-user-gesture assertion, so sound synthesis/unlock behavior is
+covered by service tests while the live run verifies WebAudio support and the
+gesture gate.
+
+**Verification and delivery state.** Full pytest passed with **507 passed, 1
+skipped** in 74.15 seconds. `python -m compileall -q jjk_arena web/app.py`,
+`node --check` for all 30 changed or added JavaScript files, `git diff --check`,
+the v28 cache audit, and Pillow validation of all 12 QA PNGs plus the action
+atlas passed. The main implementation is commit `0e07e88` on
+`codex/culling-current-ui`. Draft PR #58 is the delivery target and had not yet
+been refreshed with this commit at the time of this entry. Generated assets
+and franchise-directed references still require commercial-release rights
+review; provenance is not licensing clearance.

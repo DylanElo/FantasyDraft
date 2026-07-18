@@ -3,11 +3,11 @@ import {
   PORTRAIT_SOURCE_WIDTH,
   starterPortraitContractIssues,
   starterPortraitEntries,
-} from '../core/portrait-registry.js?v=28';
-import { TOKEN_MOTION, TOKEN_TYPE } from '../core/runtime-config.js?v=28';
-import { LayoutService } from '../core/layout-service.js?v=28';
-import { firstCreationRoster } from '../core/roster.js?v=28';
-import { preloadPresentationAssets } from '../core/presentation-layer.js?v=28';
+} from '../core/portrait-registry.js?v=31';
+import { TOKEN_MOTION, TOKEN_TYPE } from '../core/runtime-config.js?v=31';
+import { LayoutService } from '../core/layout-service.js?v=31';
+import { firstCreationRoster } from '../core/roster.js?v=31';
+import { getPersistentPresentationSettings } from '../core/presentation-settings.js?v=31';
 import {
   S3_COLORS,
   bootS3Layout,
@@ -15,8 +15,8 @@ import {
   drawS3Panel,
   drawS3Progress,
   drawS3World,
-} from '../ui/season-three-ui.js?v=28';
-import { BaseScene } from './base-scene.js?v=28';
+} from '../ui/season-three-ui.js?v=31';
+import { BaseScene } from './base-scene.js?v=31';
 
 export class BootScene extends BaseScene {
     constructor() {
@@ -38,15 +38,21 @@ export class BootScene extends BaseScene {
       this.load.image('culling-current-rooftop', '/static/assets/environments/culling-current-rooftop-v2.webp');
       this.load.image('culling-current-campus', '/static/assets/environments/culling-current-campus.webp');
       this.load.image('culling-current-map', '/static/assets/environments/culling-current-map.webp');
-      this.load.image('s3-skill-body', '/static/assets/skills/culling-current/body.webp');
-      this.load.image('s3-skill-technique', '/static/assets/skills/culling-current/technique.webp');
-      this.load.image('s3-skill-focus', '/static/assets/skills/culling-current/focus.webp');
-      this.load.image('s3-skill-curse', '/static/assets/skills/culling-current/curse.webp');
-      preloadPresentationAssets(this);
       starterPortraitContractIssues(firstCreationRoster()).forEach((issue) => {
         if (assets && assets.reportPortraitContractIssue) assets.reportPortraitContractIssue(issue);
       });
+      // The opening domain needs only the story trio/current saved team. The
+      // BaseScene loader stages the remaining portraits and skill atlases when
+      // First Creation or Combat actually becomes active.
+      const shellStore = window.JJKPhaserShell && window.JJKPhaserShell.store;
+      const startupPortraitIds = new Set([
+        'yuji_itadori',
+        'megumi_fushiguro',
+        'nobara_kugisaki',
+        ...((shellStore && shellStore.playerTeam) || []),
+      ]);
       starterPortraitEntries().forEach((entry) => {
+        if (!startupPortraitIds.has(entry.id)) return;
         this.load.image(entry.textureKey, entry.url);
       });
     }
@@ -57,6 +63,7 @@ export class BootScene extends BaseScene {
       this.graphics = this.add.graphics();
       this.nodes = [];
       this.buttons = [];
+      this.presentationSettings = getPersistentPresentationSettings();
       this.validatePortraitDimensions();
       if (this.store && this.store.setStatus) this.store.setStatus('Opening domain');
       this.renderBootSplash();
@@ -83,8 +90,20 @@ export class BootScene extends BaseScene {
     enterLobby() {
       if (this.hasEnteredLobby) return;
       this.hasEnteredLobby = true;
+      if (window.JJKPhaserShell) window.JJKPhaserShell.bootReady = true;
+      const startDestination = () => {
+        // Resolve at transition time so a resume update received during the
+        // exit fade becomes Boot's single destination instead of briefly
+        // opening a stale Lobby scene.
+        const destination = this.store && this.store.scene ? this.store.scene : 'LobbyScene';
+        this.scene.start(destination);
+      };
+      if (this.presentationSettings && this.presentationSettings.effectiveReducedMotion()) {
+        startDestination();
+        return;
+      }
       this.cameras.main.fadeOut(220, 5, 7, 17);
-      this.time.delayedCall(230, () => this.scene.start('LobbyScene'));
+      this.time.delayedCall(230, startDestination);
     }
 
     renderBootSplash() {
@@ -153,14 +172,16 @@ export class BootScene extends BaseScene {
       this.mono(cx, layout.enter.y + 8, 'OPENING DOMAIN', { color: S3_COLORS.redText, fontSize: '11px', fontStyle: '900' }).setOrigin(0.5, 0);
       this.mono(cx, layout.enter.y + 25, 'TAP ANYWHERE TO ENTER', { color: S3_COLORS.inkText, fontSize: '11px', fontStyle: '900' }).setOrigin(0.5, 0);
 
-      this.tweens.add({
-        targets: sigil,
-        y: '-=8',
-        alpha: 0.78,
-        duration: TOKEN_MOTION.domainPulseMs || 3000,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
+      if (!this.presentationSettings || !this.presentationSettings.effectiveReducedMotion()) {
+        this.tweens.add({
+          targets: sigil,
+          y: '-=8',
+          alpha: 0.78,
+          duration: TOKEN_MOTION.domainPulseMs || 3000,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+      }
     }
   }

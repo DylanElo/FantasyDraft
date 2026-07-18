@@ -1,6 +1,8 @@
 // Small synthesized interaction cues. The service never creates or resumes an
 // AudioContext until unlockFromGesture() is called from an actual user input.
 
+import { getPersistentPresentationSettings } from './presentation-settings.js?v=31';
+
 export const INTERACTION_SFX_CUES = Object.freeze({
   press: Object.freeze({ voices: [{ wave: 'triangle', from: 230, to: 190, duration: 0.055, gain: 0.035 }] }),
   select: Object.freeze({ voices: [{ wave: 'sine', from: 330, to: 510, duration: 0.11, gain: 0.045 }] }),
@@ -13,6 +15,20 @@ export const INTERACTION_SFX_CUES = Object.freeze({
 });
 
 export const DEFAULT_SFX_STORAGE_KEY = 'jjk_arena.interaction_sfx.muted.v1';
+
+export const INTERACTION_HAPTIC_CUES = Object.freeze({
+  press: Object.freeze([8]),
+  select: Object.freeze([12]),
+  target: Object.freeze([10, 22, 10]),
+  queue: Object.freeze([14]),
+  confirm: Object.freeze([18, 24, 24]),
+  error: Object.freeze([32, 28, 32]),
+  reveal: Object.freeze([12, 18, 16]),
+  impact: Object.freeze([26]),
+});
+
+const PERSISTENT_AUDIO_BY_ENVIRONMENT = new WeakMap();
+let fallbackPersistentAudio = null;
 
 function readMuted(storage, key) {
   try {
@@ -51,10 +67,23 @@ export class InteractionSfx {
     this.context = options.context || null;
     this.ownsContext = false;
     this.unlocked = Boolean(options.context && options.unlocked);
-    this.muted = options.muted == null ? readMuted(this.storage, this.storageKey) : Boolean(options.muted);
-    this.volume = Math.max(0, Math.min(1, Number(options.volume == null ? 1 : options.volume)));
+    this.gestureSeen = Boolean(options.context && options.unlocked);
+    this.settings = options.settings || null;
+    const settingValue = this.settings && this.settings.snapshot ? this.settings.snapshot() : null;
+    this.muted = options.muted == null
+      ? settingValue ? settingValue.muted : readMuted(this.storage, this.storageKey)
+      : Boolean(options.muted);
+    this.volume = Math.max(0, Math.min(1, Number(options.volume == null ? (settingValue ? settingValue.volume : 1) : options.volume)));
+    this.haptics = settingValue ? settingValue.haptics : options.haptics !== false;
     this.lastPlayed = new Map();
     this.destroyed = false;
+    this.unsubscribeSettings = this.settings && this.settings.subscribe
+      ? this.settings.subscribe((next) => {
+        this.muted = Boolean(next.muted);
+        this.volume = Math.max(0, Math.min(1, Number(next.volume) || 0));
+        this.haptics = Boolean(next.haptics);
+      })
+      : null;
   }
 
   isSupported() {
@@ -71,7 +100,8 @@ export class InteractionSfx {
 
   setMuted(value) {
     this.muted = Boolean(value);
-    writeMuted(this.storage, this.storageKey, this.muted);
+    if (this.settings && this.settings.setMuted) this.settings.setMuted(this.muted);
+    else writeMuted(this.storage, this.storageKey, this.muted);
     return this.muted;
   }
 
@@ -81,11 +111,23 @@ export class InteractionSfx {
 
   setVolume(value) {
     this.volume = Math.max(0, Math.min(1, Number(value) || 0));
+    if (this.settings && this.settings.setVolume) this.settings.setVolume(this.volume);
     return this.volume;
+  }
+
+  setHaptics(value) {
+    this.haptics = Boolean(value);
+    if (this.settings && this.settings.setHaptics) this.settings.setHaptics(this.haptics);
+    return this.haptics;
+  }
+
+  toggleHaptics() {
+    return this.setHaptics(!this.haptics);
   }
 
   async unlockFromGesture() {
     if (this.destroyed) return false;
+    this.gestureSeen = true;
     try {
       if (!this.context) {
         const Context = this.AudioContextCtor || audioContextConstructor(this.environment);
@@ -128,6 +170,23 @@ export class InteractionSfx {
     } catch (_error) {
       return false;
     }
+  }
+
+  haptic(cueName) {
+    const pattern = INTERACTION_HAPTIC_CUES[cueName];
+    if (!pattern || this.destroyed || !this.haptics || !this.gestureSeen) return false;
+    try {
+      const navigatorObject = this.environment && this.environment.navigator;
+      return Boolean(navigatorObject && typeof navigatorObject.vibrate === 'function' && navigatorObject.vibrate(pattern.slice()));
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  cue(cueName, options = {}) {
+    const sounded = this.play(cueName, options);
+    const vibrated = options.haptic === false ? false : this.haptic(cueName);
+    return sounded || vibrated;
   }
 
   playVoice(voice, options) {
@@ -173,5 +232,25 @@ export class InteractionSfx {
     }
     this.context = null;
     this.lastPlayed.clear();
+    if (this.unsubscribeSettings) this.unsubscribeSettings();
+    this.unsubscribeSettings = null;
   }
+}
+
+export function getPersistentInteractionSfx(options = {}) {
+  const environment = options.environment || (typeof window !== 'undefined' ? window : globalThis);
+  const create = () => new InteractionSfx({
+    ...options,
+    environment,
+    settings: options.settings || getPersistentPresentationSettings({ environment, storage: options.storage }),
+  });
+  if (environment && (typeof environment === 'object' || typeof environment === 'function')) {
+    const existing = PERSISTENT_AUDIO_BY_ENVIRONMENT.get(environment);
+    if (existing && !existing.destroyed) return existing;
+    const audio = create();
+    PERSISTENT_AUDIO_BY_ENVIRONMENT.set(environment, audio);
+    return audio;
+  }
+  if (!fallbackPersistentAudio || fallbackPersistentAudio.destroyed) fallbackPersistentAudio = create();
+  return fallbackPersistentAudio;
 }

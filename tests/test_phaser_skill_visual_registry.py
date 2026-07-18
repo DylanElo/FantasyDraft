@@ -7,7 +7,14 @@ from jjk_arena.battle_v2.starter_roster import FIRST_CREATION_ROSTER
 
 
 ROOT = Path(__file__).resolve().parents[1]
-ATLAS = ROOT / "web" / "static" / "assets" / "skills" / "culling-current" / "skill-action-atlas-v2.png"
+ATLAS_DIR = ROOT / "web" / "static" / "assets" / "skills" / "culling-current"
+ATLAS_FILES = {
+    "s3-skill-atlas-body-v3": "skill-atlas-body-v3.webp",
+    "s3-skill-atlas-technique-v3": "skill-atlas-technique-v3.webp",
+    "s3-skill-atlas-curse-v3": "skill-atlas-curse-v3.webp",
+    "s3-skill-atlas-focus-guard-v3": "skill-atlas-focus-guard-v3.webp",
+    "s3-skill-atlas-focus-control-v3": "skill-atlas-focus-control-v3.webp",
+}
 
 
 def _run_node(script: str) -> dict:
@@ -35,6 +42,7 @@ let missingRaised = false;
 try { registry.assertSkillVisualCoverage(['fc_missing_skill']); } catch (error) { missingRaised = /fc_missing_skill/.test(error.message); }
 console.log(JSON.stringify({
   atlas: registry.SKILL_ACTION_ATLAS,
+  atlases: registry.SKILL_ACTION_ATLASES,
   ids: registry.SKILL_VISUAL_IDS,
   entries,
   coverage: registry.skillVisualCoverage(registry.SKILL_VISUAL_IDS),
@@ -59,19 +67,25 @@ console.log(JSON.stringify({
 
     atlas = probe["atlas"]
     assert atlas == {
-        "key": "s3-skill-action-atlas-v2",
-        "path": "/static/assets/skills/culling-current/skill-action-atlas-v2.png",
-        "sourceWidth": 1254,
-        "sourceHeight": 1254,
+        "key": "s3-skill-atlas-body-v3",
+        "path": "/static/assets/skills/culling-current/skill-atlas-body-v3.webp",
+        "sourceWidth": 1248,
+        "sourceHeight": 1248,
         "columns": 4,
         "rows": 4,
         "frameCount": 16,
     }
+    atlases_by_key = {value["key"]: value for value in probe["atlases"].values()}
+    assert set(atlases_by_key) == set(ATLAS_FILES)
+    assert all(value["sourceWidth"] == 1248 for value in atlases_by_key.values())
+    assert all(value["sourceHeight"] == 1248 for value in atlases_by_key.values())
+    assert all(value["columns"] == 4 and value["rows"] == 4 for value in atlases_by_key.values())
 
     entries = probe["entries"]
     assert len({entry["icon"]["motif"] for entry in entries}) == 78
     assert len({entry["icon"]["sigil"] for entry in entries}) == 78
     assert len({entry["art"]["variant"] for entry in entries}) == 78
+    assert len({(entry["art"]["atlasKey"], entry["art"]["frame"]) for entry in entries}) == 78
     assert {entry["art"]["frame"] for entry in entries} == set(range(16))
 
     for entry in entries:
@@ -84,9 +98,9 @@ console.log(JSON.stringify({
         assert 3 <= entry["icon"]["spokes"] <= 8
         assert entry["palette"]["family"] in {"body", "technique", "focus", "curse"}
         assert isinstance(entry["palette"]["accent"], int)
-        assert entry["art"]["textureKey"] == atlas["key"]
-        assert entry["art"]["atlasKey"] == atlas["key"]
-        assert entry["art"]["atlasPath"] == atlas["path"]
+        registered_atlas = atlases_by_key[entry["art"]["atlasKey"]]
+        assert entry["art"]["textureKey"] == registered_atlas["key"]
+        assert entry["art"]["atlasPath"] == registered_atlas["path"]
         assert 0 <= entry["art"]["frame"] < 16
         assert entry["art"]["column"] == entry["art"]["frame"] % 4
         assert entry["art"]["row"] == entry["art"]["frame"] // 4
@@ -135,8 +149,8 @@ const registry = await import('./web/static/phaser/core/skill-visual-registry.js
 const visuals = await import('./web/static/phaser/ui/skill-visuals.js');
 const crops = registry.SKILL_VISUAL_IDS.map((id) => ({
   id,
-  frame: visuals.skillAtlasFrameRect(id, 1254, 1254),
-  crop: visuals.skillArtCropRect(id, 1254, 1254, 88, 132),
+  frame: visuals.skillAtlasFrameRect(id, 1248, 1248),
+  crop: visuals.skillArtCropRect(id, 1248, 1248, 88, 132),
 }));
 console.log(JSON.stringify({ crops }));
 """
@@ -145,8 +159,8 @@ console.log(JSON.stringify({ crops }));
     for entry in probe["crops"]:
         frame = entry["frame"]
         crop = entry["crop"]
-        assert frame["width"] in {313, 314}
-        assert frame["height"] in {313, 314}
+        assert frame["width"] == 312
+        assert frame["height"] == 312
         assert frame["x"] <= crop["x"]
         assert frame["y"] <= crop["y"]
         assert crop["x"] + crop["width"] <= frame["x"] + frame["width"] + 1e-8
@@ -154,11 +168,16 @@ console.log(JSON.stringify({ crops }));
         assert math.isclose(crop["width"] / crop["height"], 88 / 132, rel_tol=1e-10)
 
 
-def test_action_atlas_exists_at_the_registered_runtime_path_and_is_1254_square():
-    data = ATLAS.read_bytes()
-    assert data[:8] == b"\x89PNG\r\n\x1a\n"
-    assert int.from_bytes(data[16:20], "big") == 1254
-    assert int.from_bytes(data[20:24], "big") == 1254
+def test_action_atlases_exist_as_compressed_1248_square_webp_assets():
+    for filename in ATLAS_FILES.values():
+        data = (ATLAS_DIR / filename).read_bytes()
+        assert data[:4] == b"RIFF"
+        assert data[8:12] == b"WEBP"
+        assert data[12:16] == b"VP8 "
+        assert data[23:26] == b"\x9d\x01\x2a"
+        assert int.from_bytes(data[26:28], "little") & 0x3FFF == 1248
+        assert int.from_bytes(data[28:30], "little") & 0x3FFF == 1248
+        assert len(data) < 700_000
 
 
 def test_skill_art_renderer_uses_true_atlas_crop_origin_and_crop_relative_scale():
@@ -176,8 +195,8 @@ const image = {
 };
 const scene = {
   textures: {
-    exists: (key) => key === 's3-skill-action-atlas-v2',
-    get: () => ({ getSourceImage: () => ({ width: 1254, height: 1254 }) }),
+    exists: (key) => key === 's3-skill-atlas-body-v3',
+    get: () => ({ getSourceImage: () => ({ width: 1248, height: 1248 }) }),
   },
   add: {
     image(x, y, key) { calls.position = [x, y, key]; return image; },
@@ -191,12 +210,12 @@ console.log(JSON.stringify({ calls, crop: result.crop, nodeCount: scene.nodes.le
 
     calls = probe["calls"]
     crop = probe["crop"]
-    assert calls["position"] == [54, 86, "s3-skill-action-atlas-v2"]
+    assert calls["position"] == [54, 86, "s3-skill-atlas-body-v3"]
     assert calls["crop"] == [crop["x"], crop["y"], crop["width"], crop["height"]]
     assert math.isclose(calls["scale"][0] * crop["width"], 88, rel_tol=1e-10)
     assert math.isclose(calls["scale"][1] * crop["height"], 132, rel_tol=1e-10)
-    assert math.isclose(calls["origin"][0], (crop["x"] + crop["width"] / 2) / 1254, rel_tol=1e-10)
-    assert math.isclose(calls["origin"][1], (crop["y"] + crop["height"] / 2) / 1254, rel_tol=1e-10)
+    assert math.isclose(calls["origin"][0], (crop["x"] + crop["width"] / 2) / 1248, rel_tol=1e-10)
+    assert math.isclose(calls["origin"][1], (crop["y"] + crop["height"] / 2) / 1248, rel_tol=1e-10)
     assert calls["alpha"] == 0.7
     assert calls["depth"] == -1
     assert probe["nodeCount"] == 1

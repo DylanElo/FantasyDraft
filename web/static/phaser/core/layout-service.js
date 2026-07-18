@@ -1,4 +1,4 @@
-import { TOKEN_FRAMES } from './runtime-config.js?v=28';
+import { TOKEN_FRAMES } from './runtime-config.js?v=31';
 
 function cssPixels(name) {
   if (typeof document === 'undefined' || typeof getComputedStyle !== 'function') return 0;

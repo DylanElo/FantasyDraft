@@ -1,4 +1,4 @@
-import { safeText } from '../core/text.js?v=28';
+import { safeText } from '../core/text.js?v=31';
 
 const DAMAGE_EVENT_TYPES = new Set(['damage', 'status_damage', 'health_steal']);
 

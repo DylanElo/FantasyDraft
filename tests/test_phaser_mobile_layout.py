@@ -258,15 +258,17 @@ def test_scoped_mobile_controls_and_copy_keep_accessibility_contracts():
     assert "44, 44, '<'" in base
     assert "44, 44, '×'" in base
 
-    assert "const difficulty = cpu ? { x, y, w, h: 44 } : null;" in season_three_ui
-    assert "const targets = { x, y, w, h: 44 };" in season_three_ui
     assert "const pager = { x, y: cta.y - 52, w, h: 44 };" in season_three_ui
-    assert "drawS3Button(this, layout.targets.x" in draft
-    assert "drawS3Pager(this, layout.pager" in draft
-    assert "Math.max(1, Math.floor" in draft
-    assert "renderTeamSummary" in draft
-    assert "name.setMaxLines(3);" in draft
-    assert "shortText(safeText(character.name" not in draft
+    assert "const controls = { x, y: header.bottom + 8, w, h: 44 };" in roster
+    assert "const trio = { x, y: trioLabelY + 18, w, h: 90 };" in roster
+    assert "const filters = { x, y: trio.y + trio.h + 8, w, h: 44 };" in roster
+    assert "const pager = { x, y: cta.y - 52, w, h: 44 };" in roster
+    assert "renderSetupControls(layout.controls" in draft
+    assert "drawS3Pager(this, layout.pager" in roster
+    assert "renderSetupTrio(layout" in draft
+    assert "renderSetupFeatured" in roster
+    assert "name.setMaxLines(3);" in roster
+    assert "shortText(safeText(character.name" not in roster
 
     assert "const trio = { x, y: trioLabelY + 18, w, h: 98 };" in creation
     assert "const filters = { x, y: trio.y + trio.h + 8, w, h: 44 };" in creation
@@ -321,7 +323,7 @@ def test_scoped_mobile_controls_and_copy_keep_accessibility_contracts():
 
     assert "shortText(character.name" not in roster
     assert "shortText(character.role" not in roster
-    assert "skillName.setMaxLines(2);" in roster
-    assert "y + 52, 'TRIO'" in roster
+    assert "description.setMaxLines(6);" in roster
+    assert "TAP ART FOR STUDY" in roster
 
     assert 44 + 4 + 44 <= 92

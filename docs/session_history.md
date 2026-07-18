@@ -2321,3 +2321,71 @@ with **510 passed, 1 skipped** in 75.99 seconds;
 `python -m compileall -q jjk_arena web/app.py` and `git diff --check` also
 passed. Delivery targets `codex/culling-current-ui` and draft PR #58; the
 launcher changes were not yet committed at the time of this entry.
+
+## 2026-07-18 - Art-first full mobile flow and delivery acceptance
+
+**User correction and locked scope.** The user accepted the Season 3 asset
+language but rejected the remaining deprecated screen structures. This pass
+therefore completes the structural replacement across Team Setup, Matchup,
+Combat presentation, Mission Map, Results, and Records/Profile. Battle v2
+remains authoritative for legality, damage, phases, timing, viewer privacy,
+hidden information, targets, replacement slots, Wild payment, results, and
+mission progression. The locked 19-character First Creation roster and all 78
+shipping primary/replacement skills are unchanged.
+
+**What changed.** First Creation and reusable Team Setup now use one large
+featured fighter, readable trio slots, route filters, and a full-screen
+Character Study rather than roster columns or dashboard panels. The dedicated
+Matchup scene presents the actual CPU confrontation or sealed PvP challenger,
+wait/cancel state, and a server-authoritative Enter step; Back returns to the
+surface that opened it. Mission Map is a spatial seven-node Student Era route
+with a selected-mission dossier and recommended trio. Results is a cinematic
+winner/outcome composition with full trio names, mission debrief, rewards,
+untruncated current-match impacts, and paired Rematch/Home actions. Records is
+an art-led local profile with the most-deployed trio, full outcome counts,
+metrics, and recent-match timeline.
+
+Combat retains the approved rooftop card/lane/card/skill structure while its
+resolution layer gains one-at-a-time cinematic cut-ins and action banners,
+target and impact VFX, HP-lag feedback, short camera punctuation, persistent
+gesture-gated audio, mute/volume, haptics, reduced-motion settings, and staged
+asset loading. Five character-free 1248x1248 `4x4` WebP atlases assign one
+unique cell to every one of the 78 shipping skills; authoritative skill data
+continues to come from Battle v2. Exact generation prompts, result identifiers,
+source/shipping hashes, processing, and licensing cautions are recorded in the
+skill provenance file. Cache-linked first-party assets and imports are sealed
+at `v31`.
+
+**Correctness and delivery closure.** Real CPU, two-client PvP, reconnect,
+token rotation, terminal result, and authoritative timeout acceptance now run
+over HTTP/WebSocket. The second PvP joiner receives its private resume grant.
+Resume credentials are atomically consumed/rotated before any reconnect or
+private-room side effect, and a deterministic concurrent-replay regression
+proves only one contender can receive the rotated credential and viewer state.
+Fast resume updates during Boot now record their destination without racing
+Phaser's scene loader; Boot performs the one initial transition, including a
+destination that changes during its fade. CI runs the full suite, Python
+compilation, all maintained JavaScript syntax checks, dependency validation,
+and whitespace checks.
+
+**Verification actually run.** Final pytest passed with **522 passed, 1
+skipped** in 112.52 seconds. The real-network acceptance test passed in 25.16
+seconds. `python -m compileall -q jjk_arena web/app.py
+tools/network_acceptance.py`, `python -m pip check`, `node --check` for all 37
+maintained JavaScript files, the 101-import `v31` cache audit, and `git diff
+--check` passed. Live in-app-browser QA covered Home, First Creation, Character
+Study, Team Setup, both Matchup return paths, real CPU Combat resolution, and
+Results at 360x800, 390x844, and 430x932. Fresh Boot, staged assets, scene
+routing, portrait diagnostics, and the final interaction run produced no
+console warning, console error, or runtime exception. The action-banner stress
+check left exactly one active overlay and confirmed the replaced nodes were
+destroyed.
+
+**Remaining cautions / delivery state.** Synthesized sound and haptics still
+depend on the physical device/browser capabilities; automated service tests
+cover fallback and persistence, while the browser pass covers the gesture gate
+and visible controls. Generated and franchise-directed art still requires
+commercial-release rights review; provenance is not licensing clearance. The
+Windows one-click launcher remains the current Battle v2 entry point. Delivery
+targets `codex/culling-current-ui` and draft PR #58; commit, push, and hosted CI
+status are recorded after this entry.

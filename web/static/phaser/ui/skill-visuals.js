@@ -1,4 +1,4 @@
-import { SKILL_ACTION_ATLAS, skillVisualFor } from '../core/skill-visual-registry.js?v=28';
+import { SKILL_ACTION_ATLAS, skillVisualFor } from '../core/skill-visual-registry.js?v=31';
 
 const FORM_FAMILIES = Object.freeze({
   fist: 'impact', palm: 'impact', burst: 'impact', core: 'impact', drum: 'impact', clap: 'impact', blood: 'impact', vortex: 'impact', rhythm: 'impact', venom: 'impact',

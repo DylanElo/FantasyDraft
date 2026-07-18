@@ -1,9 +1,9 @@
-import { BOOT, CORE_ENERGY } from '../core/runtime-config.js?v=28';
-import { safeText } from '../core/text.js?v=28';
-import { readStorage, writeStorage } from '../core/storage.js?v=28';
-import { AssetRegistry } from '../core/asset-registry.js?v=28';
-import { firstCreationRoster, preset, presetTitle } from '../core/roster.js?v=28';
-import { damageEventAmount } from '../fx/event-metrics.js?v=28';
+import { BOOT, CORE_ENERGY } from '../core/runtime-config.js?v=31';
+import { safeText } from '../core/text.js?v=31';
+import { readStorage, writeStorage } from '../core/storage.js?v=31';
+import { AssetRegistry } from '../core/asset-registry.js?v=31';
+import { firstCreationRoster, preset, presetTitle } from '../core/roster.js?v=31';
+import { damageEventAmount } from '../fx/event-metrics.js?v=31';
 
 export class GameStore {
     constructor(socketClient) {
@@ -18,6 +18,8 @@ export class GameStore {
       this.scene = 'LobbyScene';
       this.state = null;
       this.lobbyStatus = null;
+      this.matchLaunchPending = false;
+      this.matchupReturnScene = 'DraftScene';
       this.selectedCasterSlot = null;
       this.selectedSkillId = null;
       this.detailSkillId = null;
@@ -95,6 +97,7 @@ export class GameStore {
       this.socketClient.on('battle_v2_lobby', (data) => this.receiveLobbyState(data));
       this.socketClient.on('battle_v2_error', (data) => {
         this.queueSubmitting = false;
+        this.matchLaunchPending = false;
         this.showToast(data && data.message ? data.message : 'Battle v2 error');
       });
       this.socketClient.on('battle_v2_finished', (data) => {
@@ -177,12 +180,20 @@ export class GameStore {
 
     changeScene(sceneName) {
       this.scene = sceneName;
-      const game = window.JJKPhaserShell && window.JJKPhaserShell.game;
-      if (game && game.scene) {
-        ['LobbyScene', 'FirstCreationScene', 'MissionMapScene', 'DraftScene', 'CombatScene', 'ResultScene', 'RecordsScene'].forEach((key) => {
-          if (key !== sceneName && game.scene.isActive(key)) game.scene.stop(key);
+      const shell = window.JJKPhaserShell;
+      const game = shell && shell.game;
+      const sceneManager = game && game.scene;
+      const bootReady = Boolean(shell && shell.bootReady);
+      const bootActive = Boolean(sceneManager && sceneManager.isActive && sceneManager.isActive('BootScene'));
+      // Socket resume/update events may arrive before Boot finishes loading or
+      // during its exit fade. Keep the requested destination in store state,
+      // but let Boot perform the one initial Phaser transition so its loader is
+      // never stopped or raced by a second scene manager mutation.
+      if (bootReady && !bootActive && sceneManager) {
+        ['LobbyScene', 'FirstCreationScene', 'MissionMapScene', 'DraftScene', 'MatchupScene', 'CombatScene', 'ResultScene', 'RecordsScene'].forEach((key) => {
+          if (key !== sceneName && sceneManager.isActive(key)) sceneManager.stop(key);
         });
-        if (!game.scene.isActive(sceneName)) game.scene.start(sceneName);
+        if (!sceneManager.isActive(sceneName)) sceneManager.start(sceneName);
       }
       this.notify();
     }
@@ -264,6 +275,13 @@ export class GameStore {
         .filter((event) => event.amount > 0)
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 3);
+      const player = state.players && mine ? state.players[mine] : null;
+      const team = player && Array.isArray(player.team)
+        ? player.team.slice(0, 3).map((fighter) => ({
+          id: fighter && (fighter.character_id || fighter.id),
+          name: fighter && (fighter.name || fighter.character_id || fighter.id),
+        })).filter((fighter) => fighter.id)
+        : [];
       this.records.unshift({
         at: new Date().toISOString(),
         result: resultLabel,
@@ -273,6 +291,7 @@ export class GameStore {
         turns: state.turn_number || 0,
         damage,
         biggest,
+        team,
       });
       this.records = this.records.slice(0, 12);
       this.saveRecords();
@@ -372,6 +391,35 @@ export class GameStore {
       this.notify();
     }
 
+    openMatchup() {
+      if (!BOOT.battleV2Enabled) {
+        this.showToast('Battle v2 is disabled on this server.');
+        return;
+      }
+      if (this.playerTeam.length !== 3 || (this.matchMode === 'cpu' && this.enemyTeam.length !== 3)) {
+        this.showToast('Choose exactly 3 fighters for every active team.');
+        return;
+      }
+      // First Creation and the reusable Team Setup share Matchup, but Back
+      // must restore the surface that actually opened the review.
+      this.matchupReturnScene = this.scene === 'FirstCreationScene' ? 'FirstCreationScene' : 'DraftScene';
+      this.detailCharacterId = null;
+      this.lobbyStatus = null;
+      this.matchLaunchPending = false;
+      this.changeScene('MatchupScene');
+    }
+
+    returnFromMatchup() {
+      if (this.scene !== 'MatchupScene' || this.matchLaunchPending) return;
+      if (!this.state && this.lobbyStatus && this.lobbyStatus.status !== 'cancelled') {
+        this.resetToLobby();
+        return;
+      }
+      const returnScene = this.matchupReturnScene === 'FirstCreationScene' ? 'FirstCreationScene' : 'DraftScene';
+      this.lobbyStatus = null;
+      this.changeScene(returnScene);
+    }
+
     startMatch() {
       if (!BOOT.battleV2Enabled) {
         this.showToast('Battle v2 is disabled on this server.');
@@ -381,6 +429,14 @@ export class GameStore {
         this.showToast('Choose exactly 3 fighters for every active team.');
         return;
       }
+      // Every fresh CPU and PvP match must pass through the dedicated
+      // matchup review. Legacy callers (notably First Creation) therefore
+      // open the review on their first invocation instead of emitting.
+      if (this.scene !== 'MatchupScene') {
+        this.openMatchup();
+        return;
+      }
+      if (this.matchLaunchPending) return;
       this.state = null;
       this.disconnectDeadline = null;
       this.clearResumeSession();
@@ -395,12 +451,16 @@ export class GameStore {
       this.playbackEvents = [];
       this.recentEvents = [];
       this.ignoreBattleUpdates = false;
+      this.matchLaunchPending = true;
       const payload = {
         room_id: this.matchMode === 'pvp' ? this.roomId : `classic_v2_${Math.random().toString(36).slice(2, 8)}`,
         player_name: this.playerName,
         player_team: this.playerTeam.slice(0, 3),
         roster_mode: 'first_creation',
       };
+      // Stay on Matchup until a viewer-specific authoritative battle update
+      // arrives. This avoids rendering a speculative Combat state.
+      this.changeScene('MatchupScene');
       if (this.matchMode === 'pvp') {
         this.socketClient.emit('battle_v2_join_pvp', payload);
       } else {
@@ -410,15 +470,23 @@ export class GameStore {
           difficulty: this.difficulty,
         });
       }
-      this.changeScene(this.matchMode === 'pvp' ? 'DraftScene' : 'CombatScene');
     }
 
     receiveLobbyState(data) {
       this.state = null;
       this.disconnectDeadline = null;
-      this.lobbyStatus = data && data.status === 'cancelled' ? null : data;
+      const cancelled = !!(data && data.status === 'cancelled');
+      this.lobbyStatus = cancelled ? null : data;
       this.queueSubmitting = false;
-      this.changeScene('DraftScene');
+      this.matchLaunchPending = false;
+      if (cancelled) {
+        // A player-initiated cancel changes to Lobby before the server ack.
+        // Do not let that later ack pull the app back into team setup.
+        if (this.scene === 'MatchupScene') this.returnFromMatchup();
+        else this.notify();
+        return;
+      }
+      this.changeScene('MatchupScene');
     }
 
     receiveBattleState(data) {
@@ -439,6 +507,7 @@ export class GameStore {
         : null;
       this.lobbyStatus = null;
       this.queueSubmitting = false;
+      this.matchLaunchPending = false;
       const ownPending = (data.pending_actions && data.pending_actions[this.mineId()]) || [];
       const me = this.me();
       if (ownPending.length) {
@@ -1089,7 +1158,7 @@ export class GameStore {
     }
 
     resetToLobby() {
-      if (!this.state && this.lobbyStatus && this.lobbyStatus.status === 'waiting') {
+      if (!this.state && this.lobbyStatus && this.lobbyStatus.status !== 'cancelled') {
         this.socketClient.emit('battle_v2_leave_pvp', { room_id: this.lobbyStatus.room_id });
       }
       // Only surrender a match that's actually still live -- a finished draw
@@ -1108,6 +1177,8 @@ export class GameStore {
       this.selectedCasterSlot = null;
       this.selectedSkillId = null;
       this.queueSubmitting = false;
+      this.matchLaunchPending = false;
+      this.matchupReturnScene = 'DraftScene';
       this.queueReviewOpen = false;
       this.detailCharacterId = null;
       this.eventCursor = 0;

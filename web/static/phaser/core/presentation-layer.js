@@ -1,34 +1,51 @@
 import {
   SKILL_ACTION_ATLAS,
+  SKILL_ACTION_ATLASES,
   SKILL_VISUALS,
   SKILL_VISUAL_IDS,
   assertSkillVisualCoverage,
   skillVisualCoverage,
   skillVisualEntries,
   skillVisualFor,
-} from './skill-visual-registry.js?v=28';
-import { InteractionSfx, INTERACTION_SFX_CUES } from './interaction-sfx.js?v=28';
-import { MotionVfx, MOTION_TIMINGS, prefersReducedMotion } from '../fx/motion-vfx.js?v=28';
+} from './skill-visual-registry.js?v=31';
+import {
+  InteractionSfx,
+  INTERACTION_HAPTIC_CUES,
+  INTERACTION_SFX_CUES,
+  getPersistentInteractionSfx,
+} from './interaction-sfx.js?v=31';
+import {
+  DEFAULT_PRESENTATION_SETTINGS,
+  PresentationSettings,
+  getPersistentPresentationSettings,
+} from './presentation-settings.js?v=31';
+import { MotionVfx, MOTION_TIMINGS, prefersReducedMotion } from '../fx/motion-vfx.js?v=31';
 import {
   drawSkillArtCrop,
   drawSkillIcon,
   skillArtCropRect,
   skillAtlasFrameRect,
   skillIconFormFamily,
-} from '../ui/skill-visuals.js?v=28';
+} from '../ui/skill-visuals.js?v=31';
 
 export {
   INTERACTION_SFX_CUES,
+  INTERACTION_HAPTIC_CUES,
   InteractionSfx,
   MOTION_TIMINGS,
   MotionVfx,
   SKILL_ACTION_ATLAS,
+  SKILL_ACTION_ATLASES,
   SKILL_VISUALS,
   SKILL_VISUAL_IDS,
   assertSkillVisualCoverage,
   drawSkillArtCrop,
   drawSkillIcon,
   prefersReducedMotion,
+  DEFAULT_PRESENTATION_SETTINGS,
+  PresentationSettings,
+  getPersistentInteractionSfx,
+  getPersistentPresentationSettings,
   skillArtCropRect,
   skillAtlasFrameRect,
   skillIconFormFamily,
@@ -39,8 +56,10 @@ export {
 
 export function preloadPresentationAssets(scene) {
   if (!scene || !scene.load || !scene.load.image) return false;
-  if (scene.textures && scene.textures.exists && scene.textures.exists(SKILL_ACTION_ATLAS.key)) return true;
-  scene.load.image(SKILL_ACTION_ATLAS.key, SKILL_ACTION_ATLAS.path);
+  Object.values(SKILL_ACTION_ATLASES).forEach((atlas) => {
+    if (scene.textures && scene.textures.exists && scene.textures.exists(atlas.key)) return;
+    scene.load.image(atlas.key, atlas.path);
+  });
   return true;
 }
 
@@ -70,11 +89,17 @@ export function createPresentationLayer(scene, options = {}) {
   if (scene && scene.presentationLayer && scene.presentationLayer.__jjkPresentationLayer && !scene.presentationLayer.isDestroyed()) {
     return scene.presentationLayer;
   }
-  const ownsAudio = !options.audio;
-  const audio = options.audio || new InteractionSfx(options.audioOptions || {});
-  const motion = new MotionVfx(scene, options.motionOptions || {});
+  const environment = options.environment || (typeof window !== 'undefined' ? window : globalThis);
+  const settings = options.settings
+    || (options.audio && options.audio.settings)
+    || getPersistentPresentationSettings({ environment, storage: options.audioOptions && options.audioOptions.storage });
+  const audio = options.audio || getPersistentInteractionSfx({ ...(options.audioOptions || {}), environment, settings });
+  const motionOptions = { ...(options.motionOptions || {}) };
+  if (motionOptions.reducedMotion == null) motionOptions.reducedMotion = settings.effectiveReducedMotion(environment);
+  const motion = new MotionVfx(scene, motionOptions);
   const hookHandles = new Map();
   let destroyed = false;
+  let lastQueueSignature = '';
   let gestureUnlock = null;
   if (scene && scene.input && scene.input.once) {
     gestureUnlock = () => audio.unlockFromGesture();
@@ -88,9 +113,29 @@ export function createPresentationLayer(scene, options = {}) {
     return nextHandle;
   };
   const clearHandle = (key) => replaceHandle(key, null);
+  const applyMotionPreference = () => {
+    const reduced = settings.effectiveReducedMotion(environment);
+    if (reduced && !motion.reducedMotion) {
+      // Immediately halt any active presentation tween when the player or OS
+      // switches to reduced motion; existing visuals remain as static state.
+      Array.from(motion.tweens || []).forEach((tween) => tween && tween.stop && tween.stop());
+      if (motion.tweens && motion.tweens.clear) motion.tweens.clear();
+    }
+    motion.reducedMotion = reduced;
+  };
+  const unsubscribeSettings = settings.subscribe(applyMotionPreference);
+  let motionMedia = null;
+  try {
+    motionMedia = environment && environment.matchMedia && environment.matchMedia('(prefers-reduced-motion: reduce)');
+    if (motionMedia && motionMedia.addEventListener) motionMedia.addEventListener('change', applyMotionPreference);
+    else if (motionMedia && motionMedia.addListener) motionMedia.addListener(applyMotionPreference);
+  } catch (_error) {
+    motionMedia = null;
+  }
   const layer = Object.freeze({
     __jjkPresentationLayer: true,
     audio,
+    settings,
     motion,
     isDestroyed: () => destroyed,
     skillVisualFor,
@@ -132,20 +177,11 @@ export function createPresentationLayer(scene, options = {}) {
     },
     renderFighterState(_targetScene, payload = {}) {
       const key = `fighter:${payload.side || 'side'}:${Number(payload.slot) || 0}`;
-      if (!payload.region || payload.dead || (!payload.targetable && !payload.selected)) return clearHandle(key);
-      const { x, y, w, h } = payload.region;
-      const targetTone = payload.targetable ? 0x35dde8 : 0xd8bf68;
-      return replaceHandle(key, motion.legalTargetCue(
-        x + w / 2,
-        y + h / 2,
-        Math.max(18, Math.min(w, h) * 0.43),
-        {
-          tone: targetTone,
-          label: payload.targetable ? 'LEGAL' : '',
-          depth: 76,
-          duration: payload.targetable ? 700 : 980,
-        },
-      ));
+      // Fighter cards already own authoritative selected/LEGAL borders and
+      // labels. A second animated circle over the portrait duplicated that
+      // state and obscured faces, so this compatibility hook now only clears
+      // any stale handle left by an earlier render.
+      return clearHandle(key);
     },
     renderTargetLane(_targetScene, payload = {}) {
       const key = 'target-lane';
@@ -158,20 +194,26 @@ export function createPresentationLayer(scene, options = {}) {
       ));
     },
     renderSelectedFighter(_targetScene, payload = {}) {
-      const key = 'selected-fighter';
-      if (!payload.character || !payload.region) return clearHandle(key);
-      const { x, y, w, h } = payload.region;
-      return replaceHandle(key, motion.legalTargetCue(
-        x + Math.min(w * 0.45, 48),
-        y + Math.min(h * 0.23, 48),
-        Math.max(20, Math.min(36, w * 0.28)),
-        { tone: payload.queued ? 0x4fb06d : 0xd8bf68, depth: 75, duration: 1100 },
-      ));
+      return clearHandle('selected-fighter');
+    },
+    renderQueueReviewState(_targetScene, payload = {}) {
+      const actions = payload.actions || [];
+      if (!actions.length) {
+        lastQueueSignature = '';
+        return [];
+      }
+      const signature = actions.map((action) => action && action.id).join('|');
+      if (signature === lastQueueSignature) return payload.cards || [];
+      lastQueueSignature = signature;
+      return motion.queueCommit(payload.cards || [], {
+        stagger: 82,
+        duration: MOTION_TIMINGS.queueStep,
+      });
     },
     interactionCue(_targetScene, payload = {}) {
       const requested = typeof payload === 'string' ? payload : payload.cue;
       const cue = CUE_ALIASES[requested] || null;
-      return cue ? audio.play(cue) : false;
+      return cue ? (audio.cue ? audio.cue(cue) : audio.play(cue)) : false;
     },
     ambientWorld(_targetScene, payload = {}) {
       const region = payload.region || payload;
@@ -181,11 +223,13 @@ export function createPresentationLayer(scene, options = {}) {
       return motion.sceneIntro(payload.targets || [], payload.options || payload);
     },
     queueCommit(_targetScene, payload = {}) {
-      audio.queue();
+      if (audio.cue) audio.cue('queue');
+      else audio.queue();
       return motion.queueCommit(payload.cards || [], payload.options || payload);
     },
     impactFlash(_targetScene, payload = {}) {
-      audio.impact();
+      if (audio.cue) audio.cue('impact');
+      else audio.impact();
       return motion.impactFlash(payload.x, payload.y, payload.options || payload);
     },
     skill: Object.freeze({
@@ -202,8 +246,11 @@ export function createPresentationLayer(scene, options = {}) {
       if (gestureUnlock && scene && scene.input && scene.input.off) scene.input.off('pointerdown', gestureUnlock);
       hookHandles.forEach((handle) => handle && handle.destroy && handle.destroy());
       hookHandles.clear();
+      unsubscribeSettings();
+      if (motionMedia && motionMedia.removeEventListener) motionMedia.removeEventListener('change', applyMotionPreference);
+      else if (motionMedia && motionMedia.removeListener) motionMedia.removeListener(applyMotionPreference);
       motion.destroy();
-      if (ownsAudio) await audio.destroy();
+      if (options.destroyAudio && audio && audio.destroy) await audio.destroy();
     },
   });
   if (scene && scene.events && scene.events.once) scene.events.once('shutdown', () => layer.destroy());

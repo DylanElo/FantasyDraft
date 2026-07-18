@@ -1,7 +1,7 @@
-import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=28';
-import { firstCreationRoster } from '../core/roster.js?v=28';
-import { skillVisualFor } from '../core/skill-visual-registry.js?v=28';
-import { clamp, safeText, titleize } from '../core/text.js?v=28';
+import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=31';
+import { firstCreationRoster } from '../core/roster.js?v=31';
+import { skillVisualFor } from '../core/skill-visual-registry.js?v=31';
+import { clamp, safeText, titleize } from '../core/text.js?v=31';
 import {
   S3_COLORS,
   drawS3Button,
@@ -10,8 +10,8 @@ import {
   drawS3Pager,
   drawS3Panel,
   drawS3World,
-} from '../ui/season-three-ui.js?v=28';
-import { BaseScene } from './base-scene.js?v=28';
+} from '../ui/season-three-ui.js?v=31';
+import { BaseScene } from './base-scene.js?v=31';
 
 const FIRST_CREATION_WORLD_KEY = 'culling-current-campus';
 
@@ -380,7 +380,7 @@ export class FirstCreationScene extends BaseScene {
         layout.cta.y,
         layout.cta.w,
         layout.cta.h,
-        ready ? 'Begin CPU Match' : `Choose ${3 - this.store.playerTeam.length} More`,
+        ready ? 'Review Matchup' : `Choose ${3 - this.store.playerTeam.length} More`,
         () => this.store.startMatch(),
         {
           variant: ready ? 'primary' : 'smoke',

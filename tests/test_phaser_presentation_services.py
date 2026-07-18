@@ -276,7 +276,7 @@ console.log(JSON.stringify({
   hasDrawIcon: typeof layer.skill.drawIcon === 'function',
   hasDrawArt: typeof layer.skill.drawArt === 'function',
   reused,
-  compatibilityMethods: ['skillVisualFor', 'renderSkillVisual', 'renderFighterState', 'renderTargetLane', 'renderSelectedFighter', 'interactionCue', 'ambientWorld', 'sceneIntro', 'queueCommit', 'impactFlash']
+  compatibilityMethods: ['skillVisualFor', 'renderSkillVisual', 'renderFighterState', 'renderTargetLane', 'renderSelectedFighter', 'renderQueueReviewState', 'interactionCue', 'ambientWorld', 'sceneIntro', 'queueCommit', 'impactFlash']
     .filter((name) => typeof layer[name] === 'function'),
 }));
 """
@@ -295,10 +295,13 @@ console.log(JSON.stringify({
     }
     assert required_exports <= set(probe["exports"])
     assert probe["preloadResult"] is True
-    assert probe["loaded"] == [[
-        "s3-skill-action-atlas-v2",
-        "/static/assets/skills/culling-current/skill-action-atlas-v2.png",
-    ]]
+    assert probe["loaded"] == [
+        ["s3-skill-atlas-body-v3", "/static/assets/skills/culling-current/skill-atlas-body-v3.webp"],
+        ["s3-skill-atlas-technique-v3", "/static/assets/skills/culling-current/skill-atlas-technique-v3.webp"],
+        ["s3-skill-atlas-curse-v3", "/static/assets/skills/culling-current/skill-atlas-curse-v3.webp"],
+        ["s3-skill-atlas-focus-guard-v3", "/static/assets/skills/culling-current/skill-atlas-focus-guard-v3.webp"],
+        ["s3-skill-atlas-focus-control-v3", "/static/assets/skills/culling-current/skill-atlas-focus-control-v3.webp"],
+    ]
     assert probe["visualId"] == "fc_yuji_itadori_divergent_fist"
     assert probe["hasMotion"] is True
     assert probe["hasAudio"] is True
@@ -311,6 +314,7 @@ console.log(JSON.stringify({
         "renderFighterState",
         "renderTargetLane",
         "renderSelectedFighter",
+        "renderQueueReviewState",
         "interactionCue",
         "ambientWorld",
         "sceneIntro",

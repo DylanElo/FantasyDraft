@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Validate Python dependency graph
+        run: python -m pip check
+
+      - name: Run full Python suite including real Socket.IO acceptance
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python -m pytest -q
+
+      - name: Compile maintained Python runtime
+        run: python -m compileall -q jjk_arena web/app.py
+
+      - name: Check maintained Phaser JavaScript syntax
+        shell: bash
+        run: |
+          git ls-files ':(glob)web/static/phaser/**/*.js' ':(glob)web/static/phaser*.js' > /tmp/jjk-js-files
+          while IFS= read -r file; do
+            node --check "$file"
+          done < /tmp/jjk-js-files
+
+      - name: Check patch whitespace
+        shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          if [[ -n "$BASE_REF" ]]; then
+            git diff --check "origin/$BASE_REF...HEAD"
+          elif [[ -n "$BEFORE_SHA" && ! "$BEFORE_SHA" =~ ^0+$ ]]; then
+            git diff --check "$BEFORE_SHA..HEAD"
+          else
+            git diff --check "origin/main...HEAD"
+          fi

@@ -1,6 +1,6 @@
-import { CORE_ENERGY, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_TYPE } from '../core/runtime-config.js?v=28';
-import { CombatPlaybackScene } from '../fx/combat-playback-scene.js?v=28';
-import { drawCurrentButton, drawCurrentPanel } from '../ui/culling-current-ui.js?v=28';
+import { CORE_ENERGY, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_TYPE } from '../core/runtime-config.js?v=31';
+import { CombatPlaybackScene } from '../fx/combat-playback-scene.js?v=31';
+import { drawCurrentButton, drawCurrentPanel } from '../ui/culling-current-ui.js?v=31';
 
 const SKILL_ART_BY_ENERGY = {
   green: 's3-skill-body',
@@ -186,6 +186,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
 
     renderQueueActionCard(action, index, count, region, queueFit) {
       const { x, y, w, h } = region;
+      const nodeStart = this.nodes.length;
       const meta = this.actionMeta(action);
       const tone = index === 0 ? CULLING_COLORS.gold : index === 1 ? CULLING_COLORS.cobalt : CULLING_COLORS.cyan;
       const last = index >= count - 1;
@@ -264,7 +265,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
       const topInset = wildRows > 1 ? 50 + (wildRows - 1) * 44 : 50;
       const skillName = this.text(x + 8, y + topInset, meta.skill ? meta.skill.name : action.skill_id, {
         fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
-        fontSize: dense ? '10px' : '12px',
+        fontSize: '12px',
         fontStyle: '900',
         color: CULLING_COLORS.text,
         backgroundColor: '#F2E8D5',
@@ -279,24 +280,26 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
       if (meta.secondaryRoute) detailParts.push(`2ND ${meta.secondaryRoute}`);
       if (meta.alternateRoute) detailParts.push(`ALT ${meta.alternateRoute}`);
       if (meta.replacement) detailParts.push('REPLACED SLOT');
-      const metaY = y + topInset + (dense ? 25 : 29);
-      const classLine = `${meta.classes.slice(0, 2).join('/') || 'SKILL'} / CD ${meta.cooldown} / ${meta.targetLabel}`;
+      const metaY = y + topInset + (dense ? 29 : 31);
+      const classLine = dense
+        ? `CD ${meta.cooldown} / ${meta.targetLabel}`
+        : `${meta.classes.slice(0, 2).join('/') || 'SKILL'} / CD ${meta.cooldown} / ${meta.targetLabel}`;
       const classNode = this.text(x + 8, metaY, classLine, {
         fontFamily: TOKEN_TYPE.mono || 'monospace',
-        fontSize: dense ? '6px' : '7px',
+        fontSize: '9px',
         fontStyle: '700',
         color: CULLING_COLORS.inverseText,
         backgroundColor: '#17191E',
         padding: { x: 2, y: 1 },
         wordWrap: { width: w - 20 },
       });
-      classNode.setMaxLines(2);
+      classNode.setMaxLines(dense ? 1 : 2);
       classNode.setDepth(1);
 
-      if (meta.summary) {
+      if (meta.summary && !dense) {
         const summaryNode = this.text(x + 8, metaY + 19, meta.summary, {
           fontFamily: TOKEN_TYPE.mono || 'monospace',
-          fontSize: dense ? '6px' : '7px',
+          fontSize: '9px',
           fontStyle: '700',
           color: CULLING_COLORS.inverseText,
           backgroundColor: '#17191E',
@@ -309,10 +312,10 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
 
       const routeParts = [`${meta.caster ? meta.caster.name : 'Unknown'} > ${meta.targetRoute}`];
       routeParts.push(...detailParts);
-      const routeY = Math.min(controlY - 33, metaY + 42);
+      const routeY = Math.min(controlY - (dense ? 38 : 40), metaY + (dense ? 18 : 42));
       const route = this.text(x + 8, routeY, rowError || routeParts.join(' / '), {
         fontFamily: TOKEN_TYPE.mono || 'monospace',
-        fontSize: dense ? '7px' : '8px',
+        fontSize: dense ? '9px' : '10px',
         fontStyle: '700',
         color: rowError ? CULLING_COLORS.redText : CULLING_COLORS.cobaltText,
         backgroundColor: '#F2E8D5',
@@ -351,10 +354,17 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         fontSize: '10px',
         fontStyle: '900',
       }).setOrigin(0.5, 0);
+      const newNodes = this.nodes.slice(nodeStart);
+      return newNodes.find((node) => node && node.type === 'Image')
+        || newNodes.find((node) => node && node.type === 'Container')
+        || null;
     }
 
     renderQueueReviewSheet(frame) {
-      if (!this.store.queueReviewOpen || !this.store.actions.length) return;
+      if (!this.store.queueReviewOpen || !this.store.actions.length) {
+        this.presentationLayerCall('renderQueueReviewState', { actions: [], cards: [] });
+        return;
+      }
       const layout = this.queueReviewLayout(frame);
       const queueFit = this.store.queueReviewFit();
       const me = this.store.me();
@@ -419,25 +429,26 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         fontStyle: '800',
       });
       this.renderEnergyCommitment(frame, layout, queueFit);
-      this.presentationLayerCall('renderQueueReviewState', {
-        frame,
-        layout,
-        queueFit,
-        actions: this.store.actions.slice(0, 3),
-      });
 
       const actions = this.store.actions.slice(0, 3);
       const cardGap = 6;
       const cardsX = layout.sheetX + 8;
       const cardsW = layout.sheetW - 16;
       const cardW = (cardsW - cardGap * Math.max(0, actions.length - 1)) / actions.length;
-      actions.forEach((action, index) => {
+      const motionCards = actions.map((action, index) => (
         this.renderQueueActionCard(action, index, actions.length, {
           x: cardsX + index * (cardW + cardGap),
           y: layout.cardsY,
           w: cardW,
           h: layout.cardH,
-        }, queueFit);
+        }, queueFit)
+      )).filter(Boolean);
+      this.presentationLayerCall('renderQueueReviewState', {
+        frame,
+        layout,
+        queueFit,
+        actions,
+        cards: motionCards,
       });
 
       const footerGap = 6;

@@ -53,9 +53,9 @@ def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
     assert 'v2-enemy-team' not in html
     assert 'v2-my-team' not in html
     assert 'vendor/phaser.min.js?v=3.90.0' in html
-    assert 'phaser-design-tokens.js?v=28' in html
-    assert 'phaser-shell.js?v=28' in html
-    assert 'phaser-shell.css?v=28' in html
+    assert 'phaser-design-tokens.js?v=31' in html
+    assert 'phaser-shell.js?v=31' in html
+    assert 'phaser-shell.css?v=31' in html
     assert 'phaser-battle.js' not in html
     assert 'app.js' not in html
     assert 'stitch-tokens.css' not in html
@@ -86,6 +86,7 @@ def test_battle_v2_public_surface_uses_production_copy(monkeypatch):
     lobby_scene_js = Path(web_app.app.static_folder, "phaser", "scenes", "lobby-scene.js").read_text(encoding="utf-8")
     draft_roster_scene_js = Path(web_app.app.static_folder, "phaser", "scenes", "draft-roster-scene.js").read_text(encoding="utf-8")
     draft_scene_js = Path(web_app.app.static_folder, "phaser", "scenes", "draft-scene.js").read_text(encoding="utf-8")
+    matchup_scene_js = Path(web_app.app.static_folder, "phaser", "scenes", "matchup-scene.js").read_text(encoding="utf-8")
     first_creation_scene_js = Path(web_app.app.static_folder, "phaser", "scenes", "first-creation-scene.js").read_text(encoding="utf-8")
     mission_map_scene_js = Path(web_app.app.static_folder, "phaser", "scenes", "mission-map-scene.js").read_text(encoding="utf-8")
     combat_scene_js = Path(web_app.app.static_folder, "phaser", "scenes", "combat-scene.js").read_text(encoding="utf-8")
@@ -96,14 +97,14 @@ def test_battle_v2_public_surface_uses_production_copy(monkeypatch):
     design_tokens_js = Path(web_app.app.static_folder, "phaser-design-tokens.js").read_text(encoding="utf-8")
 
     assert "import(`./phaser/index.js?v=${SHELL_VERSION}`)" in shell_js
-    assert "const SHELL_VERSION = '28';" in shell_js
-    assert "import './legacy-shell.js?v=28';" in phaser_entry_js
-    assert "from './store/game-store.js?v=28';" in runtime_js
-    assert "from './network/socket-client.js?v=28';" in runtime_js
-    assert "from './scenes/scene-registry.js?v=28';" in runtime_js
+    assert "const SHELL_VERSION = '31';" in shell_js
+    assert "import './legacy-shell.js?v=31';" in phaser_entry_js
+    assert "from './store/game-store.js?v=31';" in runtime_js
+    assert "from './network/socket-client.js?v=31';" in runtime_js
+    assert "from './scenes/scene-registry.js?v=31';" in runtime_js
     assert "scene: SCENE_LIST" in runtime_js
-    assert "from './scenes/boot-scene.js?v=28';" not in runtime_js
-    assert "from './boot-scene.js?v=28';" in scene_registry_js
+    assert "from './scenes/boot-scene.js?v=31';" not in runtime_js
+    assert "from './boot-scene.js?v=31';" in scene_registry_js
     assert "export const SCENE_LIST" in scene_registry_js
     assert "export const COLORS" in runtime_config_js
     assert "export const CULLING_COLORS" in runtime_config_js
@@ -129,6 +130,8 @@ def test_battle_v2_public_surface_uses_production_copy(monkeypatch):
     assert "export class LobbyScene" in lobby_scene_js
     assert "export class DraftScene" in draft_scene_js
     assert "extends DraftRosterScene" in draft_scene_js
+    assert "export class MatchupScene" in matchup_scene_js
+    assert "from './matchup-scene.js?v=31';" in scene_registry_js
     assert "export class FirstCreationScene" in first_creation_scene_js
     assert "export class MissionMapScene" in mission_map_scene_js
     assert "export class CombatScene" in combat_scene_js
@@ -145,6 +148,7 @@ def test_battle_v2_public_surface_uses_production_copy(monkeypatch):
     assert "class FirstCreationScene" not in runtime_js
     assert "class MissionMapScene" not in runtime_js
     assert "class DraftScene" not in runtime_js
+    assert "class MatchupScene" not in runtime_js
     assert "class CombatScene" not in runtime_js
     assert "class ResultScene" not in runtime_js
     assert "class RecordsScene" not in runtime_js
@@ -184,7 +188,10 @@ def test_battle_v2_public_surface_uses_production_copy(monkeypatch):
     assert "FASTEST WIN" in records_scene_js
     assert "BIGGEST HIT" in records_scene_js
     assert "TOTAL DAMAGE" in records_scene_js
-    assert "TECHNIQUE DOSSIER" in draft_roster_scene_js
+    assert "renderSetupCharacterStudy" in draft_roster_scene_js
+    assert "renderSetupAuthoritativeSkill" in draft_roster_scene_js
+    assert "this.store.openMatchup()" in draft_scene_js
+    assert "this.store.startMatch()" in matchup_scene_js
     assert "Student Era Route" in mission_map_scene_js
     assert "setDraftTarget" in game_store_js
     assert "jjk:ui-tap" in base_scene_js
@@ -221,10 +228,11 @@ def test_index_exposes_first_creation_payload_when_battle_v2_enabled(monkeypatch
     assert "roster_mode: 'first_creation'" in game_store_js
     assert "applyPreset" in game_store_js
     assert "applyRecommendedTeam" in game_store_js
-    assert "renderRosterCard" in draft_roster_scene_js
-    assert "renderStarterRosterCard" in draft_roster_scene_js
-    assert "renderCharacterDetailSheet" in draft_roster_scene_js
-    assert "MISSION OBJECTIVE" in draft_roster_scene_js
+    assert "renderSetupFeatured" in draft_roster_scene_js
+    assert "renderSetupRosterBrowser" in draft_roster_scene_js
+    assert "renderSetupTrio" in draft_roster_scene_js
+    assert "renderSetupCharacterStudy" in draft_roster_scene_js
+    assert "skillVisualFor(skill)" in draft_roster_scene_js
     assert "renderFeaturedCharacter" in first_creation_scene_js
     assert "renderCharacterStudy" in first_creation_scene_js
     assert "renderAuthoritativeSkill" in first_creation_scene_js

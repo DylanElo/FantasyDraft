@@ -8,28 +8,29 @@ const PALETTES = Object.freeze({
   curse: Object.freeze({ surface: 0x17191e, ink: 0x17191e, accent: 0xe32620, flare: 0x35dde8, paper: 0xf2e8d5 }),
 });
 
-export const SKILL_ACTION_ATLAS = Object.freeze({
-  key: 's3-skill-action-atlas-v2',
-  path: '/static/assets/skills/culling-current/skill-action-atlas-v2.png',
-  sourceWidth: 1254,
-  sourceHeight: 1254,
+const atlas = (key, filename) => Object.freeze({
+  key,
+  path: `/static/assets/skills/culling-current/${filename}`,
+  sourceWidth: 1248,
+  sourceHeight: 1248,
   columns: 4,
   rows: 4,
   frameCount: 16,
 });
 
-// Frames are selected by authored visual form, never by player-facing name.
-// Multiple suitable frames let two related techniques share a visual language
-// without becoming the same card once their sigil/crop/rotation is applied.
-const FRAME_CHOICES_BY_FORM = Object.freeze({
-  fist: [0, 12], palm: [0, 12], core: [6, 12], drum: [0, 14],
-  burst: [1, 14], clap: [1, 5], blood: [8, 14], vortex: [7, 14], rhythm: [5, 15], venom: [8, 13],
-  blade: [4, 11], sweep: [4, 11], parry: [4, 11], arsenal: [3, 11], scalpel: [4, 11], katana: [11, 4],
-  projectile: [3, 8, 10], arrow: [8, 10], firearm: [10], bullet: [10, 1], beam: [1, 14], cannon: [12, 1], wind: [9, 4],
-  beast: [2, 9], wing: [2, 9], doll: [3, 15], jellyfish: [13], swarm: [2, 9], dragon: [2, 15], crow: [2, 15], spirit: [7, 15],
-  binding: [5, 8], voice: [5, 7], swap: [5, 14], eye: [5, 7], net: [5, 8], signal: [5, 15], talisman: [15, 5], chant: [5, 15],
-  ward: [5, 6], shadow: [6, 7], vial: [13, 15], barrier: [5, 6], step: [4, 5], veil: [6, 7], heal: [13, 15], cleanse: [5, 13],
+// Every shipping skill receives one unique authored raster cell. The five
+// atlases remain presentation-only and are split by semantic family so mobile
+// scenes can load them on demand without preloading the former 3.6 MB PNG.
+export const SKILL_ACTION_ATLASES = Object.freeze({
+  body: atlas('s3-skill-atlas-body-v3', 'skill-atlas-body-v3.webp'),
+  technique: atlas('s3-skill-atlas-technique-v3', 'skill-atlas-technique-v3.webp'),
+  curse: atlas('s3-skill-atlas-curse-v3', 'skill-atlas-curse-v3.webp'),
+  focusGuard: atlas('s3-skill-atlas-focus-guard-v3', 'skill-atlas-focus-guard-v3.webp'),
+  focusControl: atlas('s3-skill-atlas-focus-control-v3', 'skill-atlas-focus-control-v3.webp'),
 });
+
+// Compatibility export for presentation consumers that need a safe fallback.
+export const SKILL_ACTION_ATLAS = SKILL_ACTION_ATLASES.body;
 
 // [skill id, character id, original slot, affinity, icon form, motion profile,
 //  optional replaced base skill id]. Replacement entries deliberately retain
@@ -155,15 +156,14 @@ function motifFromId(skillId, characterId) {
   return skillId.startsWith(prefix) ? skillId.slice(prefix.length) : skillId;
 }
 
-function createVisual(row, index) {
+function createVisual(row, index, assignment) {
   const [id, characterId, slot, affinity, form, motionProfile, replacementFor = null] = row;
   const hash = stableHash(id);
   const palette = PALETTES[affinity];
   const motif = motifFromId(id, characterId);
-  const frameChoices = FRAME_CHOICES_BY_FORM[form] || [index % SKILL_ACTION_ATLAS.frameCount];
-  const frame = frameChoices[(hash + index) % frameChoices.length];
-  const column = frame % SKILL_ACTION_ATLAS.columns;
-  const atlasRow = Math.floor(frame / SKILL_ACTION_ATLAS.columns);
+  const { atlas: assignedAtlas, frame } = assignment;
+  const column = frame % assignedAtlas.columns;
+  const atlasRow = Math.floor(frame / assignedAtlas.columns);
   return Object.freeze({
     id,
     characterId,
@@ -189,18 +189,18 @@ function createVisual(row, index) {
       paper: palette.paper,
     }),
     art: Object.freeze({
-      textureKey: SKILL_ACTION_ATLAS.key,
-      atlasKey: SKILL_ACTION_ATLAS.key,
-      atlasPath: SKILL_ACTION_ATLAS.path,
+      textureKey: assignedAtlas.key,
+      atlasKey: assignedAtlas.key,
+      atlasPath: assignedAtlas.path,
       frame,
       frameMotif: form,
       column,
       row: atlasRow,
       crop: Object.freeze({
-        u: column / SKILL_ACTION_ATLAS.columns,
-        v: atlasRow / SKILL_ACTION_ATLAS.rows,
-        width: 1 / SKILL_ACTION_ATLAS.columns,
-        height: 1 / SKILL_ACTION_ATLAS.rows,
+        u: column / assignedAtlas.columns,
+        v: atlasRow / assignedAtlas.rows,
+        width: 1 / assignedAtlas.columns,
+        height: 1 / assignedAtlas.rows,
       }),
       variant: `${motif}-${(hash % 7) + 1}`,
       focalX: 0.2 + (((hash >>> 5) % 61) / 100),
@@ -216,9 +216,36 @@ function createVisual(row, index) {
   });
 }
 
+const atlasCounters = {
+  body: 0,
+  technique: 0,
+  curse: 0,
+  focusGuard: 0,
+  focusControl: 0,
+};
+
+function allocateAtlas(row) {
+  const affinity = row[3];
+  const motionProfile = row[5];
+  let atlasKey = affinity;
+  if (affinity === 'focus') {
+    const tactical = motionProfile === 'control' || motionProfile === 'reveal' || motionProfile === 'strike';
+    atlasKey = tactical || atlasCounters.focusGuard >= SKILL_ACTION_ATLASES.focusGuard.frameCount
+      ? 'focusControl'
+      : 'focusGuard';
+  }
+  const assignedAtlas = SKILL_ACTION_ATLASES[atlasKey];
+  const frame = atlasCounters[atlasKey];
+  atlasCounters[atlasKey] += 1;
+  if (!assignedAtlas || frame >= assignedAtlas.frameCount) {
+    throw new Error(`Skill art atlas capacity exceeded for ${atlasKey}`);
+  }
+  return { atlas: assignedAtlas, frame };
+}
+
 export const SKILL_VISUALS = Object.freeze(Object.fromEntries(
   SKILL_VISUAL_ROWS.map((row, index) => {
-    const visual = createVisual(row, index);
+    const visual = createVisual(row, index, allocateAtlas(row));
     return [visual.id, visual];
   }),
 ));

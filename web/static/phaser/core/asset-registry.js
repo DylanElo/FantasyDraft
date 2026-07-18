@@ -3,9 +3,9 @@ import {
   portraitEntryForTextureKey,
   portraitFocalFor,
   portraitTextureKeyFor,
-} from './portrait-registry.js?v=28';
-import { COLORS, CULLING_COLORS } from './runtime-config.js?v=28';
-import { safeText } from './text.js?v=28';
+} from './portrait-registry.js?v=31';
+import { COLORS, CULLING_COLORS } from './runtime-config.js?v=31';
+import { safeText } from './text.js?v=31';
 
 export class AssetRegistry {
   constructor() {

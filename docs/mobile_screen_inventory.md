@@ -1,62 +1,73 @@
 # JJK Arena Mobile Screen Inventory
 
-This inventory converts the mobile Phaser UI/UX brief into implementation-ready screens, components, and acceptance notes. It is the working checklist for the Phaser client and the matching Figma file.
+This inventory maps the portrait-first Phaser client to its implemented screens, data ownership, and remaining visual acceptance work. It is an implementation snapshot and Figma handoff checklist; automated layout coverage is not the same as manual browser approval.
 
-## Figma Pages
+## Locked product constraints
+
+- Primary viewport: `390 x 844`; also support `360 x 800` and `430 x 932`, including safe-area variants.
+- Desktop and tablet center a phone-shaped game surface instead of stretching it into a dashboard.
+- First Creation remains exactly the locked 19-character starter roster.
+- The client selects intent and presents serialized state. The server continues to own battle legality, hidden information, results, mission completion, and rewards.
+- Every maintained screen uses the Culling Current Season 3 visual system: world-led compositions, bone/smoke routine surfaces, clipped ink structure, restrained hatching, and semantic gold/cyan/red/green accents.
+
+## Figma pages
 
 | Page | Purpose | Must include |
 | --- | --- | --- |
-| `00 Cover + Moodboard` | Product tone and reference board | Title, tagline, luminous urban anime worlds, character-led composition, manga print texture, tactile controls, and Domain contrast studies |
-| `01 Design Tokens` | Shared visual constants | Colors, energy colors, type, radii, motion timings, phone frames |
-| `02 Components` | Reusable game UI parts | HUD, fighter token, skill card, queue tray, character sheet, toast |
-| `03 Mobile Screens` | Static 390 x 844 screen designs | All ten required screens |
-| `04 Battle Flow Prototype` | Tap-through tactical loop | Lobby to First Creation to battle to results |
-| `05 Motion Notes` | Animation specs | Press, sheet, target ring, damage, HP lag, reveal, domain pulse |
-| `06 Phaser Implementation Notes` | Engineering handoff | Scene/component mapping, store/server ownership, touch-target rules |
-| `07 QA / Edge Cases` | Manual validation matrix | Small viewport, energy, dead/stunned fighters, hidden info, PvP/CPU locks |
+| `00 Cover + Moodboard` | Product tone and reference board | Title, tagline, painted urban worlds, character-led composition, manga-print texture, tactile controls, and Domain contrast studies |
+| `01 Design Tokens` | Shared visual constants | Palette, energy colors, typography, shape language, motion timings, and phone frames |
+| `02 Components` | Reusable game UI parts | HUD, fighter card, skill card, queue action, character study, mission node, matchup trio, toast, and settings sheet |
+| `03 Mobile Screens` | Static portrait screen designs | Every maintained screen listed below at `390 x 844` |
+| `04 Battle Flow Prototype` | Tap-through tactical loop | Home -> First Creation/Team Setup -> Matchup -> Combat -> Queue Review -> Results -> Records |
+| `05 Motion Notes` | Animation and sound specifications | Press, scene entrance, carousel change, target ring, skill art, impact, reveal, result hero, profile reveal, and reduced-motion behavior |
+| `06 Phaser Implementation Notes` | Engineering handoff | Scene mapping, store/server ownership, privacy boundaries, and touch-target rules |
+| `07 QA / Edge Cases` | Manual validation matrix | Small viewport, safe areas, long names, hidden information, PvP waiting/cancel, mission progression, all terminal outcomes, and empty records |
 
-## Screen Inventory
+## Implemented screen inventory
 
-| Screen | Current surface | Target UX state | Primary implementation notes |
+| Screen | Maintained surface | Implemented experience | Data and navigation contract |
 | --- | --- | --- | --- |
-| Boot / Splash | `BootScene` preload handoff | Brand moment with cursed background, floating sigil, loading/connection state | Keep brief; avoid delaying real load artificially |
-| Home / Lobby | `LobbyScene` | Bright world-led hero composition, one dominant Quick Play action, compact secondary modes, and labeled bottom navigation | Lower-half actions, actual active trio, player name, and editable room code remain reachable; do not invent currencies or levels |
-| First Creation / Starter Select | `FirstCreationScene` | Trio slots, preset chips, 19-character starter roster, character detail sheet | Preserve full names, authoritative kits, and CPU entry mode |
-| Mission Map | `MissionMapScene` | Student Era, Goodwill, JJK0, and locked later routes | Keep route state server-backed before expanding mission rules |
-| Matchup Screen | Not dedicated yet | My trio bottom, enemy trio top, objective, Enter Domain CTA | Can be a transient scene between starter select and combat |
-| Combat Screen | `CombatScene` | Light rooftop battlefield, compact authoritative HUD, enemy row, open targeting field, ally row, and tactile bottom command dock | Keep all critical taps in lower 55%; expose real HP, statuses, energy, costs, target stages, and queue state; 44px minimum touch zones |
-| Queue Review Screen | `CombatQueueReviewScene` overlay behavior in `CombatScene` | Light command sheet with three actions, target fields, adjusted costs, remaining energy, Wild selectors, reorder controls, and confirm/cancel | Keep action-local errors and server-authoritative confirmation |
-| Resolution Playback | `CombatScene.playEvents` text tween | Action banner, caster pulse, target lock-on, damage numbers, HP lag, reveal chips | Use animation to clarify state change, not cover HP/targets |
-| Results Screen | `ResultScene` | Victory/Defeat, winning trio, turn count, damage, mission progress, rewards | Preserve local records save |
-| Records Screen | `RecordsScene` | Win/loss, recent matches, favorite trio, fastest win, biggest hit | Extend local record model later if needed |
+| Boot / Splash | `BootScene` | Brief brand/loading composition with Culling Current world art and connection/loading feedback | Does not delay real loading artificially; enters the maintained Phaser flow |
+| Home / Lobby | `LobbyScene` | Character-led hero landing screen, one dominant Quick Match slab, three secondary feature tiles, player/room identity, and labeled Home/Team/Records navigation | Quick Match and Private Room open `DraftScene`; First Creation and Mission Map remain distinct routes; identity changes are local inputs |
+| First Creation / Starter Select | `FirstCreationScene` | Active trio slots, `ALL 19`/Tokyo/Kyoto/Special filters, one large featured fighter, carousel paging, and a full-screen Character Study | Uses only the canonical 19 starters; Character Study exposes every authoritative primary/replacement skill, cost, cooldown, targeting, classes, and description; `Review Matchup` opens review without emitting a match from this screen |
+| Team Setup | `DraftScene` + `DraftRosterScene` | Art-first reusable team editor with large featured fighter, readable trio slots, filters/carousel, add/remove action, and the same progressive Character Study | CPU mode can edit player and CPU trios and cycle difficulty; Private Room edits only the player's trio and shows the room code; `Review Matchup` performs validation and changes scene but does not start Combat |
+| Mission Map | `MissionMapScene` | Painted colony map with a route spine, numbered mission nodes, `OPEN`/`ACTIVE`/`CLEARED` states, completion progress, a selected-mission dossier, recommended-trio portraits, and a sealed-later-incidents endpoint | Mission list, active mission, completed routes, unlock label, and progression are profile/server-backed; `SELECT THIS TRIO` applies the recommendation and opens First Creation; the client does not award completion |
+| Matchup | `MatchupScene` | Dedicated review screen with rival trio above, objective/mode in the center, player trio below, connection/waiting status, and a thumb-reachable Enter/Join/Cancel action | CPU shows the locally selected CPU trio and difficulty. PvP deliberately seals the opponent cards because no authoritative opponent roster exists before matchmaking. Enter/Join emits once; the scene remains pending until a viewer-specific battle update routes to Combat. Waiting and join-failed lobbies can cancel; resumed live battles route directly to Combat |
+| Combat Planning | `CombatScene` | Rooftop battlefield with phase/timer/energy HUD, enemy trio, targeting field, ally trio, selected fighter, four illustrated techniques, and queue state | Renders authoritative HP, statuses, replacement slots, adjusted costs, disabled reasons, target stages, and viewer-specific hidden state; the browser never resolves legality or damage |
+| Queue Review | `CombatQueueReviewScene` behavior within `CombatScene` | Light command sheet with left-to-right actions, caster/skill art, primary/secondary/alternate target routes, adjusted cost, Wild payment, remaining energy, reorder, cancel, and confirm | Confirmation stays disabled for invalid/underpaid actions and is revalidated by the server |
+| Resolution Playback | `CombatScene` + presentation/playback services | Action banner, selected-fighter emphasis, target lock, skill/VFX presentation, damage/heal/status feedback, reveal cues, and HP response | Playback consumes authoritative event-log entries; animation clarifies state changes and does not invent results |
+| Results | `ResultScene` | Outcome-specific after-action header, cinematic winning/player trio hero, reveal entrance, mission debrief/progress, reward reveal, biggest current-match impacts, and paired Rematch/Return Home actions | Supports win, loss, draw, and no-contest presentations. Metrics and impacts derive from the authoritative terminal state/event log. Rematch returns to Team Setup; leaving clears the live session. The finished result is also stored in the bounded local record archive |
+| Records / Profile | `RecordsScene` | Device profile header, player identity, animated most-deployed trio hero, win rate and W/L/D/NC summary, fastest win, biggest hit, total damage, paged recent-battle timeline, SFX/settings, and Home action | Uses at most the 12 locally stored authoritative finished-result summaries. Favorite trio is the most frequently deployed recorded trio, falling back to the current trio when history is empty. It is a local device record, not server account ranking or invented progression |
 
-## Component Inventory
+## Reusable component inventory
 
 | Component | Required variants | Phaser status |
 | --- | --- | --- |
-| App Shell | Phone frame, safe zones, HUD/stage/dock slots | Implemented in `LayoutService.frame()` with per-screen regions |
-| Top HUD | My turn, enemy turn, queue review, resolving, finished | Implemented in `CombatScene.renderTopHud()` for authoritative phase/timer/energy state |
-| Fighter Token | Ally ready/selected/queued/dead; enemy normal/targetable/protected/dead | Implemented in `renderFighterPlate()` with full name and HP bands |
-| Skill Card | Available, selected, cooldown, not enough energy, stunned, replacement, domain, invisible | Implemented in `renderSkillButton()` plus Skill Detail progressive disclosure |
-| Queue Tray | Three queued actions, reorder, Wild selector, confirm/cancel | Implemented as battlefield chips plus the light Queue Review command sheet |
-| Character Detail Sheet | Portrait, role, tags, skills, replacements, statuses, synergies | Implemented in `FirstCreationScene`; Combat Skill Detail handles battle-time technique reading |
-| Toast / Feedback | Error, success, warning, combat log, mission progress | Basic toast exists |
-| Damage Number | Damage, heal, status, reveal | Basic playback text exists |
+| App shell | Phone frame, safe zones, header/stage/dock slots | Implemented through `LayoutService.frame()` and per-scene compositions |
+| World surface | Campus, rooftop, mission map, routine wash, cinematic punctuation | Implemented through shared Culling Current world helpers and registered environment art |
+| Button / icon action | Primary, bone, smoke/disabled, danger, 44 px icon | Implemented through shared Season 3 button helpers and hit-target registration |
+| Trio card | Filled, empty, selected, rival, hidden/sealed | Implemented across First Creation, Team Setup, Matchup, Results, and Records |
+| Featured fighter | Selected/unselected, add/remove/full, player/CPU accent | Implemented in `DraftRosterScene` and the First Creation browser |
+| Character Study | Hero profile, tags, skill/replacement art, cost, cooldown, target grammar, classes, full description | Implemented as a full-screen progressive view in First Creation and Team Setup |
+| Mission route | Open, active, cleared, selected, sealed future route | Implemented in `MissionMapScene`; status is derived from the First Creation profile |
+| Fighter card | Ally ready/selected/queued/dead; enemy normal/targetable/protected/dead | Implemented in Combat with full name and HP/state bands |
+| Skill card | Available, selected, cooldown, insufficient energy, stunned, replacement, Domain, hidden/revealed | Implemented in Combat plus full Skill Detail disclosure and registered skill visuals |
+| Queue action | Valid/invalid, target routes, Wild selector, reorder, confirm/cancel | Implemented in Queue Review |
+| Result/profile hero | Outcome accents, three-fighter reveal, most-deployed trio reveal | Implemented in Results and Records with presentation-layer entrances |
+| Presentation settings | SFX, reduced motion, close/exit behavior | Implemented as the shared presentation settings sheet where exposed |
+| Toast / feedback | Error, success, warning, connection, mission progress | Implemented as shared scene feedback |
 
-## Mobile Layout Targets
+## Acceptance checklist
 
-| Frame | Size | Treatment |
-| --- | --- | --- |
-| Small portrait | 360 x 800 | Compact token and dock spacing; no hidden confirm controls |
-| Primary portrait | 390 x 844 | Canonical Figma and Phaser tuning target |
-| Large portrait | 430 x 932 | Same layout with more stage/dock breathing room |
-| Tablet/desktop | Wider than 620px | Center a phone-shaped canvas; do not stretch the battle board |
+- The browser page remains a thin Phaser canvas/bootstrap host.
+- No maintained selection screen falls back to the deprecated dashboard, two-column roster list, or dense preset/roadmap panel stack.
+- First Creation and Team Setup show full character names and expose full Character Study details through progressive disclosure.
+- Mission Map route state and Results mission rewards remain server/profile-backed.
+- Private Room Matchup never renders the stale local CPU roster as the opponent and never exposes unreceived opponent data.
+- Fresh CPU and PvP starts pass through Matchup; waiting/cancel, reconnect/resume, rematch, and terminal-result routing preserve authority.
+- Records clearly read as device-local history and include draw/no-contest rather than treating every non-win as a loss.
+- Primary controls remain at least 44 px and stay above safe-area bottoms at `360 x 800`, `390 x 844`, and `430 x 932`.
+- Text wrapping, portrait crops, settings overlays, animation, and sound are manually checked in a real browser at `390 x 844` and `430 x 932`; automated geometry tests alone are not sufficient visual evidence.
+- Console errors, private-data leaks, clipped controls, and overlapping CTAs are release blockers.
 
-## Acceptance Checklist
-
-- The browser page remains a pure Phaser canvas host.
-- The Phaser shell uses shared design tokens for colors, type, radii, motion, and mobile frame targets.
-- Every maintained Phaser screen follows the locked Season 3 Culling Current system in `docs/season3_visual_system.md`: bone/smoke routine surfaces, storm-ochre painted worlds, deep-indigo structure, aged gold for selection, curse cyan for legal targets, green for queued actions, barrier red for enemy/damage, ink-charcoal text, and violet only for Domain/cinematic moments.
-- Desktop and tablet viewports center a phone-shaped canvas rather than stretching battle UI.
-- Combat screen always exposes turn, living fighters, selected fighter, selected skill, legal targets, energy, queue, and latest resolution feedback.
-- Server authority remains unchanged: legality, damage, cooldowns, hidden info, winner, and mission progress stay server-owned.
+See `docs/first_creation_visual_qa.md` for the current capture matrix and evidence rules.

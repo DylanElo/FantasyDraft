@@ -1,9 +1,27 @@
-import { focalCoverCrop } from '../core/portrait-registry.js?v=28';
-import { COLORS, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=28';
-import { initials, safeText } from '../core/text.js?v=28';
-import { LayoutService } from '../core/layout-service.js?v=28';
-import { costColors } from '../core/roster.js?v=28';
-import { createPresentationLayer } from '../core/presentation-layer.js?v=28';
+import { focalCoverCrop, portraitEntryFor, starterPortraitEntries } from '../core/portrait-registry.js?v=31';
+import { COLORS, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=31';
+import { initials, safeText } from '../core/text.js?v=31';
+import { LayoutService } from '../core/layout-service.js?v=31';
+import { costColors } from '../core/roster.js?v=31';
+import { SKILL_ACTION_ATLASES, createPresentationLayer } from '../core/presentation-layer.js?v=31';
+
+const COMBAT_SKILL_ASSETS = Object.freeze([
+  Object.freeze({ key: 's3-skill-body', url: '/static/assets/skills/culling-current/body.webp' }),
+  Object.freeze({ key: 's3-skill-technique', url: '/static/assets/skills/culling-current/technique.webp' }),
+  Object.freeze({ key: 's3-skill-focus', url: '/static/assets/skills/culling-current/focus.webp' }),
+  Object.freeze({ key: 's3-skill-curse', url: '/static/assets/skills/culling-current/curse.webp' }),
+]);
+
+// TextureManager is game-wide while each Phaser scene owns a Loader. Without
+// a game-wide flight registry, a fast scene transition can queue the same
+// portrait in two loaders before either one registers the finished texture.
+const PRESENTATION_ASSET_FLIGHTS = new Map();
+let ACTIVE_POINTER_DISPATCH = null;
+
+function characterId(value) {
+  if (typeof value === 'string') return value;
+  return value && (value.id || value.character_id) || null;
+}
 
 export class BaseScene extends Phaser.Scene {
     constructor(key) {
@@ -18,6 +36,10 @@ export class BaseScene extends Phaser.Scene {
       this.lastTap = null;
       this.presentationLayer = null;
       this.presentationIntroPlayed = false;
+      this.presentationSettingsOpen = false;
+      this.pendingAssetKeys = new Set();
+      this.attemptedAssetKeys = new Set();
+      this.presentationAssetLoadError = null;
     }
 
     create() {
@@ -25,22 +47,43 @@ export class BaseScene extends Phaser.Scene {
       this.layout = new LayoutService(this);
       this.graphics = this.add.graphics();
       this.presentationLayer = createPresentationLayer(this);
+      this.presentationAssetLoadError = (file) => {
+        if (this.store && this.store.assets && this.store.assets.reportPortraitLoadError) {
+          this.store.assets.reportPortraitLoadError(file);
+        }
+      };
+      if (this.load && this.load.on) this.load.on('loaderror', this.presentationAssetLoadError);
       this.input.on('pointerdown', (pointer) => this.handlePointer(pointer));
       this.scale.on('resize', () => this.render());
       this.unsubscribe = this.store.onChange(() => {
         if (this.scene.isActive(this.keyName)) this.render();
       });
+      this.ensureSceneAssets();
       this.render();
     }
 
     shutdown() {
       if (this.unsubscribe) this.unsubscribe();
+      if (this.load && this.load.off && this.presentationAssetLoadError) {
+        this.load.off('loaderror', this.presentationAssetLoadError);
+      }
+      this.presentationAssetLoadError = null;
     }
 
     handlePointer(pointer) {
+      if (ACTIVE_POINTER_DISPATCH && ACTIVE_POINTER_DISPATCH.pointer === pointer
+        && ACTIVE_POINTER_DISPATCH.scene !== this.keyName) return;
       for (let i = this.buttons.length - 1; i >= 0; i -= 1) {
         const button = this.buttons[i];
         if (pointer.x >= button.x && pointer.x <= button.x + button.w && pointer.y >= button.y && pointer.y <= button.y + button.h) {
+          // Scene changes happen inside button callbacks while Phaser is still
+          // dispatching this same pointer object. Keep a microtask-scoped token
+          // so a newly created destination scene cannot consume it again.
+          const dispatchToken = { pointer, scene: this.keyName };
+          ACTIVE_POINTER_DISPATCH = dispatchToken;
+          Promise.resolve().then(() => {
+            if (ACTIVE_POINTER_DISPATCH === dispatchToken) ACTIVE_POINTER_DISPATCH = null;
+          });
           this.lastTap = { x: pointer.x, y: pointer.y, t: this.time.now, disabled: !!button.disabled };
           window.dispatchEvent(new CustomEvent('jjk:ui-tap', { detail: { scene: this.keyName, disabled: !!button.disabled } }));
           const cue = button.disabled ? 'disabled' : (button.cue || 'press');
@@ -70,6 +113,206 @@ export class BaseScene extends Phaser.Scene {
       this.nodes.forEach((node) => node.destroy());
       this.nodes = [];
       this.buttons = [];
+      this.ensureSceneAssets();
+    }
+
+    portraitIdsForScene() {
+      if (this.keyName === 'FirstCreationScene' || this.keyName === 'DraftScene') {
+        return starterPortraitEntries().map((entry) => entry.id);
+      }
+      const ids = new Set();
+      const addTeam = (team) => {
+        (Array.isArray(team) ? team : []).forEach((member) => {
+          const id = characterId(member);
+          if (id) ids.add(id);
+        });
+      };
+      if (this.store) {
+        addTeam(this.store.playerTeam);
+        addTeam(this.store.enemyTeam);
+        const players = this.store.state && this.store.state.players;
+        Object.values(players || {}).forEach((player) => addTeam(player && player.team));
+      }
+      return [...ids];
+    }
+
+    usesSkillPresentationAssets() {
+      return this.keyName === 'CombatScene' || this.keyName === 'FirstCreationScene';
+    }
+
+    ensureSceneAssets() {
+      if (!this.load || !this.load.image || !this.textures || !this.textures.exists) return false;
+      const requested = [];
+      const requestImage = (key, url) => {
+        if (!this.attemptedAssetKeys) this.attemptedAssetKeys = new Set();
+        if (!key || !url || this.textures.exists(key) || this.pendingAssetKeys.has(key) || this.attemptedAssetKeys.has(key)) return;
+        const activeFlight = PRESENTATION_ASSET_FLIGHTS.get(key);
+        if (activeFlight) {
+          activeFlight.waiters.add(this);
+          this.attemptedAssetKeys.add(key);
+          return;
+        }
+        this.attemptedAssetKeys.add(key);
+        this.pendingAssetKeys.add(key);
+        PRESENTATION_ASSET_FLIGHTS.set(key, { owner: this, waiters: new Set([this]) });
+        requested.push(key);
+        this.load.image(key, url);
+      };
+
+      this.portraitIdsForScene().forEach((id) => {
+        const entry = portraitEntryFor(id);
+        if (entry) requestImage(entry.textureKey, entry.url);
+      });
+      if (this.usesSkillPresentationAssets()) {
+        Object.values(SKILL_ACTION_ATLASES).forEach((atlas) => requestImage(atlas.key, atlas.path));
+        COMBAT_SKILL_ASSETS.forEach((asset) => requestImage(asset.key, asset.url));
+      }
+      if (!requested.length) return false;
+
+      const complete = () => {
+        const waitingScenes = new Set();
+        requested.forEach((key) => {
+          this.pendingAssetKeys.delete(key);
+          const flight = PRESENTATION_ASSET_FLIGHTS.get(key);
+          if (!flight || flight.owner !== this) return;
+          flight.waiters.forEach((waitingScene) => waitingScenes.add(waitingScene));
+          PRESENTATION_ASSET_FLIGHTS.delete(key);
+        });
+        waitingScenes.forEach((waitingScene) => {
+          if (waitingScene.scene && waitingScene.scene.isActive && waitingScene.scene.isActive(waitingScene.keyName)) {
+            waitingScene.render();
+          }
+        });
+      };
+      if (this.load.once) this.load.once('complete', complete);
+      const loading = this.load.isLoading && this.load.isLoading();
+      if (!loading && this.load.start) this.load.start();
+      return true;
+    }
+
+    togglePresentationSettings(force) {
+      this.presentationSettingsOpen = force === undefined ? !this.presentationSettingsOpen : Boolean(force);
+      return this.presentationSettingsOpen;
+    }
+
+    renderPresentationSettingsSheet(frame, options = {}) {
+      if (!this.presentationSettingsOpen || !this.presentationLayer || !this.presentationLayer.settings) return false;
+      const settings = this.presentationLayer.settings;
+      const value = settings.snapshot();
+      const fullW = frame.fullWidth === undefined ? frame.width : frame.fullWidth;
+      const fullH = frame.fullHeight === undefined ? frame.height : frame.fullHeight;
+      const hasExit = typeof options.onExit === 'function';
+      const sheetW = Math.min(360, frame.width - 28);
+      const sheetH = hasExit ? 356 : 344;
+      const sheetX = frame.x + (frame.width - sheetW) / 2;
+      const sheetY = Math.max(frame.top + 62, Math.min(frame.bottom - sheetH - 10, frame.top + (frame.height - sheetH) / 2));
+      const panel = this.add.graphics().setDepth(190);
+      this.nodes.push(panel);
+
+      // This blocker is registered before the controls so reverse hit testing
+      // always gives the visible settings buttons priority.
+      this.registerHitTarget(0, 0, fullW, fullH, 'Close presentation settings', () => {
+        this.togglePresentationSettings(false);
+      });
+      panel.fillStyle(CULLING_COLORS.charcoal, 0.58);
+      panel.fillRect(0, 0, fullW, fullH);
+      const points = [
+        { x: sheetX + 14, y: sheetY },
+        { x: sheetX + sheetW, y: sheetY },
+        { x: sheetX + sheetW, y: sheetY + sheetH - 14 },
+        { x: sheetX + sheetW - 14, y: sheetY + sheetH },
+        { x: sheetX, y: sheetY + sheetH },
+        { x: sheetX, y: sheetY + 14 },
+      ];
+      panel.fillStyle(CULLING_COLORS.ivory, 0.99);
+      panel.fillPoints(points, true);
+      panel.fillStyle(CULLING_COLORS.cobalt, 0.96);
+      panel.fillTriangle(sheetX, sheetY + 14, sheetX + 176, sheetY, sheetX, sheetY + 72);
+      panel.lineStyle(2, CULLING_COLORS.cyan, 0.9);
+      panel.strokePoints(points, true);
+      panel.lineStyle(1, CULLING_COLORS.charcoal, 0.18);
+      [sheetY + 63, sheetY + 119, sheetY + 175, sheetY + 231].forEach((lineY) => {
+        panel.beginPath();
+        panel.moveTo(sheetX + 14, lineY);
+        panel.lineTo(sheetX + sheetW - 14, lineY);
+        panel.strokePath();
+      });
+
+      this.text(sheetX + 16, sheetY + 10, 'PRESENTATION', {
+        fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
+        fontSize: '21px',
+        fontStyle: '900',
+        color: CULLING_COLORS.inverseText,
+      }).setDepth(191);
+      this.mono(sheetX + 17, sheetY + 38, 'AUDIO / HAPTICS / MOTION', {
+        color: '#CDE6FF',
+        fontSize: '10px',
+        fontStyle: '800',
+      }).setDepth(191);
+
+      const drawControl = (x, y, w, label, onClick, selected = false, danger = false) => {
+        const h = 44;
+        const fill = danger ? CULLING_COLORS.vermilion : selected ? CULLING_COLORS.cobalt : CULLING_COLORS.ivory;
+        const stroke = danger ? CULLING_COLORS.charcoal : selected ? CULLING_COLORS.cyan : CULLING_COLORS.cobalt;
+        panel.fillStyle(fill, selected || danger ? 0.97 : 0.9);
+        panel.fillPoints([
+          { x: x + 7, y }, { x: x + w, y }, { x: x + w, y: y + h - 7 },
+          { x: x + w - 7, y: y + h }, { x, y: y + h }, { x, y: y + 7 },
+        ], true);
+        panel.lineStyle(1.5, stroke, 0.9);
+        panel.strokePoints([
+          { x: x + 7, y }, { x: x + w, y }, { x: x + w, y: y + h - 7 },
+          { x: x + w - 7, y: y + h }, { x, y: y + h }, { x, y: y + 7 },
+        ], true);
+        this.mono(x + w / 2, y + 14, label, {
+          color: selected || danger ? CULLING_COLORS.inverseText : CULLING_COLORS.cobaltText,
+          fontSize: '11px',
+          fontStyle: '900',
+        }).setOrigin(0.5, 0).setDepth(191);
+        this.registerHitTarget(x, y, w, h, label, onClick, { cue: selected ? 'select' : 'press' });
+      };
+      const labelX = sheetX + 18;
+      const controlRight = sheetX + sheetW - 16;
+      const rowLabel = (y, title, detail) => {
+        this.mono(labelX, y + 8, title, { color: CULLING_COLORS.cobaltText, fontSize: '11px', fontStyle: '900' }).setDepth(191);
+        if (detail) this.mono(labelX, y + 25, detail, { color: CULLING_COLORS.mutedText, fontSize: '9px', fontStyle: '700' }).setDepth(191);
+      };
+
+      const soundY = sheetY + 68;
+      rowLabel(soundY, 'SOUND', value.muted ? 'ALL CUES MUTED' : 'INTERACTION CUES ON');
+      drawControl(controlRight - 94, soundY, 94, value.muted ? 'MUTED' : 'ON', () => settings.toggleMuted(), !value.muted);
+
+      const volumeY = sheetY + 124;
+      rowLabel(volumeY, 'VOLUME', 'PERSISTS ON THIS DEVICE');
+      drawControl(controlRight - 148, volumeY, 44, '-', () => settings.stepVolume(-1));
+      this.mono(controlRight - 76, volumeY + 15, `${Math.round(value.volume * 100)}%`, {
+        color: CULLING_COLORS.cobaltText,
+        fontSize: '12px',
+        fontStyle: '900',
+      }).setOrigin(0.5, 0).setDepth(191);
+      drawControl(controlRight - 44, volumeY, 44, '+', () => settings.stepVolume(1));
+
+      const hapticsY = sheetY + 180;
+      rowLabel(hapticsY, 'HAPTICS', 'SAFE DEVICE VIBRATION');
+      drawControl(controlRight - 94, hapticsY, 94, value.haptics ? 'ON' : 'OFF', () => settings.toggleHaptics(), value.haptics);
+
+      const motionY = sheetY + 236;
+      rowLabel(motionY, 'MOTION', 'SYSTEM / REDUCED / FULL');
+      drawControl(controlRight - 126, motionY, 126, value.motion.toUpperCase(), () => settings.cycleMotion(), value.motion === 'reduced');
+
+      const footerY = sheetY + sheetH - 54;
+      if (hasExit) {
+        const gap = 8;
+        const footerW = (sheetW - 40 - gap) / 2;
+        drawControl(sheetX + 16, footerY, footerW, options.exitLabel || 'EXIT', () => {
+          this.togglePresentationSettings(false);
+          options.onExit();
+        }, false, true);
+        drawControl(sheetX + 16 + footerW + gap, footerY, footerW, 'CLOSE', () => this.togglePresentationSettings(false), true);
+      } else {
+        drawControl(sheetX + sheetW - 126, footerY, 110, 'CLOSE', () => this.togglePresentationSettings(false), true);
+      }
+      return true;
     }
 
     presentSurface(region, options = {}) {
@@ -320,6 +563,7 @@ export class BaseScene extends Phaser.Scene {
 
     drawTapPulse() {
       if (!this.lastTap || this.time.now - this.lastTap.t > 180) return;
+      if (this.presentationLayer && this.presentationLayer.motion && this.presentationLayer.motion.reducedMotion) return;
       const age = (this.time.now - this.lastTap.t) / 180;
       const radius = 10 + age * 20;
       const color = this.lastTap.disabled ? COLORS.enemy : COLORS.selection;

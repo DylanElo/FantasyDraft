@@ -1187,8 +1187,12 @@ def on_battle_v2_join_pvp(data=None):
                 room=player_room(player_session),
             )
             return
-        issue_battle_v2_resume_sessions(match_id)
         authorize_match_context(match_id, player_session)
+        # The second joiner's socket is not in its private player room until
+        # authorization completes. Issue resume grants only after that join,
+        # otherwise the second player receives battle state but silently
+        # misses the credential required for reconnect.
+        issue_battle_v2_resume_sessions(match_id)
         emit_battle_v2_update(match_id, player_session)
     except BattleV2Error as exc:
         emit_battle_v2_error(exc)
@@ -1203,13 +1207,16 @@ def on_battle_v2_resume(data=None):
     player_id = CONTROL_RE.sub("", str(data.get("player_id", "")).strip())[:64]
     token = clean_resume_token(data.get("resume_token"))
     state = battle_v2_manager.rooms.get(room_id)
-    valid = (
-        state is not None
-        and player_id in state.players
-        and player_id != CPU_V2_PLAYER_ID
-        and battle_v2_sessions.verify(room_id, player_id, token)
-    )
-    if not valid:
+    if state is None or player_id not in state.players or player_id == CPU_V2_PLAYER_ID:
+        emit("battle_v2_resume_rejected", {"message": "Battle session could not be resumed."})
+        return
+    # Consume and rotate the credential before changing connection state or
+    # admitting this socket to either viewer-private room. A separate
+    # verify-then-rotate sequence lets two concurrent replays both pass the
+    # read-only verification; the loser could then remain subscribed to the
+    # private room and receive the winner's newly rotated token.
+    grant = battle_v2_sessions.rotate(room_id, player_id, token)
+    if grant is None:
         emit("battle_v2_resume_rejected", {"message": "Battle session could not be resumed."})
         return
     try:
@@ -1218,10 +1225,6 @@ def on_battle_v2_resume(data=None):
         join_room(match_room(room_id))
         join_room(player_room(player_id))
     except (BattleV2Error, KeyError, RuntimeError):
-        emit("battle_v2_resume_rejected", {"message": "Battle session could not be resumed."})
-        return
-    grant = battle_v2_sessions.rotate(room_id, player_id, token)
-    if grant is None:
         emit("battle_v2_resume_rejected", {"message": "Battle session could not be resumed."})
         return
     with lifecycle_lock:

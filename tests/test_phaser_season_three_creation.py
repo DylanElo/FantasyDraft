@@ -68,12 +68,17 @@ console.log(JSON.stringify({ frames }));
         assert mission["cards"]["pageSize"] == (2 if entry["width"] == 430 else 1)
 
 
-def test_season_three_boot_and_draft_regions_fit_supported_safe_frames():
+def test_season_three_boot_team_setup_and_matchup_regions_fit_supported_safe_frames():
     probe = _run_node(
         r"""
 globalThis.JJK_MOBILE_TOKENS = {};
 globalThis.JJK_BOOTSTRAP = {};
-const { bootS3Layout, draftS3Layout } = await import('./web/static/phaser/ui/season-three-ui.js');
+globalThis.Phaser = { Scene: class { constructor() {} } };
+const { bootS3Layout } = await import('./web/static/phaser/ui/season-three-ui.js');
+const { DraftScene } = await import('./web/static/phaser/scenes/draft-scene.js');
+const { MatchupScene } = await import('./web/static/phaser/scenes/matchup-scene.js');
+const draftScene = new DraftScene();
+const matchupScene = new MatchupScene();
 const frames = [];
 for (const safe of [false, true]) {
   for (const [width, height] of [[360, 800], [390, 844], [430, 932]]) {
@@ -81,18 +86,9 @@ for (const safe of [false, true]) {
     const bottom = safe ? height - 44 : height - 14;
     const frame = { x: 0, width, height, gutter: 16, top, bottom, fullWidth: width, fullHeight: height };
     const boot = bootS3Layout(frame);
-    const drafts = [true, false].map((cpu) => {
-      const draft = draftS3Layout(frame, { cpu });
-      const rows = Math.max(1, Math.floor(
-        (draft.pager.y - draft.roster.y + draft.roster.gap)
-        / (draft.roster.cardH + draft.roster.gap)
-      ));
-      const cardsBottom = draft.roster.y
-        + rows * draft.roster.cardH
-        + Math.max(0, rows - 1) * draft.roster.gap;
-      return { cpu, draft, rows, cardsBottom };
-    });
-    frames.push({ top, bottom, boot, drafts });
+    const draft = draftScene.teamSetupLayout(frame);
+    const matchup = matchupScene.matchupLayout(frame);
+    frames.push({ top, bottom, boot, draft, matchup });
   }
 }
 console.log(JSON.stringify({ frames }));
@@ -107,25 +103,29 @@ console.log(JSON.stringify({ frames }));
         assert boot["enter"]["h"] >= 44
         assert boot["enter"]["y"] + boot["enter"]["h"] <= entry["bottom"]
 
-        for draft_entry in entry["drafts"]:
-            draft = draft_entry["draft"]
-            assert draft["header"]["y"] >= entry["top"]
-            assert draft["player"]["y"] >= draft["header"]["bottom"]
-            if draft_entry["cpu"]:
-                assert draft["enemy"] is not None
-                assert draft["difficulty"] is not None
-                assert draft["difficulty"]["h"] >= 44
-                assert draft["enemy"]["y"] >= draft["player"]["y"] + draft["player"]["h"]
-            else:
-                assert draft["enemy"] is None
-                assert draft["difficulty"] is None
-            assert draft["targets"]["h"] >= 44
-            assert draft_entry["rows"] >= 1
-            assert draft_entry["cardsBottom"] <= draft["pager"]["y"]
-            assert draft["pager"]["h"] >= 44
-            assert draft["pager"]["y"] + draft["pager"]["h"] <= draft["cta"]["y"]
-            assert draft["cta"]["h"] >= 44
-            assert draft["cta"]["y"] + draft["cta"]["h"] <= entry["bottom"]
+        draft = entry["draft"]
+        assert draft["header"]["y"] >= entry["top"]
+        assert draft["controls"]["y"] >= draft["header"]["bottom"]
+        assert draft["controls"]["h"] >= 44
+        assert draft["trio"]["y"] >= draft["controls"]["y"] + draft["controls"]["h"]
+        assert draft["filters"]["h"] >= 44
+        assert draft["filters"]["y"] >= draft["trio"]["y"] + draft["trio"]["h"]
+        assert draft["featured"]["y"] + draft["featured"]["h"] <= draft["pager"]["y"]
+        assert draft["pager"]["h"] >= 44
+        assert draft["pager"]["y"] + draft["pager"]["h"] <= draft["cta"]["y"]
+        assert draft["cta"]["h"] >= 44
+        assert draft["cta"]["y"] + draft["cta"]["h"] <= entry["bottom"]
+
+        matchup = entry["matchup"]
+        assert matchup["header"]["y"] >= entry["top"]
+        assert matchup["mode"]["y"] >= matchup["header"]["bottom"]
+        assert matchup["mode"]["y"] + matchup["mode"]["h"] <= matchup["enemy"]["y"]
+        assert matchup["enemy"]["y"] + matchup["enemy"]["h"] <= matchup["objective"]["y"]
+        assert matchup["objective"]["y"] + matchup["objective"]["h"] <= matchup["player"]["y"]
+        assert matchup["player"]["y"] + matchup["player"]["h"] <= matchup["status"]["y"]
+        assert matchup["status"]["y"] + matchup["status"]["h"] <= matchup["cta"]["y"]
+        assert matchup["cta"]["h"] >= 44
+        assert matchup["cta"]["y"] + matchup["cta"]["h"] <= entry["bottom"]
 
 
 def test_first_creation_navigation_is_atomic_and_cpu_safe():
@@ -266,13 +266,15 @@ def test_creation_and_mission_scenes_use_scoped_s3_components_without_data_drift
     assert "this.store.openFirstCreation()" in lobby
 
 
-def test_boot_and_draft_scenes_use_scoped_s3_components_and_keep_draft_contracts():
+def test_boot_team_setup_and_matchup_use_s3_components_and_keep_authority_contracts():
     helper = (ROOT / "web/static/phaser/ui/season-three-ui.js").read_text(encoding="utf-8")
     boot = (ROOT / "web/static/phaser/scenes/boot-scene.js").read_text(encoding="utf-8")
     draft = (ROOT / "web/static/phaser/scenes/draft-scene.js").read_text(encoding="utf-8")
+    roster = (ROOT / "web/static/phaser/scenes/draft-roster-scene.js").read_text(encoding="utf-8")
+    matchup = (ROOT / "web/static/phaser/scenes/matchup-scene.js").read_text(encoding="utf-8")
+    registry = (ROOT / "web/static/phaser/scenes/scene-registry.js").read_text(encoding="utf-8")
 
     assert "bootS3Layout" in helper
-    assert "draftS3Layout" in helper
     assert "worldBackdrop" not in boot
     assert "drawS3World" in boot
     assert "combat-underpass-night" not in boot
@@ -288,10 +290,26 @@ def test_boot_and_draft_scenes_use_scoped_s3_components_and_keep_draft_contracts
     assert "drawS3Panel" in draft
     assert "drawS3Button" in draft
     assert "culling-current-campus" in draft
-    assert "JJK ARENA / CPU MATCHUP" in draft
-    assert "CULLING GAME / CPU MATCHUP" not in draft
+    assert "draftS3Layout" not in draft
+    assert "JJK ARENA / CPU PRACTICE" in draft
+    assert "title: 'Team Setup'" in draft
     assert "this.store.setDraftTarget('playerTeam')" in draft
     assert "this.store.setDraftTarget('enemyTeam')" in draft
-    assert "this.store.setDifficulty(level)" in draft
-    assert "this.store.toggleTeamPick(teamKey, character.id)" in draft
-    assert "this.store.startMatch()" in draft
+    assert "this.store.setDifficulty(DIFFICULTIES" in draft
+    assert "this.store.openMatchup()" in draft
+    assert "this.store.startMatch()" not in draft
+
+    assert "renderSetupFeatured" in roster
+    assert "renderSetupCharacterStudy" in roster
+    assert "renderSetupAuthoritativeSkill" in roster
+    assert "skillVisualFor(skill)" in roster
+    assert "this.store.toggleTeamPick(teamKey, character.id)" in roster
+    assert "FIRST_CREATION_ORDER" in roster
+
+    assert "export class MatchupScene" in matchup
+    assert "const enemyIds = isCpu ? this.store.enemyTeam.slice(0, 3) : [];" in matchup
+    assert "hidden: !isCpu" in matchup
+    assert "this.store.startMatch()" in matchup
+    assert "this.store.resetToLobby()" in matchup
+    assert "Enter Arena" in matchup
+    assert "MatchupScene" in registry

@@ -1,4 +1,7 @@
 pytest>=8.0.0
+# Real-network acceptance uses python-socketio's optional HTTP/WebSocket client
+# dependencies without adding them to the production runtime image.
+python-socketio[client]>=5.12.0
 # RSS measurement fallback for jjk_arena/battle_v2/lifecycle_stress.py's
 # memory-ceiling check on platforms without the stdlib `resource` module
 # (all of Windows, some CI images) -- without it, that check silently

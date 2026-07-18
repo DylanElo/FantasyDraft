@@ -1,6 +1,7 @@
 import pytest
 from copy import deepcopy
 from itertools import count
+from threading import Barrier, Thread
 
 from jjk_arena.battle_v2.models import EnergyType, SkillClass, StatusEffect
 from jjk_arena.battle_v2.timers import BattleTimerPolicy
@@ -405,6 +406,53 @@ def test_invalid_or_rotated_resume_token_is_rejected(monkeypatch):
     assert rejected == {"battle_v2_resume_rejected": {"message": "Battle session could not be resumed."}}
 
 
+def test_concurrent_resume_replay_admits_only_atomic_rotation_winner(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    original = socket_client_with_player("resume-owner")
+    original.emit("battle_v2_start_classic", {"room_id": "resume-concurrent"})
+    grant = received_payloads(original)["battle_v2_session"]
+    original.disconnect()
+
+    first = socket_client_with_player("first-replay-session")
+    second = socket_client_with_player("second-replay-session")
+    contenders = (first, second)
+    rotate_barrier = Barrier(len(contenders))
+    original_rotate = web_app.battle_v2_sessions.rotate
+
+    def synchronized_rotate(room_id, player_id, token):
+        rotate_barrier.wait(timeout=2)
+        return original_rotate(room_id, player_id, token)
+
+    monkeypatch.setattr(web_app.battle_v2_sessions, "rotate", synchronized_rotate)
+    failures = []
+
+    def attempt_resume(client):
+        try:
+            client.emit("battle_v2_resume", grant)
+        except BaseException as exc:  # Surface worker failures in the test thread.
+            failures.append(exc)
+
+    workers = [Thread(target=attempt_resume, args=(client,)) for client in contenders]
+    for worker in workers:
+        worker.start()
+    for worker in workers:
+        worker.join(timeout=3)
+
+    assert not any(worker.is_alive() for worker in workers)
+    assert failures == []
+    messages = [received_payloads(client) for client in contenders]
+    winners = [payloads for payloads in messages if "battle_v2_session" in payloads]
+    losers = [payloads for payloads in messages if "battle_v2_resume_rejected" in payloads]
+
+    assert len(winners) == 1
+    assert len(losers) == 1
+    assert winners[0]["battle_v2_session"]["resume_token"] != grant["resume_token"]
+    assert "battle_v2_update" in winners[0]
+    assert losers[0] == {
+        "battle_v2_resume_rejected": {"message": "Battle session could not be resumed."},
+    }
+
+
 def test_battle_v2_socket_retry_does_not_repeat_energy_conversion(monkeypatch):
     monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
     client = socket_client()
@@ -681,12 +729,20 @@ def test_battle_v2_pvp_join_waits_then_starts_two_human_room(monkeypatch):
         },
     )
 
-    p1_update = received_payload(p1_client, "battle_v2_update")
-    p2_update = received_payload(p2_client, "battle_v2_update")
+    p1_messages = received_payloads(p1_client)
+    p2_messages = received_payloads(p2_client)
+    p1_update = p1_messages["battle_v2_update"]
+    p2_update = p2_messages["battle_v2_update"]
+    p1_session = p1_messages["battle_v2_session"]
+    p2_session = p2_messages["battle_v2_session"]
 
     assert set(p1_update["players"]) == {"p1", "p2"}
     assert set(p2_update["players"]) == {"p1", "p2"}
     assert "__cpu_v2__" not in p1_update["players"]
+    assert p1_session["player_id"] == "p1"
+    assert p2_session["player_id"] == "p2"
+    assert p1_session["room_id"] == p1_update["match_id"]
+    assert p2_session["room_id"] == p2_update["match_id"]
 
 
 def test_battle_v2_pvp_waiting_player_can_cancel_lobby(monkeypatch):

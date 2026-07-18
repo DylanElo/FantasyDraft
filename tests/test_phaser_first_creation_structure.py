@@ -112,7 +112,7 @@ def test_first_creation_is_not_the_deprecated_dashboard_or_two_column_roster():
     assert "renderCharacterStudy" in source
     assert "renderAuthoritativeSkill" in source
     assert "Open character study:" in source
-    assert "Begin CPU Match" in source
+    assert "Review Matchup" in source
 
     assert "this.store.presetEntries()" not in source
     assert "renderPresetTile" not in source

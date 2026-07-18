@@ -2231,4 +2231,5 @@ and the browser console was clean. The final capture traffic had no 400, 404,
 or 500 responses; two stale pre-restart tab-session requests returned 400
 before the v27 run began. Evidence and capture details live under
 `artifacts/ui-redesign/s3-structure-v2/qa/`. The verified delivery targets
-`codex/culling-current-ui` and existing draft PR #58.
+`codex/culling-current-ui`; the structural implementation was committed as
+`e49f0ff` and delivered through updated draft PR #58.

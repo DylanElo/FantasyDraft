@@ -2449,5 +2449,6 @@ tools/network_acceptance.py`, `python -m pip check`, `node --check` for all 40
 JavaScript files under `web/static`, the 101-import v32 consistency audit, and
 `git diff --check` passed. The existing untracked concept/QA artifacts were
 preserved and excluded. These corrections target `codex/culling-current-ui`
-and draft PR #58; they were not yet committed or pushed at the time of this
-entry.
+and draft PR #58. The implementation was committed as `a393380`, pushed to the
+branch, and the hosted PR `quality` check passed in 1m27s. This delivery-state
+note is the documentation-only follow-up to that verified implementation.

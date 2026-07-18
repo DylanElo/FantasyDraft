@@ -2387,5 +2387,7 @@ cover fallback and persistence, while the browser pass covers the gesture gate
 and visible controls. Generated and franchise-directed art still requires
 commercial-release rights review; provenance is not licensing clearance. The
 Windows one-click launcher remains the current Battle v2 entry point. Delivery
-targets `codex/culling-current-ui` and draft PR #58; commit, push, and hosted CI
-status are recorded after this entry.
+is on `codex/culling-current-ui` through main implementation commit `735076c`
+and draft PR #58. The branch was pushed, the PR description was refreshed for
+the completed scope, GitHub reported a clean merge state, and its hosted CI
+`quality` check passed at that implementation commit.

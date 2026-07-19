@@ -3,7 +3,7 @@
 // an actual user input. All synthesis is local: no unlicensed audio assets or
 // gameplay state are involved.
 
-import { getPersistentPresentationSettings } from './presentation-settings.js?v=38';
+import { getPersistentPresentationSettings } from './presentation-settings.js?v=42';
 
 const SILENCE = 0.0001;
 

@@ -1,11 +1,11 @@
-import { ENERGY_COLORS, ENERGY_LABELS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=38';
-import { safeText } from '../core/text.js?v=38';
-import { stageEnvironmentTexture } from '../core/asset-registry.js?v=38';
+import { ENERGY_COLORS, ENERGY_LABELS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=42';
+import { safeText } from '../core/text.js?v=42';
+import { stageEnvironmentTexture } from '../core/asset-registry.js?v=42';
 import {
   S3_PALETTE,
   S3_TEXT_COLORS,
   season3ClipPoints,
-} from './season3-tokens.js?v=38';
+} from './season3-tokens.js?v=42';
 
 // Compatibility view. New code should import Season3UI from season3-ui.js.
 export const S3_COLORS = Object.freeze({

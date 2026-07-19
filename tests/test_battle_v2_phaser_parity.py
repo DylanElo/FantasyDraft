@@ -35,6 +35,10 @@ store.pendingActionPayloads = () => store.actions; store.socketClient = { emit: 
 const effective = store.skillFor(fighter, 'source');
 const adjusted = store.adjustedCost(fighter, effective);
 const energyFit = store.skillFit(effective, fighter);
+const specificShortFit = store.skillFit(
+  { id: 'taijutsu', name: 'Taijutsu Skill', cost: ['green'], classes: [], target_rule: { kind: 'enemy' }, effects: [] },
+  { character_id: 'plain', alive: true, cooldowns: {}, statuses: [], skill_replacements: {} },
+);
 const harmfulSkill = { id: 'harm', cost: [], classes: ['Physical'], target_rule: { kind: 'enemy' }, effects: [{ type: 'damage', target: 'target', payload: {} }] };
 const classSkill = { id: 'class', cost: [], classes: ['Physical'], target_rule: { kind: 'enemy' }, effects: [{ type: 'damage', target: 'target', payload: {} }] };
 const harmfulBlocked = store.statusBlocksSkill({ statuses: [{ duration: 1, name: 'Stop', payload: { stun_harmful: true } }] }, harmfulSkill);
@@ -50,7 +54,7 @@ const venom = { id: 'venom', cost: [], classes: [], target_rule: { kind: 'enemy_
 store.selectedSkillId = venom.id; store.selectedSkill = () => venom; store.targetingStage = 'venom_primary'; store.pendingPrimaryTarget = null;
 store.target('enemy', 1); store.target('enemy', 2);
 const venomAction = store.actions[0];
-console.log(JSON.stringify({ effectiveId: effective.effective_skill_id, originalId: effective.id, adjusted, energyFit, harmfulBlocked, classBlocked, todoAction, venomAction }));
+console.log(JSON.stringify({ effectiveId: effective.effective_skill_id, originalId: effective.id, adjusted, energyFit, specificShortFit, harmfulBlocked, classBlocked, todoAction, venomAction }));
 """
     result = subprocess.run(
         ["node", "--experimental-default-type=module", "-"],
@@ -73,7 +77,8 @@ def test_phaser_matches_server_for_adjusted_cost_replacement_stuns_and_disabled_
     assert probe["effectiveId"] == effective_skill_id(caster, "source") == "replacement"
     assert probe["originalId"] == "source"
     assert probe["adjusted"] == [energy.value for energy in _adjusted_cost_skill(caster, skill).cost]
-    assert probe["energyFit"]["ok"] is False and "wildcard" in probe["energyFit"]["reason"].lower()
+    assert probe["energyFit"] == {"ok": False, "reason": "Short on Wild energy."}
+    assert probe["specificShortFit"] == {"ok": False, "reason": "Short on Taijutsu."}
     assert probe["harmfulBlocked"] == "Stop: harmful skills are disabled."
     assert "Body Stun" in probe["classBlocked"]
 

@@ -3,16 +3,16 @@ import {
   PORTRAIT_SOURCE_WIDTH,
   starterPortraitContractIssues,
   starterPortraitEntries,
-} from '../core/portrait-registry.js?v=38';
-import { TOKEN_MOTION, TOKEN_TYPE } from '../core/runtime-config.js?v=38';
-import { LayoutService } from '../core/layout-service.js?v=38';
-import { firstCreationRoster } from '../core/roster.js?v=38';
-import { getPersistentPresentationSettings } from '../core/presentation-settings.js?v=38';
+} from '../core/portrait-registry.js?v=42';
+import { TOKEN_MOTION, TOKEN_TYPE } from '../core/runtime-config.js?v=42';
+import { LayoutService } from '../core/layout-service.js?v=42';
+import { firstCreationRoster } from '../core/roster.js?v=42';
+import { getPersistentPresentationSettings } from '../core/presentation-settings.js?v=42';
 import {
   INITIAL_ENVIRONMENT_KEYS,
   environmentAssetFor,
   registerEnvironmentTextureAttempt,
-} from '../core/asset-registry.js?v=38';
+} from '../core/asset-registry.js?v=42';
 import {
   S3_COLORS,
   bootS3Layout,
@@ -20,8 +20,8 @@ import {
   drawS3Panel,
   drawS3Progress,
   drawS3World,
-} from '../ui/season-three-ui.js?v=38';
-import { BaseScene } from './base-scene.js?v=38';
+} from '../ui/season-three-ui.js?v=42';
+import { BaseScene } from './base-scene.js?v=42';
 
 export class BootScene extends BaseScene {
     constructor() {

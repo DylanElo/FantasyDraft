@@ -1,5 +1,5 @@
-import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=38';
-import { safeText, shortText } from '../core/text.js?v=38';
+import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=42';
+import { safeText, shortText } from '../core/text.js?v=42';
 import {
   S3_COLORS,
   drawS3Button,
@@ -8,8 +8,8 @@ import {
   drawS3World,
   outcomeVisual,
   recordsModel,
-} from '../ui/season3-master-ui.js?v=38';
-import { BaseScene } from './base-scene.js?v=38';
+} from '../ui/season3-master-ui.js?v=42';
+import { BaseScene } from './base-scene.js?v=42';
 
 const STORM_WORLD_KEY = 'culling-current-campus';
 

@@ -67,3 +67,30 @@ def test_character_study_tactical_identity_wraps_inside_small_phone_cards() -> N
     assert "wordWrap: { width: region.w - 28 }" in detail
     assert "tacticalIdentity.setMaxLines(2);" in detail
     _assert_nearby_size(creation, marker, 12)
+
+
+def test_disabled_skill_reason_keeps_four_readable_lines_on_narrow_cards() -> None:
+    combat = _source(SCENE_PATHS[1])
+    marker = "if (state.disabled) {"
+    reason = combat[combat.index(marker) : combat.index(marker) + 700]
+
+    assert "fillRect(x + 2, reasonY, w - 4, 61)" in reason
+    assert "reasonNode.setMaxLines(4);" in reason
+    _assert_nearby_size(combat, "const reasonNode = this.text", 12)
+
+
+def test_replay_ticker_uses_its_own_lane_below_the_battlefield_prompt() -> None:
+    combat = _source(SCENE_PATHS[1])
+    marker = "renderReplayLine(frame, layout) {"
+    replay = combat[combat.index(marker) : combat.index(marker) + 1100]
+
+    assert "layout.fieldTop + 30" in replay
+    assert "fillRect(frame.x + (frame.width - replayW) / 2, replayY, replayW, 18)" in replay
+    assert "this.mono(frame.x + frame.width / 2, layout.fieldTop + 3," not in replay
+
+
+def test_queue_order_marks_clear_the_ally_state_chip_band() -> None:
+    combat = _source(SCENE_PATHS[1])
+
+    assert "this.renderQueueMarks(frame, layout, layout.fieldBottom - 42);" in combat
+    assert "this.renderQueueMarks(frame, layout, layout.fieldBottom - 13);" not in combat

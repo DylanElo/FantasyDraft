@@ -1,9 +1,9 @@
-import { BOOT, CORE_ENERGY } from '../core/runtime-config.js?v=38';
-import { safeText } from '../core/text.js?v=38';
-import { readStorage, writeStorage } from '../core/storage.js?v=38';
-import { AssetRegistry } from '../core/asset-registry.js?v=38';
-import { firstCreationRoster, preset, presetTitle } from '../core/roster.js?v=38';
-import { damageEventAmount } from '../fx/event-metrics.js?v=38';
+import { BOOT, CORE_ENERGY, energyName } from '../core/runtime-config.js?v=42';
+import { safeText } from '../core/text.js?v=42';
+import { readStorage, writeStorage } from '../core/storage.js?v=42';
+import { AssetRegistry } from '../core/asset-registry.js?v=42';
+import { firstCreationRoster, preset, presetTitle } from '../core/roster.js?v=42';
+import { damageEventAmount } from '../fx/event-metrics.js?v=42';
 
 export const MATCH_LAUNCH_TIMEOUT_MS = 10000;
 export const MAX_RETIRED_MATCH_IDS = 8;
@@ -1259,9 +1259,9 @@ export class GameStore {
         else remaining[color] = (remaining[color] || 0) - 1;
       });
       const short = Object.entries(remaining).filter(([, value]) => value < 0).map(([color]) => color);
-      if (short.length) return { ok: false, reason: `Short on ${short.join(', ')}.` };
+      if (short.length) return { ok: false, reason: `Short on ${short.map(energyName).join(', ')}.` };
       const spare = Object.values(remaining).reduce((total, value) => total + Math.max(0, value), 0);
-      if (spare < wildcardNeeded) return { ok: false, reason: 'Not enough energy for wildcard cost.' };
+      if (spare < wildcardNeeded) return { ok: false, reason: 'Short on Wild energy.' };
       return { ok: true, reason: '' };
     }
 

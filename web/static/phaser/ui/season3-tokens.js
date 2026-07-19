@@ -3,7 +3,7 @@ import {
   CULLING_COLORS,
   TOKEN_TYPE,
   TYPE_SCALE,
-} from '../core/runtime-config.js?v=38';
+} from '../core/runtime-config.js?v=42';
 
 // Canonical Season 3 presentation tokens. The older UI helper modules keep
 // their public names, but all three derive color and typography values from

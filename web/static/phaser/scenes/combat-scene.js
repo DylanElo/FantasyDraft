@@ -6,11 +6,11 @@ import {
   ENERGY_LABELS,
   ENERGY_NAMES,
   TOKEN_TYPE,
-} from '../core/runtime-config.js?v=38';
-import { clamp, initials, safeText, shortText, titleize } from '../core/text.js?v=38';
-import { eventTone } from '../fx/event-metrics.js?v=38';
-import { drawCurrentButton, drawCurrentPanel, drawCurrentWorld } from '../ui/culling-current-ui.js?v=38';
-import { CombatQueueReviewScene } from './combat-queue-review-scene.js?v=38';
+} from '../core/runtime-config.js?v=42';
+import { clamp, initials, safeText, shortText, titleize } from '../core/text.js?v=42';
+import { eventTone } from '../fx/event-metrics.js?v=42';
+import { drawCurrentButton, drawCurrentPanel, drawCurrentWorld } from '../ui/culling-current-ui.js?v=42';
+import { CombatQueueReviewScene } from './combat-queue-review-scene.js?v=42';
 
 const WORLD_KEY = 'culling-current-rooftop';
 const LOCATION_LINE = 'TOKYO MUNICIPAL ROOFTOP';
@@ -758,7 +758,11 @@ export class CombatScene extends CombatQueueReviewScene {
         : tone === 'status'
           ? '#6240A8'
           : CULLING_COLORS.text;
-    this.mono(frame.x + frame.width / 2, layout.fieldTop + 3, shortText(event.message || event.type, 38), {
+    const replayY = Math.min(layout.fieldBottom - 34, layout.fieldTop + 30);
+    const replayW = Math.min(308, frame.width - 52);
+    this.graphics.fillStyle(CULLING_COLORS.ivory, 0.82);
+    this.graphics.fillRect(frame.x + (frame.width - replayW) / 2, replayY, replayW, 18);
+    this.mono(frame.x + frame.width / 2, replayY + 2, shortText(event.message || event.type, 38), {
       color,
       fontSize: '12px',
       fontStyle: '700',
@@ -871,7 +875,9 @@ export class CombatScene extends CombatQueueReviewScene {
       ringRadius,
     });
     this.renderReplayLine(frame, layout);
-    this.renderQueueMarks(frame, layout, layout.fieldBottom - 13);
+    // Keep Q1/Q2/Q3 above fighter state chips, which occupy the band beginning
+    // at allyY - 20. This gap remains readable in both Planning and Review.
+    this.renderQueueMarks(frame, layout, layout.fieldBottom - 42);
   }
 
   renderTechniqueArtwork(skill, index, x, y, w, h, tone, disabled, cost, selected = false) {
@@ -1034,10 +1040,10 @@ export class CombatScene extends CombatQueueReviewScene {
     // classes, cooldown rules, and effect prose remain in the second-tap
     // technique dossier instead of becoming unreadable six-pixel overlays.
     if (state.disabled) {
-      const reasonY = y + artH - 41;
+      const reasonY = y + artH - 73;
       this.graphics.fillStyle(CULLING_COLORS.charcoal, 0.88);
-      this.graphics.fillRect(x + 2, reasonY, w - 4, 29);
-      const reasonNode = this.text(x + w / 2, reasonY + 3, state.reason, {
+      this.graphics.fillRect(x + 2, reasonY, w - 4, 61);
+      const reasonNode = this.text(x + w / 2, reasonY + 4, state.reason, {
         fontFamily: TOKEN_TYPE.mono || 'monospace',
         fontSize: '12px',
         fontStyle: '800',
@@ -1045,7 +1051,7 @@ export class CombatScene extends CombatQueueReviewScene {
         align: 'center',
         wordWrap: { width: w - 8 },
       }).setOrigin(0.5, 0);
-      reasonNode.setMaxLines(2);
+      reasonNode.setMaxLines(4);
     }
 
     if (selected && !state.disabled) {

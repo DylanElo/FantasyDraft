@@ -1033,7 +1033,7 @@ FIRST_CREATION_ROSTER: dict[str, CharacterSpec] = {
     "panda": kit("panda", "Tank / stance bruiser", "Gorilla Core", "Easy", [
         s("panda", "panda_jab", "Panda Jab", "Deal 20 damage and gain 5 destructible defense; Gorilla Core makes it 30 damage.", [BODY], 0, enemy(), [SkillClass.PHYSICAL, SkillClass.INSTANT], [damage(20, bonus_user_status="gorilla_core", bonus_amount=10), status_effect("panda_guard", "Panda Guard", 2, target="self", destructible_defense=5)]),
         s("panda", "gorilla_core", "Gorilla Core", "Panda gains 25 destructible defense and enters Gorilla Core for 3 turns.", [BODY, FOCUS], 4, self_target(), [SkillClass.PHYSICAL, SkillClass.STRATEGIC, SkillClass.INSTANT], [status_effect("gorilla_core", "Gorilla Core", 3, target="self", destructible_defense=25)]),
-        s("panda", "drumming_beat", "Drumming Beat", "Deal 25 piercing damage; Gorilla Core also ignores damage reduction.", [BODY, WILD], 2, enemy(), [SkillClass.PHYSICAL, SkillClass.INSTANT], [damage(25, DamageType.PIERCING)]),
+        s("panda", "drumming_beat", "Drumming Beat", "Deal 25 piercing damage.", [BODY, WILD], 2, enemy(), [SkillClass.PHYSICAL, SkillClass.INSTANT], [damage(25, DamageType.PIERCING)]),
         s("panda", "cursed_corpse_guard", "Cursed Corpse Guard", "Panda becomes untargetable for 1 turn; Gorilla Core grants an ally 10 destructible defense.", [WILD], 4, self_target(), [SkillClass.STRATEGIC, SkillClass.INSTANT], [status_effect("cursed_corpse_guard", "Cursed Corpse Guard", 2, target="self", invulnerable=True, ally_destructible_defense=10)]),
     ]),
 }

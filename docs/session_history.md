@@ -2072,6 +2072,54 @@ the readiness check it had no configured/reported checks, comments, reviews,
 or unresolved review threads. This delivery-state sentence is a docs-only
 follow-up on the same branch and PR.
 
+## 2026-07-19 - story_tutorial vs tokyo_second_years balance signal, one flavor-text fix
+
+Source: independent read-only work in a separate worktree/branch
+(`claude/codex-game-state-79cc5f`, based on `main` post-PR #57) while a large
+Codex UI pass was in flight, uncommitted, on `codex/culling-current-ui`. Chosen
+specifically to avoid any file overlap with that work.
+
+**Balance signal.** A seat-balanced 200-game headless sim
+(`python -m jjk_arena.battle_v2.balance_report --presets
+story_tutorial,tokyo_second_years --games-per-orientation 100 --seed 501
+--max-turns 200`) found `story_tutorial` (Yuji/Megumi/Nobara) beats
+`tokyo_second_years` (Maki/Toge/Panda) **186/200 (93%)**, non-overlapping 95%
+Wilson intervals ([88.6, 95.8]% vs [4.2, 11.4]%), first-seat win rate exactly
+50%, 0 draws/no-contests/turn-caps. This is a tighter, stronger version of the
+~78%/~13-24% signal already on record from the earlier 8-preset round-robin
+batch. Reading `starter_roster.py`'s `FIRST_CREATION_ROSTER` kits for all six
+characters found concrete structural reasons: the tokyo trio has fewer
+damage-dealing skills (5/12 vs 7/12) at a higher average energy cost per skill
+(1.42 vs 1.33), its only real crowd-control tool (Toge) costs him
+self-inflicted HP and he alone has no 0-cooldown skill, and its
+destructible-defense-stacking plan (Maki, Panda) sits behind long cooldowns
+and expires before paying off against a trio that hits harder and faster. No
+balance numbers were changed — this stays evidence for inspection, per
+`docs/battle_v2_balance_report_contract.md`'s own interpretation limits.
+
+**One real fix, not two.** The same read flagged two apparent Panda
+data/flavor-text mismatches. On closer inspection only one was real:
+`drumming_beat`'s text ("Gorilla Core also ignores damage reduction") implied
+a Gorilla-Core-specific mechanic, but `effects.py`'s `apply_damage` already
+makes the flat `damage_reduction` stat apply only to `DamageType.NORMAL`
+hits (`docs/battle_system_v2_design.md`'s own documented damage-family rules,
+also independently confirmed by `docs/battle_v2_truth_alignment_pass.md`'s
+prior correction of this exact skill) — Piercing damage, which is what this
+skill deals, already bypasses it unconditionally, with no other Piercing
+skill in the file bothering to say so in its own text. Fixed the text only,
+to `"Deal 25 piercing damage."`, matching the established sibling style (no
+effects/behavior change). The second suspected mismatch —
+`cursed_corpse_guard`'s `ally_destructible_defense` grant appearing
+unconditional — does not exist: it is already correctly gated by
+`effects.py`'s generic `has_status(caster, "gorilla_core")` check (not
+visible from `starter_roster.py` alone), and is already covered by
+`test_gorilla_guard_grants_ally_defense_and_melee_guard_punishes_attacker` in
+`tests/test_battle_v2_truth_alignment.py`. Left unchanged.
+
+Verification: `python -m pytest -q` — 451 passed, 1 skipped, same as the
+pre-change baseline in this worktree. This is an uncommitted single-line text
+change on `claude/codex-game-state-79cc5f`; no commit or push performed in
+this pass.
 ## 2026-07-17 - Culling Current bright UI concept exploration
 
 **User direction and scope.** The user rejected the current UI's darkness,

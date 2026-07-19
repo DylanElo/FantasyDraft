@@ -56,7 +56,7 @@ to ship unlicensed source art.
 | Queue green | `#4FB06D` | Queued/committed action state |
 | Domain violet | `#7C3AED` | Domain and cinematic states only |
 
-B/T/F/C energy colors and labels remain gameplay semantics and may not be
+T/J/S/B energy colors and labels remain gameplay semantics and may not be
 reinterpreted to fit the art palette. X remains a Wild cost placeholder, not a
 fifth generated resource.
 
@@ -193,20 +193,21 @@ The shipping skill-art source is five character-free v3 WebP atlases. Each is
 
 | Registry family | Texture key | Shipping file | Used cells |
 |---|---|---|---:|
-| Body | `s3-skill-atlas-body-v3` | `skill-atlas-body-v3.webp` | 14 |
-| Technique | `s3-skill-atlas-technique-v3` | `skill-atlas-technique-v3.webp` | 16 |
-| Curse | `s3-skill-atlas-curse-v3` | `skill-atlas-curse-v3.webp` | 16 |
-| Focus guard/support | `s3-skill-atlas-focus-guard-v3` | `skill-atlas-focus-guard-v3.webp` | 16 |
-| Focus control/tactics | `s3-skill-atlas-focus-control-v3` | `skill-atlas-focus-control-v3.webp` | 16 |
+| Taijutsu (legacy `body` key) | `s3-skill-atlas-body-v3` | `skill-atlas-body-v3.webp` | 14 |
+| Jujutsu (legacy `technique` key) | `s3-skill-atlas-technique-v3` | `skill-atlas-technique-v3.webp` | 16 |
+| Bloodline (legacy `curse` key) | `s3-skill-atlas-curse-v3` | `skill-atlas-curse-v3.webp` | 16 |
+| Strategic guard/support (legacy `focus` key) | `s3-skill-atlas-focus-guard-v3` | `skill-atlas-focus-guard-v3.webp` | 16 |
+| Strategic control/tactics (legacy `focus` key) | `s3-skill-atlas-focus-control-v3` | `skill-atlas-focus-control-v3.webp` | 16 |
 
 `SKILL_ACTION_ATLASES` is the canonical runtime collection.
-`SKILL_ACTION_ATLAS` remains a Body-atlas compatibility alias, not the complete
+`SKILL_ACTION_ATLAS` remains a legacy `body`-atlas compatibility alias, not the complete
 source. The stable presentation registry assigns one unique raster cell to each
 of the 78 shipping primary/replacement skill IDs and also records its affinity
 palette, sigil, motion profile, original slot, and replacement identity. The
 older `skill-action-atlas-v2.png` is retained only as documented lineage; it is
-not the shipping card source. The four earlier semantic Body/Technique/Focus/
-Curse textures remain graceful fallbacks and are not primary skill art.
+not the shipping card source. The earlier internal `body`, `technique`, `focus`,
+and `curse` textures—displayed as Taijutsu, Jujutsu, Strategic, and Bloodline—
+remain graceful fallbacks and are not primary skill art.
 
 Atlas family, crop, icon, and motion metadata are presentation only.
 Server-provided skill identity, adjusted cost, legality, targeting,
@@ -235,9 +236,14 @@ unique art never creates a fifth action slot.
   Reduced mode halts active decorative tweens, removes continuous parallax,
   tap pulses, camera shake, and Boot pulse/fade motion, and replaces playback
   movement with short static readable holds.
-- Gesture-gated WebAudio cues cover press, select, target, queue, confirm,
-  error, reveal, and impact. Audio is synthesized locally, creates no context
-  before a user gesture, and fails silently when audio is unavailable.
+- Gesture-gated WebAudio cues separately identify press, selection, target,
+  queue placement/reorder, confirm, error, visible skill start, impact, heal,
+  status change, reveal, turn handoff, and result. The original synthesized
+  palette uses filtered sine/triangle layers and short noise texture through
+  UI/combat/cinematic buses, a conservative master gain, and dynamics control;
+  it creates no context before a user gesture and fails silently when audio is
+  unavailable. The maintained mix contract is documented in
+  `docs/phaser_audio_system.md`.
 - One persistent interaction-audio service is reused across scene transitions;
   destroying a scene does not repeatedly close and recreate its AudioContext.
   Sound mute and volume, haptics, and motion mode persist under
@@ -277,7 +283,7 @@ identifiers, hashes, processing, and limitations are recorded under
 `web/static/assets/skills/PROVENANCE.md`, and
 `artifacts/ui-redesign/s3-style/PROMPTS.md`.
 
-The maintained Phaser cache version for this structural pass is `v32`.
+The maintained Phaser cache version for this structural and vocabulary pass is `v35`.
 
 ## Gameplay invariants
 

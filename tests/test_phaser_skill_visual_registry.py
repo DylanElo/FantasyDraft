@@ -180,11 +180,22 @@ def test_action_atlases_exist_as_compressed_1248_square_webp_assets():
         assert len(data) < 700_000
 
 
-def test_skill_art_renderer_uses_true_atlas_crop_origin_and_crop_relative_scale():
+def test_skill_art_renderer_uses_a_bounded_local_atlas_frame():
     probe = _run_node(
         r"""
 const { drawSkillArtCrop } = await import('./web/static/phaser/ui/skill-visuals.js');
 const calls = {};
+const frames = new Map();
+const texture = {
+  getSourceImage: () => ({ width: 1248, height: 1248 }),
+  has(name) { return frames.has(name); },
+  add(name, sourceIndex, x, y, width, height) {
+    const frame = { name, sourceIndex, x, y, width, height };
+    frames.set(name, frame);
+    calls.addedFrame = [name, sourceIndex, x, y, width, height];
+    return frame;
+  },
+};
 const image = {
   setOrigin(x, y) { calls.origin = [x, y]; return this; },
   setCrop(x, y, width, height) { calls.crop = [x, y, width, height]; return this; },
@@ -196,10 +207,10 @@ const image = {
 const scene = {
   textures: {
     exists: (key) => key === 's3-skill-atlas-body-v3',
-    get: () => ({ getSourceImage: () => ({ width: 1248, height: 1248 }) }),
+    get: () => texture,
   },
   add: {
-    image(x, y, key) { calls.position = [x, y, key]; return image; },
+    image(x, y, key, frame) { calls.position = [x, y, key, frame]; return image; },
   },
   nodes: [],
 };
@@ -210,12 +221,15 @@ console.log(JSON.stringify({ calls, crop: result.crop, nodeCount: scene.nodes.le
 
     calls = probe["calls"]
     crop = probe["crop"]
-    assert calls["position"] == [54, 86, "s3-skill-atlas-body-v3"]
-    assert calls["crop"] == [crop["x"], crop["y"], crop["width"], crop["height"]]
+    assert calls["position"][:3] == [54, 86, "s3-skill-atlas-body-v3"]
+    assert calls["position"][3].startswith("__jjk_skill_fc_yuji_itadori_divergent_fist_")
+    assert calls["addedFrame"][0] == calls["position"][3]
+    assert calls["addedFrame"][1:] == [0, crop["x"], crop["y"], crop["width"], crop["height"]]
+    assert "crop" not in calls
     assert math.isclose(calls["scale"][0] * crop["width"], 88, rel_tol=1e-10)
-    assert math.isclose(calls["scale"][1] * crop["height"], 132, rel_tol=1e-10)
-    assert math.isclose(calls["origin"][0], (crop["x"] + crop["width"] / 2) / 1248, rel_tol=1e-10)
-    assert math.isclose(calls["origin"][1], (crop["y"] + crop["height"] / 2) / 1248, rel_tol=1e-10)
+    assert calls["scale"][1] is None
+    assert math.isclose(calls["scale"][0] * crop["height"], 132, rel_tol=1e-10)
+    assert calls["origin"] == [0.5, 0.5]
     assert calls["alpha"] == 0.7
     assert calls["depth"] == -1
     assert probe["nodeCount"] == 1

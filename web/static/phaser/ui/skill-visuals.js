@@ -1,4 +1,4 @@
-import { SKILL_ACTION_ATLAS, skillVisualFor } from '../core/skill-visual-registry.js?v=32';
+import { SKILL_ACTION_ATLAS, skillVisualFor } from '../core/skill-visual-registry.js?v=35';
 
 const FORM_FAMILIES = Object.freeze({
   fist: 'impact', palm: 'impact', burst: 'impact', core: 'impact', drum: 'impact', clap: 'impact', blood: 'impact', vortex: 'impact', rhythm: 'impact', venom: 'impact',
@@ -105,6 +105,20 @@ function drawForm(graphics, visual, x, y, radius) {
   else drawControl(graphics, x, y, radius, visual.palette.accent, visual);
 }
 
+function cropFrameName(visual, crop) {
+  const token = [crop.x, crop.y, crop.width, crop.height]
+    .map((value) => Math.round(Number(value) * 1000).toString(36))
+    .join('_');
+  return `__jjk_skill_${visual.id}_${token}`;
+}
+
+function ensureCropFrame(texture, visual, crop) {
+  if (!texture || typeof texture.add !== 'function') return null;
+  const frameName = cropFrameName(visual, crop);
+  if (typeof texture.has === 'function' && texture.has(frameName)) return frameName;
+  return texture.add(frameName, 0, crop.x, crop.y, crop.width, crop.height) ? frameName : null;
+}
+
 export function skillAtlasFrameRect(skillOrId, sourceWidth, sourceHeight) {
   const visual = skillVisualFor(skillOrId);
   if (!visual || sourceWidth <= 0 || sourceHeight <= 0) return null;
@@ -146,19 +160,28 @@ export function drawSkillArtCrop(scene, skillOrId, x, y, width, height, options 
   const source = texture && texture.getSourceImage ? texture.getSourceImage() : null;
   const crop = skillArtCropRect(visual.id, Number(source && source.width), Number(source && source.height), width, height);
   if (!crop) return null;
-  const image = scene.add.image(x + width / 2, y + height / 2, visual.art.textureKey);
-  image.setOrigin(
-    (crop.x + crop.width / 2) / Number(source.width),
-    (crop.y + crop.height / 2) / Number(source.height),
-  );
-  image.setCrop(crop.x, crop.y, crop.width, crop.height);
-  image.setScale(width / crop.width, height / crop.height);
+  const frameName = ensureCropFrame(texture, visual, crop);
+  const image = scene.add.image(x + width / 2, y + height / 2, visual.art.textureKey, frameName || undefined);
+  if (frameName) {
+    // A Phaser crop retains the full atlas as its display bounds. Registering
+    // the focal crop as a real local frame keeps its origin at the card center
+    // and prevents later atlas cells from rendering outside their card.
+    image.setOrigin(0.5, 0.5);
+    image.setScale(width / crop.width);
+  } else {
+    image.setOrigin(
+      (crop.x + crop.width / 2) / Number(source.width),
+      (crop.y + crop.height / 2) / Number(source.height),
+    );
+    image.setCrop(crop.x, crop.y, crop.width, crop.height);
+    image.setScale(width / crop.width, height / crop.height);
+  }
   image.setAlpha(options.alpha == null ? 1 : options.alpha);
   if (options.depth != null && image.setDepth) image.setDepth(options.depth);
   if (visual.art.mirror && options.allowMirror !== false) image.setFlipX(true);
   if (options.tint != null) image.setTint(options.tint);
   if (Array.isArray(scene.nodes)) scene.nodes.push(image);
-  return Object.freeze({ image, crop, visual });
+  return Object.freeze({ image, crop, frameName, visual });
 }
 
 export function drawSkillIcon(scene, skillOrId, x, y, size, options = {}) {

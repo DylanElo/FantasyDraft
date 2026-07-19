@@ -7,30 +7,32 @@ import {
   skillVisualCoverage,
   skillVisualEntries,
   skillVisualFor,
-} from './skill-visual-registry.js?v=32';
+} from './skill-visual-registry.js?v=35';
 import {
   InteractionSfx,
   INTERACTION_HAPTIC_CUES,
   INTERACTION_SFX_CUES,
+  SFX_MIXER_CONFIG,
   getPersistentInteractionSfx,
-} from './interaction-sfx.js?v=32';
+} from './interaction-sfx.js?v=35';
 import {
   DEFAULT_PRESENTATION_SETTINGS,
   PresentationSettings,
   getPersistentPresentationSettings,
-} from './presentation-settings.js?v=32';
-import { MotionVfx, MOTION_TIMINGS, prefersReducedMotion } from '../fx/motion-vfx.js?v=32';
+} from './presentation-settings.js?v=35';
+import { MotionVfx, MOTION_TIMINGS, prefersReducedMotion } from '../fx/motion-vfx.js?v=35';
 import {
   drawSkillArtCrop,
   drawSkillIcon,
   skillArtCropRect,
   skillAtlasFrameRect,
   skillIconFormFamily,
-} from '../ui/skill-visuals.js?v=32';
+} from '../ui/skill-visuals.js?v=35';
 
 export {
   INTERACTION_SFX_CUES,
   INTERACTION_HAPTIC_CUES,
+  SFX_MIXER_CONFIG,
   InteractionSfx,
   MOTION_TIMINGS,
   MotionVfx,
@@ -76,14 +78,37 @@ const CUE_ALIASES = Object.freeze({
   queue: 'queue',
   'queue-add': 'queue',
   'queue-review-open': 'queue',
+  reorder: 'reorder',
+  'queue-reorder': 'reorder',
   confirm: 'confirm',
   'queue-confirm': 'confirm',
-  'turn-pass': 'confirm',
+  'turn-pass': 'turn',
+  turn: 'turn',
   error: 'error',
   disabled: 'error',
+  skill: 'skill',
+  'skill-resolve': 'skill',
+  heal: 'heal',
+  status: 'status',
+  'status-change': 'status',
   reveal: 'reveal',
   impact: 'impact',
+  result: 'result',
 });
+
+function sceneKey(scene) {
+  return String(scene && (scene.keyName || (scene.sys && scene.sys.settings && scene.sys.settings.key)) || '');
+}
+
+function semanticCueFor(scene, payload) {
+  const requested = typeof payload === 'string' ? payload : payload && payload.cue;
+  const context = payload && typeof payload === 'object' ? payload.context : null;
+  if (requested === 'queue' && context === 'queue-reorder') return 'reorder';
+  // ResultScene historically asked for the generic reveal cue. Keep that call
+  // compatible while giving the terminal screen its own calmer cadence.
+  if (requested === 'reveal' && sceneKey(scene) === 'ResultScene') return 'result';
+  return CUE_ALIASES[requested] || null;
+}
 
 export function createPresentationLayer(scene, options = {}) {
   if (scene && scene.presentationLayer && scene.presentationLayer.__jjkPresentationLayer && !scene.presentationLayer.isDestroyed()) {
@@ -211,8 +236,7 @@ export function createPresentationLayer(scene, options = {}) {
       });
     },
     interactionCue(_targetScene, payload = {}) {
-      const requested = typeof payload === 'string' ? payload : payload.cue;
-      const cue = CUE_ALIASES[requested] || null;
+      const cue = semanticCueFor(_targetScene || scene, payload);
       return cue ? (audio.cue ? audio.cue(cue) : audio.play(cue)) : false;
     },
     ambientWorld(_targetScene, payload = {}) {

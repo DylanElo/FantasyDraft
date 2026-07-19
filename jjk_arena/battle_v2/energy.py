@@ -15,6 +15,14 @@ CORE_ENERGY: tuple[EnergyType, ...] = (
     EnergyType.WHITE,
 )
 
+ENERGY_DISPLAY_NAMES: dict[EnergyType, str] = {
+    EnergyType.GREEN: "Taijutsu",
+    EnergyType.BLUE: "Jujutsu",
+    EnergyType.WHITE: "Strategic",
+    EnergyType.RED: "Bloodline",
+    EnergyType.BLACK: "Wild",
+}
+
 
 class EnergyValidationError(ValueError):
     """Raised when a queued action cannot be paid for."""
@@ -24,6 +32,12 @@ def normalize_energy(value: EnergyType | str) -> EnergyType:
     """Coerce a string or enum value into an EnergyType."""
 
     return value if isinstance(value, EnergyType) else EnergyType(value)
+
+
+def energy_display_name(value: EnergyType | str) -> str:
+    """Return player vocabulary without changing the stable wire value."""
+
+    return ENERGY_DISPLAY_NAMES[normalize_energy(value)]
 
 
 def living_active_count(player: PlayerState) -> int:
@@ -96,13 +110,13 @@ def validate_wildcard_payments(
             f"{skill.id} requires {wildcard_count} wildcard payment(s); got {len(pays)}"
         )
     if any(energy == EnergyType.BLACK for energy in pays):
-        raise EnergyValidationError("black energy cannot pay wildcard costs")
+        raise EnergyValidationError("Wild energy cannot pay wildcard costs")
 
     total_required = Counter(specific)
     total_required.update(pays)
     for energy, amount in total_required.items():
         if player.energy.get(energy, 0) < amount:
-            raise EnergyValidationError(f"not enough {energy.value} energy")
+            raise EnergyValidationError(f"not enough {energy_display_name(energy)} energy")
 
 
 def spend_skill_energy(

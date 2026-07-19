@@ -9,7 +9,7 @@ import random
 
 from .conditions import evaluate_conditions, has_status, is_stunned_for_class, skill_is_harmful
 from .effects import apply_damage, apply_effect, apply_status, apply_turn_end_statuses, should_tick_status, tick_cooldowns, tick_statuses
-from .energy import EnergyValidationError, can_afford_specific, normalize_energy, spend_skill_energy, split_cost, validate_wildcard_payments
+from .energy import EnergyValidationError, can_afford_specific, energy_display_name, normalize_energy, spend_skill_energy, split_cost, validate_wildcard_payments
 from .models import BattleEvent, BattlePhase, BattleState, CharacterState, DamageType, DurationClock, EffectContext, EffectSpec, EnergyType, PendingAction, SkillClass, SkillSpec, StatusEffect, StatusFamily
 from .targeting import TargetingError, get_character, get_player, validate_target_rule
 
@@ -174,13 +174,13 @@ def validate_queue_energy(
                 f"{skill.id} requires {wildcard_count} wildcard payment(s); got {len(wildcard_pays)}"
             )
         if any(energy.value == "black" for energy in wildcard_pays):
-            raise ResolverError("black energy cannot pay wildcard costs")
+            raise ResolverError("Wild energy cannot pay wildcard costs")
         required.update(specific)
         required.update(wildcard_pays)
 
     for energy, amount in required.items():
         if player.energy.get(energy, 0) < amount:
-            raise ResolverError(f"not enough {energy.value} energy for queued actions")
+            raise ResolverError(f"not enough {energy_display_name(energy)} energy for queued actions")
 
 def validate_queue_identity(state: BattleState, player_id: str) -> None:
     """Validate action and ordering identity without inspecting skill effects."""

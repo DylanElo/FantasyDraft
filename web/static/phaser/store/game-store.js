@@ -1,9 +1,9 @@
-import { BOOT, CORE_ENERGY } from '../core/runtime-config.js?v=32';
-import { safeText } from '../core/text.js?v=32';
-import { readStorage, writeStorage } from '../core/storage.js?v=32';
-import { AssetRegistry } from '../core/asset-registry.js?v=32';
-import { firstCreationRoster, preset, presetTitle } from '../core/roster.js?v=32';
-import { damageEventAmount } from '../fx/event-metrics.js?v=32';
+import { BOOT, CORE_ENERGY } from '../core/runtime-config.js?v=35';
+import { safeText } from '../core/text.js?v=35';
+import { readStorage, writeStorage } from '../core/storage.js?v=35';
+import { AssetRegistry } from '../core/asset-registry.js?v=35';
+import { firstCreationRoster, preset, presetTitle } from '../core/roster.js?v=35';
+import { damageEventAmount } from '../fx/event-metrics.js?v=35';
 
 export class GameStore {
     constructor(socketClient) {
@@ -23,13 +23,18 @@ export class GameStore {
       this.selectedCasterSlot = null;
       this.selectedSkillId = null;
       this.detailSkillId = null;
+      this.inspectedFighter = null;
       this.targetingStage = null;
       this.pendingPrimaryTarget = null;
       this.actions = [];
       this.actionWildPays = {};
       this.queueReviewOpen = false;
       this.queueSubmitting = false;
+      this.transmuteOpen = false;
+      this.transmuteSources = [];
+      this.transmuteTarget = null;
       this.toast = '';
+      this.toastSerial = 0;
       this.connectionState = 'connected';
       this.disconnectDeadline = null;
       this.draftPage = 0;
@@ -40,6 +45,11 @@ export class GameStore {
       this.eventCursor = 0;
       this.playbackEvents = [];
       this.recentEvents = [];
+      this.visiblePublicAction = null;
+      this.visiblePublicActionUntil = 0;
+      this.phaseTimerSnapshotSeconds = null;
+      this.phaseTimerSnapshotAt = null;
+      this.uiClockToken = '';
       this.lastActionPayloads = [];
       this.commandNonceCounter = 0;
       this.pendingCommand = null;
@@ -55,7 +65,17 @@ export class GameStore {
       this.enemyTeam = preset('jjk0_beginner_special', ['yuta_okkotsu_jjk0', 'maki_zenin', 'toge_inumaki']);
       this.bindSocket();
       window.setInterval(() => {
-        if (this.disconnectDeadline != null) this.notify();
+        const phaseSecond = this.phaseSecondsRemaining();
+        const visibleAction = this.currentVisibleAction();
+        const token = [
+          this.disconnectSecondsRemaining(),
+          Number.isFinite(phaseSecond) ? phaseSecond : '-',
+          visibleAction ? this.visiblePublicActionUntil : 0,
+        ].join(':');
+        if (token !== this.uiClockToken) {
+          this.uiClockToken = token;
+          this.notify();
+        }
       }, 250);
       window.__phaserShellDebug = {
         store: this,
@@ -151,14 +171,24 @@ export class GameStore {
     }
 
     showToast(message) {
-      this.toast = safeText(message);
+      const toast = safeText(message);
+      this.toastSerial = Number(this.toastSerial || 0) + 1;
+      const serial = this.toastSerial;
+      this.toast = toast;
       this.notify();
       window.setTimeout(() => {
-        if (this.toast === message) {
+        if (this.toastSerial === serial) {
           this.toast = '';
           this.notify();
         }
       }, 2200);
+    }
+
+    clearToast() {
+      this.toastSerial = Number(this.toastSerial || 0) + 1;
+      if (!this.toast) return;
+      this.toast = '';
+      this.notify();
     }
 
     commandPayload(payload = {}) {
@@ -408,6 +438,8 @@ export class GameStore {
     }
 
     openSkillDetail(skillId) {
+      this.inspectedFighter = null;
+      this.clearToast();
       this.detailSkillId = skillId;
       this.notify();
     }
@@ -415,6 +447,28 @@ export class GameStore {
     closeSkillDetail() {
       this.detailSkillId = null;
       this.notify();
+    }
+
+    inspectFighter(side, slot) {
+      const player = side === 'enemy' ? this.foe() : this.me();
+      const character = player && player.team ? player.team[slot] : null;
+      if (!character) return;
+      this.detailSkillId = null;
+      this.inspectedFighter = { side: side === 'enemy' ? 'enemy' : 'mine', slot: Number(slot) };
+      this.clearToast();
+      this.notify();
+    }
+
+    closeFighterInspection() {
+      this.inspectedFighter = null;
+      this.notify();
+    }
+
+    inspectedFighterState() {
+      if (!this.inspectedFighter) return null;
+      const player = this.inspectedFighter.side === 'enemy' ? this.foe() : this.me();
+      const character = player && player.team ? player.team[this.inspectedFighter.slot] : null;
+      return character ? { ...this.inspectedFighter, character } : null;
     }
 
     setDraftTarget(teamKey) {
@@ -545,6 +599,9 @@ export class GameStore {
         this.eventCursor = 0;
         this.playbackEvents = [];
         this.recentEvents = [];
+        this.visiblePublicAction = null;
+        this.visiblePublicActionUntil = 0;
+        this.inspectedFighter = null;
       }
       const pendingCommand = this.pendingCommand;
       const pendingMatches = !!pendingCommand && (
@@ -558,6 +615,11 @@ export class GameStore {
       if (completedCommand || (pendingCommand && !pendingMatches)) {
         this.pendingCommand = null;
       }
+      if (completedCommand && completedCommand.kind === 'convert_energy') {
+        this.transmuteOpen = false;
+        this.transmuteSources = [];
+        this.transmuteTarget = null;
+      }
 
       const log = data && Array.isArray(data.event_log) ? data.event_log : [];
       const nextEvents = log.slice(this.eventCursor);
@@ -565,8 +627,30 @@ export class GameStore {
       if (nextEvents.length) {
         this.playbackEvents = nextEvents.slice(-6);
         this.recentEvents = log.slice(-8).reverse();
+        const visibleAction = nextEvents.slice().reverse().find((event) => (
+          safeText(event && event.type) === 'skill_resolved'
+        ));
+        if (visibleAction) {
+          this.visiblePublicAction = visibleAction;
+          this.visiblePublicActionUntil = Date.now() + 4800;
+        }
       }
       this.state = data;
+      const transmutePlayer = this.me();
+      const transmuteStillAllowed = sameMatch
+        && data.phase === 'planning'
+        && data.turn_player_id === this.mineId()
+        && !data.paused
+        && !data.result_type
+        && !(transmutePlayer && transmutePlayer.energy_converted_this_turn);
+      if (this.transmuteOpen && !transmuteStillAllowed) {
+        this.transmuteOpen = false;
+        this.transmuteSources = [];
+        this.transmuteTarget = null;
+      }
+      const phaseSeconds = Number(data.phase_seconds_remaining);
+      this.phaseTimerSnapshotSeconds = Number.isFinite(phaseSeconds) ? Math.max(0, phaseSeconds) : null;
+      this.phaseTimerSnapshotAt = Date.now();
       if (data.first_creation_account) {
         this.firstCreationAccount = data.first_creation_account;
       }
@@ -676,6 +760,21 @@ export class GameStore {
       return Math.max(0, Math.ceil((this.disconnectDeadline - Date.now()) / 1000));
     }
 
+    phaseSecondsRemaining() {
+      if (!this.state || !['planning', 'queue_review'].includes(this.state.phase)) return null;
+      if (!Number.isFinite(this.phaseTimerSnapshotSeconds)) return null;
+      if (this.state.paused || !Number.isFinite(this.phaseTimerSnapshotAt)) {
+        return Math.max(0, Math.ceil(this.phaseTimerSnapshotSeconds));
+      }
+      const elapsed = Math.max(0, (Date.now() - this.phaseTimerSnapshotAt) / 1000);
+      return Math.max(0, Math.ceil(this.phaseTimerSnapshotSeconds - elapsed));
+    }
+
+    currentVisibleAction() {
+      if (!this.visiblePublicAction || Date.now() >= this.visiblePublicActionUntil) return null;
+      return this.visiblePublicAction;
+    }
+
     livingSlots(player) {
       return (player && player.team ? player.team : [])
         .map((character, slot) => (character && character.alive ? slot : null))
@@ -733,20 +832,37 @@ export class GameStore {
     skillIsHarmful(skill) {
       const kind = (skill && skill.target_rule && skill.target_rule.kind) || 'enemy';
       const effects = (skill && skill.effects) || [];
-      if (kind === 'enemy' || kind === 'enemy_team') return effects.some((effect) => effect.target !== 'self') || (skill.classes || []).includes('Control');
+      // The server treats selecting the opposing side as hostile even when a
+      // compact/public catalog omits effect specs. Do not infer "helpful" from
+      // missing client detail or an invulnerable enemy will glow selectable.
+      if (kind === 'enemy' || kind === 'enemy_team') return true;
       return effects.some((effect) => effect.target !== 'self' && ['damage', 'health_steal', 'drain_energy', 'remove_status', 'counter'].includes(effect.type));
     }
 
     statusBlocksSkill(character, skill) {
-      const classes = (skill && skill.classes) || [];
-      for (const status of ((character && character.statuses) || [])) {
-        if (Number(status.duration || 0) === 0) continue;
+      const classes = ((skill && skill.classes) || []).map((value) => safeText(value).toLowerCase());
+      const activeStatuses = ((character && character.statuses) || []).filter((status) => Number(status.duration || 0) !== 0);
+      const ignoresStun = activeStatuses.some((status) => status.payload && status.payload.ignore_stun);
+      const kind = (skill && skill.target_rule && skill.target_rule.kind) || 'enemy';
+      for (const status of activeStatuses) {
         const payload = status.payload || {};
-        const stunned = payload.stun_classes || [];
-        if (stunned.includes('all') || classes.some((skillClass) => stunned.includes(skillClass))) return `Blocked by ${status.name || 'stun'}`;
-        if (payload.stun_harmful && this.skillIsHarmful(skill)) return `Harmful skills blocked by ${status.name || 'stun'}`;
-        if (payload.block_non_damaging_skills && !(skill.effects || []).some((effect) => effect.target !== 'self' && ['damage', 'health_steal'].includes(effect.type))) return `Non-damaging skills blocked by ${status.name || 'control'}`;
-        if (payload.block_counters && (skill.effects || []).some((effect) => effect.payload && effect.payload.counter)) return `Counters blocked by ${status.name || 'control'}`;
+        const statusName = safeText(status.name || status.id || 'Status');
+        const stunned = (payload.stun_classes || []).map((value) => safeText(value).toLowerCase());
+        if (!ignoresStun && (stunned.includes('all') || classes.some((skillClass) => stunned.includes(skillClass)))) {
+          return `${statusName}: this skill class is disabled.`;
+        }
+        if (!ignoresStun && payload.stun_harmful && this.skillIsHarmful(skill)) {
+          return `${statusName}: harmful skills are disabled.`;
+        }
+        if (payload.cannot_target_allies && ['ally', 'ally_team'].includes(kind)) {
+          return `${statusName}: ally skills are disabled.`;
+        }
+        if (payload.block_non_damaging_skills && !(skill.effects || []).some((effect) => effect.target !== 'self' && ['damage', 'health_steal'].includes(effect.type))) {
+          return `${statusName}: non-damaging skills are disabled.`;
+        }
+        if (payload.block_counters && (skill.effects || []).some((effect) => effect.payload && effect.payload.counter)) {
+          return `${statusName}: counters are disabled.`;
+        }
       }
       return '';
     }
@@ -875,8 +991,10 @@ export class GameStore {
       this.selectedCasterSlot = slot;
       this.selectedSkillId = null;
       this.detailSkillId = null;
+      this.inspectedFighter = null;
       this.targetingStage = null;
       this.pendingPrimaryTarget = null;
+      this.clearToast();
       this.notify();
     }
 
@@ -912,6 +1030,7 @@ export class GameStore {
       const kind = (skill.target_rule && skill.target_rule.kind) || 'enemy';
       this.selectedSkillId = skill.id;
       this.detailSkillId = null;
+      this.inspectedFighter = null;
       this.targetingStage = null;
       this.pendingPrimaryTarget = null;
       if (this.hasEffectFlag(skill, 'conditional_targeting', 'venom_bloom')) {
@@ -921,7 +1040,7 @@ export class GameStore {
           return;
         }
         this.targetingStage = 'venom_primary';
-        this.showToast('Choose a poisoned primary target.');
+        this.clearToast();
         this.notify();
         return;
       }
@@ -932,7 +1051,7 @@ export class GameStore {
       if (kind === 'enemy_team') {
         const slots = this.teamTargetSlots(foe, skill);
         if (!slots.length) {
-          this.showToast('No legal targets for that skill.');
+          this.showToast('No selectable targets for that skill.');
           return;
         }
         this.addAction(this.selectedCasterSlot, skill.id, this.enemyId(), null, slots);
@@ -941,19 +1060,19 @@ export class GameStore {
       if (kind === 'ally_team') {
         const slots = this.teamTargetSlots(me, skill);
         if (!slots.length) {
-          this.showToast('No legal targets for that skill.');
+          this.showToast('No selectable targets for that skill.');
           return;
         }
         this.addAction(this.selectedCasterSlot, skill.id, this.mineId(), null, slots);
         return;
       }
       if (!this.hasManualTargetForSkill(skill, kind === 'ally' ? 'mine' : 'enemy')) {
-        this.showToast('No legal targets for that skill.');
+        this.showToast('No selectable targets for that skill.');
         this.selectedSkillId = null;
         this.notify();
         return;
       }
-      this.showToast(kind === 'ally' ? 'Choose a glowing ally.' : 'Choose a glowing enemy.');
+      this.clearToast();
       this.notify();
     }
 
@@ -966,7 +1085,7 @@ export class GameStore {
       const player = side === 'enemy' ? this.foe() : this.me();
       const target = player && player.team ? player.team[slot] : null;
       if (!this.canTarget(target, slot, side)) {
-        this.showToast('Illegal target for that skill.');
+        this.showToast('That fighter cannot be targeted by this skill.');
         return;
       }
       const skill = this.selectedSkill();
@@ -979,7 +1098,7 @@ export class GameStore {
       if (this.targetingStage === 'venom_primary') {
         this.pendingPrimaryTarget = { playerId, slot };
         this.targetingStage = 'venom_secondary';
-        this.showToast('Choose a different secondary spread target.');
+        this.clearToast();
         this.notify();
         return;
       }
@@ -991,7 +1110,7 @@ export class GameStore {
       if (this.hasEffectFlag(skill, 'controlled_redirect')) {
         this.pendingPrimaryTarget = { playerId, slot };
         this.targetingStage = 'alternate';
-        this.showToast('Choose the alternate redirect destination.');
+        this.clearToast();
         this.notify();
         return;
       }
@@ -1014,8 +1133,10 @@ export class GameStore {
       });
       this.selectedSkillId = null;
       this.detailSkillId = null;
+      this.inspectedFighter = null;
       this.targetingStage = null;
       this.pendingPrimaryTarget = null;
+      this.clearToast();
       this.ensureSelectedCaster();
       this.ensureWildcardPayments();
       this.lastActionPayloads = this.pendingActionPayloads();
@@ -1109,6 +1230,8 @@ export class GameStore {
     openQueueReview() {
       if (this.controlsLocked() || !this.actions.length) return;
       this.ensureWildcardPayments();
+      this.inspectedFighter = null;
+      this.clearToast();
       this.queueReviewOpen = true;
       this.notify();
     }
@@ -1142,6 +1265,7 @@ export class GameStore {
 
     closeQueueReview() {
       this.queueReviewOpen = false;
+      this.clearToast();
       this.notify();
     }
 
@@ -1249,24 +1373,98 @@ export class GameStore {
       this.notify();
     }
 
-    convertEnergy() {
+    canTransmuteEnergy() {
       const me = this.me();
-      if (!me || this.controlsLocked() || this.actions.length || me.energy_converted_this_turn) {
-        this.showToast('Energy conversion is unavailable right now.');
+      const total = CORE_ENERGY.reduce(
+        (sum, color) => sum + Number((me && me.energy && me.energy[color]) || 0),
+        0,
+      );
+      return !!me
+        && !!this.state
+        && this.state.phase === 'planning'
+        && !this.controlsLocked()
+        && !this.actions.length
+        && !me.energy_converted_this_turn
+        && total >= 5;
+    }
+
+    openTransmute() {
+      if (!this.canTransmuteEnergy()) {
+        this.showToast('Transmute needs 5 available energy before you queue actions.');
         return;
       }
-      const colors = ['green', 'red', 'blue', 'white'];
-      const source = colors.find((color) => Number((me.energy || {})[color] || 0) >= 2);
-      if (!source) {
-        this.showToast('Need 2 matching energy to convert.');
+      this.selectedSkillId = null;
+      this.detailSkillId = null;
+      this.targetingStage = null;
+      this.pendingPrimaryTarget = null;
+      this.transmuteSources = [];
+      this.transmuteTarget = null;
+      this.transmuteOpen = true;
+      this.notify();
+    }
+
+    closeTransmute() {
+      this.transmuteOpen = false;
+      this.transmuteSources = [];
+      this.transmuteTarget = null;
+      this.notify();
+    }
+
+    transmuteSourceCount(color) {
+      return this.transmuteSources.filter((source) => source === color).length;
+    }
+
+    addTransmuteSource(color) {
+      const me = this.me();
+      if (!this.transmuteOpen || !CORE_ENERGY.includes(color) || !me) return;
+      if (this.transmuteSources.length >= 5) return;
+      const available = Number((me.energy || {})[color] || 0);
+      if (this.transmuteSourceCount(color) >= available) {
+        this.showToast('No more of that energy is available to sacrifice.');
         return;
       }
-      const target = colors
-        .filter((color) => color !== source)
-        .sort((a, b) => Number((me.energy || {})[a] || 0) - Number((me.energy || {})[b] || 0))[0];
-      if (this.beginCommand('battle_v2_convert_energy', { source, target }, 'convert_energy')) {
-        this.showToast(`Converting ${source} to ${target}.`);
+      this.transmuteSources = [...this.transmuteSources, color];
+      this.notify();
+    }
+
+    removeTransmuteSource(color) {
+      if (!this.transmuteOpen || !CORE_ENERGY.includes(color)) return;
+      const index = this.transmuteSources.lastIndexOf(color);
+      if (index < 0) return;
+      this.transmuteSources = this.transmuteSources.filter((_, sourceIndex) => sourceIndex !== index);
+      this.notify();
+    }
+
+    selectTransmuteTarget(color) {
+      if (!this.transmuteOpen || !CORE_ENERGY.includes(color)) return;
+      this.transmuteTarget = color;
+      this.notify();
+    }
+
+    confirmTransmute() {
+      if (!this.canTransmuteEnergy() || !this.transmuteOpen) {
+        this.closeTransmute();
+        return;
       }
+      if (this.transmuteSources.length !== 5) {
+        this.showToast(`Choose ${5 - this.transmuteSources.length} more energy to sacrifice.`);
+        return;
+      }
+      if (!CORE_ENERGY.includes(this.transmuteTarget)) {
+        this.showToast('Choose the energy type you want to create.');
+        return;
+      }
+      const sources = this.transmuteSources.slice();
+      const target = this.transmuteTarget;
+      if (this.beginCommand('battle_v2_convert_energy', { sources, target }, 'convert_energy')) {
+        this.transmuteOpen = false;
+        this.showToast('Transmutation submitted. The server is validating it.');
+        this.notify();
+      }
+    }
+
+    convertEnergy() {
+      this.openTransmute();
     }
 
     resetToLobby() {
@@ -1293,10 +1491,20 @@ export class GameStore {
       this.matchLaunchPending = false;
       this.matchupReturnScene = 'DraftScene';
       this.queueReviewOpen = false;
+      this.transmuteOpen = false;
+      this.transmuteSources = [];
+      this.transmuteTarget = null;
       this.detailCharacterId = null;
+      this.detailSkillId = null;
+      this.inspectedFighter = null;
       this.eventCursor = 0;
       this.playbackEvents = [];
       this.recentEvents = [];
+      this.visiblePublicAction = null;
+      this.visiblePublicActionUntil = 0;
+      this.phaseTimerSnapshotSeconds = null;
+      this.phaseTimerSnapshotAt = null;
+      this.clearToast();
       this.changeScene('LobbyScene');
     }
   }

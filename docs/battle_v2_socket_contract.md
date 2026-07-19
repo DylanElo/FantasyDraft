@@ -257,14 +257,21 @@ families such as soul or piercing damage.
 
 ### `battle_v2_convert_energy`
 
-Converts two matching core energy into one different core energy once during
-the current turn.
+Optionally transmutes exactly five player-selected core energy into one
+player-selected core energy once during the current turn. It is available only
+during Planning before any action is queued. Wild is never a valid source or
+target. The server validates the exact five-pip source allocation and available
+pool before mutating state.
+
+The wire values remain `green`, `blue`, `white`, and `red`. Clients display
+those as `T` Taijutsu, `J` Jujutsu, `S` Strategic, and `B` Bloodline,
+respectively; Wild remains `X` and has the internal placeholder value `black`.
 
 ```json
 {
   "state_revision": 0,
   "client_action_nonce": "1712345678901-6",
-  "source": "green",
+  "sources": ["green", "green", "blue", "white", "red"],
   "target": "red"
 }
 ```

@@ -106,6 +106,20 @@ do not decide when expiration occurs.
 
 Invisible statuses must be visible to their owner, hidden from opponents, revealed when triggered, and never leak protected targets through public serialization.
 
+## Energy transmutation
+
+During the active player's Planning phase, before any action is queued, the
+player may optionally transmute exactly five chosen stored core-energy pips
+into one chosen core-energy pip. The five sacrificed pips may be any mixture of
+the four core types. Transmutation is limited to once per player turn, is
+server-validated, and never creates or accepts Wild (`X`) energy. See
+`docs/decisions/battle_v2_energy_transmutation.md`.
+
+The player-facing core vocabulary is `T` Taijutsu (green), `J` Jujutsu (blue),
+`S` Strategic (white), and `B` Bloodline (red). Authoritative state, sockets,
+and replays continue to use the stable internal color values. `X` remains Wild
+and is never a stored fifth resource.
+
 ## Session continuity
 
 Each human player receives an opaque, room-scoped resume token over their

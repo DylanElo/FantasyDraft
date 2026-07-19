@@ -1,7 +1,7 @@
-import { COLORS, CULLING_COLORS, TOKEN_TYPE } from '../core/runtime-config.js?v=32';
-import { safeText, shortText } from '../core/text.js?v=32';
-import { eventAmount, eventTone } from './event-metrics.js?v=32';
-import { BaseScene } from '../scenes/base-scene.js?v=32';
+import { COLORS, CULLING_COLORS, ENERGY_NAMES, TOKEN_TYPE } from '../core/runtime-config.js?v=35';
+import { safeText, shortText } from '../core/text.js?v=35';
+import { eventAmount, eventTone } from './event-metrics.js?v=35';
+import { BaseScene } from '../scenes/base-scene.js?v=35';
 
 export class CombatPlaybackScene extends BaseScene {
     playbackReducedMotion() {
@@ -369,7 +369,7 @@ export class CombatPlaybackScene extends BaseScene {
       const casterPoint = this.casterPointFromPayload(event, frame);
 
       if (type === 'skill_resolved') {
-        if (this.presentationLayer) this.presentationLayer.interactionCue(this, { cue: 'select' });
+        if (this.presentationLayer) this.presentationLayer.interactionCue(this, { cue: 'skill-resolve' });
         this.playCinematicCutIn(frame, message, CULLING_COLORS.gold);
         if (casterPoint) this.playRing(casterPoint, CULLING_COLORS.gold, { radius: (casterPoint.size || 62) / 2 + 20, alpha: 0.86 });
         if (casterPoint && point) this.playSlashLine(casterPoint, point, CULLING_COLORS.gold);
@@ -412,14 +412,15 @@ export class CombatPlaybackScene extends BaseScene {
           }
           if (!this.playbackReducedMotion()) this.cameras.main.shake(150, 0.006);
         } else if (this.presentationLayer) {
-          this.presentationLayer.interactionCue(this, { cue: 'reveal' });
+          this.presentationLayer.interactionCue(this, { cue: 'heal' });
         }
         return;
       }
 
       if (tone === 'status' || type.includes('status') || type.includes('energy')) {
-        if (this.presentationLayer) this.presentationLayer.interactionCue(this, { cue: 'reveal' });
-        const status = event && event.payload && (event.payload.status || event.payload.energy || event.payload.name);
+        if (this.presentationLayer) this.presentationLayer.interactionCue(this, { cue: 'status-change' });
+        const payload = (event && event.payload) || {};
+        const status = payload.status || ENERGY_NAMES[payload.energy] || payload.name;
         const label = status ? safeText(status).replace(/_/g, ' ').toUpperCase() : safeText(type, 'STATUS').replace(/_/g, ' ').toUpperCase();
         this.playRing(point, COLORS.domain, { radius: (point.size || 62) / 2 + 18, alpha: 0.72 });
         this.playFloatingText(point, label, '#d8ccff', {

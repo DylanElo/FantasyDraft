@@ -460,9 +460,9 @@ def test_battle_v2_socket_retry_does_not_repeat_energy_conversion(monkeypatch):
     start = received_payload(client, "battle_v2_update")
     state = web_app.battle_v2_manager.get_state("retry-v2")
     player_id = start["turn_player_id"]
-    state.players[player_id].energy[EnergyType.GREEN] = 2
+    state.players[player_id].energy[EnergyType.GREEN] = 5
     command = {
-        "source": "green",
+        "sources": ["green"] * 5,
         "target": "red",
         "state_revision": 0,
         "client_action_nonce": "socket-retry",
@@ -616,16 +616,45 @@ def test_battle_v2_socket_convert_energy(monkeypatch):
     start_state = received_payload(client, "battle_v2_update")
     player_id = start_state["turn_player_id"]
     state = web_app.battle_v2_manager.get_state("socket-v2")
-    state.players[player_id].energy[EnergyType.GREEN] = 2
+    state.players[player_id].energy[EnergyType.GREEN] = 5
     state.players[player_id].energy[EnergyType.RED] = 0
 
-    client.emit("battle_v2_convert_energy", command_payload(state, {"source": "green", "target": "red"}))
+    client.emit(
+        "battle_v2_convert_energy",
+        command_payload(state, {"sources": ["green"] * 5, "target": "red"}),
+    )
     converted = received_payload(client, "battle_v2_update")
 
     assert converted["players"][player_id]["energy"]["green"] == 0
     assert converted["players"][player_id]["energy"]["red"] == 1
     assert converted["players"][player_id]["energy_converted_this_turn"] is True
     assert any(event["type"] == "energy_converted" for event in converted["event_log"])
+
+
+def test_battle_v2_socket_rejects_six_transmutation_sources_without_truncating(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    client = socket_client()
+    client.emit("battle_v2_start_classic", {"room_id": "six-source-transmutation"})
+    started = received_payload(client, "battle_v2_update")
+    state = web_app.battle_v2_manager.get_state("six-source-transmutation")
+    player_id = started["turn_player_id"]
+    state.players[player_id].energy = {energy: 0 for energy in EnergyType}
+    state.players[player_id].energy[EnergyType.GREEN] = 6
+
+    client.emit(
+        "battle_v2_convert_energy",
+        command_payload(state, {"sources": ["green"] * 6, "target": "red"}),
+    )
+    messages = received_payloads(client)
+
+    assert "battle_v2_error" in messages
+    assert "exactly 5" in messages["battle_v2_error"]["message"]
+    refreshed = messages["battle_v2_update"]
+    assert refreshed["state_revision"] == 0
+    assert refreshed["players"][player_id]["energy"]["green"] == 6
+    assert refreshed["players"][player_id]["energy"]["red"] == 0
+    assert refreshed["players"][player_id]["energy_converted_this_turn"] is False
+    assert not any(event["type"] == "energy_converted" for event in refreshed["event_log"])
 
 
 def test_battle_v2_socket_surrender_finishes_match(monkeypatch):

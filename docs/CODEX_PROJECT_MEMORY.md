@@ -149,13 +149,15 @@ PLANNING
 
 JJK labels are used over Naruto labels, but the resource logic remains a four-color random economy.
 
-- `B` / Body — physical combat, martial arts, cursed tools, physical reinforcement.
-- `T` / Technique — cursed techniques, shikigami, cursed speech, puppet output.
-- `F` / Focus — tactics, barriers, counters, reads, support, controlled preparation.
-- `C` / Curse — volatile cursed energy, blood, poison, cursed-spirit effects, risky output.
+- `T` / Taijutsu (green) — physical combat, martial arts, cursed tools, physical reinforcement.
+- `J` / Jujutsu (blue) — cursed techniques, shikigami, cursed speech, puppet output.
+- `S` / Strategic (white) — tactics, barriers, counters, reads, support, controlled preparation.
+- `B` / Bloodline (red) — volatile cursed energy, blood, poison, cursed-spirit effects, risky output.
 - `X` / Wild — a cost placeholder that can be paid by any generated core color in Queue Review.
 
 `X` is not generated, stored, drained, or displayed as a fifth resource pool.
+Authoritative state, socket commands, and replay documents keep the stable
+internal keys `green`, `blue`, `white`, `red`, and `black`.
 
 ## Generation
 
@@ -163,6 +165,17 @@ JJK labels are used over Naruto labels, but the resource logic remains a four-co
 - The first player receives one random core energy.
 - Subsequent normal gains equal the number of living active characters at the intended turn-end timing.
 - Random effects use battle RNG/seed injection for deterministic testing.
+
+## Optional transmutation
+
+- Once per player turn, during Planning and before any fighter action is
+  queued, the player may sacrifice exactly five chosen stored core-energy pips
+  to create one chosen core-energy pip.
+- The five sacrificed pips may be any player-selected mixture of the four core
+  types; the client must never auto-select the sacrifice or result.
+- Wild (`X`) cannot be sacrificed or created.
+- Python validates and applies the exchange authoritatively. See
+  `docs/decisions/battle_v2_energy_transmutation.md`.
 
 ## Opportunity cost
 
@@ -661,7 +674,7 @@ Distinct visual states are required for:
   short cinematic punctuation rather than default dashboard surfaces.
 - Gold indicates selection/commitment, cyan indicates legal targets, red
   indicates danger/damage, green indicates queued actions, and violet remains
-  reserved for Domain/cinematic states. B/T/F/C and X meanings never change.
+  reserved for Domain/cinematic states. T/J/S/B and X meanings never change.
 - Panels use ink outlines, clipped corners, sparse hatching, paper/concrete
   grain, and restrained barrier cuts. Art leads; decoration never replaces
   hierarchy or hides authoritative state.

@@ -15,7 +15,7 @@ from .timers import BattleTimerPolicy
 
 
 REPLAY_FORMAT_VERSION = 2
-RULES_VERSION = "battle-v2-2026-07-cpu-planning"
+RULES_VERSION = "battle-v2-2026-07-transmute-5"
 HASH_EXCLUDED_FIELDS = {"phase_deadline", "room_id"}
 
 

@@ -44,7 +44,7 @@ behind active roster labels.
 ## Combat Planning And Skill Detail
 
 ```text
-[turn / phase / timer] [B T F C energy] [exit]
+[turn / phase / timer] [T J S B energy] [exit]
 [enemy 1] [enemy 2] [enemy 3]
 [open rooftop targeting lane / directive / queue]
 [ally 1]  [ally 2]  [ally 3]

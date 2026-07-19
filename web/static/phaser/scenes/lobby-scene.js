@@ -1,7 +1,7 @@
-import { CULLING_COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=32';
-import { safeText, shortText } from '../core/text.js?v=32';
-import { drawCurrentWorld } from '../ui/culling-current-ui.js?v=32';
-import { BaseScene } from './base-scene.js?v=32';
+import { CULLING_COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=35';
+import { safeText, shortText } from '../core/text.js?v=35';
+import { drawCurrentWorld } from '../ui/culling-current-ui.js?v=35';
+import { BaseScene } from './base-scene.js?v=35';
 
 const HOME_WORLD_KEY = 'culling-current-home-hero';
 

@@ -1,9 +1,9 @@
-import { focalCoverCrop, portraitEntryFor, starterPortraitEntries } from '../core/portrait-registry.js?v=32';
-import { COLORS, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=32';
-import { initials, safeText } from '../core/text.js?v=32';
-import { LayoutService } from '../core/layout-service.js?v=32';
-import { costColors } from '../core/roster.js?v=32';
-import { SKILL_ACTION_ATLASES, createPresentationLayer } from '../core/presentation-layer.js?v=32';
+import { focalCoverCrop, portraitEntryFor, starterPortraitEntries } from '../core/portrait-registry.js?v=35';
+import { COLORS, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=35';
+import { initials, safeText } from '../core/text.js?v=35';
+import { LayoutService } from '../core/layout-service.js?v=35';
+import { costColors } from '../core/roster.js?v=35';
+import { SKILL_ACTION_ATLASES, createPresentationLayer } from '../core/presentation-layer.js?v=35';
 
 const COMBAT_SKILL_ASSETS = Object.freeze([
   Object.freeze({ key: 's3-skill-body', url: '/static/assets/skills/culling-current/body.webp' }),
@@ -21,6 +21,27 @@ let ACTIVE_POINTER_DISPATCH = null;
 function characterId(value) {
   if (typeof value === 'string') return value;
   return value && (value.id || value.character_id) || null;
+}
+
+function cropFrameName(prefix, crop) {
+  const token = [crop.x, crop.y, crop.width, crop.height]
+    .map((value) => Math.round(Number(value) * 1000).toString(36))
+    .join('_');
+  return `__jjk_${prefix}_${token}`;
+}
+
+function applyBoundedCropFrame(image, texture, crop) {
+  if (!image || !texture || typeof texture.add !== 'function' || typeof image.setFrame !== 'function') return false;
+  const frameName = cropFrameName('cover', crop);
+  const hasFrame = typeof texture.has === 'function' && texture.has(frameName);
+  const frame = hasFrame
+    ? (typeof texture.get === 'function' ? texture.get(frameName) : true)
+    : texture.add(frameName, 0, crop.x, crop.y, crop.width, crop.height);
+  if (!frame) return false;
+  image.setFrame(frameName);
+  image.setOrigin(0.5, 0.5);
+  image.setScale(crop.scale);
+  return true;
 }
 
 export class BaseScene extends Phaser.Scene {
@@ -380,12 +401,18 @@ export class BaseScene extends Phaser.Scene {
       const sourceWidth = image.frame.realWidth || image.frame.width;
       const sourceHeight = image.frame.realHeight || image.frame.height;
       const crop = focalCoverCrop(sourceWidth, sourceHeight, w, h, opts.focal);
-      image.setOrigin(
-        (crop.x + crop.width / 2) / sourceWidth,
-        (crop.y + crop.height / 2) / sourceHeight,
-      );
-      image.setCrop(crop.x, crop.y, crop.width, crop.height);
-      image.setScale(crop.scale);
+      const texture = image.texture || (this.textures.get && this.textures.get(textureKey));
+      if (!applyBoundedCropFrame(image, texture, crop)) {
+        // Compatibility path for stripped Phaser test doubles. Shipping
+        // Phaser registers a true subframe above so the crop has local 0.5
+        // origin and cannot be positioned by the full source-sheet bounds.
+        image.setOrigin(
+          (crop.x + crop.width / 2) / sourceWidth,
+          (crop.y + crop.height / 2) / sourceHeight,
+        );
+        image.setCrop(crop.x, crop.y, crop.width, crop.height);
+        image.setScale(crop.scale);
+      }
       image.setDepth(opts.depth === undefined ? -30 : opts.depth);
       image.setAlpha(opts.alpha === undefined ? 1 : opts.alpha);
       image.setData('coverCrop', crop);

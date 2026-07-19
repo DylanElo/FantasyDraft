@@ -174,7 +174,7 @@ console.log(JSON.stringify({
     }
     assert probe["contextsClosed"] == 1
     assert probe["oscillatorsStarted"] >= 1
-    assert probe["vibrations"] == [[12], [32, 28, 32]]
+    assert probe["vibrations"] == [[8], [24, 38, 24]]
     assert probe["savedSettings"] == {
         "muted": True,
         "volume": 0.35,

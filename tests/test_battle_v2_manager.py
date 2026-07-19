@@ -53,31 +53,43 @@ def test_convert_energy_once_per_turn_and_serializes_flag():
     manager, _ = start_manager()
     state = manager.get_state("room")
     player = state.players["p1"]
-    player.energy[EnergyType.GREEN] = 2
+    player.energy = {energy: 0 for energy in EnergyType}
+    player.energy[EnergyType.GREEN] = 3
+    player.energy[EnergyType.BLUE] = 1
+    player.energy[EnergyType.WHITE] = 1
     player.energy[EnergyType.RED] = 0
 
-    serialized = manager.convert_energy("room", "p1", "green", "red")
+    serialized = manager.convert_energy(
+        "room", "p1", ["green", "green", "green", "blue", "white"], "red"
+    )
 
     assert serialized["players"]["p1"]["energy"]["green"] == 0
+    assert serialized["players"]["p1"]["energy"]["blue"] == 0
+    assert serialized["players"]["p1"]["energy"]["white"] == 0
     assert serialized["players"]["p1"]["energy"]["red"] == 1
     assert serialized["players"]["p1"]["energy_converted_this_turn"] is True
     assert any(event["type"] == "energy_converted" for event in serialized["event_log"])
+    event = next(event for event in serialized["event_log"] if event["type"] == "energy_converted")
+    assert event["payload"]["sources"] == {"green": 3, "blue": 1, "white": 1}
+    assert event["payload"]["cost"] == 5
+    assert event["payload"]["target"] == "red"
+    assert event["message"].endswith("1 Bloodline")
 
     with pytest.raises(BattleV2Error, match="already used"):
-        manager.convert_energy("room", "p1", "red", "blue")
+        manager.convert_energy("room", "p1", ["red"] * 5, "blue")
 
 
 def test_convert_energy_resets_after_turn_advances():
     manager, _ = start_manager()
     state = manager.get_state("room")
-    state.players["p1"].energy[EnergyType.GREEN] = 2
+    state.players["p1"].energy[EnergyType.GREEN] = 5
 
-    manager.convert_energy("room", "p1", "green", "red")
+    manager.convert_energy("room", "p1", ["green"] * 5, "red")
     manager.end_turn("room", "p1")
     state = manager.get_state("room")
-    state.players["p2"].energy[EnergyType.BLUE] = 2
+    state.players["p2"].energy[EnergyType.BLUE] = 5
 
-    serialized = manager.convert_energy("room", "p2", "blue", "white")
+    serialized = manager.convert_energy("room", "p2", ["blue"] * 5, "white")
 
     assert serialized["players"]["p2"]["energy"]["white"] >= 1
     assert serialized["players"]["p2"]["energy_converted_this_turn"] is True
@@ -114,7 +126,43 @@ def test_convert_energy_requires_no_pending_queue():
     )
 
     with pytest.raises(BattleV2Error, match="cancel the current queue"):
-        manager.convert_energy("room", "p1", "green", "red")
+        manager.convert_energy("room", "p1", ["green"] * 5, "red")
+
+
+def test_convert_energy_is_rejected_after_planning_even_with_an_empty_queue():
+    manager, _ = start_manager()
+    state = manager.get_state("room")
+    state.players["p1"].energy[EnergyType.GREEN] = 5
+    manager.submit_plan("room", "p1", [])
+
+    with pytest.raises(BattleV2Error, match="only available during planning"):
+        manager.convert_energy("room", "p1", ["green"] * 5, "red")
+
+    assert manager.get_state("room").players["p1"].energy[EnergyType.GREEN] == 5
+
+
+def test_convert_energy_requires_exactly_five_available_core_energy():
+    manager, _ = start_manager()
+    player = manager.get_state("room").players["p1"]
+    player.energy = {energy: 0 for energy in EnergyType}
+    player.energy[EnergyType.GREEN] = 4
+
+    with pytest.raises(BattleV2Error, match="exactly 5"):
+        manager.convert_energy("room", "p1", ["green"] * 4, "red")
+
+    with pytest.raises(BattleV2Error, match="exactly 5"):
+        manager.convert_energy("room", "p1", ["green"] * 6, "red")
+
+    with pytest.raises(BattleV2Error, match="not enough Taijutsu"):
+        manager.convert_energy("room", "p1", ["green"] * 5, "red")
+
+    with pytest.raises(BattleV2Error, match="only core energy"):
+        manager.convert_energy(
+            "room", "p1", ["green", "green", "green", "green", "black"], "red"
+        )
+
+    with pytest.raises(BattleV2Error, match="only core energy"):
+        manager.convert_energy("room", "p1", ["green"] * 5, "black")
 
 
 def test_invisible_status_hidden_from_opponent_but_visible_to_owner():
@@ -141,6 +189,35 @@ def test_invisible_status_hidden_from_opponent_but_visible_to_owner():
 
     assert owner_view["players"]["p1"]["team"][2]["statuses"][0]["id"] == "rabbit_escape"
     assert opponent_view["players"]["p1"]["team"][2]["statuses"] == []
+
+
+def test_visible_ongoing_status_serializes_its_source_skill_for_ui_disclosure():
+    manager, _ = start_manager()
+    state = manager.get_state("room")
+    state.players["p1"].energy = {energy: 0 for energy in EnergyType}
+    state.players["p1"].energy[EnergyType.WHITE] = 1
+
+    manager.submit_plan(
+        "room",
+        "p1",
+        [{
+            "id": "resolve",
+            "caster_slot": 0,
+            "skill_id": "unbreakable_resolve",
+            "target_player_id": "p1",
+            "target_slot": 0,
+            "wildcard_pays": ["white"],
+        }],
+    )
+    manager.confirm_queue("room", "p1")
+
+    opponent_view = manager.serialize_for_player("room", "p2")
+    reinforced = next(
+        status
+        for status in opponent_view["players"]["p1"]["team"][0]["statuses"]
+        if status["id"] == "unbreakable_resolve"
+    )
+    assert reinforced["payload"]["source_skill_id"] == "unbreakable_resolve"
 
 
 def test_hostile_invisible_status_hidden_from_target_player():

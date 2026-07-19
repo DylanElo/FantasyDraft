@@ -72,11 +72,11 @@
       textDim: 0x8c8371,
     },
     energy: {
-      body: { label: 'B', key: 'green', color: colors.bodyGreen, phaser: 0x4fb06d },
-      technique: { label: 'T', key: 'blue', color: colors.techniqueBlue, phaser: 0x3d6bff },
-      focus: { label: 'F', key: 'white', color: colors.focusIvory, phaser: 0xede9d5 },
-      curse: { label: 'C', key: 'red', color: colors.bloodRed, phaser: 0xd43b3b },
-      wild: { label: 'X', key: 'black', color: colors.surfaceRaised, phaser: 0x181715 },
+      taijutsu: { label: 'T', name: 'Taijutsu', key: 'green', color: colors.bodyGreen, phaser: 0x4fb06d },
+      jujutsu: { label: 'J', name: 'Jujutsu', key: 'blue', color: colors.techniqueBlue, phaser: 0x3d6bff },
+      strategic: { label: 'S', name: 'Strategic', key: 'white', color: colors.focusIvory, phaser: 0xede9d5 },
+      bloodline: { label: 'B', name: 'Bloodline', key: 'red', color: colors.bloodRed, phaser: 0xd43b3b },
+      wild: { label: 'X', name: 'Wild', key: 'black', color: colors.surfaceRaised, phaser: 0x181715 },
     },
     energyPhaser: {
       green: 0x4fb06d,

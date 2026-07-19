@@ -91,9 +91,9 @@ Create these pages:
 | Aged Gold | `#D8BF68` |
 | Ink Charcoal | `#17191E` |
 | Domain Violet | `#7C3AED` |
-| Body Green | `#4FB06D` |
-| Technique Blue | `#3D6BFF` |
-| Focus Ivory | `#EDE9D5` |
+| Taijutsu Green | `#4FB06D` |
+| Jujutsu Blue | `#3D6BFF` |
+| Strategic Ivory | `#EDE9D5` |
 | Text Main | `#17191E` |
 | Text Muted | `#5F625F` |
 | Structural Shadow | `#101B36` at low alpha |
@@ -112,10 +112,10 @@ Create these pages:
 
 | Energy | Color |
 | --- | --- |
-| B / Body | Muted green `#4FB06D` |
-| T / Technique | Saturated blue `#3D6BFF` |
-| F / Focus | Ivory `#EDE9D5` |
-| C / Curse | Blood red `#D43B3B` |
+| T / Taijutsu | Muted green `#4FB06D` |
+| J / Jujutsu | Saturated blue `#3D6BFF` |
+| S / Strategic | Ivory `#EDE9D5` |
+| B / Bloodline | Blood red `#D43B3B` |
 | X / Wild | Charcoal `#33363A` with a light rim |
 
 ### Type

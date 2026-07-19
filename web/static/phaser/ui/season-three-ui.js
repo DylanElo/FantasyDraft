@@ -1,5 +1,5 @@
-import { ENERGY_COLORS, ENERGY_LABELS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=32';
-import { safeText } from '../core/text.js?v=32';
+import { ENERGY_COLORS, ENERGY_LABELS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=35';
+import { safeText } from '../core/text.js?v=35';
 
 export const S3_COLORS = {
   bone: 0xf2e8d5,

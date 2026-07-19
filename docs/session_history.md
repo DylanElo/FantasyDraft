@@ -2452,3 +2452,156 @@ preserved and excluded. These corrections target `codex/culling-current-ui`
 and draft PR #58. The implementation was committed as `a393380`, pushed to the
 branch, and the hosted PR `quality` check passed in 1m27s. This delivery-state
 note is the documentation-only follow-up to that verified implementation.
+
+## 2026-07-19 - Phaser combat SFX mix replacement
+
+**Scope and locked invariants.** This pass changes presentation audio only.
+Battle v2 remains authoritative for legality, targeting, costs, status state,
+visible/hidden information, turn advancement, effects, and results. The audio
+layer consumes existing UI intent and serialized playback events; it does not
+resolve or infer gameplay. Gesture-gated context creation, one persistent
+context across scenes, persisted mute/volume/haptics, graceful no-audio
+fallback, and independent reduced-motion behavior remain required.
+
+**Audit and correction.** The prior fallback sent raw square/saw and simple
+oscillator layers straight to device output, reused `reveal` for unrelated
+healing/status/result events, and had no shared dynamics control. It was
+replaced with an original dependency-free WebAudio palette using filtered
+sine/triangle voices and short seeded-noise texture. UI, combat, and cinematic
+buses feed a conservative master compressor and immediate mute/volume gain;
+cue input peaks and active voices are bounded. Semantic cues now distinguish
+press, selection, targeting, queue placement/reorder, confirmation, rejection,
+visible skill start, impact, heal, status change, reveal, turn handoff, and
+result. Haptic patterns were shortened and remain independent of sound mute.
+iOS-style interrupted contexts resume only from a new trusted gesture.
+
+The maintained contract and device-listening checklist are documented in
+`docs/phaser_audio_system.md`. No audio asset, production dependency, or
+copyrighted source material was added.
+
+**Verification and remaining caution.** Nine presentation-service tests and
+the focused persistent-audio closure test passed. They cover gesture and
+interruption unlock, mixer routing/dynamics creation, tonal/filter/peak
+constraints, semantic playback routing, persistence, immediate mute, haptics,
+and unsupported-audio fallback. `node --check` passed for
+`interaction-sfx.js`, `presentation-layer.js`, and
+`combat-playback-scene.js`; `git diff --check` passed. Automated tests cannot
+judge timbre, device loudness, headphone fatigue, or player preference, so an
+iOS Safari and Android Chrome listening pass remains a release requirement.
+
+## 2026-07-19 - Phone-surface and runtime crop containment
+
+**Scope and locked invariants.** This pass is limited to the Phaser host and
+shared presentation cropping, including the Character Study portrait path.
+The maintained client remains portrait-first at 360x800, 390x844, and
+430x932; desktop/tablet centers the same phone surface. Battle authority, the
+locked First Creation roster, energy/timer/status behavior, and audio were not
+changed.
+
+**Correction.** The shell now gives Phaser a real, centered maximum 430x932
+host with a hard paint/overflow boundary. Shared environment/portrait focal
+crops and skill-atlas crops register as local Phaser texture frames before
+display. This removes full-source-sheet positioning, preventing detached art
+on desktop and containing Character Study portraits in their profile region.
+
+**Verification and remaining caution.** Node syntax checks passed for both
+changed JavaScript modules. The focused shell, portrait, skill-atlas, First
+Creation, and mobile-layout suite passed with **24 passed**. `git diff --check`
+passed. Fresh desktop, 390x844, and 430x932 browser captures plus Character
+Study and Queue Review inspection remain required by the primary task.
+
+## 2026-07-19 - Integrated combat usability, transmutation, and live-player correction
+
+**User report and locked scope.** The corrective pass addressed art escaping
+the mobile surface, poor synthesized SFX, ambiguous targetability, missing
+status/ailment and visible-skill feedback, a non-ticking timer, and an
+undiscussed automatic energy converter. Battle v2 remains authoritative; the
+client still renders only viewer-safe state and submits intent. The user
+explicitly changed conversion to an optional, once-per-turn transmutation of
+exactly five selected core-energy pips into one selected core energy during
+Planning and before any queue. Internal color keys remain stable. Player-facing
+energy vocabulary is centralized, but the requested replacement names remain
+pending the user's exact four-name choice.
+
+**Integrated correction.** Combat now uses a locally ticking display clock
+anchored to each authoritative timer snapshot, including skill and status
+sheets, without allowing the client to advance phases. Target cards say `TAP
+TARGET` or `BLOCKED`, status chips expose meaningful names and durations, the
+full status sheet names exact effects, clocks, and authoritative source skills,
+and public resolution events drive the visible opponent-skill banner. An
+ongoing visible source skill is marked on its fighter; private pending queues
+remain undisclosed. A live playtest found one remaining mismatch where compact
+catalog skills omitted effects, causing a warded enemy to glow selectable even
+though the server rejected it. Enemy/enemy-team targeting now mirrors the
+server's side-based harmfulness rule, and the same warded Yuta rendered
+`BLOCKED` in the repeat playtest.
+
+The transmutation sheet requires five explicit `+` selections, one explicit
+output type, a visible 5-for-1 preview, and confirmation. The socket and manager
+preserve exact count rather than truncating extras, reject Wild sources/targets,
+reject Queue Review and other non-Planning phases, close a stale modal on an
+authoritative phase/turn change, and preserve command atomicity, nonce retry,
+replay hashing, and public energy-event serialization. No five-pip choice is
+made automatically by the browser.
+
+**Live QA and verification.** In-app-browser play covered First Creation,
+Character Study, Team Setup, Matchup, repeated CPU turns, technique selection,
+targeting rejection/correction, public opponent-skill banners, active-skill and
+status chips, the full status sheet, technique detail, timer urgency, and the
+complete five-source/output transmutation selector. Responsive inspection at
+360x800, 390x844, 430x932, and 1264x866 showed a centered maximum-430-pixel
+phone surface with hidden overflow and no detached portrait or skill-atlas art.
+The desktop measurement was a 430-pixel shell/canvas centered at x=417 inside a
+1264-pixel viewport. Character Study art rendered inside its hero region. The
+browser reported no console warnings or errors. The local listener was
+restarted on `http://127.0.0.1:5017` and serves the coordinated `v34` shell,
+styles, tokens, and module graph.
+
+Final verification passed with **549 passed, 1 skipped** in 94.94 seconds,
+`python -m compileall -q jjk_arena web/app.py`, syntax checks for all 29 changed
+JavaScript files, and `git diff --check`. Automated tests validate audio routing,
+dynamics, voice/peak budgets, mute, persistence, haptics, gesture unlock, and
+fallbacks, but subjective timbre and phone-speaker/headphone loudness still
+require physical iOS/Android listening. Existing untracked concept/QA artifacts
+were preserved. This integrated pass is included in the 2026-07-19 delivery on
+`codex/culling-current-ui`; the branch was pushed to origin and existing draft
+PR #58 was updated.
+
+## 2026-07-19 - Player-facing energy vocabulary migration
+
+**User decision and invariants.** The user locked green as `T` Taijutsu, blue
+as `J` Jujutsu, white as `S` Strategic, and red as `B` Bloodline. Wild remains
+`X`. This is a vocabulary/presentation migration only: authoritative state,
+socket commands, replay documents, stored costs, and event payloads retain the
+stable internal values `green`, `blue`, `white`, `red`, and `black`. No energy
+generation, payment, transmutation, balance, or combat rule changed.
+
+**Correction.** The centralized Phaser labels and full names now drive the
+top combat meter, skill costs, Queue Review, Wild assignment, and the complete
+5-for-1 transmutation sheet. The last hard-coded B/T/F/C combat map was removed.
+Server validation errors and event messages use the same player vocabulary,
+while playback translates raw viewer-safe event payload colors at render time.
+Affected starter descriptions/status display names, orb accessibility labels,
+design tokens, project memory, canonical design/socket/transmutation documents,
+mobile wireframes, and current asset-family documentation were updated. Legacy
+wire enums, Python cost aliases, atlas keys/filenames, exact historical image
+generation prompts, lore names, and session-history records remain unchanged
+for compatibility and provenance. The coordinated Phaser cache graph is `v35`.
+
+**Live QA and verification.** A 390x844 in-app-browser CPU fight showed the
+combat meter as `T/J/S/B`, skill cards inheriting the new letters, and the
+transmutation sheet spelling out Taijutsu, Jujutsu, Strategic, and Bloodline;
+the sheet remained contained inside the phone surface. Browser diagnostics had
+no warnings or errors. The local server was refreshed at
+`http://127.0.0.1:5017` with the same port-specific Socket.IO origin policy as
+`start_server.bat` and serves `v35`.
+
+Final verification passed with **551 passed, 1 skipped** in 107.02 seconds,
+`python -m compileall -q jjk_arena web/app.py`, syntax checks for all 30 changed
+JavaScript files, and `git diff --check`. The focused migration set passed with
+132 tests. The repository's `.venv` currently lacks the optional `requests`
+package needed to collect `tests/test_network_acceptance.py`, so the required
+full suite was run successfully with the configured project `python` runtime.
+Existing untracked concept/QA artifacts were preserved. This pass is included
+in the 2026-07-19 delivery on `codex/culling-current-ui`; the branch was pushed
+to origin and existing draft PR #58 was updated.

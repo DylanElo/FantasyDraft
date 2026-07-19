@@ -613,6 +613,15 @@ def clean_v2_energy_color(value) -> str:
     return CONTROL_RE.sub("", str(value or "").strip().lower())[:8]
 
 
+def clean_v2_energy_colors(values) -> list[str]:
+    if not isinstance(values, list):
+        return []
+    # Preserve a sixth entry as an overlong sentinel so the authoritative
+    # exact-five check rejects extra selections instead of accepting a
+    # silently truncated request. Nothing beyond six changes that result.
+    return [clean_v2_energy_color(value) for value in values[:6]]
+
+
 def clean_resume_token(value) -> str:
     return RESUME_TOKEN_RE.sub("", str(value or "").strip())[:128]
 
@@ -1443,7 +1452,7 @@ def on_battle_v2_convert_energy(data=None):
             "convert_energy",
             data,
             {
-                "source": clean_v2_energy_color(data.get("source")),
+                "sources": clean_v2_energy_colors(data.get("sources")),
                 "target": clean_v2_energy_color(data.get("target")),
             },
         )

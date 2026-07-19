@@ -60,11 +60,14 @@ def test_combat_scene_preserves_authoritative_state_affordances():
     assert "this.store.convertEnergy()" in source
     assert "state.phase_seconds_remaining" in source
 
-    # X remains a cost mark. Only B/T/F/C are rendered in the stored pool.
-    assert "{ color: 'green', label: 'B' }" in source
-    assert "{ color: 'blue', label: 'T' }" in source
-    assert "{ color: 'white', label: 'F' }" in source
-    assert "{ color: 'red', label: 'C' }" in source
+    # X remains a cost mark. Only T/J/S/B are rendered in the stored pool,
+    # and the meter must inherit the centralized vocabulary instead of
+    # hard-coding a second label map.
+    assert "CORE_ENERGY.map((color) => ({ color, label: ENERGY_LABELS[color] }))" in source
+    assert "{ color: 'green', label: 'B' }" not in source
+    assert "{ color: 'blue', label: 'T' }" not in source
+    assert "{ color: 'white', label: 'F' }" not in source
+    assert "{ color: 'red', label: 'C' }" not in source
     assert "{ color: 'black', label: 'X' }" not in source
 
 

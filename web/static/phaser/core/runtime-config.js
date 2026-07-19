@@ -104,12 +104,27 @@ export const ENERGY_COLORS = DESIGN_TOKENS.energyPhaser || {
 export const CORE_ENERGY = ['green', 'blue', 'white', 'red'];
 
 export const ENERGY_LABELS = {
-  green: 'B',
-  blue: 'T',
-  white: 'F',
-  red: 'C',
+  green: 'T',
+  blue: 'J',
+  white: 'S',
+  red: 'B',
   black: 'X',
 };
+
+// Display vocabulary is intentionally centralized. Internal socket/replay
+// values remain stable color keys; changing player-facing energy names does
+// not migrate authoritative state or invalidate saved command payloads.
+export const ENERGY_NAMES = {
+  green: 'Taijutsu',
+  blue: 'Jujutsu',
+  white: 'Strategic',
+  red: 'Bloodline',
+  black: 'Wild',
+};
+
+export function energyName(color) {
+  return ENERGY_NAMES[color] || String(color || 'Energy');
+}
 
 export const BOOT = {
   playerId: bootstrap.playerId || (typeof PLAYER_SESSION_ID !== 'undefined' ? PLAYER_SESSION_ID : 'player'),

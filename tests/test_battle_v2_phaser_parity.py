@@ -74,7 +74,7 @@ def test_phaser_matches_server_for_adjusted_cost_replacement_stuns_and_disabled_
     assert probe["originalId"] == "source"
     assert probe["adjusted"] == [energy.value for energy in _adjusted_cost_skill(caster, skill).cost]
     assert probe["energyFit"]["ok"] is False and "wildcard" in probe["energyFit"]["reason"].lower()
-    assert "Harmful skills blocked" in probe["harmfulBlocked"]
+    assert probe["harmfulBlocked"] == "Stop: harmful skills are disabled."
     assert "Body Stun" in probe["classBlocked"]
 
     state = BattleState({"p1": PlayerState("p1", "P1", team=[caster]), "p2": PlayerState("p2", "P2", team=[CharacterState("enemy", "Enemy")])}, "p1")
@@ -847,3 +847,117 @@ console.log(JSON.stringify({
         {"id": "action-b", "queueIndex": 0, "wildcardPays": ["red"]},
         {"id": "action-a", "queueIndex": 1, "wildcardPays": ["green"]},
     ]
+
+
+def test_phaser_transmute_requires_explicit_five_pip_allocation_and_target():
+    script = r"""
+globalThis.JJK_BOOTSTRAP = { battleV2Enabled: true, firstCreation: { roster: {} } };
+globalThis.JJK_MOBILE_TOKENS = {};
+globalThis.window = { JJKPhaserShell: null, setTimeout: () => {}, setInterval: () => {} };
+globalThis.document = { getElementById: () => null };
+globalThis.localStorage = { getItem: () => null, setItem: () => {} };
+const { GameStore } = await import('./web/static/phaser/store/game-store.js');
+const emitted = [];
+const store = Object.create(GameStore.prototype);
+Object.assign(store, {
+  state: {
+    match_id: 'transmute', state_revision: 8, phase: 'planning', turn_player_id: 'p1',
+    players: {
+      p1: { id: 'p1', energy_converted_this_turn: false, energy: { green: 3, blue: 1, white: 1, red: 0 }, team: [] },
+      p2: { id: 'p2', energy: {}, team: [] },
+    },
+  },
+  playerId: 'p1', actions: [], queueSubmitting: false, pendingCommand: null,
+  connectionState: 'connected', transmuteOpen: false, transmuteSources: [], transmuteTarget: null,
+  selectedSkillId: null, detailSkillId: null, targetingStage: null, pendingPrimaryTarget: null,
+  commandNonceCounter: 0,
+  socketClient: { emit: (event, payload) => emitted.push({ event, payload }) },
+  notify() {}, showToast() {},
+});
+store.openTransmute();
+store.addTransmuteSource('green');
+store.addTransmuteSource('green');
+store.addTransmuteSource('green');
+store.addTransmuteSource('blue');
+store.addTransmuteSource('white');
+store.selectTransmuteTarget('red');
+store.confirmTransmute();
+console.log(JSON.stringify({ emitted, open: store.transmuteOpen, sources: store.transmuteSources, target: store.transmuteTarget }));
+"""
+    result = subprocess.run(
+        ["node", "--experimental-default-type=module", "-"],
+        input=script,
+        text=True,
+        capture_output=True,
+        cwd=ROOT,
+        check=True,
+    )
+    probe = json.loads(result.stdout)
+
+    assert probe["emitted"][0]["event"] == "battle_v2_convert_energy"
+    assert probe["emitted"][0]["payload"]["sources"] == [
+        "green", "green", "green", "blue", "white"
+    ]
+    assert probe["emitted"][0]["payload"]["target"] == "red"
+    assert probe["emitted"][0]["payload"]["state_revision"] == 8
+    assert probe["open"] is False
+
+
+def test_phaser_transmute_is_planning_only_and_closes_on_authoritative_phase_change():
+    script = r"""
+globalThis.JJK_BOOTSTRAP = { battleV2Enabled: true, firstCreation: { roster: {} } };
+globalThis.JJK_MOBILE_TOKENS = {};
+globalThis.window = { JJKPhaserShell: null, setTimeout: () => {}, setInterval: () => {} };
+globalThis.document = { getElementById: () => null };
+globalThis.localStorage = { getItem: () => null, setItem: () => {} };
+const { GameStore } = await import('./web/static/phaser/store/game-store.js');
+const player = {
+  id: 'p1', energy_converted_this_turn: false,
+  energy: { green: 5, blue: 0, white: 0, red: 0 }, team: [], queue_confirmed: false,
+};
+const store = Object.create(GameStore.prototype);
+Object.assign(store, {
+  state: {
+    match_id: 'transmute-phase', state_revision: 8, phase: 'planning', turn_player_id: 'p1',
+    players: { p1: player, p2: { id: 'p2', energy: {}, team: [] } },
+  },
+  playerId: 'p1', ignoreBattleUpdates: false, actions: [], actionWildPays: {},
+  queueSubmitting: false, queueReviewOpen: false, pendingCommand: null,
+  connectionState: 'connected', transmuteOpen: true,
+  transmuteSources: ['green', 'green'], transmuteTarget: 'red',
+  eventCursor: 0, playbackEvents: [], recentEvents: [],
+  visiblePublicAction: null, visiblePublicActionUntil: 0,
+  ensureSelectedCaster() {}, changeScene() {}, notify() {},
+});
+const planningAllowed = store.canTransmuteEnergy();
+store.state.phase = 'queue_review';
+const reviewAllowed = store.canTransmuteEnergy();
+store.state.phase = 'planning';
+store.receiveBattleState({
+  match_id: 'transmute-phase', state_revision: 9, phase: 'queue_review',
+  turn_player_id: 'p1', paused: false, result_type: null,
+  phase_seconds_remaining: 20, event_log: [], pending_actions: {}, queue_order: {},
+  players: { p1: player, p2: { id: 'p2', energy: {}, team: [] } },
+});
+console.log(JSON.stringify({
+  planningAllowed, reviewAllowed, open: store.transmuteOpen,
+  sources: store.transmuteSources, target: store.transmuteTarget,
+}));
+"""
+    result = subprocess.run(
+        ["node", "--experimental-default-type=module", "-"],
+        input=script,
+        text=True,
+        capture_output=True,
+        cwd=ROOT,
+        check=True,
+    )
+    probe = json.loads(result.stdout)
+
+    assert probe == {
+        "planningAllowed": True,
+        "reviewAllowed": False,
+        "open": False,
+        "sources": [],
+        "target": None,
+    }

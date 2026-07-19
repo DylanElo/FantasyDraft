@@ -51,11 +51,15 @@ JJK Arena is a portrait-first mobile 3v3 tactical battler inspired by Naruto Are
 
 ## Core energy labels
 
-- `B` / Body: physical combat, weapons, cursed tools, reinforcement.
-- `T` / Technique: cursed techniques, shikigami, cursed speech, puppet output.
-- `F` / Focus: tactics, barriers, counters, reads, support.
-- `C` / Curse: volatile cursed energy, poison, blood, cursed-spirit effects, risky output.
+- `T` / Taijutsu (green): physical combat, weapons, cursed tools, reinforcement.
+- `J` / Jujutsu (blue): cursed techniques, shikigami, cursed speech, puppet output.
+- `S` / Strategic (white): tactics, barriers, counters, reads, support.
+- `B` / Bloodline (red): volatile cursed energy, poison, blood, cursed-spirit effects, risky output.
 - `X` / Wild: cost placeholder only.
+
+The authoritative socket/replay values remain the stable internal color keys
+`green`, `blue`, `white`, `red`, and `black`; only the player-facing names and
+letters use the vocabulary above.
 
 ## Core damage and defense rules
 

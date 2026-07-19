@@ -95,10 +95,16 @@ console.log(JSON.stringify({
         "select",
         "target",
         "queue",
+        "reorder",
         "confirm",
         "error",
-        "reveal",
+        "skill",
         "impact",
+        "heal",
+        "status",
+        "reveal",
+        "turn",
+        "result",
     ]
     assert probe["before"] == {
         "contextsCreated": 0,
@@ -118,6 +124,101 @@ console.log(JSON.stringify({
     assert probe["noAudioSupported"] is False
     assert probe["noAudioUnlock"] is False
     assert probe["noAudioPlay"] is False
+
+
+def test_sfx_palette_is_filtered_peak_bounded_and_uses_a_master_dynamics_bus():
+    probe = _run_node(
+        r"""
+const {
+  InteractionSfx,
+  INTERACTION_SFX_CUES,
+  SFX_MIXER_CONFIG,
+} = await import('./web/static/phaser/core/interaction-sfx.js');
+
+const paramWrites = [];
+const nodes = [];
+class FakeParam {
+  constructor(name) { this.name = name; }
+  setValueAtTime(value) { paramWrites.push([this.name, value]); }
+  exponentialRampToValueAtTime(value) { paramWrites.push([`${this.name}:ramp`, value]); }
+  setTargetAtTime(value) { paramWrites.push([`${this.name}:target`, value]); }
+  cancelScheduledValues() {}
+}
+function node(kind, extras = {}) {
+  const value = {
+    kind,
+    connect(target) { this.target = target && target.kind || 'destination'; },
+    disconnect() {},
+    ...extras,
+  };
+  nodes.push(value);
+  return value;
+}
+class FakeContext {
+  constructor() {
+    this.state = 'suspended';
+    this.currentTime = 2;
+    this.sampleRate = 16000;
+    this.destination = { kind: 'destination' };
+  }
+  async resume() { this.state = 'running'; }
+  createGain() { return node('gain', { gain: new FakeParam('gain') }); }
+  createDynamicsCompressor() {
+    return node('compressor', {
+      threshold: new FakeParam('threshold'), knee: new FakeParam('knee'), ratio: new FakeParam('ratio'),
+      attack: new FakeParam('attack'), release: new FakeParam('release'),
+    });
+  }
+  createBiquadFilter() {
+    return node('filter', { frequency: new FakeParam('filter-frequency'), Q: new FakeParam('filter-q') });
+  }
+  createOscillator() {
+    return node('oscillator', {
+      frequency: new FakeParam('frequency'), start() {}, stop() {},
+    });
+  }
+  createBuffer(channels, length) {
+    const data = new Float32Array(length);
+    return { getChannelData() { return data; } };
+  }
+  createBufferSource() { return node('noise', { start() {}, stop() {} }); }
+}
+
+const metrics = Object.fromEntries(Object.entries(INTERACTION_SFX_CUES).map(([name, cue]) => [name, {
+  bus: cue.bus,
+  peak: cue.voices.reduce((sum, voice) => sum + voice.gain, 0),
+  waves: cue.voices.filter((voice) => voice.kind === 'tone').map((voice) => voice.wave),
+  filtered: cue.voices.every((voice) => Number(voice.lowpass) > 0),
+}]));
+const service = new InteractionSfx({ AudioContext: FakeContext, storage: null });
+const beforeUnlock = { contexts: nodes.length, mixBus: service.mixBus };
+await service.unlockFromGesture();
+const played = ['press', 'queue', 'skill', 'impact', 'status', 'reveal', 'turn', 'result']
+  .map((name) => service.play(name, { minimumInterval: 0 }));
+service.setVolume(0.5);
+service.setMuted(true);
+console.log(JSON.stringify({
+  metrics,
+  mixer: SFX_MIXER_CONFIG,
+  beforeUnlock,
+  played,
+  nodeKinds: nodes.map((entry) => entry.kind),
+  paramWrites,
+}));
+"""
+    )
+
+    assert probe["beforeUnlock"] == {"contexts": 0, "mixBus": None}
+    assert all(probe["played"])
+    assert set(item["bus"] for item in probe["metrics"].values()) == {"ui", "combat", "cinematic"}
+    assert all(item["peak"] <= probe["mixer"]["maximumCueInputPeak"] for item in probe["metrics"].values())
+    assert all(item["filtered"] for item in probe["metrics"].values())
+    assert all(wave in {"sine", "triangle"} for item in probe["metrics"].values() for wave in item["waves"])
+    assert "compressor" in probe["nodeKinds"]
+    assert "filter" in probe["nodeKinds"]
+    assert "noise" in probe["nodeKinds"]
+    assert ["threshold", probe["mixer"]["compressor"]["threshold"]] in probe["paramWrites"]
+    assert ["gain:target", 0] in probe["paramWrites"]
 
 
 def test_gesture_gate_only_unlocks_after_a_registered_user_event():
@@ -151,6 +252,25 @@ console.log(JSON.stringify({ before, after }));
         "listeners": ["keydown", "pointerdown", "touchstart"],
     }
     assert probe["after"] == {"contextsCreated": 1, "unlocked": True, "listeners": []}
+
+
+def test_trusted_gesture_resumes_an_interrupted_mobile_audio_context():
+    probe = _run_node(
+        r"""
+const { InteractionSfx } = await import('./web/static/phaser/core/interaction-sfx.js');
+let resumes = 0;
+const context = {
+  state: 'interrupted', currentTime: 0, destination: {},
+  async resume() { resumes += 1; this.state = 'running'; },
+  createGain() { return { gain: { setValueAtTime() {}, setTargetAtTime() {}, cancelScheduledValues() {} }, connect() {} }; },
+};
+const service = new InteractionSfx({ context, storage: null });
+const unlocked = await service.unlockFromGesture();
+console.log(JSON.stringify({ resumes, unlocked, state: context.state }));
+"""
+    )
+
+    assert probe == {"resumes": 1, "unlocked": True, "state": "running"}
 
 
 def test_motion_service_exposes_rule_clarifying_cues_and_respects_reduced_motion():
@@ -247,6 +367,47 @@ console.log(JSON.stringify({ before, after }));
     assert probe == {"before": 1, "after": 0}
 
 
+def test_presentation_layer_routes_distinct_combat_and_result_audio_cues():
+    probe = _run_node(
+        r"""
+const { createPresentationLayer } = await import('./web/static/phaser/core/presentation-layer.js');
+const played = [];
+const settings = {
+  effectiveReducedMotion() { return false; },
+  subscribe() { return () => {}; },
+};
+const audio = {
+  settings,
+  cue(name) { played.push(name); return true; },
+};
+const scene = { keyName: 'CombatScene', events: { once() {} } };
+const layer = createPresentationLayer(scene, { audio, settings, motionOptions: { reducedMotion: true } });
+layer.interactionCue(scene, { cue: 'queue', context: 'queue-reorder' });
+layer.interactionCue(scene, { cue: 'turn-pass' });
+layer.interactionCue(scene, { cue: 'skill-resolve' });
+layer.interactionCue(scene, { cue: 'heal' });
+layer.interactionCue(scene, { cue: 'status-change' });
+layer.interactionCue({ keyName: 'ResultScene' }, { cue: 'reveal' });
+layer.interactionCue(scene, { cue: 'reveal' });
+await layer.destroy();
+console.log(JSON.stringify({ played }));
+"""
+    )
+
+    assert probe["played"] == ["reorder", "turn", "skill", "heal", "status", "result", "reveal"]
+
+
+def test_combat_playback_uses_semantic_skill_heal_status_reveal_and_impact_cues():
+    source = (ROOT / "web/static/phaser/fx/combat-playback-scene.js").read_text(encoding="utf-8")
+
+    assert "cue: 'skill-resolve'" in source
+    assert "cue: 'heal'" in source
+    assert "cue: 'status-change'" in source
+    assert "cue: 'reveal'" in source
+    assert "presentationLayer.impactFlash" in source
+    assert "ENERGY_NAMES[payload.energy]" in source
+
+
 def test_presentation_barrel_exports_registry_rendering_motion_audio_and_preload_api():
     probe = _run_node(
         r"""
@@ -285,6 +446,7 @@ console.log(JSON.stringify({
     required_exports = {
         "InteractionSfx",
         "MotionVfx",
+        "SFX_MIXER_CONFIG",
         "SKILL_ACTION_ATLAS",
         "SKILL_VISUALS",
         "createPresentationLayer",

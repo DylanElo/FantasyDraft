@@ -273,7 +273,7 @@ def test_every_mutating_command_rejects_while_disconnected_pause_is_active():
         ("update_queue", {"queue_order": [], "wildcard_pays": {}}),
         ("confirm_queue", {}),
         ("cancel_queue", {}),
-        ("convert_energy", {"source": "green", "target": "red"}),
+        ("convert_energy", {"sources": ["green"] * 5, "target": "red"}),
         ("end_turn", {}),
         ("surrender", {}),
     ]

@@ -199,14 +199,27 @@ def test_runtime_uses_registry_preload_true_crop_and_diagnostic_fallback_contrac
     assert "portraitFocal(characterOrId" in store
 
 
-def test_base_scene_cover_renderer_applies_crop_origin_and_uniform_scale():
+def test_base_scene_cover_renderer_registers_a_bounded_local_crop_frame():
     probe = _run_node(
         r"""
 globalThis.Phaser = { Scene: class {} };
 const { BaseScene } = await import('./web/static/phaser/scenes/base-scene.js');
 const calls = {};
+const frames = new Map();
+const texture = {
+  has(name) { return frames.has(name); },
+  get(name) { return frames.get(name); },
+  add(name, sourceIndex, x, y, width, height) {
+    const frame = { name, sourceIndex, x, y, width, height };
+    frames.set(name, frame);
+    calls.addedFrame = [name, sourceIndex, x, y, width, height];
+    return frame;
+  },
+};
 const image = {
+  texture,
   frame: { realWidth: 600, realHeight: 800 },
+  setFrame(name) { calls.frame = name; return this; },
   setOrigin(x, y) { calls.origin = [x, y]; return this; },
   setCrop(x, y, width, height) { calls.crop = [x, y, width, height]; return this; },
   setScale(scaleX, scaleY) { calls.scale = [scaleX, scaleY]; return this; },
@@ -215,7 +228,10 @@ const image = {
   setData(key, value) { calls.data = [key, value]; return this; },
 };
 const scene = {
-  textures: { exists: (key) => key === 'portrait_yuji_itadori' },
+  textures: {
+    exists: (key) => key === 'portrait_yuji_itadori',
+    get: () => texture,
+  },
   add: {
     image(x, y, key) {
       calls.position = [x, y, key];
@@ -242,8 +258,10 @@ console.log(JSON.stringify({ calls, resultIsImage: result === image, missing, no
     assert probe["missing"] is None
     assert probe["nodeCount"] == 1
     assert probe["calls"]["position"] == [60, 45, "portrait_yuji_itadori"]
-    assert probe["calls"]["crop"] == [0, 500, 600, 300]
-    assert probe["calls"]["origin"] == [0.5, 0.8125]
+    assert probe["calls"]["frame"].startswith("__jjk_cover_")
+    assert probe["calls"]["addedFrame"][1:] == [0, 0, 500, 600, 300]
+    assert "crop" not in probe["calls"]
+    assert probe["calls"]["origin"] == [0.5, 0.5]
     assert probe["calls"]["scale"][1] is None
     assert math.isclose(probe["calls"]["scale"][0], 1 / 6, rel_tol=1e-12)
     assert probe["calls"]["depth"] == 4

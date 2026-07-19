@@ -2653,3 +2653,29 @@ full suite was run successfully with the configured project `python` runtime.
 Existing untracked concept/QA artifacts were preserved. This pass is included
 in the 2026-07-19 delivery on `codex/culling-current-ui`; the branch was pushed
 to origin and existing draft PR #58 was updated.
+
+## 2026-07-19 - Pull-request and branch closure
+
+**Scope and invariants.** The user requested that all remaining delivered work
+be merged, every pull request be closed, and all non-`main` branches be removed.
+This was repository delivery cleanup, not a gameplay or UI redesign. Battle v2
+authority, the First Creation roster, the Season 3 production structure, energy
+semantics, and the current runtime tree were preserved.
+
+**Integration and cleanup.** PR #58 was already merged as `259e28c`. PR #59's
+single Panda description correction was updated onto current `main`, passed CI,
+and merged as `655c7c0`. The remaining branch inventory was either an ancestor
+of `main` or superseded: the closed Cursed Arena PR #54 and two old combat/WIP
+tips had been replaced by merged PR #56 and later production work. Commit
+`b2d5ed3` records those three superseded histories as merge parents with an
+identical before/after tree, so their obsolete layouts and stale engine snapshot
+were not reapplied. Six remote branches, eleven local branches, and the clean
+linked PR worktree were retired. The only local and remote branch is now
+`main`; GitHub reports no open pull requests.
+
+**Verification and remaining files.** The integrated PR head passed **551
+passed, 1 skipped**, `python -m compileall -q jjk_arena web/app.py`, and
+`git diff --check`; GitHub's `quality` check also passed. Final local refs,
+remote heads, worktrees, and open-PR queries were independently checked, and
+`http://127.0.0.1:5017/readyz` returned HTTP 200. Existing untracked concept and
+QA artwork remains intentionally preserved and uncommitted.

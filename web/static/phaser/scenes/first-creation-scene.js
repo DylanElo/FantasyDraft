@@ -1,7 +1,7 @@
-import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=36';
-import { firstCreationRoster } from '../core/roster.js?v=36';
-import { skillVisualFor } from '../core/skill-visual-registry.js?v=36';
-import { clamp, safeText, titleize } from '../core/text.js?v=36';
+import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=37';
+import { firstCreationRoster } from '../core/roster.js?v=37';
+import { skillVisualFor } from '../core/skill-visual-registry.js?v=37';
+import { clamp, safeText, titleize } from '../core/text.js?v=37';
 import {
   S3_COLORS,
   drawS3Button,
@@ -10,8 +10,8 @@ import {
   drawS3Pager,
   drawS3Panel,
   drawS3World,
-} from '../ui/season-three-ui.js?v=36';
-import { BaseScene } from './base-scene.js?v=36';
+} from '../ui/season-three-ui.js?v=37';
+import { BaseScene } from './base-scene.js?v=37';
 
 const FIRST_CREATION_WORLD_KEY = 'culling-current-campus';
 

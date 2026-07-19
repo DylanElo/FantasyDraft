@@ -3,9 +3,9 @@ import {
   portraitEntryForTextureKey,
   portraitFocalFor,
   portraitTextureKeyFor,
-} from './portrait-registry.js?v=36';
-import { COLORS, CULLING_COLORS } from './runtime-config.js?v=36';
-import { safeText } from './text.js?v=36';
+} from './portrait-registry.js?v=37';
+import { COLORS, CULLING_COLORS } from './runtime-config.js?v=37';
+import { safeText } from './text.js?v=37';
 
 function environmentAsset(key, file, width, height, scenes) {
   return Object.freeze({

@@ -1,6 +1,6 @@
-import { CORE_ENERGY, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, ENERGY_NAMES, TOKEN_TYPE } from '../core/runtime-config.js?v=36';
-import { CombatPlaybackScene } from '../fx/combat-playback-scene.js?v=36';
-import { drawCurrentButton, drawCurrentPanel } from '../ui/culling-current-ui.js?v=36';
+import { CORE_ENERGY, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, ENERGY_NAMES, TOKEN_TYPE } from '../core/runtime-config.js?v=37';
+import { CombatPlaybackScene } from '../fx/combat-playback-scene.js?v=37';
+import { drawCurrentButton, drawCurrentPanel } from '../ui/culling-current-ui.js?v=37';
 
 const SKILL_ART_BY_ENERGY = {
   green: 's3-skill-body',

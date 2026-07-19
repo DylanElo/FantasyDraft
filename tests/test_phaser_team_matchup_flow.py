@@ -422,3 +422,188 @@ console.log(JSON.stringify({ socketEvents, managerEvents, before, after }));
         "before": False,
         "after": True,
     }
+
+
+def test_retired_match_updates_cannot_hijack_a_fresh_match_launch():
+    probe = _run_node(
+        r"""
+globalThis.JJK_BOOTSTRAP = { battleV2Enabled: true, firstCreation: { roster: {} } };
+globalThis.JJK_MOBILE_TOKENS = {};
+globalThis.window = {
+  JJKPhaserShell: null,
+  setTimeout: () => 1,
+  clearTimeout: () => {},
+  setInterval: () => {},
+};
+globalThis.document = { getElementById: () => null };
+globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+const { GameStore, MAX_RETIRED_MATCH_IDS } = await import('./web/static/phaser/store/game-store.js');
+
+function terminalState(matchId) {
+  return {
+    match_id: matchId,
+    state_revision: 5,
+    phase: 'finished',
+    result_type: 'WIN',
+    winner_id: 'player',
+    event_log: [],
+    pending_actions: {},
+    players: { player: { id: 'player', queue_confirmed: false, energy: {}, team: [] } },
+  };
+}
+
+function planningState(matchId) {
+  return {
+    match_id: matchId,
+    state_revision: 0,
+    phase: 'planning',
+    result_type: null,
+    winner_id: null,
+    turn_player_id: 'player',
+    event_log: [],
+    pending_actions: {},
+    players: {
+      player: { id: 'player', queue_confirmed: false, energy: {}, team: [] },
+      cpu: { id: 'cpu', queue_confirmed: false, energy: {}, team: [] },
+    },
+  };
+}
+
+function freshStore(oldMatchId) {
+  const emitted = [];
+  const store = Object.create(GameStore.prototype);
+  Object.assign(store, {
+    matchMode: 'cpu',
+    difficulty: 'normal',
+    scene: 'ResultScene',
+    playerId: 'player',
+    playerName: 'Player',
+    roomId: 'friends',
+    playerTeam: ['yuji', 'megumi', 'nobara'],
+    enemyTeam: ['yuta', 'maki', 'toge'],
+    connectionState: 'connected',
+    state: oldMatchId ? terminalState(oldMatchId) : null,
+    lobbyStatus: null,
+    matchLaunchPending: false,
+    matchLaunchError: '',
+    matchLaunchTimer: null,
+    matchLaunchAttempt: 0,
+    disconnectDeadline: null,
+    actions: [],
+    actionWildPays: {},
+    queueReviewOpen: false,
+    selectedCasterSlot: null,
+    selectedSkillId: null,
+    queueSubmitting: false,
+    pendingCommand: null,
+    eventCursor: 0,
+    playbackEvents: [],
+    recentEvents: [],
+    visiblePublicAction: null,
+    visiblePublicActionUntil: 0,
+    transmuteOpen: false,
+    transmuteSources: [],
+    transmuteTarget: null,
+    ignoreBattleUpdates: false,
+    resumeSession: null,
+    firstCreationAccount: null,
+    toast: '',
+    socketClient: {
+      isConnected: () => true,
+      emit: (name, payload) => emitted.push({ name, payload }),
+    },
+    changeScene(scene) { this.scene = scene; },
+    notify() {},
+    clearResumeSession() { this.resumeSession = null; },
+    mineId() { return 'player'; },
+    me() { return this.state && this.state.players ? this.state.players.player : null; },
+    ensureSelectedCaster() {},
+    ensureWildcardPayments() {},
+    rememberResult() {},
+  });
+  return { store, emitted };
+}
+
+function launchFromCurrentScene(store) {
+  store.startMatch();
+  store.startMatch();
+  return store.matchLaunchAttempt;
+}
+
+const returned = freshStore('old-returned');
+returned.store.resetToLobby();
+const returnLaunchAttempt = launchFromCurrentScene(returned.store);
+returned.store.receiveBattleState(terminalState('old-returned'));
+const afterReturnedStale = {
+  scene: returned.store.scene,
+  pending: returned.store.matchLaunchPending,
+  state: returned.store.state,
+  launchAttempt: returned.store.matchLaunchAttempt,
+  emitted: returned.emitted.map((entry) => entry.name),
+};
+returned.store.receiveBattleState(planningState('new-returned'));
+const afterReturnedFresh = {
+  scene: returned.store.scene,
+  pending: returned.store.matchLaunchPending,
+  matchId: returned.store.state.match_id,
+};
+
+const rematch = freshStore('old-rematch');
+rematch.store.changeScene('DraftScene');
+const rematchLaunchAttempt = launchFromCurrentScene(rematch.store);
+rematch.store.receiveBattleState(terminalState('old-rematch'));
+const afterRematchStale = {
+  scene: rematch.store.scene,
+  pending: rematch.store.matchLaunchPending,
+  state: rematch.store.state,
+  launchAttempt: rematch.store.matchLaunchAttempt,
+};
+rematch.store.receiveBattleState(planningState('new-rematch'));
+
+const bounded = freshStore(null).store;
+for (let index = 0; index < MAX_RETIRED_MATCH_IDS + 2; index += 1) {
+  bounded.retireMatchId(`match-${index}`);
+}
+
+console.log(JSON.stringify({
+  max: MAX_RETIRED_MATCH_IDS,
+  returnLaunchAttempt,
+  afterReturnedStale,
+  afterReturnedFresh,
+  rematchLaunchAttempt,
+  afterRematchStale,
+  afterRematchFresh: {
+    scene: rematch.store.scene,
+    pending: rematch.store.matchLaunchPending,
+    matchId: rematch.store.state.match_id,
+  },
+  boundedIds: Array.from(bounded.retiredMatchIds),
+}));
+"""
+    )
+
+    assert probe["max"] == 8
+    assert probe["afterReturnedStale"] == {
+        "scene": "MatchupScene",
+        "pending": True,
+        "state": None,
+        "launchAttempt": probe["returnLaunchAttempt"],
+        "emitted": ["battle_v2_start_classic"],
+    }
+    assert probe["afterReturnedFresh"] == {
+        "scene": "CombatScene",
+        "pending": False,
+        "matchId": "new-returned",
+    }
+    assert probe["afterRematchStale"] == {
+        "scene": "MatchupScene",
+        "pending": True,
+        "state": None,
+        "launchAttempt": probe["rematchLaunchAttempt"],
+    }
+    assert probe["afterRematchFresh"] == {
+        "scene": "CombatScene",
+        "pending": False,
+        "matchId": "new-rematch",
+    }
+    assert probe["boundedIds"] == [f"match-{index}" for index in range(2, 10)]

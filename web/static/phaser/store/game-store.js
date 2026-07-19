@@ -1,11 +1,12 @@
-import { BOOT, CORE_ENERGY } from '../core/runtime-config.js?v=36';
-import { safeText } from '../core/text.js?v=36';
-import { readStorage, writeStorage } from '../core/storage.js?v=36';
-import { AssetRegistry } from '../core/asset-registry.js?v=36';
-import { firstCreationRoster, preset, presetTitle } from '../core/roster.js?v=36';
-import { damageEventAmount } from '../fx/event-metrics.js?v=36';
+import { BOOT, CORE_ENERGY } from '../core/runtime-config.js?v=37';
+import { safeText } from '../core/text.js?v=37';
+import { readStorage, writeStorage } from '../core/storage.js?v=37';
+import { AssetRegistry } from '../core/asset-registry.js?v=37';
+import { firstCreationRoster, preset, presetTitle } from '../core/roster.js?v=37';
+import { damageEventAmount } from '../fx/event-metrics.js?v=37';
 
 export const MATCH_LAUNCH_TIMEOUT_MS = 10000;
+export const MAX_RETIRED_MATCH_IDS = 8;
 
 export class GameStore {
     constructor(socketClient) {
@@ -62,6 +63,7 @@ export class GameStore {
       this.pendingCommand = null;
       this.resumeSession = this.loadResumeSession();
       this.ignoreBattleUpdates = false;
+      this.retiredMatchIds = new Set();
       // Live-updated from the most recent battle_v2_update's
       // first_creation_account field; falls back to the page-load bootstrap
       // profile only until the first update arrives, so mission counters,
@@ -574,6 +576,25 @@ export class GameStore {
       this.changeScene(returnScene);
     }
 
+    retireMatchId(matchId) {
+      const normalized = String(matchId || '').trim();
+      if (!normalized) return;
+      if (!(this.retiredMatchIds instanceof Set)) this.retiredMatchIds = new Set();
+      this.retiredMatchIds.delete(normalized);
+      this.retiredMatchIds.add(normalized);
+      while (this.retiredMatchIds.size > MAX_RETIRED_MATCH_IDS) {
+        const oldest = this.retiredMatchIds.values().next().value;
+        this.retiredMatchIds.delete(oldest);
+      }
+    }
+
+    isRetiredMatchId(matchId) {
+      const normalized = String(matchId || '').trim();
+      return !!normalized
+        && this.retiredMatchIds instanceof Set
+        && this.retiredMatchIds.has(normalized);
+    }
+
     startMatch() {
       if (!BOOT.battleV2Enabled) {
         this.showToast('Battle v2 is disabled on this server.');
@@ -595,6 +616,7 @@ export class GameStore {
         this.failMatchLaunch('Arena server is not connected yet. Check the address and try again.');
         return;
       }
+      this.retireMatchId(this.state && this.state.match_id);
       this.state = null;
       this.disconnectDeadline = null;
       this.clearResumeSession();
@@ -653,7 +675,7 @@ export class GameStore {
     }
 
     receiveBattleState(data) {
-      if (this.ignoreBattleUpdates || !data) return;
+      if (this.ignoreBattleUpdates || !data || this.isRetiredMatchId(data.match_id)) return;
       this.clearMatchLaunchTimeout();
       this.matchLaunchError = '';
       const currentMatchId = this.state && this.state.match_id;
@@ -1547,6 +1569,7 @@ export class GameStore {
     }
 
     resetToLobby() {
+      this.retireMatchId(this.state && this.state.match_id);
       if (!this.state && this.lobbyStatus && this.lobbyStatus.status !== 'cancelled') {
         this.socketClient.emit('battle_v2_leave_pvp', { room_id: this.lobbyStatus.room_id });
       }

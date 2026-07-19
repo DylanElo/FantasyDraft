@@ -56,11 +56,11 @@ console never imply copyright, trademark, likeness, or commercial clearance.
 
 ## Runtime and QA version policy
 
-The maintained Phaser cache version is exactly `36`. A QA evidence set is
+The maintained Phaser cache version is exactly `37`. A QA evidence set is
 current only when its adjacent manifest or README records all of:
 
 - exact source commit;
-- cache version `36` from the HTML shell through the ES-module graph;
+- cache version `37` from the HTML shell through the ES-module graph;
 - browser name and version;
 - page origin;
 - viewport and Phaser canvas dimensions;
@@ -71,6 +71,6 @@ current only when its adjacent manifest or README records all of:
 Evidence captured from another cache version or source commit remains useful
 historical evidence but cannot satisfy the current release gate. The checked-in
 v27 and v28 Season 3 structural packs therefore remain historical; a complete
-v36 390x844 and 430x932 set is still required before visual-release approval.
+v37 390x844 and 430x932 set is still required before visual-release approval.
 The cache chain must be changed atomically in the template, shell loader, and
 every maintained module import. Mixed-version graphs fail preflight.

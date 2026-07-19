@@ -1,7 +1,7 @@
-import * as Current from './culling-current-ui.js?v=36';
-import * as Flow from './season-three-ui.js?v=36';
-import * as PostMatch from './season3-master-ui.js?v=36';
-import { S3_TOKENS } from './season3-tokens.js?v=36';
+import * as Current from './culling-current-ui.js?v=37';
+import * as Flow from './season-three-ui.js?v=37';
+import * as PostMatch from './season3-master-ui.js?v=37';
+import { S3_TOKENS } from './season3-tokens.js?v=37';
 
 // New presentation code imports this facade. The named compatibility modules
 // remain available because the approved scenes already depend on their exact
@@ -37,6 +37,6 @@ export const Season3UI = Object.freeze({
   }),
 });
 
-export { S3_TOKENS } from './season3-tokens.js?v=36';
+export { S3_TOKENS } from './season3-tokens.js?v=37';
 
 export const Season3Components = Season3UI;

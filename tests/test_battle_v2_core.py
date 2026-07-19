@@ -3,7 +3,7 @@ import random
 import pytest
 
 from jjk_arena.battle_v2.effects import apply_damage
-from jjk_arena.battle_v2.energy import EnergyValidationError, gain_energy_for_living, spend_skill_energy
+from jjk_arena.battle_v2.energy import EnergyValidationError, energy_display_name, gain_energy_for_living, spend_skill_energy
 from jjk_arena.battle_v2.models import (
     BattlePhase,
     BattleState,
@@ -62,6 +62,16 @@ def test_gain_energy_for_living_is_deterministic():
         EnergyType.BLUE: 1,
         EnergyType.WHITE: 0,
         EnergyType.BLACK: 0,
+    }
+
+
+def test_energy_display_vocabulary_does_not_change_wire_values():
+    assert {energy.value: energy_display_name(energy) for energy in EnergyType} == {
+        "green": "Taijutsu",
+        "red": "Bloodline",
+        "blue": "Jujutsu",
+        "white": "Strategic",
+        "black": "Wild",
     }
 
 

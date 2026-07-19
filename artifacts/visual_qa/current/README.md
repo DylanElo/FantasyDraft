@@ -1,4 +1,9 @@
-# Current interaction-state visual QA
+# Legacy v22 interaction-state visual QA
+
+Status: superseded by the Season 3 visual-system implementation. The directory
+name is historical; these screenshots are not current evidence for the v27
+runtime. Current structural Home, Combat, and Queue Review evidence lives under
+`../../ui-redesign/s3-structure-v2/qa/`.
 
 This directory contains fresh post-hardening evidence captured on 2026-07-17
 from source commit `cb38012b5c5c07854781d04028120a5ed2da6163` with
@@ -49,5 +54,4 @@ The native 390x844 capture API returned 390x843; one `#050711` background row
 was added below the safe content. No game content was cropped, stretched, or
 invented.
 
-The previous historical set remains under `../pre-remediation/` and is not
-current evidence.
+The even earlier pre-remediation set remains under `../pre-remediation/`.

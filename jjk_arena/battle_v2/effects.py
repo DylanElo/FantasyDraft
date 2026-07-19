@@ -255,6 +255,10 @@ def apply_status(
         raise EffectError("status effect requires a status id")
     payload = dict(effect.payload)
     payload["_applied_turn_number"] = state.turn_number
+    # Visible ongoing effects need a stable skill identity so the client can
+    # name the technique currently being maintained. Invisible statuses are
+    # still filtered before serialization, so this does not weaken privacy.
+    payload.setdefault("source_skill_id", action.skill_id)
     target = state.players[target_player_id].team[target_slot]
     if target.hp < 50 and int(payload.get("low_hp_destructible_defense", 0)) > 0:
         payload["destructible_defense"] = int(payload.get("destructible_defense", 0)) + int(payload["low_hp_destructible_defense"])

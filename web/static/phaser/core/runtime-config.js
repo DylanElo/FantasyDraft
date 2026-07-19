@@ -1,5 +1,7 @@
 const DESIGN_TOKENS = globalThis.JJK_MOBILE_TOKENS || {};
 const TOKEN_COLORS = DESIGN_TOKENS.phaserColors || {};
+const CURRENT_TOKEN_COLORS = DESIGN_TOKENS.cullingCurrentPhaser || {};
+const CURRENT_TEXT_COLORS = DESIGN_TOKENS.cullingCurrent || {};
 const bootstrap = globalThis.JJK_BOOTSTRAP || {};
 
 export const TOKEN_TYPE = DESIGN_TOKENS.type || {};
@@ -53,6 +55,29 @@ export const COLORS = {
   blue: TOKEN_COLORS.techniqueBlue || 0x3d6bff,
   black: TOKEN_COLORS.surfaceRaised || 0x181715,
 };
+
+export const CULLING_COLORS = {
+  ivory: CURRENT_TOKEN_COLORS.warmIvory || 0xf2e8d5,
+  concrete: CURRENT_TOKEN_COLORS.paleConcrete || 0xb7b5ad,
+  sky: CURRENT_TOKEN_COLORS.powderSky || 0xb58b5b,
+  cobalt: CURRENT_TOKEN_COLORS.cobalt || 0x101b36,
+  vermilion: CURRENT_TOKEN_COLORS.vermilion || 0xe32620,
+  cyan: CURRENT_TOKEN_COLORS.electricCyan || 0x35dde8,
+  gold: CURRENT_TOKEN_COLORS.sunGold || 0xd8bf68,
+  charcoal: CURRENT_TOKEN_COLORS.charcoal || 0x17191e,
+  muted: CURRENT_TOKEN_COLORS.mutedText || 0x5f625f,
+  shadow: CURRENT_TOKEN_COLORS.softShadow || 0x101b36,
+  text: CURRENT_TEXT_COLORS.charcoal || '#17191E',
+  mutedText: CURRENT_TEXT_COLORS.mutedText || '#5F625F',
+  inverseText: CURRENT_TEXT_COLORS.warmIvory || '#F2E8D5',
+  cobaltText: CURRENT_TEXT_COLORS.cobalt || '#101B36',
+  redText: CURRENT_TEXT_COLORS.vermilion || '#E32620',
+};
+CULLING_COLORS.selected = CULLING_COLORS.gold;
+CULLING_COLORS.target = CULLING_COLORS.cyan;
+CULLING_COLORS.enemy = CULLING_COLORS.vermilion;
+CULLING_COLORS.queued = COLORS.bodyGreen;
+CULLING_COLORS.domain = COLORS.domainViolet;
 COLORS.stageDeep = COLORS.voidBlack;
 COLORS.stageInk = COLORS.inkBlack;
 COLORS.panelInk = COLORS.surfaceDeep;
@@ -79,12 +104,27 @@ export const ENERGY_COLORS = DESIGN_TOKENS.energyPhaser || {
 export const CORE_ENERGY = ['green', 'blue', 'white', 'red'];
 
 export const ENERGY_LABELS = {
-  green: 'B',
-  blue: 'T',
-  white: 'F',
-  red: 'C',
+  green: 'T',
+  blue: 'J',
+  white: 'S',
+  red: 'B',
   black: 'X',
 };
+
+// Display vocabulary is intentionally centralized. Internal socket/replay
+// values remain stable color keys; changing player-facing energy names does
+// not migrate authoritative state or invalidate saved command payloads.
+export const ENERGY_NAMES = {
+  green: 'Taijutsu',
+  blue: 'Jujutsu',
+  white: 'Strategic',
+  red: 'Bloodline',
+  black: 'Wild',
+};
+
+export function energyName(color) {
+  return ENERGY_NAMES[color] || String(color || 'Energy');
+}
 
 export const BOOT = {
   playerId: bootstrap.playerId || (typeof PLAYER_SESSION_ID !== 'undefined' ? PLAYER_SESSION_ID : 'player'),
@@ -92,36 +132,3 @@ export const BOOT = {
   roster: bootstrap.roster || (typeof BATTLE_V2_STARTER_ROSTER !== 'undefined' ? BATTLE_V2_STARTER_ROSTER : {}),
   firstCreation: bootstrap.firstCreation || (typeof FIRST_CREATION !== 'undefined' ? FIRST_CREATION : {}),
 };
-
-export const LOCAL_PORTRAIT_FILES = new Set([
-  'aoi-todo.svg',
-  'gojo-unsealed.svg',
-  'gojo-young.svg',
-  'hiromi-higuruma.svg',
-  'junpei-yoshino.svg',
-  'kasumi-miwa.svg',
-  'kenjaku.svg',
-  'kokichi-muta-mechamaru.svg',
-  'mahito.svg',
-  'mai-zenin.svg',
-  'maki-zenin.svg',
-  'megumi-fushiguro.svg',
-  'mei-mei-young.svg',
-  'momo-nishimiya.svg',
-  'nobara-kugisaki.svg',
-  'noritoshi-kamo.svg',
-  'panda.svg',
-  'shoko-ieiri-young.svg',
-  'suguru-geto-young.svg',
-  'sukuna-full-power.svg',
-  'sukuna-heian-era.svg',
-  'toge-inumaki.svg',
-  'uraume.svg',
-  'utahime-iori-young.svg',
-  'yuji-awakened.svg',
-  'yuji-black-flash.svg',
-  'yuta-gojo-s-body.svg',
-  'yuta-okkotsu-jjk-0.svg',
-  'yuta-okkotsu-sendai.svg',
-]);
-

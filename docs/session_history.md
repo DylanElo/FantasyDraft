@@ -2120,3 +2120,536 @@ Verification: `python -m pytest -q` — 451 passed, 1 skipped, same as the
 pre-change baseline in this worktree. This is an uncommitted single-line text
 change on `claude/codex-game-state-79cc5f`; no commit or push performed in
 this pass.
+## 2026-07-17 - Culling Current bright UI concept exploration
+
+**User direction and scope.** The user rejected the current UI's darkness,
+assets, structure, and color scheme and asked for a more artistic direction
+inspired by Jujutsu Kaisen Season 3, with Clash Royale and Subway Surfers City
+as the available mobile-game references. This pass is concept-only: it changes
+no Phaser code, server field, combat rule, balance number, progression rule,
+roster entry, or shipping asset.
+
+**Concept output.** A 70/30 direction was explored: bright, character-led,
+kinetic urban anime presentation supported by tactile mobile-game hierarchy.
+The resulting `Culling Current` set lives under
+`artifacts/ui-redesign/concepts/culling-current/`: a 1672x941 visual-direction
+board plus 853x1844 Home and Combat concepts whose aspect ratio closely matches
+390x844. The Home concept uses a large active-trio hero, light city scenery,
+one dominant battle CTA, secondary mode cards, and labeled navigation. Combat
+preserves three enemies, three allies, four visible skills, four core-energy
+types, targeting feedback, and Queue Review while opening most of the screen to
+a bright rooftop battlefield. Exact built-in generation prompts are recorded
+beside the images in `PROMPTS.md`.
+
+**Locked decisions and verification.** Portrait-first layout, 3v3 readability,
+four core energies, server authority, thumb-reachable controls, and the lower
+command dock remain concept invariants. The three PNGs were visually inspected
+and validated with Pillow as real RGB PNGs at their recorded dimensions. No
+automated gameplay or JavaScript checks were run because no production code
+changed.
+
+**Canonical conflict and delivery state.** The user's new direction conflicts
+with the dark Ink + Talisman visual language still prescribed by
+`docs/CODEX_PROJECT_MEMORY.md`, `docs/mobile_phaser_ui_ux_brief.md`, and the
+Phaser `AGENTS.md`. The concepts therefore do not silently replace canonical
+design. Production implementation must wait for explicit concept approval,
+then update those visual-direction sections in a focused UI-design pass while
+preserving their usability and server-parity rules. Character imagery is
+concept art, not licensed shipping art. The assets and this history entry are
+uncommitted; no PR was opened.
+
+## 2026-07-17 - Culling Current Home and Combat production vertical slice
+
+**Locked decisions and scope.** The user approved the bright Culling Current
+direction, superseding the preceding concept entry's pending-approval state.
+This remained a focused UI-only pass: Battle v2 rules, the exact 19-character
+First Creation roster, balance, progression, hidden information, replacement
+slot identity, target semantics, socket authority, B/T/F/C energy meanings,
+and X-as-Wild payment did not change. Runtime teams, rooms, phases, timers,
+costs, disabled reasons, targets, replacements, and queue state continue to
+come from the authoritative store/server contract. No concept currencies or
+fictional combat labels entered the client.
+
+**What changed.** Canonical visual-direction documents now define the scoped
+70/30 Culling Current system: luminous ivory/concrete/sky worlds, cobalt
+structure, restrained vermilion/gold/cyan accents, charcoal text, and darkness
+reserved for Domain or finisher moments. Phaser cache references moved
+consistently to v23. Reusable light primitives and responsive Home regions now
+support a bright city-led active-trio Home, dominant Quick Match CTA, real
+identity/room controls, secondary modes, and labeled bottom navigation. The
+Combat slice now uses a daylight rooftop, compact authoritative phase/timer and
+energy HUD, readable fighter plates, an open target lane, tactile 2x2 command
+dock, inspectable disabled skills, full Skill Detail, and a light Queue Review
+sheet with action order, primary/secondary/alternate targets, adjusted costs,
+available-to-remaining energy, Wild assignment, and exact action-local errors.
+The ordinary playback layer was rethemed while cinematic darkness remains.
+`queueReviewFit()` gained only display metadata (`actionId` and `remaining`);
+submission and legality semantics were preserved.
+
+Two character-free generated environment plates were added with exact prompts,
+result identifiers, hashes, dimensions, crop notes, and limitations in
+`web/static/assets/environments/PROVENANCE.md`. Final review also closed a stale
+PvP mode on the Home Roster route, long identity overflow, portrait-overlay
+depth, the 360px HUD squeeze, misleading non-Wild row errors, and normal/safe
+Combat and Queue Review center-stage collisions.
+
+**Visual QA.** Twenty current PNGs under
+`artifacts/ui-redesign/culling-current/qa/` cover Home, selected Combat, Skill
+Detail, invalid Queue Review, and valid Queue Review at 360x800, 390x844, and
+430x932, plus a long-profile stress state and safe-inset evidence. Safe captures
+use 47px top and 34px bottom insets at 360x800, with Queue Review also checked at
+safe 390x844. Every runtime texture was loaded before capture. All registered
+non-modal controls were at least 44x44 CSS pixels, inside the canvas, and free
+of pairwise overlap. The browser-local fixture uses the real character/skill
+catalog, changes in-memory presentation state only, and emits no gameplay
+socket command. A direct browser interaction also verified that Roster changes
+stale PvP mode back to CPU before entering `FirstCreationScene`.
+
+The local Windows Flask-SocketIO server returned HTTP 400 for WebSocket upgrade
+and subsequent polling-session requests. There were no page exceptions,
+non-Socket.IO resource failures, or missing textures. The captures therefore
+validate rendering/geometry; the automated suite remains the networking and
+gameplay authority.
+
+**Verification actually run.** `python -m pytest -q` passed with **453 passed,
+1 skipped** in 112.21 seconds. The focused app/mobile/parity set passed with
+**20 passed**. `node --check` passed for all 24 changed or added JavaScript
+files. `python -m compileall -q jjk_arena web/app.py`, `git diff --check`, the
+v23 cache-consistency audit, the concept-only-label audit, and Pillow validation
+of all 20 QA PNGs plus both 773x1672 WebP runtime assets passed.
+
+**Remaining cautions / delivery state.** The existing abstract character-card
+portraits remain intentional placeholders pending a coherent original or
+licensed 19-character art pass. Concept character images are not runtime
+assets. Untouched legacy scenes retain scoped dark tokens until migrated in
+separate UI work. The implementation is uncommitted on
+`codex/culling-current-ui`, based on
+`f8567d13075adebcfccded09c9b5ac43ebedb802`; it has not been pushed and no PR
+was opened.
+
+## 2026-07-18 - Season 3 structural Home, Combat, and Queue Review rewrite
+
+**User correction and supersession.** The user rejected the preceding
+production vertical slice because it began with a promising combat direction
+but ultimately reskinned the old UI hierarchy. The two supplied portrait
+references now define the required screen composition, not merely a palette or
+decorative style. This structural rewrite supersedes the preceding Home and
+Combat layout implementation; the rejected layout and its screenshots must not
+be presented as current design evidence.
+
+**Locked decisions and invariants touched.** This remains UI-only. Python
+Battle v2 and the socket/store contract remain authoritative. The exact 19
+First Creation entries, 3v3 teams, one queued skill per living fighter, phase
+flow, left-to-right resolution, B/T/F/C meanings, X-as-Wild payment, replacement
+slot identity, adjusted costs, disabled reasons, targeting fields, hidden and
+revealed state, and progression rules are unchanged. The new layouts must still
+fit 360x800, 390x844, and 430x932 with safe-area-aware, roughly 44px minimum
+controls and progressive skill disclosure.
+
+**What changed.** Home was rebuilt around a full-screen illustrated trio, a
+compact profile/currency strip, oversized editorial title, one giant battle
+CTA, exactly three feature cards, and a three-item labeled bottom navigation.
+Combat was rebuilt around a slim turn HUD, three large enemy fighter cards, an
+open directional battlefield lane, three large ally cards, a selected-fighter
+identity strip, four tall illustrated skill cards, and a dominant Review rail.
+Queue Review now preserves the battlefield and replaces the lower command
+region with an illustrated one-to-three-action deck plus touch-sized ordering,
+Wild-payment, Back, Clear, and Confirm controls. Phaser cache references for
+the completed structural pass are designated `v27`.
+
+The runtime visual set gained a character-led 853x1844 Home composition, a
+bright blue-sky 853x1844 rooftop, and four 418x941 Body/Technique/Focus/Curse
+skill textures. Exact revised prompts, result IDs, source and shipping hashes,
+input-reference disclosures, processing notes, and release limitations are
+recorded in `web/static/assets/environments/PROVENANCE.md` and
+`web/static/assets/skills/PROVENANCE.md`. The character-led Home image depicts
+named franchise characters and both generation sets used user-supplied
+franchise imagery as visual reference; neither provenance nor generation is a
+substitute for legal or commercial-release clearance.
+
+**Verification and delivery state.** The full suite passed with **492 passed,
+1 skipped** in 134.05 seconds, and the final focused UI set passed with **37
+passed**. `node --check` passed for all 27 changed or added JavaScript files.
+`python -m compileall -q jjk_arena web/app.py`, `git diff --check`, and the v27
+cache-consistency audit passed. Nine fresh implementation captures cover Home,
+Combat, and Queue Review at exact 360x800, 390x844, and 430x932 dimensions.
+Across all nine states, active scenes and canvas sizes matched, controls met the
+44x44 minimum, no non-modal control crossed the viewport or overlapped another,
+and the browser console was clean. The final capture traffic had no 400, 404,
+or 500 responses; two stale pre-restart tab-session requests returned 400
+before the v27 run began. Evidence and capture details live under
+`artifacts/ui-redesign/s3-structure-v2/qa/`. The verified delivery targets
+`codex/culling-current-ui`; the structural implementation was committed as
+`e49f0ff` and delivered through updated draft PR #58.
+
+## 2026-07-18 - First Creation, per-skill art, motion, and audio correction
+
+**User correction and locked scope.** The user clarified that the Season 3
+asset direction was successful; the failure was preserving deprecated layout
+hierarchies beneath it. This pass therefore replaces the First Creation and
+combat presentation structures without changing Battle v2 rules, socket
+authority, balance, progression, the exact 19-character starter roster,
+B/T/F/C semantics, X-as-Wild payment, hidden-information rules, target
+legality, or replacement-slot identity.
+
+**What changed.** First Creation is now a single-featured-character art browser
+with three visible active slots, All/Tokyo/Kyoto/Special routes, canonical
+locked ordering independent of sorted JSON keys, and a full-screen Character
+Study. Character Study exposes art, identity, era, difficulty, role, state,
+tags, all 78 authoritative skill pages, exact target-rule details, classes,
+cost, cooldown, and descriptions. The two replacement pages retain their
+original slot rather than presenting as techniques five. Profile entry and
+skill paging receive short, reduced-motion-aware transitions.
+
+Combat now follows the approved spatial composition: slim HUD, three large
+enemy cards, open targeting lane, three large ally cards, selected-fighter art,
+four tall illustrated skills, and a dominant Review rail. Compact skill cards
+use progressive disclosure instead of six-pixel class/effect walls. Queue
+Review retains the battlefield and presents a left-to-right three-action deck;
+planning-only target and selection VFX handles are cleared on entry.
+
+A 1254x1254 character-free action atlas and data-driven presentation registry
+cover all 78 shipping skill IDs with stable crops, sigils, palettes, motion
+profiles, and replacement metadata. Reusable motion/VFX hooks cover ambient
+worlds, scene/profile entry, selection, legal targets, queue commitment,
+impacts, healing, status, and reveal. Gesture-gated synthesized WebAudio covers
+press, select, target, queue, confirm, error, reveal, and impact with persistent
+mute and no-audio fallback. Phaser cache references moved in lockstep to v28.
+
+**Visual QA.** Twelve current captures under
+`artifacts/ui-redesign/s3-structure-v3/qa/` cover First Creation, Character
+Study, selected Combat, and valid Queue Review at exact 360x800, 390x844, and
+430x932 viewport/canvas pairs. All registered non-modal controls were at least
+44x44, inside the canvas, and non-overlapping. The 78-skill atlas and
+presentation services were active; Queue Review had a concrete Wild payment,
+enabled confirmation, and no stale selection ring. The final browser run had
+no warning or error console entries. Browser automation cannot constitute a
+trusted audible-user-gesture assertion, so sound synthesis/unlock behavior is
+covered by service tests while the live run verifies WebAudio support and the
+gesture gate.
+
+**Verification and delivery state.** Full pytest passed with **507 passed, 1
+skipped** in 74.15 seconds. `python -m compileall -q jjk_arena web/app.py`,
+`node --check` for all 30 changed or added JavaScript files, `git diff --check`,
+the v28 cache audit, and Pillow validation of all 12 QA PNGs plus the action
+atlas passed. The main implementation is commit `0e07e88` on
+`codex/culling-current-ui`. Draft PR #58 is the delivery target and had not yet
+been refreshed with this commit at the time of this entry. Generated assets
+and franchise-directed references still require commercial-release rights
+review; provenance is not licensing clearance.
+
+## 2026-07-18 - Windows one-click launcher refresh
+
+**Scope and invariants.** Refreshed `start_server.bat` without changing combat,
+roster, progression, or socket contracts. The launcher explicitly rejects any
+runtime other than maintained Battle v2, starts the Flask-SocketIO
+`run_server.py` entry point, uses the threaded local transport, and introduces
+no Node or frontend build step. Phaser continues to load directly from the
+current working tree.
+
+**What changed.** Replaced the obsolete `eventlet` import probe and the unsafe
+parenthesized `%ERRORLEVEL%` branch with label-based Python discovery. The
+launcher now fingerprints `requirements.txt`, synchronizes dependencies only
+when its SHA-256 changes or validation fails, checks the actual Flask,
+Flask-SocketIO, and simple-websocket imports, and runs `pip check` before
+startup. It validates the configured port, rejects an unavailable listener,
+derives the local CORS allowlist from `JJK_PORT`, polls `/readyz`, and opens the
+default browser only after readiness. `JJK_NO_BROWSER=1` provides a documented
+opt-out. `README.md` now identifies the BAT file as the primary Windows local
+launch path, and `tests/test_start_server_launcher.py` locks the maintained
+runtime, dependency, readiness, browser, and no-Node contracts.
+
+**Verification and delivery state.** A real `start_server.bat` smoke run on
+isolated port 5022 synchronized the dependency fingerprint, returned HTTP 200
+from `/readyz`, served the current `phaser-shell.js?v=28`, and released the
+listener during cleanup. The browser-open opt-out was used for automation so
+the test did not disturb the user's active browser. Focused launcher and
+production-readiness coverage passed with **17 passed**. The full suite passed
+with **510 passed, 1 skipped** in 75.99 seconds;
+`python -m compileall -q jjk_arena web/app.py` and `git diff --check` also
+passed. Delivery targets `codex/culling-current-ui` and draft PR #58; the
+launcher changes were not yet committed at the time of this entry.
+
+## 2026-07-18 - Art-first full mobile flow and delivery acceptance
+
+**User correction and locked scope.** The user accepted the Season 3 asset
+language but rejected the remaining deprecated screen structures. This pass
+therefore completes the structural replacement across Team Setup, Matchup,
+Combat presentation, Mission Map, Results, and Records/Profile. Battle v2
+remains authoritative for legality, damage, phases, timing, viewer privacy,
+hidden information, targets, replacement slots, Wild payment, results, and
+mission progression. The locked 19-character First Creation roster and all 78
+shipping primary/replacement skills are unchanged.
+
+**What changed.** First Creation and reusable Team Setup now use one large
+featured fighter, readable trio slots, route filters, and a full-screen
+Character Study rather than roster columns or dashboard panels. The dedicated
+Matchup scene presents the actual CPU confrontation or sealed PvP challenger,
+wait/cancel state, and a server-authoritative Enter step; Back returns to the
+surface that opened it. Mission Map is a spatial seven-node Student Era route
+with a selected-mission dossier and recommended trio. Results is a cinematic
+winner/outcome composition with full trio names, mission debrief, rewards,
+untruncated current-match impacts, and paired Rematch/Home actions. Records is
+an art-led local profile with the most-deployed trio, full outcome counts,
+metrics, and recent-match timeline.
+
+Combat retains the approved rooftop card/lane/card/skill structure while its
+resolution layer gains one-at-a-time cinematic cut-ins and action banners,
+target and impact VFX, HP-lag feedback, short camera punctuation, persistent
+gesture-gated audio, mute/volume, haptics, reduced-motion settings, and staged
+asset loading. Five character-free 1248x1248 `4x4` WebP atlases assign one
+unique cell to every one of the 78 shipping skills; authoritative skill data
+continues to come from Battle v2. Exact generation prompts, result identifiers,
+source/shipping hashes, processing, and licensing cautions are recorded in the
+skill provenance file. Cache-linked first-party assets and imports are sealed
+at `v31`.
+
+**Correctness and delivery closure.** Real CPU, two-client PvP, reconnect,
+token rotation, terminal result, and authoritative timeout acceptance now run
+over HTTP/WebSocket. The second PvP joiner receives its private resume grant.
+Resume credentials are atomically consumed/rotated before any reconnect or
+private-room side effect, and a deterministic concurrent-replay regression
+proves only one contender can receive the rotated credential and viewer state.
+Fast resume updates during Boot now record their destination without racing
+Phaser's scene loader; Boot performs the one initial transition, including a
+destination that changes during its fade. CI runs the full suite, Python
+compilation, all maintained JavaScript syntax checks, dependency validation,
+and whitespace checks.
+
+**Verification actually run.** Final pytest passed with **522 passed, 1
+skipped** in 112.52 seconds. The real-network acceptance test passed in 25.16
+seconds. `python -m compileall -q jjk_arena web/app.py
+tools/network_acceptance.py`, `python -m pip check`, `node --check` for all 37
+maintained JavaScript files, the 101-import `v31` cache audit, and `git diff
+--check` passed. Live in-app-browser QA covered Home, First Creation, Character
+Study, Team Setup, both Matchup return paths, real CPU Combat resolution, and
+Results at 360x800, 390x844, and 430x932. Fresh Boot, staged assets, scene
+routing, portrait diagnostics, and the final interaction run produced no
+console warning, console error, or runtime exception. The action-banner stress
+check left exactly one active overlay and confirmed the replaced nodes were
+destroyed.
+
+**Remaining cautions / delivery state.** Synthesized sound and haptics still
+depend on the physical device/browser capabilities; automated service tests
+cover fallback and persistence, while the browser pass covers the gesture gate
+and visible controls. Generated and franchise-directed art still requires
+commercial-release rights review; provenance is not licensing clearance. The
+Windows one-click launcher remains the current Battle v2 entry point. Delivery
+is on `codex/culling-current-ui` through main implementation commit `735076c`
+and draft PR #58. The branch was pushed, the PR description was refreshed for
+the completed scope, GitHub reported a clean merge state, and its hosted CI
+`quality` check passed at that implementation commit.
+
+## 2026-07-19 - Queue Review stale-revision release blocker
+
+**User report and locked scope.** A real three-action Queue Review could not
+confirm and displayed `stale state revision: expected 14, got 15`. This pass
+changes command transport/recovery only. Battle v2 remains authoritative for
+phase timing, action legality, targeting, Wild payment, resolution, hidden
+information, and results; exact stale-intent rejection, per-player nonces, the
+three-active-character loop, and left-to-right resolution remain intact. No
+kit, balance, roster, progression, or visual-layout decision changed.
+
+**Root cause and correction.** The Phaser client emitted `update_queue(N)` and
+immediately emitted `confirm_queue(N+1)` even though it had not received the
+authoritative `N+1` state. Threaded Flask-SocketIO handlers may acquire the
+room lock in either order, so confirmation could arrive first and be rejected.
+Rapid skill taps could likewise submit multiple plan mutations at one cached
+revision, late lower-revision snapshots could roll the store backward, and an
+error did not return the current state after a deadline advance.
+
+The GameStore now permits one mutating command in flight, derives every command
+only from the last received authoritative revision, and chains Queue Review
+confirmation only after the queue update's newer snapshot arrives. It rejects
+lower revisions for the same match, preserves revision resets for a new match,
+restores authoritative queue order and Wild payments on update/resume, and
+keeps combat controls locked until the matching state advance. Rejected queue
+commands reopen review with a player-facing recovery message. Mutating socket
+handlers now emit the error followed by a viewer-safe current snapshot, so a
+stale or deadline-advanced client resynchronizes without reload; server stale
+rejection is unchanged. The socket contract now documents this sequencing and
+also corrects the resume-token ordering to match the existing atomic
+consume/rotate-before-private-admission implementation. First-party Phaser
+cache references advanced together from `v31` to `v32`.
+
+**Regression and live acceptance.** New Node-backed GameStore tests cover the
+authoritative queue-confirm handshake, rapid plan serialization, same-match
+monotonic state, new-match revision reset, and queue/Wild restoration. Socket
+tests require ordered `battle_v2_error` then private `battle_v2_update`, prove
+viewer privacy and nonce reuse after rejection, and cover a deterministic
+deadline-induced revision advance. Real-network HTTP/WebSocket acceptance
+passed for CPU resolution, PvP resume/token rotation, and authoritative
+timeout recovery.
+
+At 390x844 in the live in-app browser, a three-fighter turn submitted plan
+revisions `4`, `5`, and `6`, sent `update_queue` at `7`, and emitted
+`confirm_queue` only after receiving authoritative revision `8`. All three
+skills, including an explicit Wild payment, resolved. The same match continued
+through revision `64` and turn `37` to an actual server-authored ResultScene;
+the CPU won, proving terminal routing rather than assuming a player victory.
+The 430x932 reload also matched its portrait viewport and reported no portrait
+contract/load failures. The local listener was restarted on
+`http://127.0.0.1:5017` and serves `phaser-shell.js?v=32`.
+
+**Verification and delivery state.** Full pytest passed with **527 passed, 1
+skipped** in 111.14 seconds. `python -m compileall -q jjk_arena web/app.py
+tools/network_acceptance.py`, `python -m pip check`, `node --check` for all 40
+JavaScript files under `web/static`, the 101-import v32 consistency audit, and
+`git diff --check` passed. The existing untracked concept/QA artifacts were
+preserved and excluded. These corrections target `codex/culling-current-ui`
+and draft PR #58. The implementation was committed as `a393380`, pushed to the
+branch, and the hosted PR `quality` check passed in 1m27s. This delivery-state
+note is the documentation-only follow-up to that verified implementation.
+
+## 2026-07-19 - Phaser combat SFX mix replacement
+
+**Scope and locked invariants.** This pass changes presentation audio only.
+Battle v2 remains authoritative for legality, targeting, costs, status state,
+visible/hidden information, turn advancement, effects, and results. The audio
+layer consumes existing UI intent and serialized playback events; it does not
+resolve or infer gameplay. Gesture-gated context creation, one persistent
+context across scenes, persisted mute/volume/haptics, graceful no-audio
+fallback, and independent reduced-motion behavior remain required.
+
+**Audit and correction.** The prior fallback sent raw square/saw and simple
+oscillator layers straight to device output, reused `reveal` for unrelated
+healing/status/result events, and had no shared dynamics control. It was
+replaced with an original dependency-free WebAudio palette using filtered
+sine/triangle voices and short seeded-noise texture. UI, combat, and cinematic
+buses feed a conservative master compressor and immediate mute/volume gain;
+cue input peaks and active voices are bounded. Semantic cues now distinguish
+press, selection, targeting, queue placement/reorder, confirmation, rejection,
+visible skill start, impact, heal, status change, reveal, turn handoff, and
+result. Haptic patterns were shortened and remain independent of sound mute.
+iOS-style interrupted contexts resume only from a new trusted gesture.
+
+The maintained contract and device-listening checklist are documented in
+`docs/phaser_audio_system.md`. No audio asset, production dependency, or
+copyrighted source material was added.
+
+**Verification and remaining caution.** Nine presentation-service tests and
+the focused persistent-audio closure test passed. They cover gesture and
+interruption unlock, mixer routing/dynamics creation, tonal/filter/peak
+constraints, semantic playback routing, persistence, immediate mute, haptics,
+and unsupported-audio fallback. `node --check` passed for
+`interaction-sfx.js`, `presentation-layer.js`, and
+`combat-playback-scene.js`; `git diff --check` passed. Automated tests cannot
+judge timbre, device loudness, headphone fatigue, or player preference, so an
+iOS Safari and Android Chrome listening pass remains a release requirement.
+
+## 2026-07-19 - Phone-surface and runtime crop containment
+
+**Scope and locked invariants.** This pass is limited to the Phaser host and
+shared presentation cropping, including the Character Study portrait path.
+The maintained client remains portrait-first at 360x800, 390x844, and
+430x932; desktop/tablet centers the same phone surface. Battle authority, the
+locked First Creation roster, energy/timer/status behavior, and audio were not
+changed.
+
+**Correction.** The shell now gives Phaser a real, centered maximum 430x932
+host with a hard paint/overflow boundary. Shared environment/portrait focal
+crops and skill-atlas crops register as local Phaser texture frames before
+display. This removes full-source-sheet positioning, preventing detached art
+on desktop and containing Character Study portraits in their profile region.
+
+**Verification and remaining caution.** Node syntax checks passed for both
+changed JavaScript modules. The focused shell, portrait, skill-atlas, First
+Creation, and mobile-layout suite passed with **24 passed**. `git diff --check`
+passed. Fresh desktop, 390x844, and 430x932 browser captures plus Character
+Study and Queue Review inspection remain required by the primary task.
+
+## 2026-07-19 - Integrated combat usability, transmutation, and live-player correction
+
+**User report and locked scope.** The corrective pass addressed art escaping
+the mobile surface, poor synthesized SFX, ambiguous targetability, missing
+status/ailment and visible-skill feedback, a non-ticking timer, and an
+undiscussed automatic energy converter. Battle v2 remains authoritative; the
+client still renders only viewer-safe state and submits intent. The user
+explicitly changed conversion to an optional, once-per-turn transmutation of
+exactly five selected core-energy pips into one selected core energy during
+Planning and before any queue. Internal color keys remain stable. Player-facing
+energy vocabulary is centralized, but the requested replacement names remain
+pending the user's exact four-name choice.
+
+**Integrated correction.** Combat now uses a locally ticking display clock
+anchored to each authoritative timer snapshot, including skill and status
+sheets, without allowing the client to advance phases. Target cards say `TAP
+TARGET` or `BLOCKED`, status chips expose meaningful names and durations, the
+full status sheet names exact effects, clocks, and authoritative source skills,
+and public resolution events drive the visible opponent-skill banner. An
+ongoing visible source skill is marked on its fighter; private pending queues
+remain undisclosed. A live playtest found one remaining mismatch where compact
+catalog skills omitted effects, causing a warded enemy to glow selectable even
+though the server rejected it. Enemy/enemy-team targeting now mirrors the
+server's side-based harmfulness rule, and the same warded Yuta rendered
+`BLOCKED` in the repeat playtest.
+
+The transmutation sheet requires five explicit `+` selections, one explicit
+output type, a visible 5-for-1 preview, and confirmation. The socket and manager
+preserve exact count rather than truncating extras, reject Wild sources/targets,
+reject Queue Review and other non-Planning phases, close a stale modal on an
+authoritative phase/turn change, and preserve command atomicity, nonce retry,
+replay hashing, and public energy-event serialization. No five-pip choice is
+made automatically by the browser.
+
+**Live QA and verification.** In-app-browser play covered First Creation,
+Character Study, Team Setup, Matchup, repeated CPU turns, technique selection,
+targeting rejection/correction, public opponent-skill banners, active-skill and
+status chips, the full status sheet, technique detail, timer urgency, and the
+complete five-source/output transmutation selector. Responsive inspection at
+360x800, 390x844, 430x932, and 1264x866 showed a centered maximum-430-pixel
+phone surface with hidden overflow and no detached portrait or skill-atlas art.
+The desktop measurement was a 430-pixel shell/canvas centered at x=417 inside a
+1264-pixel viewport. Character Study art rendered inside its hero region. The
+browser reported no console warnings or errors. The local listener was
+restarted on `http://127.0.0.1:5017` and serves the coordinated `v34` shell,
+styles, tokens, and module graph.
+
+Final verification passed with **549 passed, 1 skipped** in 94.94 seconds,
+`python -m compileall -q jjk_arena web/app.py`, syntax checks for all 29 changed
+JavaScript files, and `git diff --check`. Automated tests validate audio routing,
+dynamics, voice/peak budgets, mute, persistence, haptics, gesture unlock, and
+fallbacks, but subjective timbre and phone-speaker/headphone loudness still
+require physical iOS/Android listening. Existing untracked concept/QA artifacts
+were preserved. This integrated pass is included in the 2026-07-19 delivery on
+`codex/culling-current-ui`; the branch was pushed to origin and existing draft
+PR #58 was updated.
+
+## 2026-07-19 - Player-facing energy vocabulary migration
+
+**User decision and invariants.** The user locked green as `T` Taijutsu, blue
+as `J` Jujutsu, white as `S` Strategic, and red as `B` Bloodline. Wild remains
+`X`. This is a vocabulary/presentation migration only: authoritative state,
+socket commands, replay documents, stored costs, and event payloads retain the
+stable internal values `green`, `blue`, `white`, `red`, and `black`. No energy
+generation, payment, transmutation, balance, or combat rule changed.
+
+**Correction.** The centralized Phaser labels and full names now drive the
+top combat meter, skill costs, Queue Review, Wild assignment, and the complete
+5-for-1 transmutation sheet. The last hard-coded B/T/F/C combat map was removed.
+Server validation errors and event messages use the same player vocabulary,
+while playback translates raw viewer-safe event payload colors at render time.
+Affected starter descriptions/status display names, orb accessibility labels,
+design tokens, project memory, canonical design/socket/transmutation documents,
+mobile wireframes, and current asset-family documentation were updated. Legacy
+wire enums, Python cost aliases, atlas keys/filenames, exact historical image
+generation prompts, lore names, and session-history records remain unchanged
+for compatibility and provenance. The coordinated Phaser cache graph is `v35`.
+
+**Live QA and verification.** A 390x844 in-app-browser CPU fight showed the
+combat meter as `T/J/S/B`, skill cards inheriting the new letters, and the
+transmutation sheet spelling out Taijutsu, Jujutsu, Strategic, and Bloodline;
+the sheet remained contained inside the phone surface. Browser diagnostics had
+no warnings or errors. The local server was refreshed at
+`http://127.0.0.1:5017` with the same port-specific Socket.IO origin policy as
+`start_server.bat` and serves `v35`.
+
+Final verification passed with **551 passed, 1 skipped** in 107.02 seconds,
+`python -m compileall -q jjk_arena web/app.py`, syntax checks for all 30 changed
+JavaScript files, and `git diff --check`. The focused migration set passed with
+132 tests. The repository's `.venv` currently lacks the optional `requests`
+package needed to collect `tests/test_network_acceptance.py`, so the required
+full suite was run successfully with the configured project `python` runtime.
+Existing untracked concept/QA artifacts were preserved. This pass is included
+in the 2026-07-19 delivery on `codex/culling-current-ui`; the branch was pushed
+to origin and existing draft PR #58 was updated.

@@ -6,16 +6,19 @@ Battle v2 socket contract and never calculate battle outcomes in Phaser.
 ## Lobby
 
 ```text
-[turn-safe product header]
-[identity + room dossier]
-[        QUICK PLAY        ]
-[ PRIVATE PVP ][ FIRST CREATION ]
-[ MISSION MAP ][ RECORDS        ]
-[recent results]
+[player identity]                    [room code]
+[              bright city world              ]
+[          active fighter trio                 ]
+[             READY FOR BATTLE                 ]
+[ PRIVATE ROOM ][ FIRST CREATION ][ MISSION MAP]
+[     Home     ][    Roster     ][   Records   ]
 ```
 
-The primary play action sits above the lower navigation choices. Full labels
-replace letter-only navigation.
+The Culling Current Home is world-led rather than panel-led. The active trio,
+player name, room code, and mission title are real store data; the screen does
+not invent level, currency, mail, or other concept-only economies. The primary
+CPU battle action stays thumb-reachable above three compact secondary modes
+and fully labeled bottom navigation.
 
 ## First Creation And Character Detail
 
@@ -41,19 +44,21 @@ behind active roster labels.
 ## Combat Planning And Skill Detail
 
 ```text
-[turn / phase] [energy] [leave]
+[turn / phase / timer] [T J S B energy] [exit]
 [enemy 1] [enemy 2] [enemy 3]
-[prompt / playback / queued actions]
+[open rooftop targeting lane / directive / queue]
 [ally 1]  [ally 2]  [ally 3]
 [selected fighter + readiness]
 [skill 1][skill 2]
 [skill 3][skill 4]
-[Cancel] [End]       [Review]
+[Clear Queue] [Pass]       [Review]
 ```
 
-Tap a skill once to select it. Tap the selected skill again to open Skill
-Detail. The detail surface shows full name, adjusted cost, target family,
-classes, cooldown or disabled reason, and authoritative description.
+The light HUD exposes the actual phase and server-provided remaining time. Tap
+a skill once to select it; disabled skills remain tappable for inspection.
+Skill Detail shows full name, adjusted cost, target family, classes, cooldown
+or disabled reason, replacement/base-slot relationship, and authoritative
+description.
 
 ## Targeting
 
@@ -63,21 +68,23 @@ primary target -> secondary target when required
                -> queued action
 ```
 
-Teal identifies legal targets. Phaser preserves the primary, secondary, and
-alternate fields; the server validates every submitted target.
+Electric cyan identifies legal targets. Phaser preserves the primary,
+secondary, team, and alternate fields; the server validates every submitted
+target.
 
 ## Queue Review
 
 ```text
-[QUEUE REVIEW] [remaining energy]
-[Q1 full skill / caster / PRIMARY / SECONDARY-or-ALTERNATE] [up][down]
+[RESOLUTION ORDER] [available energy -> after]
+[Q1 full skill / caster / PRIMARY / SECONDARY / ALTERNATE] [up][down]
 [Q2 ...] [Wild payment controls]
 [Q3 ...]
-[Cancel] [Back]               [Confirm Queue]
+[Clear] [Back]                [Confirm Queue]
 ```
 
 Confirm is disabled when Wild payments are missing or the displayed energy can
-no longer pay the queue. Validation is adjacent to the queue, not toast-only.
+no longer pay the queue. The action that fails receives its exact row-local
+reason, while the sheet footer preserves the complete queue-level reason.
 
 ## Results
 
@@ -92,6 +99,9 @@ no longer pay the queue. Validation is adjacent to the queue, not toast-only.
 
 ## Required Responsive Evidence
 
-The Lobby, First Creation, Character Detail, Combat, Skill Detail, Queue Review,
-and Results states are checked at 390x844 and 430x932. The 360x800 layout remains
-covered by executable region and minimum-target assertions.
+The 2026-07-17 Culling Current v23 Home, Combat, Skill Detail, and valid/invalid
+Queue Review states were captured at 360x800, 390x844, and 430x932. A
+47px-top/34px-bottom inset stress capture covered Home, Combat, and Queue Review
+at 360x800, with additional safe Queue Review evidence at 390x844. These images
+predate the Season 3 runtime; executable layout tests still cover normal and
+safe frames at all three target sizes.

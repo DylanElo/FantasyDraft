@@ -18,7 +18,7 @@ The next UI/UX step is to turn that shell from a functional developer interface 
 
 - Naruto Arena combat flow: 3v3 teams, one skill per living character, queue review, wildcard/random energy payment, and left-to-right resolution.
 - First Creation identity: Student Era + Hidden Inventory + JJK0. The first roster should feel like "Welcome to Jujutsu High," not endgame apocalypse.
-- JJK visual direction: ink-black surfaces, aged talisman paper accents, restrained cursed-energy glow, domain rings only for special moments, hand-seal glyphs, school-issued dossier cards, and clear combat-state accents.
+- Approved visual direction (internal codename `Culling Current`): the locked Season 3 Culling Game system in `docs/season3_visual_system.md`, with sharp ink/hatch work, hard cel shadows, storm-lit painted cities, light bone/smoke routine UI, and darkness reserved for Domain, damage, or finisher punctuation. This is a visual system, not a roster-era or progression rename.
 
 ## Design Pillars
 
@@ -82,58 +82,56 @@ Create these pages:
 
 | Token | Value |
 | --- | --- |
-| Void Black | `#030303` |
-| Ink Black | `#08080A` |
-| Surface Deep | `#111111` |
-| Surface Raised | `#181715` |
-| Surface Line | `#3A3327` |
-| Talisman Paper | `#D8C28A` |
-| Talisman Dim | `#8A7650` |
-| Selection Gold | `#E6B84A` |
-| Cursed Teal | `#20D0B2` |
+| Bone / Ivory | `#F2E8D5` |
+| Smoke Gray | `#B7B5AD` |
+| Storm Ochre | `#B58B5B` |
+| Deep Indigo | `#101B36` |
+| Barrier Red | `#E32620` |
+| Curse Cyan | `#35DDE8` |
+| Aged Gold | `#D8BF68` |
+| Ink Charcoal | `#17191E` |
 | Domain Violet | `#7C3AED` |
-| Seal Red | `#A92D2D` |
-| Blood Red | `#D43B3B` |
-| Body Green | `#4FB06D` |
-| Technique Blue | `#3D6BFF` |
-| Focus Ivory | `#EDE9D5` |
-| Text Main | `#F4EFE1` |
-| Text Muted | `#A39A86` |
-| Text Dim | `#6F675A` |
+| Taijutsu Green | `#4FB06D` |
+| Jujutsu Blue | `#3D6BFF` |
+| Strategic Ivory | `#EDE9D5` |
+| Text Main | `#17191E` |
+| Text Muted | `#5F625F` |
+| Structural Shadow | `#101B36` at low alpha |
 
 ### Combat State Color Rules
 
-- Selected caster / selected skill: talisman gold plate and one gold ring.
-- Legal target: cursed teal pulse and crosshair marks.
-- Queued action: muted green seal.
-- Protected / untargetable: ash/talisman-dim rim with `INVULN` chip.
-- Enemy threat and damage: blood red only.
+- Selected caster / selected skill: aged-gold commitment edge with deep-indigo support.
+- Legal target: curse-cyan pulse and explicit `LEGAL` mark.
+- Queued action: muted green order mark.
+- Protected / untargetable: pale-concrete/charcoal rim with an explicit `INVULN` or `WARD` chip.
+- Enemy threat and damage: barrier red only.
 - Domain/cinematic effects: violet only during domain, status, or resolution moments.
-- Routine panel chrome should stay ink, charcoal, or talisman-dim; do not use violet as a default decoration.
+- Routine panel chrome should stay bone, smoke, translucent off-white, or ink-outlined; do not use violet or near-black as default decoration.
 
 ### Energy Colors
 
 | Energy | Color |
 | --- | --- |
-| B / Body | Muted green `#4FB06D` |
-| T / Technique | Saturated blue `#3D6BFF` |
-| F / Focus | Ivory `#EDE9D5` |
-| C / Curse | Blood red `#D43B3B` |
-| X / Wild | Charcoal `#181715` with talisman rim |
+| T / Taijutsu | Muted green `#4FB06D` |
+| J / Jujutsu | Saturated blue `#3D6BFF` |
+| S / Strategic | Ivory `#EDE9D5` |
+| B / Bloodline | Blood red `#D43B3B` |
+| X / Wild | Charcoal `#33363A` with a light rim |
 
 ### Type
 
-- Display: Cinzel Bold/Black
-- UI: Inter SemiBold/Bold
-- Numeric/system: JetBrains Mono
+- Display: bold condensed sans or impact display face
+- UI: readable geometric/humanist sans, SemiBold/Bold
+- Numeric/system: monospace, used only for compact stats and codes
 
 ### Shape Language
 
-- Main panels: 18-24 radius
-- Skill cards: 14-16 radius
+- Main panels: tactile clipped corners, thick ink outline, sparse hatching, and restrained offset shadow
+- Skill cards: compact clipped cards with a strong semantic selection edge
 - Energy orbs: circular
-- Queue pills: rounded 999
-- Domain overlays: rings, diagonal talisman cuts, radial smoke
+- Queue chips: compact clipped labels; rounded pills are exceptional rather than the default
+- Season 3 accents: barrier diagonals, raw hatch/brush marks, hard cel-shadow cuts, and paper/concrete grain
+- Domain overlays: rings and controlled dark/cinematic curtains
 
 ## Required Mobile Screens
 
@@ -251,4 +249,4 @@ Test these before calling a mobile UI pass done:
 
 ## Final Target Feel
 
-A mobile-native JJK tactics game where every tap is readable, every queued action has tension, and every reveal feels like a cursed-technique mind game.
+A luminous, art-led mobile JJK tactics game with the immediate tactile clarity of a polished mobile battler: every tap is readable, every queued action has tension, and darkness arrives as an event rather than the default background.

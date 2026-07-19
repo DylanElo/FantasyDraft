@@ -1,9 +1,9 @@
-import { BOOT, CORE_ENERGY } from '../core/runtime-config.js?v=22';
-import { safeText } from '../core/text.js?v=22';
-import { readStorage, writeStorage } from '../core/storage.js?v=22';
-import { AssetRegistry } from '../core/asset-registry.js?v=22';
-import { firstCreationRoster, imageKeyFor, preset, presetTitle } from '../core/roster.js?v=22';
-import { eventAmount } from '../fx/event-metrics.js?v=22';
+import { BOOT, CORE_ENERGY } from '../core/runtime-config.js?v=35';
+import { safeText } from '../core/text.js?v=35';
+import { readStorage, writeStorage } from '../core/storage.js?v=35';
+import { AssetRegistry } from '../core/asset-registry.js?v=35';
+import { firstCreationRoster, preset, presetTitle } from '../core/roster.js?v=35';
+import { damageEventAmount } from '../fx/event-metrics.js?v=35';
 
 export class GameStore {
     constructor(socketClient) {
@@ -18,16 +18,23 @@ export class GameStore {
       this.scene = 'LobbyScene';
       this.state = null;
       this.lobbyStatus = null;
+      this.matchLaunchPending = false;
+      this.matchupReturnScene = 'DraftScene';
       this.selectedCasterSlot = null;
       this.selectedSkillId = null;
       this.detailSkillId = null;
+      this.inspectedFighter = null;
       this.targetingStage = null;
       this.pendingPrimaryTarget = null;
       this.actions = [];
       this.actionWildPays = {};
       this.queueReviewOpen = false;
       this.queueSubmitting = false;
+      this.transmuteOpen = false;
+      this.transmuteSources = [];
+      this.transmuteTarget = null;
       this.toast = '';
+      this.toastSerial = 0;
       this.connectionState = 'connected';
       this.disconnectDeadline = null;
       this.draftPage = 0;
@@ -38,8 +45,14 @@ export class GameStore {
       this.eventCursor = 0;
       this.playbackEvents = [];
       this.recentEvents = [];
+      this.visiblePublicAction = null;
+      this.visiblePublicActionUntil = 0;
+      this.phaseTimerSnapshotSeconds = null;
+      this.phaseTimerSnapshotAt = null;
+      this.uiClockToken = '';
       this.lastActionPayloads = [];
       this.commandNonceCounter = 0;
+      this.pendingCommand = null;
       this.resumeSession = this.loadResumeSession();
       this.ignoreBattleUpdates = false;
       // Live-updated from the most recent battle_v2_update's
@@ -52,7 +65,17 @@ export class GameStore {
       this.enemyTeam = preset('jjk0_beginner_special', ['yuta_okkotsu_jjk0', 'maki_zenin', 'toge_inumaki']);
       this.bindSocket();
       window.setInterval(() => {
-        if (this.disconnectDeadline != null) this.notify();
+        const phaseSecond = this.phaseSecondsRemaining();
+        const visibleAction = this.currentVisibleAction();
+        const token = [
+          this.disconnectSecondsRemaining(),
+          Number.isFinite(phaseSecond) ? phaseSecond : '-',
+          visibleAction ? this.visiblePublicActionUntil : 0,
+        ].join(':');
+        if (token !== this.uiClockToken) {
+          this.uiClockToken = token;
+          this.notify();
+        }
       }, 250);
       window.__phaserShellDebug = {
         store: this,
@@ -67,6 +90,7 @@ export class GameStore {
           hasBattle: !!this.state,
           playbackEvents: this.playbackEvents.length,
           recentEvents: this.recentEvents.length,
+          portraitDiagnostics: this.assets.portraitLoadDiagnostics(),
         }),
       };
     }
@@ -82,6 +106,8 @@ export class GameStore {
       });
       this.socketClient.on('disconnect', () => {
         this.connectionState = 'disconnected';
+        this.pendingCommand = null;
+        this.queueSubmitting = false;
         this.setStatus('Reconnecting…');
         this.notify();
       });
@@ -93,8 +119,23 @@ export class GameStore {
       this.socketClient.on('battle_v2_update', (data) => this.receiveBattleState(data));
       this.socketClient.on('battle_v2_lobby', (data) => this.receiveLobbyState(data));
       this.socketClient.on('battle_v2_error', (data) => {
+        const failedCommand = this.pendingCommand;
+        this.pendingCommand = null;
         this.queueSubmitting = false;
-        this.showToast(data && data.message ? data.message : 'Battle v2 error');
+        this.matchLaunchPending = false;
+        if (
+          failedCommand
+          && ['queue_update_before_confirm', 'queue_confirm'].includes(failedCommand.kind)
+          && this.actions.length
+          && this.state
+          && this.state.phase === 'queue_review'
+        ) {
+          this.queueReviewOpen = true;
+        }
+        const message = data && data.message ? String(data.message) : 'Battle command failed.';
+        this.showToast(message.toLowerCase().includes('stale state revision')
+          ? 'Battle state refreshed. Review your queue and try again.'
+          : message);
       });
       this.socketClient.on('battle_v2_finished', (data) => {
         this.showToast(this.finishedMessage(data));
@@ -130,24 +171,48 @@ export class GameStore {
     }
 
     showToast(message) {
-      this.toast = safeText(message);
+      const toast = safeText(message);
+      this.toastSerial = Number(this.toastSerial || 0) + 1;
+      const serial = this.toastSerial;
+      this.toast = toast;
       this.notify();
       window.setTimeout(() => {
-        if (this.toast === message) {
+        if (this.toastSerial === serial) {
           this.toast = '';
           this.notify();
         }
       }, 2200);
     }
 
-    commandPayload(payload = {}, revisionOffset = 0) {
+    clearToast() {
+      this.toastSerial = Number(this.toastSerial || 0) + 1;
+      if (!this.toast) return;
+      this.toast = '';
+      this.notify();
+    }
+
+    commandPayload(payload = {}) {
       this.commandNonceCounter += 1;
-      const revision = Number((this.state && this.state.state_revision) || 0) + revisionOffset;
+      const revision = Number((this.state && this.state.state_revision) || 0);
       return {
         ...payload,
         state_revision: revision,
         client_action_nonce: `${Date.now()}-${this.commandNonceCounter}`,
       };
+    }
+
+    beginCommand(eventName, payload = {}, kind = eventName) {
+      if (this.pendingCommand || !this.state) return false;
+      const envelope = this.commandPayload(payload);
+      this.pendingCommand = {
+        eventName,
+        kind,
+        stateRevision: envelope.state_revision,
+        nonce: envelope.client_action_nonce,
+        matchId: this.state.match_id || null,
+      };
+      this.socketClient.emit(eventName, envelope);
+      return true;
     }
 
     loadResumeSession() {
@@ -176,12 +241,20 @@ export class GameStore {
 
     changeScene(sceneName) {
       this.scene = sceneName;
-      const game = window.JJKPhaserShell && window.JJKPhaserShell.game;
-      if (game && game.scene) {
-        ['LobbyScene', 'FirstCreationScene', 'MissionMapScene', 'DraftScene', 'CombatScene', 'ResultScene', 'RecordsScene'].forEach((key) => {
-          if (key !== sceneName && game.scene.isActive(key)) game.scene.stop(key);
+      const shell = window.JJKPhaserShell;
+      const game = shell && shell.game;
+      const sceneManager = game && game.scene;
+      const bootReady = Boolean(shell && shell.bootReady);
+      const bootActive = Boolean(sceneManager && sceneManager.isActive && sceneManager.isActive('BootScene'));
+      // Socket resume/update events may arrive before Boot finishes loading or
+      // during its exit fade. Keep the requested destination in store state,
+      // but let Boot perform the one initial Phaser transition so its loader is
+      // never stopped or raced by a second scene manager mutation.
+      if (bootReady && !bootActive && sceneManager) {
+        ['LobbyScene', 'FirstCreationScene', 'MissionMapScene', 'DraftScene', 'MatchupScene', 'CombatScene', 'ResultScene', 'RecordsScene'].forEach((key) => {
+          if (key !== sceneName && sceneManager.isActive(key)) sceneManager.stop(key);
         });
-        if (!game.scene.isActive(sceneName)) game.scene.start(sceneName);
+        if (!sceneManager.isActive(sceneName)) sceneManager.start(sceneName);
       }
       this.notify();
     }
@@ -196,10 +269,15 @@ export class GameStore {
     }
 
     portraitKey(characterOrId) {
-      const id = typeof characterOrId === 'string'
-        ? characterOrId
-        : (characterOrId && (characterOrId.id || characterOrId.character_id));
-      return imageKeyFor(id || '');
+      return this.assets.portraitKeyFor(characterOrId);
+    }
+
+    portraitMetadata(characterOrId) {
+      return this.assets.portraitFor(characterOrId);
+    }
+
+    portraitFocal(characterOrId, context = 'square') {
+      return this.assets.portraitFocalFor(characterOrId, context);
     }
 
     missions() {
@@ -252,12 +330,19 @@ export class GameStore {
         : state.winner_id === mine
           ? 'Victory'
           : 'Defeat';
-      const damage = (state.event_log || []).reduce((total, event) => total + eventAmount(event), 0);
+      const damage = (state.event_log || []).reduce((total, event) => total + damageEventAmount(event), 0);
       const biggest = (state.event_log || [])
-        .map((event) => ({ message: event.message || event.type, amount: eventAmount(event), type: event.type }))
+        .map((event) => ({ message: event.message || event.type, amount: damageEventAmount(event), type: event.type }))
         .filter((event) => event.amount > 0)
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 3);
+      const player = state.players && mine ? state.players[mine] : null;
+      const team = player && Array.isArray(player.team)
+        ? player.team.slice(0, 3).map((fighter) => ({
+          id: fighter && (fighter.character_id || fighter.id),
+          name: fighter && (fighter.name || fighter.character_id || fighter.id),
+        })).filter((fighter) => fighter.id)
+        : [];
       this.records.unshift({
         at: new Date().toISOString(),
         result: resultLabel,
@@ -267,6 +352,7 @@ export class GameStore {
         turns: state.turn_number || 0,
         damage,
         biggest,
+        team,
       });
       this.records = this.records.slice(0, 12);
       this.saveRecords();
@@ -319,15 +405,22 @@ export class GameStore {
       }
     }
 
+    openFirstCreation() {
+      // First Creation is always the CPU onboarding/starter route. Keep this
+      // transition atomic so visiting Private Room cannot leave a stale PvP
+      // mode behind when the player later enters through Mission Map.
+      this.matchMode = 'cpu';
+      this.draftTarget = 'playerTeam';
+      this.detailCharacterId = null;
+      this.changeScene('FirstCreationScene');
+    }
+
     applyRecommendedTeam(mission) {
       if (!mission || !Array.isArray(mission.recommended_team)) return;
       const team = mission.recommended_team.filter((id) => !!firstCreationRoster()[id]).slice(0, 3);
       if (team.length === 3) {
         this.playerTeam = team;
-        this.matchMode = 'cpu';
-        this.draftTarget = 'playerTeam';
-        this.detailCharacterId = null;
-        this.changeScene('FirstCreationScene');
+        this.openFirstCreation();
       } else {
         this.showToast('That mission team is not fully available yet.');
       }
@@ -345,6 +438,8 @@ export class GameStore {
     }
 
     openSkillDetail(skillId) {
+      this.inspectedFighter = null;
+      this.clearToast();
       this.detailSkillId = skillId;
       this.notify();
     }
@@ -354,9 +449,60 @@ export class GameStore {
       this.notify();
     }
 
+    inspectFighter(side, slot) {
+      const player = side === 'enemy' ? this.foe() : this.me();
+      const character = player && player.team ? player.team[slot] : null;
+      if (!character) return;
+      this.detailSkillId = null;
+      this.inspectedFighter = { side: side === 'enemy' ? 'enemy' : 'mine', slot: Number(slot) };
+      this.clearToast();
+      this.notify();
+    }
+
+    closeFighterInspection() {
+      this.inspectedFighter = null;
+      this.notify();
+    }
+
+    inspectedFighterState() {
+      if (!this.inspectedFighter) return null;
+      const player = this.inspectedFighter.side === 'enemy' ? this.foe() : this.me();
+      const character = player && player.team ? player.team[this.inspectedFighter.slot] : null;
+      return character ? { ...this.inspectedFighter, character } : null;
+    }
+
     setDraftTarget(teamKey) {
       this.draftTarget = teamKey === 'enemyTeam' && this.matchMode === 'cpu' ? 'enemyTeam' : 'playerTeam';
       this.notify();
+    }
+
+    openMatchup() {
+      if (!BOOT.battleV2Enabled) {
+        this.showToast('Battle v2 is disabled on this server.');
+        return;
+      }
+      if (this.playerTeam.length !== 3 || (this.matchMode === 'cpu' && this.enemyTeam.length !== 3)) {
+        this.showToast('Choose exactly 3 fighters for every active team.');
+        return;
+      }
+      // First Creation and the reusable Team Setup share Matchup, but Back
+      // must restore the surface that actually opened the review.
+      this.matchupReturnScene = this.scene === 'FirstCreationScene' ? 'FirstCreationScene' : 'DraftScene';
+      this.detailCharacterId = null;
+      this.lobbyStatus = null;
+      this.matchLaunchPending = false;
+      this.changeScene('MatchupScene');
+    }
+
+    returnFromMatchup() {
+      if (this.scene !== 'MatchupScene' || this.matchLaunchPending) return;
+      if (!this.state && this.lobbyStatus && this.lobbyStatus.status !== 'cancelled') {
+        this.resetToLobby();
+        return;
+      }
+      const returnScene = this.matchupReturnScene === 'FirstCreationScene' ? 'FirstCreationScene' : 'DraftScene';
+      this.lobbyStatus = null;
+      this.changeScene(returnScene);
     }
 
     startMatch() {
@@ -368,6 +514,14 @@ export class GameStore {
         this.showToast('Choose exactly 3 fighters for every active team.');
         return;
       }
+      // Every fresh CPU and PvP match must pass through the dedicated
+      // matchup review. Legacy callers (notably First Creation) therefore
+      // open the review on their first invocation instead of emitting.
+      if (this.scene !== 'MatchupScene') {
+        this.openMatchup();
+        return;
+      }
+      if (this.matchLaunchPending) return;
       this.state = null;
       this.disconnectDeadline = null;
       this.clearResumeSession();
@@ -382,12 +536,16 @@ export class GameStore {
       this.playbackEvents = [];
       this.recentEvents = [];
       this.ignoreBattleUpdates = false;
+      this.matchLaunchPending = true;
       const payload = {
         room_id: this.matchMode === 'pvp' ? this.roomId : `classic_v2_${Math.random().toString(36).slice(2, 8)}`,
         player_name: this.playerName,
         player_team: this.playerTeam.slice(0, 3),
         roster_mode: 'first_creation',
       };
+      // Stay on Matchup until a viewer-specific authoritative battle update
+      // arrives. This avoids rendering a speculative Combat state.
+      this.changeScene('MatchupScene');
       if (this.matchMode === 'pvp') {
         this.socketClient.emit('battle_v2_join_pvp', payload);
       } else {
@@ -397,27 +555,102 @@ export class GameStore {
           difficulty: this.difficulty,
         });
       }
-      this.changeScene(this.matchMode === 'pvp' ? 'DraftScene' : 'CombatScene');
     }
 
     receiveLobbyState(data) {
       this.state = null;
+      this.pendingCommand = null;
       this.disconnectDeadline = null;
-      this.lobbyStatus = data && data.status === 'cancelled' ? null : data;
+      const cancelled = !!(data && data.status === 'cancelled');
+      this.lobbyStatus = cancelled ? null : data;
       this.queueSubmitting = false;
-      this.changeScene('DraftScene');
+      this.matchLaunchPending = false;
+      if (cancelled) {
+        // A player-initiated cancel changes to Lobby before the server ack.
+        // Do not let that later ack pull the app back into team setup.
+        if (this.scene === 'MatchupScene') this.returnFromMatchup();
+        else this.notify();
+        return;
+      }
+      this.changeScene('MatchupScene');
     }
 
     receiveBattleState(data) {
-      if (this.ignoreBattleUpdates) return;
+      if (this.ignoreBattleUpdates || !data) return;
+      const currentMatchId = this.state && this.state.match_id;
+      const nextMatchId = data.match_id;
+      const sameMatch = !!this.state && (
+        currentMatchId && nextMatchId
+          ? currentMatchId === nextMatchId
+          : !currentMatchId && !nextMatchId
+      );
+      const currentRevision = Number(this.state && this.state.state_revision);
+      const nextRevision = Number(data.state_revision);
+      if (
+        sameMatch
+        && Number.isFinite(currentRevision)
+        && Number.isFinite(nextRevision)
+        && nextRevision < currentRevision
+      ) {
+        return;
+      }
+
+      if (!sameMatch && this.state) {
+        this.eventCursor = 0;
+        this.playbackEvents = [];
+        this.recentEvents = [];
+        this.visiblePublicAction = null;
+        this.visiblePublicActionUntil = 0;
+        this.inspectedFighter = null;
+      }
+      const pendingCommand = this.pendingCommand;
+      const pendingMatches = !!pendingCommand && (
+        !pendingCommand.matchId || !nextMatchId || pendingCommand.matchId === nextMatchId
+      );
+      const completedCommand = pendingMatches
+        && Number.isFinite(nextRevision)
+        && nextRevision > pendingCommand.stateRevision
+        ? pendingCommand
+        : null;
+      if (completedCommand || (pendingCommand && !pendingMatches)) {
+        this.pendingCommand = null;
+      }
+      if (completedCommand && completedCommand.kind === 'convert_energy') {
+        this.transmuteOpen = false;
+        this.transmuteSources = [];
+        this.transmuteTarget = null;
+      }
+
       const log = data && Array.isArray(data.event_log) ? data.event_log : [];
       const nextEvents = log.slice(this.eventCursor);
       this.eventCursor = log.length;
       if (nextEvents.length) {
         this.playbackEvents = nextEvents.slice(-6);
         this.recentEvents = log.slice(-8).reverse();
+        const visibleAction = nextEvents.slice().reverse().find((event) => (
+          safeText(event && event.type) === 'skill_resolved'
+        ));
+        if (visibleAction) {
+          this.visiblePublicAction = visibleAction;
+          this.visiblePublicActionUntil = Date.now() + 4800;
+        }
       }
       this.state = data;
+      const transmutePlayer = this.me();
+      const transmuteStillAllowed = sameMatch
+        && data.phase === 'planning'
+        && data.turn_player_id === this.mineId()
+        && !data.paused
+        && !data.result_type
+        && !(transmutePlayer && transmutePlayer.energy_converted_this_turn);
+      if (this.transmuteOpen && !transmuteStillAllowed) {
+        this.transmuteOpen = false;
+        this.transmuteSources = [];
+        this.transmuteTarget = null;
+      }
+      const phaseSeconds = Number(data.phase_seconds_remaining);
+      this.phaseTimerSnapshotSeconds = Number.isFinite(phaseSeconds) ? Math.max(0, phaseSeconds) : null;
+      this.phaseTimerSnapshotAt = Date.now();
       if (data.first_creation_account) {
         this.firstCreationAccount = data.first_creation_account;
       }
@@ -425,16 +658,40 @@ export class GameStore {
         ? Date.now() + Number(data.disconnect_grace_seconds_remaining) * 1000
         : null;
       this.lobbyStatus = null;
-      this.queueSubmitting = false;
+      this.matchLaunchPending = false;
       const ownPending = (data.pending_actions && data.pending_actions[this.mineId()]) || [];
       const me = this.me();
       if (ownPending.length) {
-        this.actions = ownPending.map((action) => ({ ...action }));
+        const queueOrder = (data.queue_order && data.queue_order[this.mineId()]) || [];
+        const queueIndex = new Map(queueOrder.map((actionId, index) => [actionId, index]));
+        this.actions = ownPending
+          .map((action, index) => ({ ...action, _serverIndex: index }))
+          .sort((left, right) => (
+            (queueIndex.has(left.id) ? queueIndex.get(left.id) : queueOrder.length + left._serverIndex)
+            - (queueIndex.has(right.id) ? queueIndex.get(right.id) : queueOrder.length + right._serverIndex)
+          ))
+          .map(({ _serverIndex, ...action }) => action);
+        this.actionWildPays = Object.fromEntries(
+          this.actions
+            .filter((action) => Array.isArray(action.wildcard_pays) && action.wildcard_pays.length)
+            .map((action) => [action.id, action.wildcard_pays.slice()]),
+        );
         this.ensureWildcardPayments();
       } else if (data.phase === 'planning' || data.phase === 'finished' || data.turn_player_id !== this.mineId() || (me && me.queue_confirmed)) {
         this.actions = [];
         this.actionWildPays = {};
         this.queueReviewOpen = false;
+      }
+
+      const shouldConfirmQueue = !!completedCommand
+        && completedCommand.kind === 'queue_update_before_confirm'
+        && data.phase === 'queue_review'
+        && data.turn_player_id === this.mineId()
+        && this.actions.length > 0
+        && !(me && me.queue_confirmed)
+        && this.queueReviewFit().ok;
+      if (!shouldConfirmQueue && (!this.pendingCommand || completedCommand)) {
+        this.queueSubmitting = false;
       }
       this.ensureSelectedCaster();
       // Route every terminal result (WIN/FORFEIT/DRAW/NO_CONTEST) to
@@ -445,6 +702,16 @@ export class GameStore {
         this.changeScene('ResultScene');
       } else {
         this.changeScene('CombatScene');
+      }
+      if (shouldConfirmQueue) {
+        this.queueSubmitting = true;
+        this.queueReviewOpen = false;
+        if (!this.beginCommand('battle_v2_confirm_queue', {}, 'queue_confirm')) {
+          this.queueSubmitting = false;
+          this.queueReviewOpen = true;
+          this.showToast('Queue changed before confirmation. Review it and try again.');
+        }
+        this.notify();
       }
     }
 
@@ -482,6 +749,7 @@ export class GameStore {
         || !!(this.state && this.state.paused)
         || !!(this.state && this.state.result_type)
         || !this.isMyTurn()
+        || !!this.pendingCommand
         || this.queueSubmitting
         || !!(me && me.queue_confirmed)
       );
@@ -490,6 +758,21 @@ export class GameStore {
     disconnectSecondsRemaining() {
       if (this.disconnectDeadline == null) return null;
       return Math.max(0, Math.ceil((this.disconnectDeadline - Date.now()) / 1000));
+    }
+
+    phaseSecondsRemaining() {
+      if (!this.state || !['planning', 'queue_review'].includes(this.state.phase)) return null;
+      if (!Number.isFinite(this.phaseTimerSnapshotSeconds)) return null;
+      if (this.state.paused || !Number.isFinite(this.phaseTimerSnapshotAt)) {
+        return Math.max(0, Math.ceil(this.phaseTimerSnapshotSeconds));
+      }
+      const elapsed = Math.max(0, (Date.now() - this.phaseTimerSnapshotAt) / 1000);
+      return Math.max(0, Math.ceil(this.phaseTimerSnapshotSeconds - elapsed));
+    }
+
+    currentVisibleAction() {
+      if (!this.visiblePublicAction || Date.now() >= this.visiblePublicActionUntil) return null;
+      return this.visiblePublicAction;
     }
 
     livingSlots(player) {
@@ -549,20 +832,37 @@ export class GameStore {
     skillIsHarmful(skill) {
       const kind = (skill && skill.target_rule && skill.target_rule.kind) || 'enemy';
       const effects = (skill && skill.effects) || [];
-      if (kind === 'enemy' || kind === 'enemy_team') return effects.some((effect) => effect.target !== 'self') || (skill.classes || []).includes('Control');
+      // The server treats selecting the opposing side as hostile even when a
+      // compact/public catalog omits effect specs. Do not infer "helpful" from
+      // missing client detail or an invulnerable enemy will glow selectable.
+      if (kind === 'enemy' || kind === 'enemy_team') return true;
       return effects.some((effect) => effect.target !== 'self' && ['damage', 'health_steal', 'drain_energy', 'remove_status', 'counter'].includes(effect.type));
     }
 
     statusBlocksSkill(character, skill) {
-      const classes = (skill && skill.classes) || [];
-      for (const status of ((character && character.statuses) || [])) {
-        if (Number(status.duration || 0) === 0) continue;
+      const classes = ((skill && skill.classes) || []).map((value) => safeText(value).toLowerCase());
+      const activeStatuses = ((character && character.statuses) || []).filter((status) => Number(status.duration || 0) !== 0);
+      const ignoresStun = activeStatuses.some((status) => status.payload && status.payload.ignore_stun);
+      const kind = (skill && skill.target_rule && skill.target_rule.kind) || 'enemy';
+      for (const status of activeStatuses) {
         const payload = status.payload || {};
-        const stunned = payload.stun_classes || [];
-        if (stunned.includes('all') || classes.some((skillClass) => stunned.includes(skillClass))) return `Blocked by ${status.name || 'stun'}`;
-        if (payload.stun_harmful && this.skillIsHarmful(skill)) return `Harmful skills blocked by ${status.name || 'stun'}`;
-        if (payload.block_non_damaging_skills && !(skill.effects || []).some((effect) => effect.target !== 'self' && ['damage', 'health_steal'].includes(effect.type))) return `Non-damaging skills blocked by ${status.name || 'control'}`;
-        if (payload.block_counters && (skill.effects || []).some((effect) => effect.payload && effect.payload.counter)) return `Counters blocked by ${status.name || 'control'}`;
+        const statusName = safeText(status.name || status.id || 'Status');
+        const stunned = (payload.stun_classes || []).map((value) => safeText(value).toLowerCase());
+        if (!ignoresStun && (stunned.includes('all') || classes.some((skillClass) => stunned.includes(skillClass)))) {
+          return `${statusName}: this skill class is disabled.`;
+        }
+        if (!ignoresStun && payload.stun_harmful && this.skillIsHarmful(skill)) {
+          return `${statusName}: harmful skills are disabled.`;
+        }
+        if (payload.cannot_target_allies && ['ally', 'ally_team'].includes(kind)) {
+          return `${statusName}: ally skills are disabled.`;
+        }
+        if (payload.block_non_damaging_skills && !(skill.effects || []).some((effect) => effect.target !== 'self' && ['damage', 'health_steal'].includes(effect.type))) {
+          return `${statusName}: non-damaging skills are disabled.`;
+        }
+        if (payload.block_counters && (skill.effects || []).some((effect) => effect.payload && effect.payload.counter)) {
+          return `${statusName}: counters are disabled.`;
+        }
       }
       return '';
     }
@@ -691,8 +991,10 @@ export class GameStore {
       this.selectedCasterSlot = slot;
       this.selectedSkillId = null;
       this.detailSkillId = null;
+      this.inspectedFighter = null;
       this.targetingStage = null;
       this.pendingPrimaryTarget = null;
+      this.clearToast();
       this.notify();
     }
 
@@ -728,6 +1030,7 @@ export class GameStore {
       const kind = (skill.target_rule && skill.target_rule.kind) || 'enemy';
       this.selectedSkillId = skill.id;
       this.detailSkillId = null;
+      this.inspectedFighter = null;
       this.targetingStage = null;
       this.pendingPrimaryTarget = null;
       if (this.hasEffectFlag(skill, 'conditional_targeting', 'venom_bloom')) {
@@ -737,7 +1040,7 @@ export class GameStore {
           return;
         }
         this.targetingStage = 'venom_primary';
-        this.showToast('Choose a poisoned primary target.');
+        this.clearToast();
         this.notify();
         return;
       }
@@ -748,7 +1051,7 @@ export class GameStore {
       if (kind === 'enemy_team') {
         const slots = this.teamTargetSlots(foe, skill);
         if (!slots.length) {
-          this.showToast('No legal targets for that skill.');
+          this.showToast('No selectable targets for that skill.');
           return;
         }
         this.addAction(this.selectedCasterSlot, skill.id, this.enemyId(), null, slots);
@@ -757,19 +1060,19 @@ export class GameStore {
       if (kind === 'ally_team') {
         const slots = this.teamTargetSlots(me, skill);
         if (!slots.length) {
-          this.showToast('No legal targets for that skill.');
+          this.showToast('No selectable targets for that skill.');
           return;
         }
         this.addAction(this.selectedCasterSlot, skill.id, this.mineId(), null, slots);
         return;
       }
       if (!this.hasManualTargetForSkill(skill, kind === 'ally' ? 'mine' : 'enemy')) {
-        this.showToast('No legal targets for that skill.');
+        this.showToast('No selectable targets for that skill.');
         this.selectedSkillId = null;
         this.notify();
         return;
       }
-      this.showToast(kind === 'ally' ? 'Choose a glowing ally.' : 'Choose a glowing enemy.');
+      this.clearToast();
       this.notify();
     }
 
@@ -782,7 +1085,7 @@ export class GameStore {
       const player = side === 'enemy' ? this.foe() : this.me();
       const target = player && player.team ? player.team[slot] : null;
       if (!this.canTarget(target, slot, side)) {
-        this.showToast('Illegal target for that skill.');
+        this.showToast('That fighter cannot be targeted by this skill.');
         return;
       }
       const skill = this.selectedSkill();
@@ -795,7 +1098,7 @@ export class GameStore {
       if (this.targetingStage === 'venom_primary') {
         this.pendingPrimaryTarget = { playerId, slot };
         this.targetingStage = 'venom_secondary';
-        this.showToast('Choose a different secondary spread target.');
+        this.clearToast();
         this.notify();
         return;
       }
@@ -807,7 +1110,7 @@ export class GameStore {
       if (this.hasEffectFlag(skill, 'controlled_redirect')) {
         this.pendingPrimaryTarget = { playerId, slot };
         this.targetingStage = 'alternate';
-        this.showToast('Choose the alternate redirect destination.');
+        this.clearToast();
         this.notify();
         return;
       }
@@ -815,6 +1118,7 @@ export class GameStore {
     }
 
     addAction(casterSlot, skillId, targetPlayerId, targetSlot, targetSlots, extras = {}) {
+      if (this.controlsLocked()) return false;
       const id = `phaser_${Date.now()}_${casterSlot}`;
       this.actions = this.actions.filter((action) => Number(action.caster_slot) !== Number(casterSlot));
       this.actionWildPays = Object.fromEntries(Object.entries(this.actionWildPays).filter(([actionId]) => this.actions.some((action) => action.id === actionId)));
@@ -829,13 +1133,19 @@ export class GameStore {
       });
       this.selectedSkillId = null;
       this.detailSkillId = null;
+      this.inspectedFighter = null;
       this.targetingStage = null;
       this.pendingPrimaryTarget = null;
+      this.clearToast();
       this.ensureSelectedCaster();
       this.ensureWildcardPayments();
       this.lastActionPayloads = this.pendingActionPayloads();
-      this.socketClient.emit('battle_v2_submit_plan', this.commandPayload({ actions: this.lastActionPayloads }));
+      if (!this.beginCommand('battle_v2_submit_plan', { actions: this.lastActionPayloads }, 'submit_plan')) {
+        this.showToast('Wait for the battle state to finish updating.');
+        return false;
+      }
       this.notify();
+      return true;
     }
 
     skillFit(skill, caster = null) {
@@ -920,34 +1230,42 @@ export class GameStore {
     openQueueReview() {
       if (this.controlsLocked() || !this.actions.length) return;
       this.ensureWildcardPayments();
+      this.inspectedFighter = null;
+      this.clearToast();
       this.queueReviewOpen = true;
       this.notify();
     }
 
     queueReviewFit() {
-      if (!this.actions.length) return { ok: false, reason: 'Queue is empty.' };
+      if (!this.actions.length) return { ok: false, reason: 'Queue is empty.', actionId: null, remaining: null };
       const me = this.me();
       const energy = { green: 0, blue: 0, white: 0, red: 0, ...((me && me.energy) || {}) };
       for (const action of this.actions) {
         const caster = me && me.team ? me.team[action.caster_slot] : null;
         const skill = caster ? this.skillFor(caster, action.skill_id) : null;
-        if (!caster || !skill) return { ok: false, reason: 'Queued action is no longer available.' };
+        if (!caster || !skill) return { ok: false, reason: 'Queued action is no longer available.', actionId: action.id, remaining: { ...energy } };
         const pays = this.actionWildPays[action.id] || [];
         let wildIndex = 0;
         for (const color of this.adjustedCost(caster, skill)) {
           const pay = color === 'black' ? pays[wildIndex++] : color;
           if (!CORE_ENERGY.includes(pay) || Number(energy[pay] || 0) <= 0) {
-            return { ok: false, reason: color === 'black' ? 'Assign every Wild payment.' : `Not enough ${pay} energy.` };
+            return {
+              ok: false,
+              reason: color === 'black' ? 'Assign every Wild payment.' : `Not enough ${pay} energy.`,
+              actionId: action.id,
+              remaining: { ...energy },
+            };
           }
           energy[pay] -= 1;
         }
-        if (pays.length !== wildIndex) return { ok: false, reason: 'Wild payment count changed.' };
+        if (pays.length !== wildIndex) return { ok: false, reason: 'Wild payment count changed.', actionId: action.id, remaining: { ...energy } };
       }
-      return { ok: true, reason: '' };
+      return { ok: true, reason: '', actionId: null, remaining: { ...energy } };
     }
 
     closeQueueReview() {
       this.queueReviewOpen = false;
+      this.clearToast();
       this.notify();
     }
 
@@ -1021,11 +1339,15 @@ export class GameStore {
       this.queueSubmitting = true;
       this.queueReviewOpen = false;
       const payloads = this.pendingActionPayloads();
-      this.socketClient.emit('battle_v2_update_queue', this.commandPayload({
+      const started = this.beginCommand('battle_v2_update_queue', {
         queue_order: payloads.map((action) => action.id),
         wildcard_pays: Object.fromEntries(payloads.map((action) => [action.id, action.wildcard_pays || []])),
-      }));
-      this.socketClient.emit('battle_v2_confirm_queue', this.commandPayload({}, 1));
+      }, 'queue_update_before_confirm');
+      if (!started) {
+        this.queueSubmitting = false;
+        this.queueReviewOpen = true;
+        this.showToast('Wait for the battle state to finish updating.');
+      }
       this.notify();
     }
 
@@ -1037,7 +1359,7 @@ export class GameStore {
       this.detailSkillId = null;
       this.queueSubmitting = false;
       this.queueReviewOpen = false;
-      this.socketClient.emit('battle_v2_cancel_queue', this.commandPayload());
+      this.beginCommand('battle_v2_cancel_queue', {}, 'cancel_queue');
       this.notify();
     }
 
@@ -1047,31 +1369,106 @@ export class GameStore {
       this.actionWildPays = {};
       this.queueSubmitting = true;
       this.queueReviewOpen = false;
-      this.socketClient.emit('battle_v2_end_turn', this.commandPayload());
+      this.beginCommand('battle_v2_end_turn', {}, 'end_turn');
       this.notify();
     }
 
-    convertEnergy() {
+    canTransmuteEnergy() {
       const me = this.me();
-      if (!me || this.controlsLocked() || this.actions.length || me.energy_converted_this_turn) {
-        this.showToast('Energy conversion is unavailable right now.');
+      const total = CORE_ENERGY.reduce(
+        (sum, color) => sum + Number((me && me.energy && me.energy[color]) || 0),
+        0,
+      );
+      return !!me
+        && !!this.state
+        && this.state.phase === 'planning'
+        && !this.controlsLocked()
+        && !this.actions.length
+        && !me.energy_converted_this_turn
+        && total >= 5;
+    }
+
+    openTransmute() {
+      if (!this.canTransmuteEnergy()) {
+        this.showToast('Transmute needs 5 available energy before you queue actions.');
         return;
       }
-      const colors = ['green', 'red', 'blue', 'white'];
-      const source = colors.find((color) => Number((me.energy || {})[color] || 0) >= 2);
-      if (!source) {
-        this.showToast('Need 2 matching energy to convert.');
+      this.selectedSkillId = null;
+      this.detailSkillId = null;
+      this.targetingStage = null;
+      this.pendingPrimaryTarget = null;
+      this.transmuteSources = [];
+      this.transmuteTarget = null;
+      this.transmuteOpen = true;
+      this.notify();
+    }
+
+    closeTransmute() {
+      this.transmuteOpen = false;
+      this.transmuteSources = [];
+      this.transmuteTarget = null;
+      this.notify();
+    }
+
+    transmuteSourceCount(color) {
+      return this.transmuteSources.filter((source) => source === color).length;
+    }
+
+    addTransmuteSource(color) {
+      const me = this.me();
+      if (!this.transmuteOpen || !CORE_ENERGY.includes(color) || !me) return;
+      if (this.transmuteSources.length >= 5) return;
+      const available = Number((me.energy || {})[color] || 0);
+      if (this.transmuteSourceCount(color) >= available) {
+        this.showToast('No more of that energy is available to sacrifice.');
         return;
       }
-      const target = colors
-        .filter((color) => color !== source)
-        .sort((a, b) => Number((me.energy || {})[a] || 0) - Number((me.energy || {})[b] || 0))[0];
-      this.socketClient.emit('battle_v2_convert_energy', this.commandPayload({ source, target }));
-      this.showToast(`Converting ${source} to ${target}.`);
+      this.transmuteSources = [...this.transmuteSources, color];
+      this.notify();
+    }
+
+    removeTransmuteSource(color) {
+      if (!this.transmuteOpen || !CORE_ENERGY.includes(color)) return;
+      const index = this.transmuteSources.lastIndexOf(color);
+      if (index < 0) return;
+      this.transmuteSources = this.transmuteSources.filter((_, sourceIndex) => sourceIndex !== index);
+      this.notify();
+    }
+
+    selectTransmuteTarget(color) {
+      if (!this.transmuteOpen || !CORE_ENERGY.includes(color)) return;
+      this.transmuteTarget = color;
+      this.notify();
+    }
+
+    confirmTransmute() {
+      if (!this.canTransmuteEnergy() || !this.transmuteOpen) {
+        this.closeTransmute();
+        return;
+      }
+      if (this.transmuteSources.length !== 5) {
+        this.showToast(`Choose ${5 - this.transmuteSources.length} more energy to sacrifice.`);
+        return;
+      }
+      if (!CORE_ENERGY.includes(this.transmuteTarget)) {
+        this.showToast('Choose the energy type you want to create.');
+        return;
+      }
+      const sources = this.transmuteSources.slice();
+      const target = this.transmuteTarget;
+      if (this.beginCommand('battle_v2_convert_energy', { sources, target }, 'convert_energy')) {
+        this.transmuteOpen = false;
+        this.showToast('Transmutation submitted. The server is validating it.');
+        this.notify();
+      }
+    }
+
+    convertEnergy() {
+      this.openTransmute();
     }
 
     resetToLobby() {
-      if (!this.state && this.lobbyStatus && this.lobbyStatus.status === 'waiting') {
+      if (!this.state && this.lobbyStatus && this.lobbyStatus.status !== 'cancelled') {
         this.socketClient.emit('battle_v2_leave_pvp', { room_id: this.lobbyStatus.room_id });
       }
       // Only surrender a match that's actually still live -- a finished draw
@@ -1082,6 +1479,7 @@ export class GameStore {
         this.socketClient.emit('battle_v2_surrender', this.commandPayload());
       }
       this.state = null;
+      this.pendingCommand = null;
       this.disconnectDeadline = null;
       this.clearResumeSession();
       this.lobbyStatus = null;
@@ -1090,11 +1488,23 @@ export class GameStore {
       this.selectedCasterSlot = null;
       this.selectedSkillId = null;
       this.queueSubmitting = false;
+      this.matchLaunchPending = false;
+      this.matchupReturnScene = 'DraftScene';
       this.queueReviewOpen = false;
+      this.transmuteOpen = false;
+      this.transmuteSources = [];
+      this.transmuteTarget = null;
       this.detailCharacterId = null;
+      this.detailSkillId = null;
+      this.inspectedFighter = null;
       this.eventCursor = 0;
       this.playbackEvents = [];
       this.recentEvents = [];
+      this.visiblePublicAction = null;
+      this.visiblePublicActionUntil = 0;
+      this.phaseTimerSnapshotSeconds = null;
+      this.phaseTimerSnapshotAt = null;
+      this.clearToast();
       this.changeScene('LobbyScene');
     }
   }

@@ -61,6 +61,40 @@ def test_recorded_replay_is_identical_across_independent_runs():
     assert len({entry["state_hash"] for entry in first["commands"]}) == 2
 
 
+def test_captured_replay_replays_mixed_source_energy_transmutation():
+    manager = BattleV2Manager(rng_seed=17, clock=lambda: 0.0, capture_replays=True)
+    room_id = "mixed-transmutation-replay"
+    manager.start_first_creation_match(room_id, replay_document()["players"])
+    for index, player_id in enumerate(("p1", "p2", "p1", "p2")):
+        state = manager.get_state(room_id)
+        manager.execute_player_command(
+            room_id,
+            player_id,
+            "end_turn",
+            state.state_revision,
+            f"setup-pass-{index}",
+            {},
+        )
+
+    sources = ["green", "red", "blue", "blue", "white"]
+    state = manager.get_state(room_id)
+    manager.execute_player_command(
+        room_id,
+        "p1",
+        "convert_energy",
+        state.state_revision,
+        "mixed-five-for-one",
+        {"sources": sources, "target": "white"},
+    )
+    document = manager.replay_document(room_id)
+
+    assert document["commands"][-1]["payload"] == {
+        "sources": sources,
+        "target": "white",
+    }
+    assert run_replay(document)["final_state_hash"] == document["final_state_hash"]
+
+
 @pytest.mark.parametrize("difficulty", ["easy", "hard"])
 def test_captured_cpu_replay_records_and_honors_difficulty(difficulty):
     document = captured_cpu_replay(difficulty)

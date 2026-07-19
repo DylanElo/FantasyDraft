@@ -1,30 +1,35 @@
-import { SocketClient } from './network/socket-client.js?v=22';
-import { GameStore } from './store/game-store.js?v=22';
-import { SCENE_LIST } from './scenes/scene-registry.js?v=22';
+import { SocketClient } from './network/socket-client.js?v=35';
+import { GameStore } from './store/game-store.js?v=35';
+import { SCENE_LIST } from './scenes/scene-registry.js?v=35';
 
 function startShell() {
   const element = document.getElementById('v2-phaser-shell');
   if (!element || !window.Phaser) return;
   const socketClient = new SocketClient();
   const store = new GameStore(socketClient);
-  window.JJKPhaserShell = { store };
+  window.JJKPhaserShell = { store, bootReady: false };
   const game = new Phaser.Game({
     type: Phaser.CANVAS,
     parent: element,
-    backgroundColor: '#050711',
+    backgroundColor: '#F7F4EC',
     scale: {
       mode: Phaser.Scale.RESIZE,
       autoCenter: Phaser.Scale.CENTER_BOTH,
       width: Math.max(320, element.clientWidth || window.innerWidth || 390),
       height: Math.max(640, element.clientHeight || window.innerHeight || 844),
     },
-    audio: { noAudio: true },
+    audio: { noAudio: false },
     render: { antialias: true, pixelArt: false },
     loader: { maxParallelDownloads: 64 },
     scene: SCENE_LIST,
   });
   window.JJKPhaserShell.game = game;
   store.onChange(() => {
+    // Boot owns the initial transition. Socket/status notifications can arrive
+    // while its loader is still active; starting Lobby here would create a
+    // second scene loader racing for the same startup portrait texture keys.
+    if (!window.JJKPhaserShell.bootReady) return;
+    if (game.scene && game.scene.isActive('BootScene')) return;
     if (game.scene && store.scene && !game.scene.isActive(store.scene)) {
       game.scene.start(store.scene);
     }

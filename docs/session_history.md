@@ -2737,3 +2737,60 @@ correctness pass is prepared as a focused local commit on
 The separate mobile readability/accessibility/asset-QA pass remains next, and
 candidate-planning deep copies remain the primary simulation optimization
 opportunity if batches scale beyond the verified matrix.
+
+## 2026-07-20 - Mobile Season 3 structure, accessibility, and live-play closure
+
+**Scope and locked invariants.** This pass completes the separate mobile UI
+closure requested after the deprecated layout was found underneath the earlier
+art reskin. It does not change the exact 19-character First Creation roster,
+the 3v3 / one-action-per-living-character loop, Battle v2 authority, targeting
+or damage rules, energy generation/payment, or the stable socket/replay values
+`green`, `blue`, `white`, `red`, and `black`. Player-facing energy remains
+T/Taijutsu, J/Jujutsu, S/Strategic, B/Bloodline, and X/Wild. The maintained
+390x844 portrait target and the 360x800 / 430x932 validation sizes remain locked.
+
+**Mobile product and presentation closure.** A shared Season 3 facade and token
+layer now coordinate the white-paper, sky-blue, ink, red, cyan, and gold visual
+language across Home, First Creation, Character Study, Matchup, Combat, Queue
+Review, Results, and Records. First Creation uses a readable featured-fighter
+composition and routes directly to the full Character Study page. The browser
+shell now includes a native identity editor, semantic headings and live regions,
+an accessibility action bridge, explicit disabled reasons, keyboard-safe single
+activation, 44-48px interaction targets, responsive typography, focus handling,
+and safe-area/virtual-keyboard containment. Runtime art is staged lazily under a
+documented clearance manifest and texture budget. A bounded retired-match guard
+rejects delayed packets from the previous fight during Return Home or Rematch.
+
+Combat and Final Order expose the server decisions the player needs: complete
+player-facing adjusted-cost failures, legal target language, Q order, active
+fighter, visible enemy skill, status families, timers, Wild assignment, reorder,
+and confirmation. The final feedback pass moves Q markers away from state chips,
+puts public replay events in a dedicated strip beneath the battlefield prompt,
+and shortens the last narrow-card failure to the fully visible `Short on Wild
+energy.` The coordinated browser/module cache is `v42`.
+
+**Live QA and evidence.** The in-app browser exercised Home, the native identity
+dialog, First Creation, Character Study, Matchup, Combat Planning, genuine Final
+Order, authoritative queue confirmation, subsequent combat state, Battle
+Results, and Return Home against the local Flask-SocketIO server. The final CPU
+match `m_f517d6e5aca74e5396fe0a50aef13e` reached terminal revision/turn 33. Browser
+diagnostics contained no warning/error logs, portrait failures, or portrait
+contract issues; all required Home/combat environment and skill-atlas textures
+were loaded. The native-resolution independent audit found no blocking clipping,
+overlap, dimension, or extension/format defect. All three Final Order captures
+contain Q1 plus explicit X-to-T or X-to-S payment, and the 390px capture proves
+the instruction and public-event ticker occupy separate lanes. The 16-file,
+hash-pinned evidence set and its manifest are under
+`artifacts/ui-redesign/runtime-v42/`.
+
+**Verification and delivery state.** Final source commit `2ddefb3` passed the full suite
+in normal order with **595 passed, 1 skipped** in 115.34 seconds and through the
+dependency-free descending-file-order fallback with **595 passed, 1 skipped**
+in 113.70 seconds. The focused cache/parity/presentation set passed 34 tests.
+`python -m compileall -q jjk_arena web/app.py`, syntax checks for all 32 changed
+JavaScript files, the evidence manifest/hash/dimension validator, and
+`git diff --check` passed. Subjective speaker/headphone timbre, loudness, and
+physical vibration feel still require a short real-phone pass. Superseded local
+QA captures were moved recoverably to the user temp directory; the user's
+existing untracked concept and QA artwork remains untouched. This pass is local
+on `codex/audit-mobile-ui-closure`; no remote push or pull request was created.

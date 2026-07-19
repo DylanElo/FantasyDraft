@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "runtime_cache_version": "37",
+  "runtime_cache_version": "38",
   "measurement": {
     "compressed": "Exact repository file bytes; network transfer encoding may differ.",
     "decoded": "Width multiplied by height multiplied by four bytes (RGBA8 estimate); browser/GPU overhead is excluded."

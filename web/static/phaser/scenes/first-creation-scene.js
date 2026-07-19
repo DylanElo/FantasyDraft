@@ -1,7 +1,7 @@
-import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=37';
-import { firstCreationRoster } from '../core/roster.js?v=37';
-import { skillVisualFor } from '../core/skill-visual-registry.js?v=37';
-import { clamp, safeText, titleize } from '../core/text.js?v=37';
+import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=38';
+import { firstCreationRoster } from '../core/roster.js?v=38';
+import { skillVisualFor } from '../core/skill-visual-registry.js?v=38';
+import { clamp, safeText, titleize } from '../core/text.js?v=38';
 import {
   S3_COLORS,
   drawS3Button,
@@ -10,8 +10,8 @@ import {
   drawS3Pager,
   drawS3Panel,
   drawS3World,
-} from '../ui/season-three-ui.js?v=37';
-import { BaseScene } from './base-scene.js?v=37';
+} from '../ui/season-three-ui.js?v=38';
+import { BaseScene } from './base-scene.js?v=38';
 
 const FIRST_CREATION_WORLD_KEY = 'culling-current-campus';
 
@@ -406,7 +406,7 @@ export class FirstCreationScene extends BaseScene {
         tone: selected ? S3_COLORS.cyan : S3_COLORS.red,
       });
 
-      const identityH = 112;
+      const identityH = 126;
       const bandY = region.y + region.h - identityH - 4;
       this.overlayRect(region.x + 4, bandY, region.w - 8, identityH, S3_COLORS.bone, 0.95);
       this.overlayRect(region.x + 4, bandY, region.w - 8, 4, selected ? S3_COLORS.cyan : S3_COLORS.red, 0.96);
@@ -455,11 +455,14 @@ export class FirstCreationScene extends BaseScene {
         wordWrap: { width: region.w - 28 },
       });
       role.setMaxLines(2);
-      this.mono(region.x + 14, bandY + 88, `TACTICAL IDENTITY / ${safeText(character.state, 'FOUNDATIONS').toUpperCase()}`, {
+      const tacticalIdentity = this.mono(region.x + 14, bandY + 88, `TACTICAL IDENTITY / ${safeText(character.state, 'FOUNDATIONS').toUpperCase()}`, {
         color: S3_COLORS.redText,
         fontSize: '12px',
         fontStyle: '900',
+        lineSpacing: -2,
+        wordWrap: { width: region.w - 28 },
       });
+      tacticalIdentity.setMaxLines(2);
     }
 
     renderAuthoritativeSkill(skill, index, total, region) {

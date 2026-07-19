@@ -127,9 +127,9 @@ def test_season_three_facade_keeps_compatibility_variants_and_shared_tokens():
 globalThis.JJK_MOBILE_TOKENS = {};
 globalThis.JJK_BOOTSTRAP = {};
 const facade = await import('./web/static/phaser/ui/season3-ui.js');
-const current = await import('./web/static/phaser/ui/culling-current-ui.js?v=37');
-const flow = await import('./web/static/phaser/ui/season-three-ui.js?v=37');
-const post = await import('./web/static/phaser/ui/season3-master-ui.js?v=37');
+const current = await import('./web/static/phaser/ui/culling-current-ui.js?v=38');
+const flow = await import('./web/static/phaser/ui/season-three-ui.js?v=38');
+const post = await import('./web/static/phaser/ui/season3-master-ui.js?v=38');
 console.log(JSON.stringify({
   frozen: Object.isFrozen(facade.Season3UI),
   tokenFrozen: Object.isFrozen(facade.S3_TOKENS.palette),
@@ -197,14 +197,14 @@ def test_runtime_texture_budget_matches_checkout_and_stays_under_startup_caps():
     assert maximum["decoded_rgba8_bytes"] <= budget["startup_policy"]["decoded_rgba8_budget_bytes"]
 
 
-def test_runtime_cache_chain_and_delivery_manifest_agree_on_v37():
+def test_runtime_cache_chain_and_delivery_manifest_agree_on_v38():
     budget = json.loads((ASSET_ROOT / "runtime-texture-budget.json").read_text(encoding="utf-8"))
     shell = (ROOT / "web" / "static" / "phaser-shell.js").read_text(encoding="utf-8")
     template = (ROOT / "web" / "templates" / "index.html").read_text(encoding="utf-8")
-    assert budget["runtime_cache_version"] == "37"
-    assert "const SHELL_VERSION = '37';" in shell
-    assert "phaser-shell.js') }}?v=37" in template
-    assert "phaser-design-tokens.js') }}?v=37" in template
+    assert budget["runtime_cache_version"] == "38"
+    assert "const SHELL_VERSION = '38';" in shell
+    assert "phaser-shell.js') }}?v=38" in template
+    assert "phaser-design-tokens.js') }}?v=38" in template
 
     mismatches = []
     specifier_pattern = re.compile(
@@ -213,6 +213,6 @@ def test_runtime_cache_chain_and_delivery_manifest_agree_on_v37():
     for path in (ROOT / "web" / "static" / "phaser").rglob("*.js"):
         source = path.read_text(encoding="utf-8")
         for specifier in specifier_pattern.findall(source):
-            if specifier.startswith(".") and not specifier.endswith("?v=37"):
+            if specifier.startswith(".") and not specifier.endswith("?v=38"):
                 mismatches.append((str(path.relative_to(ROOT)), specifier))
     assert mismatches == []

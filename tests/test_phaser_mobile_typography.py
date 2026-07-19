@@ -56,3 +56,14 @@ def test_critical_combat_and_queue_state_stays_at_readable_mobile_sizes() -> Non
         _assert_nearby_size(queue, marker, 12)
 
     _assert_nearby_size(creation, "targetRule.flags", 12)
+
+
+def test_character_study_tactical_identity_wraps_inside_small_phone_cards() -> None:
+    creation = _source(SCENE_PATHS[0])
+    marker = "const tacticalIdentity = this.mono"
+    detail = creation[creation.index(marker) : creation.index(marker) + 700]
+
+    assert "const identityH = 126;" in creation
+    assert "wordWrap: { width: region.w - 28 }" in detail
+    assert "tacticalIdentity.setMaxLines(2);" in detail
+    _assert_nearby_size(creation, marker, 12)

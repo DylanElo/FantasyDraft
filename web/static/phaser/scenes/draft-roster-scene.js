@@ -1,15 +1,15 @@
-import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=37';
-import { firstCreationRoster } from '../core/roster.js?v=37';
-import { skillVisualFor } from '../core/skill-visual-registry.js?v=37';
-import { clamp, safeText, titleize } from '../core/text.js?v=37';
+import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=38';
+import { firstCreationRoster } from '../core/roster.js?v=38';
+import { skillVisualFor } from '../core/skill-visual-registry.js?v=38';
+import { clamp, safeText, titleize } from '../core/text.js?v=38';
 import {
   S3_COLORS,
   drawS3Button,
   drawS3Cost,
   drawS3Pager,
   drawS3Panel,
-} from '../ui/season-three-ui.js?v=37';
-import { BaseScene } from './base-scene.js?v=37';
+} from '../ui/season-three-ui.js?v=38';
+import { BaseScene } from './base-scene.js?v=38';
 
 export const TEAM_SETUP_FILTERS = Object.freeze([
   Object.freeze({ id: 'all', label: 'ALL 19' }),

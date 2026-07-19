@@ -1,6 +1,6 @@
-import { BOOT } from './runtime-config.js?v=37';
-import { portraitFileFor as registeredPortraitFileFor, portraitTextureKeyFor } from './portrait-registry.js?v=37';
-import { safeText, titleize } from './text.js?v=37';
+import { BOOT } from './runtime-config.js?v=38';
+import { portraitFileFor as registeredPortraitFileFor, portraitTextureKeyFor } from './portrait-registry.js?v=38';
+import { safeText, titleize } from './text.js?v=38';
 
 export function firstCreationRoster() {
   return (BOOT.firstCreation && BOOT.firstCreation.roster) || BOOT.roster || {};

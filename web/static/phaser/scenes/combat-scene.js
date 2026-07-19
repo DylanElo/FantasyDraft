@@ -6,11 +6,11 @@ import {
   ENERGY_LABELS,
   ENERGY_NAMES,
   TOKEN_TYPE,
-} from '../core/runtime-config.js?v=37';
-import { clamp, initials, safeText, shortText, titleize } from '../core/text.js?v=37';
-import { eventTone } from '../fx/event-metrics.js?v=37';
-import { drawCurrentButton, drawCurrentPanel, drawCurrentWorld } from '../ui/culling-current-ui.js?v=37';
-import { CombatQueueReviewScene } from './combat-queue-review-scene.js?v=37';
+} from '../core/runtime-config.js?v=38';
+import { clamp, initials, safeText, shortText, titleize } from '../core/text.js?v=38';
+import { eventTone } from '../fx/event-metrics.js?v=38';
+import { drawCurrentButton, drawCurrentPanel, drawCurrentWorld } from '../ui/culling-current-ui.js?v=38';
+import { CombatQueueReviewScene } from './combat-queue-review-scene.js?v=38';
 
 const WORLD_KEY = 'culling-current-rooftop';
 const LOCATION_LINE = 'TOKYO MUNICIPAL ROOFTOP';

@@ -1,7 +1,7 @@
-import { COLORS, CULLING_COLORS, ENERGY_NAMES, TOKEN_TYPE } from '../core/runtime-config.js?v=37';
-import { safeText, shortText } from '../core/text.js?v=37';
-import { eventAmount, eventTone } from './event-metrics.js?v=37';
-import { BaseScene } from '../scenes/base-scene.js?v=37';
+import { COLORS, CULLING_COLORS, ENERGY_NAMES, TOKEN_TYPE } from '../core/runtime-config.js?v=38';
+import { safeText, shortText } from '../core/text.js?v=38';
+import { eventAmount, eventTone } from './event-metrics.js?v=38';
+import { BaseScene } from '../scenes/base-scene.js?v=38';
 
 export class CombatPlaybackScene extends BaseScene {
     playbackReducedMotion() {

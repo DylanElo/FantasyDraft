@@ -1,2 +1,2 @@
-import './legacy-shell.js?v=37';
+import './legacy-shell.js?v=38';
 

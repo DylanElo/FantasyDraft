@@ -1,12 +1,12 @@
-import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=37';
-import { safeText, titleize } from '../core/text.js?v=37';
-import { damageEventAmount } from '../fx/event-metrics.js?v=37';
-import { stageEnvironmentTexture } from '../core/asset-registry.js?v=37';
+import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=38';
+import { safeText, titleize } from '../core/text.js?v=38';
+import { damageEventAmount } from '../fx/event-metrics.js?v=38';
+import { stageEnvironmentTexture } from '../core/asset-registry.js?v=38';
 import {
   S3_PALETTE,
   S3_TEXT_COLORS,
   season3ClipPoints,
-} from './season3-tokens.js?v=37';
+} from './season3-tokens.js?v=38';
 
 // Compatibility view. New code should import Season3UI from season3-ui.js.
 export const S3_COLORS = Object.freeze({

@@ -1,9 +1,9 @@
-import { BOOT, CORE_ENERGY } from '../core/runtime-config.js?v=37';
-import { safeText } from '../core/text.js?v=37';
-import { readStorage, writeStorage } from '../core/storage.js?v=37';
-import { AssetRegistry } from '../core/asset-registry.js?v=37';
-import { firstCreationRoster, preset, presetTitle } from '../core/roster.js?v=37';
-import { damageEventAmount } from '../fx/event-metrics.js?v=37';
+import { BOOT, CORE_ENERGY } from '../core/runtime-config.js?v=38';
+import { safeText } from '../core/text.js?v=38';
+import { readStorage, writeStorage } from '../core/storage.js?v=38';
+import { AssetRegistry } from '../core/asset-registry.js?v=38';
+import { firstCreationRoster, preset, presetTitle } from '../core/roster.js?v=38';
+import { damageEventAmount } from '../fx/event-metrics.js?v=38';
 
 export const MATCH_LAUNCH_TIMEOUT_MS = 10000;
 export const MAX_RETIRED_MATCH_IDS = 8;

@@ -128,12 +128,12 @@ Also run `node --check` for every changed Phaser JavaScript file and `git diff -
 
 ## Browser evidence
 
-The maintained runtime cache version is `37`. Evidence is current only when it
+The maintained runtime cache version is `38`. Evidence is current only when it
 matches that cache version and its exact source commit. Each release capture
 set must record browser/version, origin, viewport and canvas dimensions,
 fixture/interaction path, console warning/error count, and screenshot SHA-256.
 The older v27/v28 Season 3 packs are historical evidence and do not satisfy the
-v37 release gate. See `docs/phaser_asset_delivery_contract.md` for the exact
+v38 release gate. See `docs/phaser_asset_delivery_contract.md` for the exact
 version and evidence policy.
 
 Store intentional release captures under a documented QA path such as:

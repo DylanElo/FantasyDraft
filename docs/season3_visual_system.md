@@ -293,7 +293,7 @@ identifiers, hashes, processing, and limitations are recorded under
 `web/static/assets/skills/PROVENANCE.md`, and
 `artifacts/ui-redesign/s3-style/PROMPTS.md`.
 
-The maintained Phaser cache version for this structural and vocabulary pass is `v37`.
+The maintained Phaser cache version for this structural and vocabulary pass is `v38`.
 
 ## Gameplay invariants
 

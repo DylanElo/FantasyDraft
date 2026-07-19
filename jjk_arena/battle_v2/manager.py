@@ -13,7 +13,7 @@ import json
 from threading import RLock
 from typing import Any, Callable
 
-from .energy import CORE_ENERGY, gain_turn_energy, normalize_energy, split_cost
+from .energy import CORE_ENERGY, energy_display_name, gain_turn_energy, normalize_energy, split_cost
 from .conditions import has_status
 from .models import BattleEvent, BattlePhase, BattleState, CharacterState, DamageType, PendingAction, PlayerState, SkillClass, SkillSpec, use_battle_v2
 from .first_creation_progression import evaluate_first_creation_progress, initial_first_creation_progress
@@ -949,7 +949,13 @@ class BattleV2Manager:
             elif command == "cancel_queue":
                 self.cancel_queue(room_id, player_id)
             elif command == "convert_energy":
-                self.convert_energy(room_id, player_id, str(payload.get("source", "")), str(payload.get("target", "")))
+                raw_sources = payload.get("sources", [])
+                self.convert_energy(
+                    room_id,
+                    player_id,
+                    list(raw_sources) if isinstance(raw_sources, (list, tuple)) else [],
+                    str(payload.get("target", "")),
+                )
             elif command == "end_turn":
                 self.end_turn(room_id, player_id)
             elif command == "surrender":
@@ -1253,8 +1259,14 @@ class BattleV2Manager:
         state.phase = BattlePhase.PLANNING
         return self.serialize_for_player(room_id, player_id)
 
-    def convert_energy(self, room_id: str, player_id: str, source: str, target: str) -> dict:
-        """Convert two core energy of one color into one other core color once this turn."""
+    def convert_energy(
+        self,
+        room_id: str,
+        player_id: str,
+        sources: list[str],
+        target: str,
+    ) -> dict:
+        """Transmute exactly five chosen core energy into one chosen core energy."""
 
         self.expire_phase_if_needed(room_id)
         state = self.get_state(room_id)
@@ -1264,30 +1276,43 @@ class BattleV2Manager:
             raise BattleV2Error("queue is already confirmed")
         if state.pending_actions.get(player_id):
             raise BattleV2Error("cancel the current queue before converting energy")
+        if state.phase != BattlePhase.PLANNING:
+            raise BattleV2Error("energy transmutation is only available during planning")
         if player.energy_converted_this_turn:
             raise BattleV2Error("energy conversion already used this turn")
+        if len(sources) != 5:
+            raise BattleV2Error("choose exactly 5 energy to transmute")
         try:
-            source_energy = normalize_energy(source)
+            source_energies = [normalize_energy(source) for source in sources]
             target_energy = normalize_energy(target)
         except ValueError as exc:
             raise BattleV2Error("unknown energy color") from exc
-        if source_energy not in CORE_ENERGY or target_energy not in CORE_ENERGY:
-            raise BattleV2Error("only colored energy can be converted")
-        if source_energy == target_energy:
-            raise BattleV2Error("choose two different energy colors")
-        if player.energy.get(source_energy, 0) < 2:
-            raise BattleV2Error(f"not enough {source_energy.value} energy to convert")
-        player.energy[source_energy] -= 2
+        if target_energy not in CORE_ENERGY or any(source not in CORE_ENERGY for source in source_energies):
+            raise BattleV2Error("only core energy can be transmuted")
+        source_counts = Counter(source_energies)
+        for source_energy, amount in source_counts.items():
+            if player.energy.get(source_energy, 0) < amount:
+                raise BattleV2Error(
+                    f"not enough {energy_display_name(source_energy)} energy to transmute"
+                )
+        for source_energy, amount in source_counts.items():
+            player.energy[source_energy] -= amount
         player.energy[target_energy] += 1
         player.energy_converted_this_turn = True
+        serialized_sources = {
+            energy.value: source_counts.get(energy, 0)
+            for energy in CORE_ENERGY
+            if source_counts.get(energy, 0)
+        }
         state.event_log.append(
             BattleEvent(
                 type="energy_converted",
-                message=f"{player.name} converted 2 {source_energy.value} into 1 {target_energy.value}",
+                message=f"{player.name} transmuted 5 energy into 1 {energy_display_name(target_energy)}",
                 turn_number=state.turn_number,
                 payload={
                     "player_id": player_id,
-                    "source": source_energy.value,
+                    "sources": serialized_sources,
+                    "cost": 5,
                     "target": target_energy.value,
                 },
             )

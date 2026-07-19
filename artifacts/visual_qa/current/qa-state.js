@@ -133,8 +133,19 @@
         target_slot: index === 1 ? 1 : 0,
         target_slots: [],
       }));
+      current.actions.forEach((action, index) => {
+        const wildCount = (skills[index].cost || []).filter((color) => color === 'black').length;
+        if (wildCount) current.actionWildPays[action.id] = Array(wildCount).fill('green');
+      });
       current.queueReviewOpen = true;
       current.selectedCasterSlot = null;
+      current.changeScene('CombatScene');
+      return;
+    }
+
+    if (name === 'combat') {
+      current.selectedCasterSlot = 0;
+      current.selectedSkillId = current.character('yuji_itadori').skills[0].id;
       current.changeScene('CombatScene');
       return;
     }

@@ -1,7 +1,48 @@
-import { COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=22';
-import { initials, safeText } from '../core/text.js?v=22';
-import { LayoutService } from '../core/layout-service.js?v=22';
-import { costColors } from '../core/roster.js?v=22';
+import { focalCoverCrop, portraitEntryFor, starterPortraitEntries } from '../core/portrait-registry.js?v=35';
+import { COLORS, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=35';
+import { initials, safeText } from '../core/text.js?v=35';
+import { LayoutService } from '../core/layout-service.js?v=35';
+import { costColors } from '../core/roster.js?v=35';
+import { SKILL_ACTION_ATLASES, createPresentationLayer } from '../core/presentation-layer.js?v=35';
+
+const COMBAT_SKILL_ASSETS = Object.freeze([
+  Object.freeze({ key: 's3-skill-body', url: '/static/assets/skills/culling-current/body.webp' }),
+  Object.freeze({ key: 's3-skill-technique', url: '/static/assets/skills/culling-current/technique.webp' }),
+  Object.freeze({ key: 's3-skill-focus', url: '/static/assets/skills/culling-current/focus.webp' }),
+  Object.freeze({ key: 's3-skill-curse', url: '/static/assets/skills/culling-current/curse.webp' }),
+]);
+
+// TextureManager is game-wide while each Phaser scene owns a Loader. Without
+// a game-wide flight registry, a fast scene transition can queue the same
+// portrait in two loaders before either one registers the finished texture.
+const PRESENTATION_ASSET_FLIGHTS = new Map();
+let ACTIVE_POINTER_DISPATCH = null;
+
+function characterId(value) {
+  if (typeof value === 'string') return value;
+  return value && (value.id || value.character_id) || null;
+}
+
+function cropFrameName(prefix, crop) {
+  const token = [crop.x, crop.y, crop.width, crop.height]
+    .map((value) => Math.round(Number(value) * 1000).toString(36))
+    .join('_');
+  return `__jjk_${prefix}_${token}`;
+}
+
+function applyBoundedCropFrame(image, texture, crop) {
+  if (!image || !texture || typeof texture.add !== 'function' || typeof image.setFrame !== 'function') return false;
+  const frameName = cropFrameName('cover', crop);
+  const hasFrame = typeof texture.has === 'function' && texture.has(frameName);
+  const frame = hasFrame
+    ? (typeof texture.get === 'function' ? texture.get(frameName) : true)
+    : texture.add(frameName, 0, crop.x, crop.y, crop.width, crop.height);
+  if (!frame) return false;
+  image.setFrame(frameName);
+  image.setOrigin(0.5, 0.5);
+  image.setScale(crop.scale);
+  return true;
+}
 
 export class BaseScene extends Phaser.Scene {
     constructor(key) {
@@ -14,30 +55,70 @@ export class BaseScene extends Phaser.Scene {
       this.graphics = null;
       this.unsubscribe = null;
       this.lastTap = null;
+      this.presentationLayer = null;
+      this.presentationIntroPlayed = false;
+      this.presentationSettingsOpen = false;
+      this.pendingAssetKeys = new Set();
+      this.attemptedAssetKeys = new Set();
+      this.presentationAssetLoadError = null;
     }
 
     create() {
       this.store = window.JJKPhaserShell.store;
       this.layout = new LayoutService(this);
       this.graphics = this.add.graphics();
+      this.presentationLayer = createPresentationLayer(this);
+      this.presentationAssetLoadError = (file) => {
+        if (this.store && this.store.assets && this.store.assets.reportPortraitLoadError) {
+          this.store.assets.reportPortraitLoadError(file);
+        }
+      };
+      if (this.load && this.load.on) this.load.on('loaderror', this.presentationAssetLoadError);
       this.input.on('pointerdown', (pointer) => this.handlePointer(pointer));
       this.scale.on('resize', () => this.render());
       this.unsubscribe = this.store.onChange(() => {
         if (this.scene.isActive(this.keyName)) this.render();
       });
+      this.ensureSceneAssets();
       this.render();
     }
 
     shutdown() {
       if (this.unsubscribe) this.unsubscribe();
+      if (this.load && this.load.off && this.presentationAssetLoadError) {
+        this.load.off('loaderror', this.presentationAssetLoadError);
+      }
+      this.presentationAssetLoadError = null;
     }
 
     handlePointer(pointer) {
+      if (ACTIVE_POINTER_DISPATCH && ACTIVE_POINTER_DISPATCH.pointer === pointer
+        && ACTIVE_POINTER_DISPATCH.scene !== this.keyName) return;
       for (let i = this.buttons.length - 1; i >= 0; i -= 1) {
         const button = this.buttons[i];
         if (pointer.x >= button.x && pointer.x <= button.x + button.w && pointer.y >= button.y && pointer.y <= button.y + button.h) {
+          // Scene changes happen inside button callbacks while Phaser is still
+          // dispatching this same pointer object. Keep a microtask-scoped token
+          // so a newly created destination scene cannot consume it again.
+          const dispatchToken = { pointer, scene: this.keyName };
+          ACTIVE_POINTER_DISPATCH = dispatchToken;
+          Promise.resolve().then(() => {
+            if (ACTIVE_POINTER_DISPATCH === dispatchToken) ACTIVE_POINTER_DISPATCH = null;
+          });
           this.lastTap = { x: pointer.x, y: pointer.y, t: this.time.now, disabled: !!button.disabled };
           window.dispatchEvent(new CustomEvent('jjk:ui-tap', { detail: { scene: this.keyName, disabled: !!button.disabled } }));
+          const cue = button.disabled ? 'disabled' : (button.cue || 'press');
+          const playCue = () => {
+            if (this.presentationLayer && !this.presentationLayer.isDestroyed()) {
+              this.presentationLayer.interactionCue(this, { cue });
+            }
+          };
+          const audio = this.presentationLayer && this.presentationLayer.audio;
+          if (audio && audio.isUnlocked && !audio.isUnlocked() && audio.unlockFromGesture) {
+            Promise.resolve(audio.unlockFromGesture()).then(playCue).catch(() => {});
+          } else {
+            playCue();
+          }
           if (!button.disabled) button.onClick();
           if (this.scene.isActive(this.keyName)) this.render();
           this.time.delayedCall(180, () => {
@@ -53,6 +134,352 @@ export class BaseScene extends Phaser.Scene {
       this.nodes.forEach((node) => node.destroy());
       this.nodes = [];
       this.buttons = [];
+      this.ensureSceneAssets();
+    }
+
+    portraitIdsForScene() {
+      if (this.keyName === 'FirstCreationScene' || this.keyName === 'DraftScene') {
+        return starterPortraitEntries().map((entry) => entry.id);
+      }
+      const ids = new Set();
+      const addTeam = (team) => {
+        (Array.isArray(team) ? team : []).forEach((member) => {
+          const id = characterId(member);
+          if (id) ids.add(id);
+        });
+      };
+      if (this.store) {
+        addTeam(this.store.playerTeam);
+        addTeam(this.store.enemyTeam);
+        const players = this.store.state && this.store.state.players;
+        Object.values(players || {}).forEach((player) => addTeam(player && player.team));
+      }
+      return [...ids];
+    }
+
+    usesSkillPresentationAssets() {
+      return this.keyName === 'CombatScene' || this.keyName === 'FirstCreationScene';
+    }
+
+    ensureSceneAssets() {
+      if (!this.load || !this.load.image || !this.textures || !this.textures.exists) return false;
+      const requested = [];
+      const requestImage = (key, url) => {
+        if (!this.attemptedAssetKeys) this.attemptedAssetKeys = new Set();
+        if (!key || !url || this.textures.exists(key) || this.pendingAssetKeys.has(key) || this.attemptedAssetKeys.has(key)) return;
+        const activeFlight = PRESENTATION_ASSET_FLIGHTS.get(key);
+        if (activeFlight) {
+          activeFlight.waiters.add(this);
+          this.attemptedAssetKeys.add(key);
+          return;
+        }
+        this.attemptedAssetKeys.add(key);
+        this.pendingAssetKeys.add(key);
+        PRESENTATION_ASSET_FLIGHTS.set(key, { owner: this, waiters: new Set([this]) });
+        requested.push(key);
+        this.load.image(key, url);
+      };
+
+      this.portraitIdsForScene().forEach((id) => {
+        const entry = portraitEntryFor(id);
+        if (entry) requestImage(entry.textureKey, entry.url);
+      });
+      if (this.usesSkillPresentationAssets()) {
+        Object.values(SKILL_ACTION_ATLASES).forEach((atlas) => requestImage(atlas.key, atlas.path));
+        COMBAT_SKILL_ASSETS.forEach((asset) => requestImage(asset.key, asset.url));
+      }
+      if (!requested.length) return false;
+
+      const complete = () => {
+        const waitingScenes = new Set();
+        requested.forEach((key) => {
+          this.pendingAssetKeys.delete(key);
+          const flight = PRESENTATION_ASSET_FLIGHTS.get(key);
+          if (!flight || flight.owner !== this) return;
+          flight.waiters.forEach((waitingScene) => waitingScenes.add(waitingScene));
+          PRESENTATION_ASSET_FLIGHTS.delete(key);
+        });
+        waitingScenes.forEach((waitingScene) => {
+          if (waitingScene.scene && waitingScene.scene.isActive && waitingScene.scene.isActive(waitingScene.keyName)) {
+            waitingScene.render();
+          }
+        });
+      };
+      if (this.load.once) this.load.once('complete', complete);
+      const loading = this.load.isLoading && this.load.isLoading();
+      if (!loading && this.load.start) this.load.start();
+      return true;
+    }
+
+    togglePresentationSettings(force) {
+      this.presentationSettingsOpen = force === undefined ? !this.presentationSettingsOpen : Boolean(force);
+      return this.presentationSettingsOpen;
+    }
+
+    renderPresentationSettingsSheet(frame, options = {}) {
+      if (!this.presentationSettingsOpen || !this.presentationLayer || !this.presentationLayer.settings) return false;
+      const settings = this.presentationLayer.settings;
+      const value = settings.snapshot();
+      const fullW = frame.fullWidth === undefined ? frame.width : frame.fullWidth;
+      const fullH = frame.fullHeight === undefined ? frame.height : frame.fullHeight;
+      const hasExit = typeof options.onExit === 'function';
+      const sheetW = Math.min(360, frame.width - 28);
+      const sheetH = hasExit ? 356 : 344;
+      const sheetX = frame.x + (frame.width - sheetW) / 2;
+      const sheetY = Math.max(frame.top + 62, Math.min(frame.bottom - sheetH - 10, frame.top + (frame.height - sheetH) / 2));
+      const panel = this.add.graphics().setDepth(190);
+      this.nodes.push(panel);
+
+      // This blocker is registered before the controls so reverse hit testing
+      // always gives the visible settings buttons priority.
+      this.registerHitTarget(0, 0, fullW, fullH, 'Close presentation settings', () => {
+        this.togglePresentationSettings(false);
+      });
+      panel.fillStyle(CULLING_COLORS.charcoal, 0.58);
+      panel.fillRect(0, 0, fullW, fullH);
+      const points = [
+        { x: sheetX + 14, y: sheetY },
+        { x: sheetX + sheetW, y: sheetY },
+        { x: sheetX + sheetW, y: sheetY + sheetH - 14 },
+        { x: sheetX + sheetW - 14, y: sheetY + sheetH },
+        { x: sheetX, y: sheetY + sheetH },
+        { x: sheetX, y: sheetY + 14 },
+      ];
+      panel.fillStyle(CULLING_COLORS.ivory, 0.99);
+      panel.fillPoints(points, true);
+      panel.fillStyle(CULLING_COLORS.cobalt, 0.96);
+      panel.fillTriangle(sheetX, sheetY + 14, sheetX + 176, sheetY, sheetX, sheetY + 72);
+      panel.lineStyle(2, CULLING_COLORS.cyan, 0.9);
+      panel.strokePoints(points, true);
+      panel.lineStyle(1, CULLING_COLORS.charcoal, 0.18);
+      [sheetY + 63, sheetY + 119, sheetY + 175, sheetY + 231].forEach((lineY) => {
+        panel.beginPath();
+        panel.moveTo(sheetX + 14, lineY);
+        panel.lineTo(sheetX + sheetW - 14, lineY);
+        panel.strokePath();
+      });
+
+      this.text(sheetX + 16, sheetY + 10, 'PRESENTATION', {
+        fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
+        fontSize: '21px',
+        fontStyle: '900',
+        color: CULLING_COLORS.inverseText,
+      }).setDepth(191);
+      this.mono(sheetX + 17, sheetY + 38, 'AUDIO / HAPTICS / MOTION', {
+        color: '#CDE6FF',
+        fontSize: '10px',
+        fontStyle: '800',
+      }).setDepth(191);
+
+      const drawControl = (x, y, w, label, onClick, selected = false, danger = false) => {
+        const h = 44;
+        const fill = danger ? CULLING_COLORS.vermilion : selected ? CULLING_COLORS.cobalt : CULLING_COLORS.ivory;
+        const stroke = danger ? CULLING_COLORS.charcoal : selected ? CULLING_COLORS.cyan : CULLING_COLORS.cobalt;
+        panel.fillStyle(fill, selected || danger ? 0.97 : 0.9);
+        panel.fillPoints([
+          { x: x + 7, y }, { x: x + w, y }, { x: x + w, y: y + h - 7 },
+          { x: x + w - 7, y: y + h }, { x, y: y + h }, { x, y: y + 7 },
+        ], true);
+        panel.lineStyle(1.5, stroke, 0.9);
+        panel.strokePoints([
+          { x: x + 7, y }, { x: x + w, y }, { x: x + w, y: y + h - 7 },
+          { x: x + w - 7, y: y + h }, { x, y: y + h }, { x, y: y + 7 },
+        ], true);
+        this.mono(x + w / 2, y + 14, label, {
+          color: selected || danger ? CULLING_COLORS.inverseText : CULLING_COLORS.cobaltText,
+          fontSize: '11px',
+          fontStyle: '900',
+        }).setOrigin(0.5, 0).setDepth(191);
+        this.registerHitTarget(x, y, w, h, label, onClick, { cue: selected ? 'select' : 'press' });
+      };
+      const labelX = sheetX + 18;
+      const controlRight = sheetX + sheetW - 16;
+      const rowLabel = (y, title, detail) => {
+        this.mono(labelX, y + 8, title, { color: CULLING_COLORS.cobaltText, fontSize: '11px', fontStyle: '900' }).setDepth(191);
+        if (detail) this.mono(labelX, y + 25, detail, { color: CULLING_COLORS.mutedText, fontSize: '9px', fontStyle: '700' }).setDepth(191);
+      };
+
+      const soundY = sheetY + 68;
+      rowLabel(soundY, 'SOUND', value.muted ? 'ALL CUES MUTED' : 'INTERACTION CUES ON');
+      drawControl(controlRight - 94, soundY, 94, value.muted ? 'MUTED' : 'ON', () => settings.toggleMuted(), !value.muted);
+
+      const volumeY = sheetY + 124;
+      rowLabel(volumeY, 'VOLUME', 'PERSISTS ON THIS DEVICE');
+      drawControl(controlRight - 148, volumeY, 44, '-', () => settings.stepVolume(-1));
+      this.mono(controlRight - 76, volumeY + 15, `${Math.round(value.volume * 100)}%`, {
+        color: CULLING_COLORS.cobaltText,
+        fontSize: '12px',
+        fontStyle: '900',
+      }).setOrigin(0.5, 0).setDepth(191);
+      drawControl(controlRight - 44, volumeY, 44, '+', () => settings.stepVolume(1));
+
+      const hapticsY = sheetY + 180;
+      rowLabel(hapticsY, 'HAPTICS', 'SAFE DEVICE VIBRATION');
+      drawControl(controlRight - 94, hapticsY, 94, value.haptics ? 'ON' : 'OFF', () => settings.toggleHaptics(), value.haptics);
+
+      const motionY = sheetY + 236;
+      rowLabel(motionY, 'MOTION', 'SYSTEM / REDUCED / FULL');
+      drawControl(controlRight - 126, motionY, 126, value.motion.toUpperCase(), () => settings.cycleMotion(), value.motion === 'reduced');
+
+      const footerY = sheetY + sheetH - 54;
+      if (hasExit) {
+        const gap = 8;
+        const footerW = (sheetW - 40 - gap) / 2;
+        drawControl(sheetX + 16, footerY, footerW, options.exitLabel || 'EXIT', () => {
+          this.togglePresentationSettings(false);
+          options.onExit();
+        }, false, true);
+        drawControl(sheetX + 16 + footerW + gap, footerY, footerW, 'CLOSE', () => this.togglePresentationSettings(false), true);
+      } else {
+        drawControl(sheetX + sheetW - 126, footerY, 110, 'CLOSE', () => this.togglePresentationSettings(false), true);
+      }
+      return true;
+    }
+
+    presentSurface(region, options = {}) {
+      if (!this.presentationLayer || this.presentationLayer.isDestroyed()) return;
+      if (options.ambient !== false) {
+        this.presentationLayer.ambientWorld(this, {
+          region,
+          options: {
+            count: options.moteCount || 7,
+            parallax: options.parallax == null ? 3 : options.parallax,
+            depth: options.ambientDepth == null ? -10 : options.ambientDepth,
+            colors: options.colors,
+          },
+        });
+      }
+      if (this.presentationIntroPlayed) return;
+      this.presentationIntroPlayed = true;
+      const targets = (options.targets || this.nodes.filter((node) => node && (node.type === 'Text' || node.type === 'Container')))
+        .filter((node) => node && node.active !== false && node.setAlpha)
+        .slice(0, options.maxIntroTargets || 20);
+      this.presentationLayer.sceneIntro(this, {
+        targets,
+        options: {
+          distance: options.introDistance || 14,
+          stagger: options.introStagger || 28,
+          duration: options.introDuration || 320,
+        },
+      });
+    }
+
+    syncButtonDebug() {
+      window.__phaserShellButtons = this.buttons.map((button) => ({
+        scene: this.keyName,
+        label: button.label || 'hotspot',
+        x: Math.round(button.x),
+        y: Math.round(button.y),
+        w: Math.round(button.w),
+        h: Math.round(button.h),
+        disabled: !!button.disabled,
+      }));
+    }
+
+    registerHitTarget(x, y, w, h, label, onClick, options) {
+      const opts = options || {};
+      const minTarget = TOKEN_TOUCH.minTarget || 44;
+      const hitW = Math.max(w, minTarget);
+      const hitH = Math.max(h, minTarget);
+      this.buttons.push({
+        x: x - (hitW - w) / 2,
+        y: y - (hitH - h) / 2,
+        w: hitW,
+        h: hitH,
+        label,
+        onClick,
+        disabled: !!opts.disabled,
+        cue: opts.cue || null,
+      });
+      this.syncButtonDebug();
+    }
+
+    coverImage(textureKey, x, y, w, h, options) {
+      if (!textureKey || !this.textures.exists(textureKey)) return null;
+      const opts = options || {};
+      const image = this.add.image(x + w / 2, y + h / 2, textureKey);
+      const sourceWidth = image.frame.realWidth || image.frame.width;
+      const sourceHeight = image.frame.realHeight || image.frame.height;
+      const crop = focalCoverCrop(sourceWidth, sourceHeight, w, h, opts.focal);
+      const texture = image.texture || (this.textures.get && this.textures.get(textureKey));
+      if (!applyBoundedCropFrame(image, texture, crop)) {
+        // Compatibility path for stripped Phaser test doubles. Shipping
+        // Phaser registers a true subframe above so the crop has local 0.5
+        // origin and cannot be positioned by the full source-sheet bounds.
+        image.setOrigin(
+          (crop.x + crop.width / 2) / sourceWidth,
+          (crop.y + crop.height / 2) / sourceHeight,
+        );
+        image.setCrop(crop.x, crop.y, crop.width, crop.height);
+        image.setScale(crop.scale);
+      }
+      image.setDepth(opts.depth === undefined ? -30 : opts.depth);
+      image.setAlpha(opts.alpha === undefined ? 1 : opts.alpha);
+      image.setData('coverCrop', crop);
+      this.nodes.push(image);
+      return image;
+    }
+
+    portraitContextFor(w, h) {
+      if (h > w * 1.15) return 'hero';
+      if (w > h * 1.15) return 'combat';
+      return 'square';
+    }
+
+    drawPortraitFallback(characterOrId, x, y, w, h, options) {
+      const opts = options || {};
+      const id = typeof characterOrId === 'string'
+        ? characterOrId
+        : (characterOrId && (characterOrId.id || characterOrId.character_id));
+      const name = typeof characterOrId === 'string'
+        ? safeText(this.store.character(characterOrId).name, characterOrId)
+        : safeText(characterOrId && characterOrId.name, id);
+      const tone = opts.tone || this.store.assets.toneFor(id || name);
+      const alpha = opts.dead ? 0.42 : (opts.alpha === undefined ? 0.98 : opts.alpha);
+      const cx = x + w / 2;
+      const cy = y + h / 2;
+      const circle = opts.shape === 'circle';
+
+      this.graphics.fillStyle(CULLING_COLORS.ivory, alpha);
+      if (circle) this.graphics.fillCircle(cx, cy, Math.min(w, h) / 2);
+      else this.graphics.fillRect(x, y, w, h);
+      this.graphics.fillStyle(CULLING_COLORS.sky, opts.dead ? 0.12 : 0.46);
+      if (circle) this.graphics.fillCircle(cx, cy - h * 0.08, Math.min(w, h) * 0.34);
+      else this.graphics.fillTriangle(x, y, x + w, y, x, y + h);
+      this.graphics.fillStyle(tone, opts.dead ? 0.08 : 0.2);
+      this.graphics.fillCircle(cx, cy, Math.max(8, Math.min(w, h) * 0.28));
+      if (!circle) {
+        this.graphics.lineStyle(1, tone, opts.dead ? 0.18 : 0.52);
+        this.graphics.beginPath();
+        this.graphics.moveTo(x + 6, y + h - 7);
+        this.graphics.lineTo(x + w - 6, y + 7);
+        this.graphics.strokePath();
+      }
+      this.text(cx, cy - Math.max(7, Math.min(w, h) * 0.14), initials(name), {
+        fontFamily: TOKEN_TYPE.display || TOKEN_TYPE.ui || 'Inter, Arial, sans-serif',
+        fontSize: `${Math.max(14, Math.round(Math.min(w, h) * 0.3))}px`,
+        fontStyle: '900',
+        color: opts.dead ? CULLING_COLORS.mutedText : CULLING_COLORS.text,
+      }).setOrigin(0.5, 0);
+      return null;
+    }
+
+    portraitArtwork(characterOrId, x, y, w, h, options) {
+      const opts = options || {};
+      const id = typeof characterOrId === 'string'
+        ? characterOrId
+        : (characterOrId && (characterOrId.id || characterOrId.character_id));
+      const context = opts.context || this.portraitContextFor(w, h);
+      const key = opts.textureKey || this.store.portraitKey(id);
+      if (!this.textures.exists(key)) {
+        return this.drawPortraitFallback(characterOrId, x, y, w, h, { ...opts, context });
+      }
+      const focal = opts.focal || this.store.portraitFocal(id, context);
+      return this.coverImage(key, x, y, w, h, {
+        focal,
+        depth: opts.depth === undefined ? 0 : opts.depth,
+        alpha: opts.dead ? 0.35 : (opts.alpha === undefined ? 0.96 : opts.alpha),
+      });
     }
 
     text(x, y, value, style) {
@@ -137,38 +564,33 @@ export class BaseScene extends Phaser.Scene {
       }
     }
 
-    toast(frame) {
+    toast(frame, options) {
+      const opts = options || {};
       this.drawTapPulse();
-      window.__phaserShellButtons = this.buttons.map((button) => ({
-        scene: this.keyName,
-        label: button.label || 'hotspot',
-        x: Math.round(button.x),
-        y: Math.round(button.y),
-        w: Math.round(button.w),
-        h: Math.round(button.h),
-        disabled: !!button.disabled,
-      }));
+      this.syncButtonDebug();
       if (!this.store.toast) return;
       const g = this.graphics;
       const x = frame.x + 18;
-      const y = frame.bottom - 106;
+      const y = opts.y === undefined ? frame.bottom - 106 : opts.y;
       const w = frame.width - 36;
-      g.fillStyle(COLORS.surfaceRaised, 0.96);
+      const light = opts.theme === 'light';
+      g.fillStyle(light ? 0xf7f4ec : COLORS.surfaceRaised, 0.96);
       g.fillRoundedRect(x, y, w, 48, 16);
-      g.fillStyle(COLORS.talismanDim, 0.12);
+      g.fillStyle(light ? 0xbfd6f2 : COLORS.talismanDim, light ? 0.46 : 0.12);
       g.fillRoundedRect(x + 3, y + 3, w - 6, 18, 13);
-      g.lineStyle(1.5, COLORS.selection, 0.72);
+      g.lineStyle(1.5, light ? 0x2566ff : COLORS.selection, 0.72);
       g.strokeRoundedRect(x, y, w, 48, 16);
-      g.lineStyle(1, COLORS.talismanDim, 0.28);
+      g.lineStyle(1, light ? 0x33363a : COLORS.talismanDim, light ? 0.18 : 0.28);
       g.beginPath();
       g.moveTo(x + 12, y + 8);
       g.lineTo(x + w - 12, y + 8);
       g.strokePath();
-      this.mono(x + 14, y + 16, this.store.toast, { color: COLORS.paperText, fontSize: '11px' });
+      this.mono(x + 14, y + 16, this.store.toast, { color: light ? '#33363a' : COLORS.paperText, fontSize: '11px' });
     }
 
     drawTapPulse() {
       if (!this.lastTap || this.time.now - this.lastTap.t > 180) return;
+      if (this.presentationLayer && this.presentationLayer.motion && this.presentationLayer.motion.reducedMotion) return;
       const age = (this.time.now - this.lastTap.t) / 180;
       const radius = 10 + age * 20;
       const color = this.lastTap.disabled ? COLORS.enemy : COLORS.selection;
@@ -205,27 +627,7 @@ export class BaseScene extends Phaser.Scene {
         align: 'center',
       }).setOrigin(0.5, 0);
       if (opts.maxWidth) text.setWordWrapWidth(opts.maxWidth);
-      const minTarget = TOKEN_TOUCH.minTarget || 44;
-      const hitW = Math.max(w, minTarget);
-      const hitH = Math.max(h, minTarget);
-      this.buttons.push({
-        x: x - (hitW - w) / 2,
-        y: y - (hitH - h) / 2,
-        w: hitW,
-        h: hitH,
-        label,
-        onClick,
-        disabled: !!opts.disabled,
-      });
-      window.__phaserShellButtons = this.buttons.map((button) => ({
-        scene: this.keyName,
-        label: button.label,
-        x: Math.round(button.x),
-        y: Math.round(button.y),
-        w: Math.round(button.w),
-        h: Math.round(button.h),
-        disabled: button.disabled,
-      }));
+      this.registerHitTarget(x, y, w, h, label, onClick, { disabled: opts.disabled });
     }
 
     iconButton(x, y, w, h, label, onClick, options) {
@@ -298,7 +700,6 @@ export class BaseScene extends Phaser.Scene {
       const name = typeof characterOrId === 'string'
         ? safeText(this.store.character(characterOrId).name, characterOrId)
         : safeText(characterOrId && characterOrId.name, id);
-      const key = this.store.portraitKey(id);
       const tone = this.store.assets.toneFor(id || name);
       const cx = x + size / 2;
       const cy = y + size / 2;
@@ -315,17 +716,12 @@ export class BaseScene extends Phaser.Scene {
         this.graphics.lineStyle(opts.selected ? 2.5 : 1.25, opts.tone || tone, opts.targetable ? 0.92 : 0.68);
         this.graphics.strokeCircle(cx, cy, size / 2);
       }
-      if (this.textures.exists(key)) {
-        const image = this.add.image(cx, cy, key);
-        image.setDisplaySize(size - 6, size - 6);
-        image.setAlpha(opts.dead ? 0.38 : 0.96);
-        this.nodes.push(image);
-      } else {
-        this.text(cx, cy - 11, initials(name), {
-          fontSize: `${Math.max(18, Math.round(size * 0.32))}px`,
-          fontStyle: '900',
-        }).setOrigin(0.5, 0);
-      }
+      this.portraitArtwork(characterOrId, x + 3, y + 3, size - 6, size - 6, {
+        context: 'square',
+        dead: opts.dead,
+        shape: 'circle',
+        tone: opts.tone || tone,
+      });
     }
 
     talismanLabel(x, y, text, tone) {
@@ -532,26 +928,17 @@ export class BaseScene extends Phaser.Scene {
       const dead = !!opts.dead;
       const tone = opts.tone || this.store.assets.toneFor(id || name);
       const points = this.cutRectPoints(x, y, w, h, { cut: opts.cut === undefined ? 7 : opts.cut });
-      const key = this.store.portraitKey(id);
       this.graphics.fillStyle(0x05090c, dead ? 0.5 : 0.94);
       this.graphics.fillPoints(points, true);
       this.graphics.fillStyle(tone, dead ? 0.08 : 0.22);
       this.graphics.fillTriangle(x, y, x + w, y, x, y + h);
       this.graphics.lineStyle(opts.selected || opts.targetable ? 2 : 1, tone, dead ? 0.24 : (opts.targetable ? 0.9 : 0.68));
       this.graphics.strokePoints(points, true);
-      if (this.textures.exists(key)) {
-        const image = this.add.image(x + w / 2, y + h / 2, key);
-        image.setDisplaySize(w - 6, h - 6);
-        image.setAlpha(dead ? 0.35 : 0.96);
-        this.nodes.push(image);
-      } else {
-        this.text(x + w / 2, y + h / 2 - 10, initials(name), {
-          fontFamily: TOKEN_TYPE.display || 'Georgia, serif',
-          fontSize: `${Math.max(16, Math.round(Math.min(w, h) * 0.3))}px`,
-          fontStyle: '700',
-          color: dead ? COLORS.dim : COLORS.text,
-        }).setOrigin(0.5, 0);
-      }
+      this.portraitArtwork(characterOrId, x + 3, y + 3, w - 6, h - 6, {
+        context: opts.context || this.portraitContextFor(w, h),
+        dead,
+        tone,
+      });
     }
 
     /* Default state chip for the dossier language -- replaces

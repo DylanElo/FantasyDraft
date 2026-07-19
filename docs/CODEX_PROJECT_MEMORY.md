@@ -149,13 +149,15 @@ PLANNING
 
 JJK labels are used over Naruto labels, but the resource logic remains a four-color random economy.
 
-- `B` / Body — physical combat, martial arts, cursed tools, physical reinforcement.
-- `T` / Technique — cursed techniques, shikigami, cursed speech, puppet output.
-- `F` / Focus — tactics, barriers, counters, reads, support, controlled preparation.
-- `C` / Curse — volatile cursed energy, blood, poison, cursed-spirit effects, risky output.
+- `T` / Taijutsu (green) — physical combat, martial arts, cursed tools, physical reinforcement.
+- `J` / Jujutsu (blue) — cursed techniques, shikigami, cursed speech, puppet output.
+- `S` / Strategic (white) — tactics, barriers, counters, reads, support, controlled preparation.
+- `B` / Bloodline (red) — volatile cursed energy, blood, poison, cursed-spirit effects, risky output.
 - `X` / Wild — a cost placeholder that can be paid by any generated core color in Queue Review.
 
 `X` is not generated, stored, drained, or displayed as a fifth resource pool.
+Authoritative state, socket commands, and replay documents keep the stable
+internal keys `green`, `blue`, `white`, `red`, and `black`.
 
 ## Generation
 
@@ -163,6 +165,17 @@ JJK labels are used over Naruto labels, but the resource logic remains a four-co
 - The first player receives one random core energy.
 - Subsequent normal gains equal the number of living active characters at the intended turn-end timing.
 - Random effects use battle RNG/seed injection for deterministic testing.
+
+## Optional transmutation
+
+- Once per player turn, during Planning and before any fighter action is
+  queued, the player may sacrifice exactly five chosen stored core-energy pips
+  to create one chosen core-energy pip.
+- The five sacrificed pips may be any player-selected mixture of the four core
+  types; the client must never auto-select the sacrifice or result.
+- Wild (`X`) cannot be sacrificed or created.
+- Python validates and applies the exchange authoritatively. See
+  `docs/decisions/battle_v2_energy_transmutation.md`.
 
 ## Opportunity cost
 
@@ -643,13 +656,32 @@ Distinct visual states are required for:
 
 ## Visual direction
 
-- Ink-black surfaces.
-- Talisman paper/gold for selection and commitment.
-- Teal for legal target feedback.
-- Blood red for danger/damage.
-- Violet only for Domain/cinematic moments.
-- Controlled effects and strong spacing rather than constant glow.
-- One coherent portrait/art treatment.
+- **Culling Current** is the internal codename for the locked Season 3 Culling
+  Game visual system; it is not a product-era, roster, or progression rename.
+- `docs/season3_visual_system.md` is the detailed visual source of truth.
+  Every visible Phaser screen, illustration, environment, transition, VFX
+  layer, and routine surface must belong to that one coherent system.
+- Use sharp hand-inked contours, raw pencil/cross-hatch accents, large flat
+  cel-shadow masses, photographic-feeling painted urban depth, storm-ochre
+  light, barrier-red geometry, and selective curse-cyan emission. Avoid soft
+  glossy gacha airbrush, generic 3D rendering, neon cyberpunk, and gothic
+  parchment.
+- The locked core palette is bone `#F2E8D5`, smoke `#B7B5AD`, storm ochre
+  `#B58B5B`, deep indigo `#101B36`, barrier red `#E32620`, curse cyan
+  `#35DDE8`, aged gold `#D8BF68`, and ink charcoal `#17191E`.
+- Routine screens remain predominantly bone/smoke and world-led. Deep darkness
+  and stark black/red frames are reserved for Domains, finishers, damage, and
+  short cinematic punctuation rather than default dashboard surfaces.
+- Gold indicates selection/commitment, cyan indicates legal targets, red
+  indicates danger/damage, green indicates queued actions, and violet remains
+  reserved for Domain/cinematic states. T/J/S/B and X meanings never change.
+- Panels use ink outlines, clipped corners, sparse hatching, paper/concrete
+  grain, and restrained barrier cuts. Art leads; decoration never replaces
+  hierarchy or hides authoritative state.
+- Use fresh generated or appropriately licensed production compositions. Do
+  not paste, trace, or regenerate official frames, key visuals, manga panels,
+  logos, poses, or typography. Recorded provenance is required and is not a
+  substitute for release-rights review.
 
 ## Component architecture
 

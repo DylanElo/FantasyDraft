@@ -1,4 +1,4 @@
-import { TOKEN_FRAMES } from './runtime-config.js?v=22';
+import { TOKEN_FRAMES } from './runtime-config.js?v=35';
 
 function cssPixels(name) {
   if (typeof document === 'undefined' || typeof getComputedStyle !== 'function') return 0;
@@ -38,6 +38,29 @@ export class LayoutService {
 
   phoneFrame() {
     return this.frame();
+  }
+
+  homeScreen() {
+    const frame = this.frame();
+    const profileH = 56;
+    const navH = 60;
+    const modesH = frame.height < 830 ? 82 : 88;
+    const primaryH = frame.height < 830 ? 76 : 82;
+    const navY = frame.bottom - navH;
+    const modesY = navY - 10 - modesH;
+    const primaryY = modesY - 10 - primaryH;
+    const profileY = frame.top;
+    const heroY = profileY + profileH + 8;
+    return {
+      frame,
+      contentX: frame.x + frame.gutter,
+      contentW: frame.width - frame.gutter * 2,
+      profile: { x: frame.x + 12, y: profileY, w: frame.width - 24, h: profileH },
+      hero: { x: frame.x + 12, y: heroY, w: frame.width - 24, h: Math.max(180, primaryY - heroY - 10) },
+      primary: { x: frame.x + frame.gutter, y: primaryY, w: frame.width - frame.gutter * 2, h: primaryH },
+      modes: { x: frame.x + frame.gutter, y: modesY, w: frame.width - frame.gutter * 2, h: modesH },
+      nav: { x: frame.x, y: navY, w: frame.width, h: navH },
+    };
   }
 
   topHud() {

@@ -26,13 +26,18 @@ Each living character may use 1 skill per turn
 
 Energy keeps Naruto Arena logic with JJK labels:
 
-- `B` — Body: physical combat, cursed tools, martial arts.
-- `T` — Technique: cursed techniques, shikigami, cursed speech, puppet output.
-- `F` — Focus: tactics, barriers, counters, reads, simple domain, support.
-- `C` — Curse: cursed energy volatility, poison, blood, cursed spirit manipulation, risky output.
-- `X` — Wild / Random Cost: a cost slot paid with any generated `B/T/F/C` energy during queue review.
+- `T` — Taijutsu (green): physical combat, cursed tools, martial arts.
+- `J` — Jujutsu (blue): cursed techniques, shikigami, cursed speech, puppet output.
+- `S` — Strategic (white): tactics, barriers, counters, reads, simple domain, support.
+- `B` — Bloodline (red): cursed energy volatility, poison, blood, cursed spirit manipulation, risky output.
+- `X` — Wild / Random Cost: a cost slot paid with any generated `T/J/S/B` energy during queue review.
 
 `X` is **not** a generated fifth resource.
+
+Before queueing any fighter action, a player may optionally transmute exactly
+five chosen stored `T/J/S/B` energy into one chosen `T/J/S/B` energy. This is
+available once per player turn, is confirmed explicitly by the player, and is
+validated by the authoritative server. `X` is never a source or result.
 
 Damage rules:
 
@@ -66,7 +71,7 @@ Total: 19 starter characters.
 18. Mei Mei (Young)
 19. Yuta Okkotsu (JJK 0)
 
-This pool gives players Body bruisers, Technique controllers, Focus supports, Curse/affliction users, counters, reflects, healing, marks, shields, replacements, one beginner special grade, and two high-ceiling young legends without endgame Domain nonsense.
+This pool gives players Taijutsu bruisers, Jujutsu controllers, Strategic supports, Bloodline/affliction users, counters, reflects, healing, marks, shields, replacements, one beginner special grade, and two high-ceiling young legends without endgame Domain nonsense.
 
 ## Starter kit direction
 

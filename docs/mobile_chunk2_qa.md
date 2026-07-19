@@ -2,6 +2,13 @@
 
 Date: 2026-07-12
 
+> Historical v2 mobile evidence. It is preserved as a record of the earlier
+> interface and must not be used as the current visual reference. The later
+> Culling Current v23 checkpoint under
+> `artifacts/ui-redesign/culling-current/qa/` is also historical; Season 3
+> structural Home, Combat, and Queue Review evidence belongs under
+> `artifacts/ui-redesign/s3-structure-v2/qa/`.
+
 The Phaser client was exercised against the live Flask-SocketIO Battle v2
 server in a mobile browser viewport. The server remained authoritative for
 match creation, queue submission, CPU turns, surrender, and Results.
@@ -64,4 +71,3 @@ The full default balance report was attempted at 50, 10, and 1 game per
 orientation, but its all-preset matrix exceeded the local two-minute command
 ceiling each time. The two timed-out workers were stopped before the bounded
 matchup batches were run.
-

@@ -1,20 +1,42 @@
-import { COLORS, TOKEN_TYPE } from '../core/runtime-config.js?v=22';
-import { safeText, shortText } from '../core/text.js?v=22';
-import { eventAmount, eventTone } from './event-metrics.js?v=22';
-import { BaseScene } from '../scenes/base-scene.js?v=22';
+import { COLORS, CULLING_COLORS, ENERGY_NAMES, TOKEN_TYPE } from '../core/runtime-config.js?v=35';
+import { safeText, shortText } from '../core/text.js?v=35';
+import { eventAmount, eventTone } from './event-metrics.js?v=35';
+import { BaseScene } from '../scenes/base-scene.js?v=35';
 
 export class CombatPlaybackScene extends BaseScene {
+    playbackReducedMotion() {
+      if (this.presentationLayer && this.presentationLayer.motion) {
+        return Boolean(this.presentationLayer.motion.reducedMotion);
+      }
+      const settings = this.presentationLayer && this.presentationLayer.settings;
+      return Boolean(settings && settings.effectiveReducedMotion && settings.effectiveReducedMotion());
+    }
+
+    animatePlayback(config, reducedHold = 480) {
+      if (!this.playbackReducedMotion()) return this.tweens.add(config);
+      // Reduced motion keeps the authored event readable as a static beat and
+      // then performs only its cleanup callback—no translation, scale, fade,
+      // rotation, or camera movement is applied.
+      if (typeof config.onComplete === 'function') {
+        if (this.time && this.time.delayedCall) this.time.delayedCall(reducedHold, config.onComplete);
+        else config.onComplete();
+      }
+      return null;
+    }
+
     playEvents(frame) {
       const events = this.store.consumePlaybackEvents();
       if (!events.length) return;
       let actionNumber = 0;
       const hasQueuedResolution = events.some((event) => safeText(event.type) === 'skill_resolved');
-      const baseDelay = hasQueuedResolution ? 220 : 0;
+      const reducedMotion = this.playbackReducedMotion();
+      const baseDelay = hasQueuedResolution ? (reducedMotion ? 80 : 220) : 0;
+      const eventSpacing = reducedMotion ? 420 : 650;
       if (hasQueuedResolution) this.playCinematicCurtain(frame);
       events.slice(0, 7).forEach((event, index) => {
         if (safeText(event.type) === 'skill_resolved') actionNumber += 1;
         const visibleActionNumber = actionNumber || null;
-        this.time.delayedCall(baseDelay + index * 650, () => this.playEvent(event, frame, visibleActionNumber));
+        this.time.delayedCall(baseDelay + index * eventSpacing, () => this.playEvent(event, frame, visibleActionNumber));
       });
     }
 
@@ -25,7 +47,7 @@ export class CombatPlaybackScene extends BaseScene {
         x: frame.x + frame.width / 2,
         y: fallbackY || frame.height * 0.42,
         size: 62,
-        tone: COLORS.selection,
+        tone: CULLING_COLORS.selected,
       };
     }
 
@@ -44,7 +66,7 @@ export class CombatPlaybackScene extends BaseScene {
         x: frame.x + frame.width / 2,
         y: frame.height * 0.36,
         size: 72,
-        tone: COLORS.selection,
+        tone: CULLING_COLORS.selected,
       };
     }
 
@@ -93,7 +115,7 @@ export class CombatPlaybackScene extends BaseScene {
         fontStyle: '900',
         color: COLORS.paperText,
       }).setOrigin(0.5, 0).setDepth(22));
-      this.tweens.add({
+      this.animatePlayback({
         targets: ring,
         scale: 1.22,
         angle: 8,
@@ -101,17 +123,23 @@ export class CombatPlaybackScene extends BaseScene {
         duration: 620,
         ease: 'Cubic.easeOut',
       });
-      this.tweens.add({
+      this.animatePlayback({
         targets: nodes,
         alpha: 0,
         duration: 760,
         delay: 220,
         ease: 'Cubic.easeOut',
         onComplete: () => nodes.forEach((node) => node.destroy()),
-      });
+      }, 560);
     }
 
     playCinematicCutIn(frame, title, tone) {
+      if (this.activeCinematicCutInTween && this.activeCinematicCutInTween.stop) {
+        this.activeCinematicCutInTween.stop();
+      }
+      (this.activeCinematicCutInNodes || []).forEach((node) => {
+        if (node && node.destroy) node.destroy();
+      });
       const cx = frame.x + frame.width / 2;
       const y = frame.height * 0.205;
       const w = Math.min(frame.width - 26, 352);
@@ -138,21 +166,33 @@ export class CombatPlaybackScene extends BaseScene {
         fontStyle: '900',
         color: COLORS.paperText,
       }).setDepth(28));
-      nodes.push(this.add.text(cx - w / 2 + 18, y + 31, shortText(title, 34), {
+      const cutInTitle = shortText(title, 34);
+      const titleNode = this.add.text(cx - w / 2 + 18, y + 31, cutInTitle, {
         fontFamily: TOKEN_TYPE.display || 'Cinzel, Inter, serif',
-        fontSize: '17px',
+        fontSize: cutInTitle.length > 28 ? '14px' : '17px',
         fontStyle: '900',
         color: COLORS.text,
-      }).setDepth(28));
-      this.tweens.add({
+        wordWrap: { width: w - 36 },
+      }).setDepth(28);
+      titleNode.setMaxLines(1);
+      nodes.push(titleNode);
+      this.activeCinematicCutInNodes = nodes;
+      const cleanup = () => {
+        nodes.forEach((node) => node.destroy());
+        if (this.activeCinematicCutInNodes === nodes) {
+          this.activeCinematicCutInNodes = null;
+          this.activeCinematicCutInTween = null;
+        }
+      };
+      this.activeCinematicCutInTween = this.animatePlayback({
         targets: nodes,
         x: '+=18',
         alpha: 0,
         duration: 520,
         delay: 80,
         ease: 'Cubic.easeIn',
-        onComplete: () => nodes.forEach((node) => node.destroy()),
-      });
+        onComplete: cleanup,
+      }, 680);
     }
 
     playRing(point, color, options) {
@@ -174,14 +214,14 @@ export class CombatPlaybackScene extends BaseScene {
         ring.lineTo(0, r + 12);
         ring.strokePath();
       }
-      this.tweens.add({
+      this.animatePlayback({
         targets: ring,
         scale: opts.scale || 1.45,
         alpha: 0,
         duration: opts.duration || 720,
         ease: 'Cubic.easeOut',
         onComplete: () => ring.destroy(),
-      });
+      }, 420);
       return ring;
     }
 
@@ -198,21 +238,29 @@ export class CombatPlaybackScene extends BaseScene {
       line.moveTo(from.x, from.y - 6);
       line.lineTo(to.x, to.y - 6);
       line.strokePath();
-      this.tweens.add({
+      this.animatePlayback({
         targets: line,
         alpha: 0,
         duration: 420,
         ease: 'Cubic.easeOut',
         onComplete: () => line.destroy(),
-      });
+      }, 360);
     }
 
     playActionBanner(frame, title, subtitle, tone, actionNumber) {
+      if (this.activeActionBannerTween && this.activeActionBannerTween.stop) {
+        this.activeActionBannerTween.stop();
+      }
+      (this.activeActionBannerNodes || []).forEach((node) => {
+        if (node && node.destroy) node.destroy();
+      });
       const x = frame.x + frame.width / 2;
       const y = frame.height * 0.31;
       const w = Math.min(frame.width - 44, 328);
       const panel = this.add.graphics({ x: x - w / 2, y }).setDepth(28);
-      panel.fillStyle(COLORS.inkBlack, 0.94);
+      panel.fillStyle(CULLING_COLORS.shadow, 0.16);
+      panel.fillRoundedRect(0, 5, w, 58, 18);
+      panel.fillStyle(CULLING_COLORS.ivory, 0.97);
       panel.fillRoundedRect(0, 0, w, 58, 18);
       panel.fillStyle(tone, 0.16);
       panel.fillRoundedRect(4, 4, w - 8, 18, 14);
@@ -231,45 +279,56 @@ export class CombatPlaybackScene extends BaseScene {
           color: '#08080a',
         }).setOrigin(0.5, 0.5).setDepth(29));
       }
-      nodes.push(this.add.text(x - w / 2 + (actionNumber ? 56 : 18), y + 12, shortText(title, 34), {
+      const bannerTitle = this.add.text(x - w / 2 + (actionNumber ? 56 : 18), y + 12, shortText(title, 34), {
         fontFamily: TOKEN_TYPE.display || 'Cinzel, Inter, serif',
         fontSize: '15px',
         fontStyle: '900',
-        color: COLORS.text,
-      }).setDepth(29));
+        color: CULLING_COLORS.text,
+        wordWrap: { width: w - (actionNumber ? 74 : 36) },
+      }).setDepth(29);
+      bannerTitle.setMaxLines(1);
+      nodes.push(bannerTitle);
       nodes.push(this.add.text(x - w / 2 + (actionNumber ? 56 : 18), y + 34, shortText(subtitle, 42), {
         fontFamily: TOKEN_TYPE.mono || '"JetBrains Mono", monospace',
         fontSize: '10px',
         fontStyle: '700',
-        color: COLORS.paperText,
+        color: CULLING_COLORS.cobaltText,
       }).setDepth(29));
-      this.tweens.add({
+      this.activeActionBannerNodes = nodes;
+      const cleanup = () => {
+        nodes.forEach((node) => node.destroy());
+        if (this.activeActionBannerNodes === nodes) {
+          this.activeActionBannerNodes = null;
+          this.activeActionBannerTween = null;
+        }
+      };
+      this.activeActionBannerTween = this.animatePlayback({
         targets: nodes,
         y: '-=18',
         alpha: 0,
         duration: 1250,
         ease: 'Cubic.easeOut',
-        onComplete: () => nodes.forEach((node) => node.destroy()),
-      });
+        onComplete: cleanup,
+      }, 760);
     }
 
     playHpLag(point, tone) {
       const barW = 74;
       const bar = this.add.graphics({ x: point.x - barW / 2, y: point.y + (point.size || 62) / 2 + 18 }).setDepth(25);
-      bar.fillStyle(COLORS.inkBlack, 0.94);
+      bar.fillStyle(CULLING_COLORS.charcoal, 0.22);
       bar.fillRoundedRect(0, 0, barW, 8, 4);
-      bar.fillStyle(COLORS.selection, 0.82);
+      bar.fillStyle(CULLING_COLORS.gold, 0.82);
       bar.fillRoundedRect(0, 0, barW, 8, 4);
       bar.fillStyle(tone, 0.95);
       bar.fillRoundedRect(0, 0, barW * 0.36, 8, 4);
-      this.tweens.add({
+      this.animatePlayback({
         targets: bar,
         alpha: 0,
         y: '-=8',
         duration: 760,
         ease: 'Cubic.easeOut',
         onComplete: () => bar.destroy(),
-      });
+      }, 460);
     }
 
     playFloatingText(point, text, color, options) {
@@ -283,14 +342,14 @@ export class CombatPlaybackScene extends BaseScene {
         padding: opts.padding || { x: 8, y: 4 },
         align: 'center',
       }).setOrigin(0.5, 0.5).setDepth(opts.depth || 30);
-      this.tweens.add({
+      this.animatePlayback({
         targets: node,
         y: `-=${opts.rise || 42}`,
         alpha: 0,
         duration: opts.duration || 920,
         ease: 'Cubic.easeOut',
         onComplete: () => node.destroy(),
-      });
+      }, 700);
       return node;
     }
 
@@ -298,28 +357,30 @@ export class CombatPlaybackScene extends BaseScene {
       const tone = eventTone(event);
       const amount = eventAmount(event);
       const color = tone === 'damage'
-        ? '#f1a0a0'
+        ? CULLING_COLORS.redText
         : tone === 'heal'
-          ? '#b7dbc0'
+          ? '#357D4B'
           : tone === 'status'
-            ? '#c4b5fd'
-            : COLORS.paperText;
+            ? '#6240A8'
+            : CULLING_COLORS.text;
       const type = safeText(event && event.type);
       const message = safeText(event && event.message, type);
       const point = this.pointFromPayload(event, frame);
       const casterPoint = this.casterPointFromPayload(event, frame);
 
       if (type === 'skill_resolved') {
-        this.playCinematicCutIn(frame, message, COLORS.selection);
-        if (casterPoint) this.playRing(casterPoint, COLORS.selection, { radius: (casterPoint.size || 62) / 2 + 20, alpha: 0.86 });
-        if (casterPoint && point) this.playSlashLine(casterPoint, point, COLORS.selection);
+        if (this.presentationLayer) this.presentationLayer.interactionCue(this, { cue: 'skill-resolve' });
+        this.playCinematicCutIn(frame, message, CULLING_COLORS.gold);
+        if (casterPoint) this.playRing(casterPoint, CULLING_COLORS.gold, { radius: (casterPoint.size || 62) / 2 + 20, alpha: 0.86 });
+        if (casterPoint && point) this.playSlashLine(casterPoint, point, CULLING_COLORS.gold);
         return;
       }
 
       if (type.includes('counter') || type.includes('reflect')) {
-        this.playActionBanner(frame, message, type.includes('reflect') ? 'REFLECT REVEAL' : 'COUNTER REVEAL', COLORS.enemy, actionNumber);
-        this.playRing(point, COLORS.enemy, { crosshair: true, radius: (point.size || 62) / 2 + 22, width: 3, alpha: 0.95, duration: 820 });
-        this.playFloatingText(point, type.includes('reflect') ? 'REFLECT' : 'COUNTER', '#f1a0a0', {
+        if (this.presentationLayer) this.presentationLayer.interactionCue(this, { cue: 'reveal' });
+        this.playActionBanner(frame, message, type.includes('reflect') ? 'REFLECT REVEAL' : 'COUNTER REVEAL', CULLING_COLORS.enemy, actionNumber);
+        this.playRing(point, CULLING_COLORS.enemy, { crosshair: true, radius: (point.size || 62) / 2 + 22, width: 3, alpha: 0.95, duration: 820 });
+        this.playFloatingText(point, type.includes('reflect') ? 'REFLECT' : 'COUNTER', CULLING_COLORS.redText, {
           fontSize: '19px',
           backgroundColor: '#3a0d0d',
           mono: true,
@@ -330,8 +391,8 @@ export class CombatPlaybackScene extends BaseScene {
 
       if (tone === 'damage' || tone === 'heal') {
         const text = amount ? (tone === 'heal' ? `+${amount}` : `-${amount}`) : safeText(type, 'EVENT').replace(/_/g, ' ').toUpperCase();
-        if (casterPoint && tone === 'damage') this.playSlashLine(casterPoint, point, COLORS.enemy);
-        this.playRing(point, tone === 'heal' ? COLORS.queued : COLORS.enemy, {
+        if (casterPoint && tone === 'damage') this.playSlashLine(casterPoint, point, CULLING_COLORS.enemy);
+        this.playRing(point, tone === 'heal' ? COLORS.queued : CULLING_COLORS.enemy, {
           crosshair: tone === 'damage',
           radius: (point.size || 62) / 2 + 18,
           alpha: 0.86,
@@ -340,15 +401,26 @@ export class CombatPlaybackScene extends BaseScene {
           fontSize: amount ? '31px' : '18px',
           rise: 48,
         });
-        this.playHpLag(point, tone === 'heal' ? COLORS.queued : COLORS.enemy);
+        this.playHpLag(point, tone === 'heal' ? COLORS.queued : CULLING_COLORS.enemy);
         if (tone === 'damage') {
-          this.cameras.main.shake(150, 0.006);
+          if (this.presentationLayer) {
+            this.presentationLayer.impactFlash(this, {
+              x: point.x,
+              y: point.y,
+              options: { tone: CULLING_COLORS.enemy, radius: Math.max(32, (point.size || 62) * 0.58) },
+            });
+          }
+          if (!this.playbackReducedMotion()) this.cameras.main.shake(150, 0.006);
+        } else if (this.presentationLayer) {
+          this.presentationLayer.interactionCue(this, { cue: 'heal' });
         }
         return;
       }
 
       if (tone === 'status' || type.includes('status') || type.includes('energy')) {
-        const status = event && event.payload && (event.payload.status || event.payload.energy || event.payload.name);
+        if (this.presentationLayer) this.presentationLayer.interactionCue(this, { cue: 'status-change' });
+        const payload = (event && event.payload) || {};
+        const status = payload.status || ENERGY_NAMES[payload.energy] || payload.name;
         const label = status ? safeText(status).replace(/_/g, ' ').toUpperCase() : safeText(type, 'STATUS').replace(/_/g, ' ').toUpperCase();
         this.playRing(point, COLORS.domain, { radius: (point.size || 62) / 2 + 18, alpha: 0.72 });
         this.playFloatingText(point, label, '#d8ccff', {
@@ -361,7 +433,7 @@ export class CombatPlaybackScene extends BaseScene {
         return;
       }
 
-      this.playActionBanner(frame, message, safeText(type, 'EVENT').replace(/_/g, ' ').toUpperCase(), COLORS.selection, actionNumber);
+      this.playActionBanner(frame, message, safeText(type, 'EVENT').replace(/_/g, ' ').toUpperCase(), CULLING_COLORS.gold, actionNumber);
       this.playFloatingText(point, safeText(type, 'EVENT').replace(/_/g, ' ').toUpperCase(), color, {
         fontSize: '18px',
         mono: true,

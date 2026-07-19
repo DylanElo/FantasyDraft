@@ -22,8 +22,37 @@
     textDim: '#8C8371',
   };
 
+  // Season 3 Culling Game visual system. Routine surfaces stay bone/smoke
+  // light; indigo is structural ink, barrier red marks danger, cyan marks
+  // cursed energy, and ochre/gold carries the storm-lit city atmosphere.
+  const cullingCurrent = {
+    warmIvory: '#F2E8D5',
+    paleConcrete: '#B7B5AD',
+    powderSky: '#B58B5B',
+    cobalt: '#101B36',
+    vermilion: '#E32620',
+    electricCyan: '#35DDE8',
+    sunGold: '#D8BF68',
+    charcoal: '#17191E',
+    mutedText: '#5F625F',
+    softShadow: '#101B36',
+  };
+
   window.JJK_MOBILE_TOKENS = {
     colors,
+    cullingCurrent,
+    cullingCurrentPhaser: {
+      warmIvory: 0xf2e8d5,
+      paleConcrete: 0xb7b5ad,
+      powderSky: 0xb58b5b,
+      cobalt: 0x101b36,
+      vermilion: 0xe32620,
+      electricCyan: 0x35dde8,
+      sunGold: 0xd8bf68,
+      charcoal: 0x17191e,
+      mutedText: 0x5f625f,
+      softShadow: 0x101b36,
+    },
     phaserColors: {
       voidBlack: 0x0b0c10,
       inkBlack: 0x101114,
@@ -43,11 +72,11 @@
       textDim: 0x8c8371,
     },
     energy: {
-      body: { label: 'B', key: 'green', color: colors.bodyGreen, phaser: 0x4fb06d },
-      technique: { label: 'T', key: 'blue', color: colors.techniqueBlue, phaser: 0x3d6bff },
-      focus: { label: 'F', key: 'white', color: colors.focusIvory, phaser: 0xede9d5 },
-      curse: { label: 'C', key: 'red', color: colors.bloodRed, phaser: 0xd43b3b },
-      wild: { label: 'X', key: 'black', color: colors.surfaceRaised, phaser: 0x181715 },
+      taijutsu: { label: 'T', name: 'Taijutsu', key: 'green', color: colors.bodyGreen, phaser: 0x4fb06d },
+      jujutsu: { label: 'J', name: 'Jujutsu', key: 'blue', color: colors.techniqueBlue, phaser: 0x3d6bff },
+      strategic: { label: 'S', name: 'Strategic', key: 'white', color: colors.focusIvory, phaser: 0xede9d5 },
+      bloodline: { label: 'B', name: 'Bloodline', key: 'red', color: colors.bloodRed, phaser: 0xd43b3b },
+      wild: { label: 'X', name: 'Wild', key: 'black', color: colors.surfaceRaised, phaser: 0x181715 },
     },
     energyPhaser: {
       green: 0x4fb06d,
@@ -58,6 +87,7 @@
     },
     type: {
       display: '"Shippori Mincho B1", "Noto Serif JP", Georgia, serif',
+      impact: '"Barlow Condensed", "Arial Narrow", Impact, sans-serif',
       ui: '"Zen Kaku Gothic New", Inter, Arial, sans-serif',
       mono: '"IBM Plex Mono", "JetBrains Mono", monospace',
     },

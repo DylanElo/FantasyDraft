@@ -74,7 +74,7 @@ def test_phaser_matches_server_for_adjusted_cost_replacement_stuns_and_disabled_
     assert probe["originalId"] == "source"
     assert probe["adjusted"] == [energy.value for energy in _adjusted_cost_skill(caster, skill).cost]
     assert probe["energyFit"]["ok"] is False and "wildcard" in probe["energyFit"]["reason"].lower()
-    assert "Harmful skills blocked" in probe["harmfulBlocked"]
+    assert probe["harmfulBlocked"] == "Stop: harmful skills are disabled."
     assert "Body Stun" in probe["classBlocked"]
 
     state = BattleState({"p1": PlayerState("p1", "P1", team=[caster]), "p2": PlayerState("p2", "P2", team=[CharacterState("enemy", "Enemy")])}, "p1")
@@ -132,9 +132,20 @@ console.log(JSON.stringify({ missing, valid, overdrawn }));
         check=True,
     )
     probe = json.loads(result.stdout)
-    assert probe["missing"] == {"ok": False, "reason": "Assign every Wild payment."}
-    assert probe["valid"] == {"ok": True, "reason": ""}
+    assert probe["missing"] == {
+        "ok": False,
+        "reason": "Assign every Wild payment.",
+        "actionId": "a1",
+        "remaining": {"green": 1, "red": 0, "blue": 0, "white": 0},
+    }
+    assert probe["valid"] == {
+        "ok": True,
+        "reason": "",
+        "actionId": None,
+        "remaining": {"green": 0, "red": 0, "blue": 0, "white": 0},
+    }
     assert probe["overdrawn"]["ok"] is False
+    assert probe["overdrawn"]["actionId"] == "a1"
 
 
 def test_phaser_second_skill_tap_opens_detail_without_mutating_queue():
@@ -396,3 +407,557 @@ console.log(JSON.stringify({ beforeMission, afterMission, live: store.firstCreat
     assert probe["beforeMission"]["id"] == "mission_a"
     assert probe["afterMission"]["id"] == "mission_b"
     assert probe["live"]["completed_missions"] == ["mission_a"]
+
+
+def test_phaser_queue_confirm_waits_for_authoritative_queue_update_revision():
+    """Queue update and confirmation are separate revisioned commands.
+
+    Flask-SocketIO may execute adjacent client events concurrently, so the
+    browser must not predict that update_queue(N) has committed and pipeline
+    confirm_queue(N+1). It must wait for the authoritative N+1 snapshot first.
+    """
+
+    script = r"""
+globalThis.JJK_BOOTSTRAP = { battleV2Enabled: true, firstCreation: { roster: {} } };
+globalThis.JJK_MOBILE_TOKENS = {};
+globalThis.window = { JJKPhaserShell: null, setTimeout: () => {}, setInterval: () => {} };
+globalThis.document = { getElementById: () => null };
+globalThis.localStorage = { getItem: () => null, setItem: () => {} };
+const { GameStore } = await import('./web/static/phaser/store/game-store.js');
+
+const emitted = [];
+const skill = { id: 'basic', name: 'Basic', cost: [], target_rule: { kind: 'enemy' }, classes: [], effects: [] };
+const fighter = { character_id: 'tester', alive: true, cooldowns: {}, statuses: [], skill_replacements: {} };
+const action = {
+  id: 'a1', caster_slot: 0, skill_id: 'basic',
+  target_player_id: 'p2', target_slot: 0, target_slots: [],
+};
+const initial = {
+  match_id: 'match-one', state_revision: 14, phase: 'queue_review', turn_player_id: 'p1',
+  event_log: [], pending_actions: { p1: [action] },
+  players: { p1: { id: 'p1', queue_confirmed: false, energy: {}, team: [fighter] }, p2: { id: 'p2', team: [] } },
+};
+const store = Object.create(GameStore.prototype);
+Object.assign(store, {
+  state: initial,
+  playerId: 'p1',
+  actions: [action],
+  actionWildPays: {},
+  queueReviewOpen: true,
+  queueSubmitting: false,
+  commandNonceCounter: 0,
+  ignoreBattleUpdates: false,
+  eventCursor: 0,
+  playbackEvents: [],
+  recentEvents: [],
+  disconnectDeadline: null,
+  lobbyStatus: null,
+  matchLaunchPending: false,
+  selectedCasterSlot: 0,
+  selectedSkillId: null,
+  firstCreationAccount: null,
+  socketClient: { emit(event, payload) { emitted.push({ event, payload }); } },
+  controlsLocked() { return false; },
+  mineId() { return 'p1'; },
+  me() { return this.state.players.p1; },
+  skillFor() { return skill; },
+  adjustedCost() { return []; },
+  ensureWildcardPayments() {},
+  ensureSelectedCaster() {},
+  rememberResult() {},
+  changeScene(scene) { this.scene = scene; },
+  notify() {},
+});
+
+store.confirmQueue();
+const beforeAuthoritativeAck = emitted.map(({ event, payload }) => ({
+  event,
+  revision: payload.state_revision,
+  nonce: payload.client_action_nonce,
+}));
+
+const acknowledged = {
+  ...initial,
+  state_revision: 15,
+  pending_actions: { p1: [{ ...action, queue_index: 0, wildcard_pays: [] }] },
+};
+store.receiveBattleState(acknowledged);
+// A duplicate delivery of the same authoritative snapshot must not serialize
+// a second confirmation command.
+store.receiveBattleState(acknowledged);
+
+console.log(JSON.stringify({
+  beforeAuthoritativeAck,
+  afterAuthoritativeAck: emitted.map(({ event, payload }) => ({
+    event,
+    revision: payload.state_revision,
+    nonce: payload.client_action_nonce,
+  })),
+  acceptedRevision: store.state.state_revision,
+}));
+"""
+    result = subprocess.run(
+        ["node", "--experimental-default-type=module", "-"],
+        input=script,
+        text=True,
+        capture_output=True,
+        cwd=ROOT,
+        check=True,
+    )
+    probe = json.loads(result.stdout)
+
+    assert [entry["event"] for entry in probe["beforeAuthoritativeAck"]] == [
+        "battle_v2_update_queue",
+    ]
+    assert probe["beforeAuthoritativeAck"][0]["revision"] == 14
+    assert [entry["event"] for entry in probe["afterAuthoritativeAck"]] == [
+        "battle_v2_update_queue",
+        "battle_v2_confirm_queue",
+    ]
+    assert probe["afterAuthoritativeAck"][1]["revision"] == 15
+    assert probe["afterAuthoritativeAck"][0]["nonce"] != probe["afterAuthoritativeAck"][1]["nonce"]
+    assert probe["acceptedRevision"] == 15
+
+
+def test_phaser_rejects_older_same_match_snapshot_but_accepts_new_match_revision_reset():
+    """Late same-match broadcasts cannot roll the client revision backward."""
+
+    script = r"""
+globalThis.JJK_BOOTSTRAP = { battleV2Enabled: true, firstCreation: { roster: {} } };
+globalThis.JJK_MOBILE_TOKENS = {};
+globalThis.window = { JJKPhaserShell: null, setTimeout: () => {}, setInterval: () => {} };
+globalThis.document = { getElementById: () => null };
+globalThis.localStorage = { getItem: () => null, setItem: () => {} };
+const { GameStore } = await import('./web/static/phaser/store/game-store.js');
+
+const routes = [];
+const current = {
+  match_id: 'match-one', state_revision: 15, phase: 'queue_review', turn_player_id: 'p1',
+  event_log: [{ type: 'status_applied' }], pending_actions: { p1: [] },
+  players: { p1: { id: 'p1', queue_confirmed: false, team: [] }, p2: { id: 'p2', team: [] } },
+};
+const store = Object.create(GameStore.prototype);
+Object.assign(store, {
+  state: current,
+  playerId: 'p1',
+  actions: [],
+  actionWildPays: {},
+  queueReviewOpen: true,
+  queueSubmitting: false,
+  ignoreBattleUpdates: false,
+  eventCursor: 1,
+  playbackEvents: [],
+  recentEvents: [{ type: 'status_applied' }],
+  disconnectDeadline: null,
+  lobbyStatus: null,
+  matchLaunchPending: false,
+  selectedCasterSlot: null,
+  selectedSkillId: null,
+  firstCreationAccount: null,
+  mineId() { return 'p1'; },
+  me() { return this.state.players.p1; },
+  ensureWildcardPayments() {},
+  ensureSelectedCaster() {},
+  rememberResult() {},
+  changeScene(scene) { routes.push(scene); this.scene = scene; },
+  notify() {},
+});
+
+store.receiveBattleState({
+  ...current,
+  state_revision: 14,
+  phase: 'planning',
+  event_log: [],
+});
+const afterOlderSameMatch = {
+  matchId: store.state.match_id,
+  revision: store.state.state_revision,
+  phase: store.state.phase,
+  eventCursor: store.eventCursor,
+  routes: routes.slice(),
+};
+
+store.receiveBattleState({
+  match_id: 'match-two', state_revision: 0, phase: 'planning', turn_player_id: 'p1',
+  event_log: [], pending_actions: {},
+  players: { p1: { id: 'p1', queue_confirmed: false, team: [] }, p2: { id: 'p2', team: [] } },
+});
+const afterNewMatch = {
+  matchId: store.state.match_id,
+  revision: store.state.state_revision,
+  phase: store.state.phase,
+  routes: routes.slice(),
+};
+console.log(JSON.stringify({ afterOlderSameMatch, afterNewMatch }));
+"""
+    result = subprocess.run(
+        ["node", "--experimental-default-type=module", "-"],
+        input=script,
+        text=True,
+        capture_output=True,
+        cwd=ROOT,
+        check=True,
+    )
+    probe = json.loads(result.stdout)
+
+    assert probe["afterOlderSameMatch"] == {
+        "matchId": "match-one",
+        "revision": 15,
+        "phase": "queue_review",
+        "eventCursor": 1,
+        "routes": [],
+    }
+    assert probe["afterNewMatch"] == {
+        "matchId": "match-two",
+        "revision": 0,
+        "phase": "planning",
+        "routes": ["CombatScene"],
+    }
+
+
+def test_phaser_rapid_add_action_waits_for_authoritative_revision_without_mutating_queue():
+    """A second optimistic plan edit cannot overtake the first submit_plan."""
+
+    script = r"""
+globalThis.JJK_BOOTSTRAP = { battleV2Enabled: true, firstCreation: { roster: {} } };
+globalThis.JJK_MOBILE_TOKENS = {};
+globalThis.window = { JJKPhaserShell: null, setTimeout: () => {}, setInterval: () => {} };
+globalThis.document = { getElementById: () => null };
+globalThis.localStorage = { getItem: () => null, setItem: () => {} };
+const { GameStore } = await import('./web/static/phaser/store/game-store.js');
+
+const emitted = [];
+const fighter = (id) => ({
+  character_id: id, alive: true, cooldowns: {}, statuses: [], skill_replacements: {},
+});
+const initial = {
+  match_id: 'rapid-actions', state_revision: 14, phase: 'planning', turn_player_id: 'p1',
+  event_log: [], pending_actions: { p1: [] }, queue_order: { p1: [] },
+  players: {
+    p1: { id: 'p1', queue_confirmed: false, energy: {}, team: [fighter('one'), fighter('two')] },
+    p2: { id: 'p2', queue_confirmed: false, energy: {}, team: [] },
+  },
+};
+const store = Object.create(GameStore.prototype);
+Object.assign(store, {
+  state: initial,
+  playerId: 'p1',
+  connectionState: 'connected',
+  actions: [],
+  actionWildPays: {},
+  queueReviewOpen: false,
+  queueSubmitting: false,
+  commandNonceCounter: 0,
+  pendingCommand: null,
+  ignoreBattleUpdates: false,
+  eventCursor: 0,
+  playbackEvents: [],
+  recentEvents: [],
+  disconnectDeadline: null,
+  lobbyStatus: null,
+  matchLaunchPending: false,
+  selectedCasterSlot: 0,
+  selectedSkillId: null,
+  detailSkillId: null,
+  targetingStage: null,
+  pendingPrimaryTarget: null,
+  firstCreationAccount: null,
+  lastActionPayloads: [],
+  socketClient: { emit(event, payload) { emitted.push({ event, payload }); } },
+  mineId() { return 'p1'; },
+  me() { return this.state.players.p1; },
+  ensureWildcardPayments() {},
+  ensureSelectedCaster() {},
+  pendingActionPayloads() {
+    const payloads = this.actions.map((action, index) => ({
+      ...action, queue_index: index, wildcard_pays: [],
+    }));
+    this.lastActionPayloads = payloads;
+    return payloads;
+  },
+  rememberResult() {},
+  changeScene(scene) { this.scene = scene; },
+  showToast() {},
+  notify() {},
+});
+
+const firstAccepted = store.addAction(0, 'first_skill', 'p2', 0, []);
+const firstAction = { ...store.actions[0] };
+const queueWhileFirstPending = store.actions.map((action) => ({
+  id: action.id, caster: action.caster_slot, skill: action.skill_id,
+}));
+
+const rapidSecondAccepted = store.addAction(1, 'second_skill', 'p2', 1, []);
+const queueAfterRapidSecond = store.actions.map((action) => ({
+  id: action.id, caster: action.caster_slot, skill: action.skill_id,
+}));
+const emissionsBeforeAck = emitted.map(({ event, payload }) => ({
+  event, revision: payload.state_revision, actionCount: payload.actions.length,
+}));
+
+store.receiveBattleState({
+  ...initial,
+  state_revision: 15,
+  phase: 'queue_review',
+  pending_actions: { p1: [{ ...firstAction, queue_index: 0, wildcard_pays: [] }] },
+  queue_order: { p1: [firstAction.id] },
+});
+
+const afterAckAccepted = store.addAction(1, 'second_skill', 'p2', 1, []);
+const emissionsAfterAck = emitted.map(({ event, payload }) => ({
+  event, revision: payload.state_revision, actionCount: payload.actions.length,
+}));
+
+console.log(JSON.stringify({
+  firstAccepted,
+  rapidSecondAccepted,
+  afterAckAccepted,
+  queueWhileFirstPending,
+  queueAfterRapidSecond,
+  queueAfterAck: store.actions.map((action) => ({ caster: action.caster_slot, skill: action.skill_id })),
+  emissionsBeforeAck,
+  emissionsAfterAck,
+}));
+"""
+    result = subprocess.run(
+        ["node", "--experimental-default-type=module", "-"],
+        input=script,
+        text=True,
+        capture_output=True,
+        cwd=ROOT,
+        check=True,
+    )
+    probe = json.loads(result.stdout)
+
+    assert probe["firstAccepted"] is True
+    assert probe["rapidSecondAccepted"] is False
+    assert probe["queueAfterRapidSecond"] == probe["queueWhileFirstPending"]
+    assert probe["emissionsBeforeAck"] == [
+        {"event": "battle_v2_submit_plan", "revision": 14, "actionCount": 1},
+    ]
+    assert probe["afterAckAccepted"] is True
+    assert probe["queueAfterAck"] == [
+        {"caster": 0, "skill": "first_skill"},
+        {"caster": 1, "skill": "second_skill"},
+    ]
+    assert probe["emissionsAfterAck"] == [
+        {"event": "battle_v2_submit_plan", "revision": 14, "actionCount": 1},
+        {"event": "battle_v2_submit_plan", "revision": 15, "actionCount": 2},
+    ]
+
+
+def test_phaser_battle_snapshot_restores_authoritative_queue_order_and_wildcard_pays():
+    """Queue Review derives order and Wild allocation from server state."""
+
+    script = r"""
+globalThis.JJK_BOOTSTRAP = { battleV2Enabled: true, firstCreation: { roster: {} } };
+globalThis.JJK_MOBILE_TOKENS = {};
+globalThis.window = { JJKPhaserShell: null, setTimeout: () => {}, setInterval: () => {} };
+globalThis.document = { getElementById: () => null };
+globalThis.localStorage = { getItem: () => null, setItem: () => {} };
+const { GameStore } = await import('./web/static/phaser/store/game-store.js');
+
+const wildcardSkill = (id) => ({
+  id, name: id, cost: ['black'], target_rule: { kind: 'enemy' }, classes: [], effects: [],
+});
+const fighters = [
+  { character_id: 'one', alive: true, cooldowns: {}, statuses: [], skill_replacements: {} },
+  { character_id: 'two', alive: true, cooldowns: {}, statuses: [], skill_replacements: {} },
+];
+const actionA = {
+  id: 'action-a', caster_slot: 0, skill_id: 'skill-a', target_player_id: 'p2',
+  target_slot: 0, target_slots: [], queue_index: 0, wildcard_pays: ['green'],
+};
+const actionB = {
+  id: 'action-b', caster_slot: 1, skill_id: 'skill-b', target_player_id: 'p2',
+  target_slot: 1, target_slots: [], queue_index: 1, wildcard_pays: ['red'],
+};
+const current = {
+  match_id: 'authoritative-queue', state_revision: 14, phase: 'queue_review', turn_player_id: 'p1',
+  event_log: [], pending_actions: { p1: [] }, queue_order: { p1: [] },
+  players: {
+    p1: {
+      id: 'p1', queue_confirmed: false,
+      energy: { green: 1, red: 1, blue: 0, white: 0 }, team: fighters,
+    },
+    p2: { id: 'p2', queue_confirmed: false, energy: {}, team: [] },
+  },
+};
+const store = Object.create(GameStore.prototype);
+Object.assign(store, {
+  state: current,
+  playerId: 'p1',
+  actions: [actionA, actionB],
+  actionWildPays: { 'action-a': ['blue'], 'action-b': ['white'] },
+  queueReviewOpen: true,
+  queueSubmitting: false,
+  pendingCommand: null,
+  ignoreBattleUpdates: false,
+  eventCursor: 0,
+  playbackEvents: [],
+  recentEvents: [],
+  disconnectDeadline: null,
+  lobbyStatus: null,
+  matchLaunchPending: false,
+  selectedCasterSlot: 0,
+  selectedSkillId: null,
+  firstCreationAccount: null,
+  lastActionPayloads: [],
+  mineId() { return 'p1'; },
+  me() { return this.state.players.p1; },
+  skillFor(_caster, skillId) { return wildcardSkill(skillId); },
+  adjustedCost() { return ['black']; },
+  ensureSelectedCaster() {},
+  rememberResult() {},
+  changeScene(scene) { this.scene = scene; },
+  notify() {},
+});
+
+store.receiveBattleState({
+  ...current,
+  state_revision: 15,
+  pending_actions: { p1: [actionA, actionB] },
+  queue_order: { p1: ['action-b', 'action-a'] },
+});
+
+console.log(JSON.stringify({
+  order: store.actions.map((action) => action.id),
+  actionWildPays: store.actionWildPays,
+  serialized: store.pendingActionPayloads().map((action) => ({
+    id: action.id, queueIndex: action.queue_index, wildcardPays: action.wildcard_pays,
+  })),
+}));
+"""
+    result = subprocess.run(
+        ["node", "--experimental-default-type=module", "-"],
+        input=script,
+        text=True,
+        capture_output=True,
+        cwd=ROOT,
+        check=True,
+    )
+    probe = json.loads(result.stdout)
+
+    assert probe["order"] == ["action-b", "action-a"]
+    assert probe["actionWildPays"] == {
+        "action-b": ["red"],
+        "action-a": ["green"],
+    }
+    assert probe["serialized"] == [
+        {"id": "action-b", "queueIndex": 0, "wildcardPays": ["red"]},
+        {"id": "action-a", "queueIndex": 1, "wildcardPays": ["green"]},
+    ]
+
+
+def test_phaser_transmute_requires_explicit_five_pip_allocation_and_target():
+    script = r"""
+globalThis.JJK_BOOTSTRAP = { battleV2Enabled: true, firstCreation: { roster: {} } };
+globalThis.JJK_MOBILE_TOKENS = {};
+globalThis.window = { JJKPhaserShell: null, setTimeout: () => {}, setInterval: () => {} };
+globalThis.document = { getElementById: () => null };
+globalThis.localStorage = { getItem: () => null, setItem: () => {} };
+const { GameStore } = await import('./web/static/phaser/store/game-store.js');
+const emitted = [];
+const store = Object.create(GameStore.prototype);
+Object.assign(store, {
+  state: {
+    match_id: 'transmute', state_revision: 8, phase: 'planning', turn_player_id: 'p1',
+    players: {
+      p1: { id: 'p1', energy_converted_this_turn: false, energy: { green: 3, blue: 1, white: 1, red: 0 }, team: [] },
+      p2: { id: 'p2', energy: {}, team: [] },
+    },
+  },
+  playerId: 'p1', actions: [], queueSubmitting: false, pendingCommand: null,
+  connectionState: 'connected', transmuteOpen: false, transmuteSources: [], transmuteTarget: null,
+  selectedSkillId: null, detailSkillId: null, targetingStage: null, pendingPrimaryTarget: null,
+  commandNonceCounter: 0,
+  socketClient: { emit: (event, payload) => emitted.push({ event, payload }) },
+  notify() {}, showToast() {},
+});
+store.openTransmute();
+store.addTransmuteSource('green');
+store.addTransmuteSource('green');
+store.addTransmuteSource('green');
+store.addTransmuteSource('blue');
+store.addTransmuteSource('white');
+store.selectTransmuteTarget('red');
+store.confirmTransmute();
+console.log(JSON.stringify({ emitted, open: store.transmuteOpen, sources: store.transmuteSources, target: store.transmuteTarget }));
+"""
+    result = subprocess.run(
+        ["node", "--experimental-default-type=module", "-"],
+        input=script,
+        text=True,
+        capture_output=True,
+        cwd=ROOT,
+        check=True,
+    )
+    probe = json.loads(result.stdout)
+
+    assert probe["emitted"][0]["event"] == "battle_v2_convert_energy"
+    assert probe["emitted"][0]["payload"]["sources"] == [
+        "green", "green", "green", "blue", "white"
+    ]
+    assert probe["emitted"][0]["payload"]["target"] == "red"
+    assert probe["emitted"][0]["payload"]["state_revision"] == 8
+    assert probe["open"] is False
+
+
+def test_phaser_transmute_is_planning_only_and_closes_on_authoritative_phase_change():
+    script = r"""
+globalThis.JJK_BOOTSTRAP = { battleV2Enabled: true, firstCreation: { roster: {} } };
+globalThis.JJK_MOBILE_TOKENS = {};
+globalThis.window = { JJKPhaserShell: null, setTimeout: () => {}, setInterval: () => {} };
+globalThis.document = { getElementById: () => null };
+globalThis.localStorage = { getItem: () => null, setItem: () => {} };
+const { GameStore } = await import('./web/static/phaser/store/game-store.js');
+const player = {
+  id: 'p1', energy_converted_this_turn: false,
+  energy: { green: 5, blue: 0, white: 0, red: 0 }, team: [], queue_confirmed: false,
+};
+const store = Object.create(GameStore.prototype);
+Object.assign(store, {
+  state: {
+    match_id: 'transmute-phase', state_revision: 8, phase: 'planning', turn_player_id: 'p1',
+    players: { p1: player, p2: { id: 'p2', energy: {}, team: [] } },
+  },
+  playerId: 'p1', ignoreBattleUpdates: false, actions: [], actionWildPays: {},
+  queueSubmitting: false, queueReviewOpen: false, pendingCommand: null,
+  connectionState: 'connected', transmuteOpen: true,
+  transmuteSources: ['green', 'green'], transmuteTarget: 'red',
+  eventCursor: 0, playbackEvents: [], recentEvents: [],
+  visiblePublicAction: null, visiblePublicActionUntil: 0,
+  ensureSelectedCaster() {}, changeScene() {}, notify() {},
+});
+const planningAllowed = store.canTransmuteEnergy();
+store.state.phase = 'queue_review';
+const reviewAllowed = store.canTransmuteEnergy();
+store.state.phase = 'planning';
+store.receiveBattleState({
+  match_id: 'transmute-phase', state_revision: 9, phase: 'queue_review',
+  turn_player_id: 'p1', paused: false, result_type: null,
+  phase_seconds_remaining: 20, event_log: [], pending_actions: {}, queue_order: {},
+  players: { p1: player, p2: { id: 'p2', energy: {}, team: [] } },
+});
+console.log(JSON.stringify({
+  planningAllowed, reviewAllowed, open: store.transmuteOpen,
+  sources: store.transmuteSources, target: store.transmuteTarget,
+}));
+"""
+    result = subprocess.run(
+        ["node", "--experimental-default-type=module", "-"],
+        input=script,
+        text=True,
+        capture_output=True,
+        cwd=ROOT,
+        check=True,
+    )
+    probe = json.loads(result.stdout)
+
+    assert probe == {
+        "planningAllowed": True,
+        "reviewAllowed": False,
+        "open": False,
+        "sources": [],
+        "target": None,
+    }

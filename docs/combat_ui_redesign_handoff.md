@@ -1,5 +1,11 @@
 # Combat UI Redesign Handoff
 
+> Historical implementation/provenance note: the rain-darkened Ink + Talisman
+> visual direction described below was superseded by the user-approved Culling
+> Current direction on 2026-07-17. Preserve this document as history; use
+> `docs/CODEX_PROJECT_MEMORY.md` and `docs/mobile_phaser_ui_ux_brief.md` for the
+> current visual contract.
+
 ## Scope
 
 This pass redesigns and implements the maintained Phaser combat interface. It does not change Battle v2 combat rules, roster data, socket contracts, server authority, energy calculations, targeting legality, cooldown behavior, or queue semantics.

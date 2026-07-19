@@ -613,6 +613,15 @@ def clean_v2_energy_color(value) -> str:
     return CONTROL_RE.sub("", str(value or "").strip().lower())[:8]
 
 
+def clean_v2_energy_colors(values) -> list[str]:
+    if not isinstance(values, list):
+        return []
+    # Preserve a sixth entry as an overlong sentinel so the authoritative
+    # exact-five check rejects extra selections instead of accepting a
+    # silently truncated request. Nothing beyond six changes that result.
+    return [clean_v2_energy_color(value) for value in values[:6]]
+
+
 def clean_resume_token(value) -> str:
     return RESUME_TOKEN_RE.sub("", str(value or "").strip())[:128]
 
@@ -728,6 +737,12 @@ def emit_battle_v2_update(room_id: str, viewer_id: str | None = None):
 def emit_battle_v2_error(exc: Exception):
     operational_counters["command_errors"] += 1
     emit("battle_v2_error", {"message": str(exc)})
+
+
+def emit_battle_v2_command_error(exc: Exception, room_id: str, viewer_id: str) -> None:
+    """Reject the intent, then return the viewer's current authoritative snapshot."""
+    emit_battle_v2_error(exc)
+    emit_battle_v2_update(room_id, viewer_id)
 
 
 def issue_battle_v2_resume_sessions(room_id: str) -> None:
@@ -1187,8 +1202,12 @@ def on_battle_v2_join_pvp(data=None):
                 room=player_room(player_session),
             )
             return
-        issue_battle_v2_resume_sessions(match_id)
         authorize_match_context(match_id, player_session)
+        # The second joiner's socket is not in its private player room until
+        # authorization completes. Issue resume grants only after that join,
+        # otherwise the second player receives battle state but silently
+        # misses the credential required for reconnect.
+        issue_battle_v2_resume_sessions(match_id)
         emit_battle_v2_update(match_id, player_session)
     except BattleV2Error as exc:
         emit_battle_v2_error(exc)
@@ -1203,13 +1222,16 @@ def on_battle_v2_resume(data=None):
     player_id = CONTROL_RE.sub("", str(data.get("player_id", "")).strip())[:64]
     token = clean_resume_token(data.get("resume_token"))
     state = battle_v2_manager.rooms.get(room_id)
-    valid = (
-        state is not None
-        and player_id in state.players
-        and player_id != CPU_V2_PLAYER_ID
-        and battle_v2_sessions.verify(room_id, player_id, token)
-    )
-    if not valid:
+    if state is None or player_id not in state.players or player_id == CPU_V2_PLAYER_ID:
+        emit("battle_v2_resume_rejected", {"message": "Battle session could not be resumed."})
+        return
+    # Consume and rotate the credential before changing connection state or
+    # admitting this socket to either viewer-private room. A separate
+    # verify-then-rotate sequence lets two concurrent replays both pass the
+    # read-only verification; the loser could then remain subscribed to the
+    # private room and receive the winner's newly rotated token.
+    grant = battle_v2_sessions.rotate(room_id, player_id, token)
+    if grant is None:
         emit("battle_v2_resume_rejected", {"message": "Battle session could not be resumed."})
         return
     try:
@@ -1218,10 +1240,6 @@ def on_battle_v2_resume(data=None):
         join_room(match_room(room_id))
         join_room(player_room(player_id))
     except (BattleV2Error, KeyError, RuntimeError):
-        emit("battle_v2_resume_rejected", {"message": "Battle session could not be resumed."})
-        return
-    grant = battle_v2_sessions.rotate(room_id, player_id, token)
-    if grant is None:
         emit("battle_v2_resume_rejected", {"message": "Battle session could not be resumed."})
         return
     with lifecycle_lock:
@@ -1356,7 +1374,7 @@ def on_battle_v2_submit_plan(data=None):
         )
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
-        emit_battle_v2_error(exc)
+        emit_battle_v2_command_error(exc, room_id, player_session)
 
 
 @socketio.on("battle_v2_update_queue")
@@ -1381,7 +1399,7 @@ def on_battle_v2_update_queue(data=None):
         )
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
-        emit_battle_v2_error(exc)
+        emit_battle_v2_command_error(exc, room_id, player_session)
 
 
 @socketio.on("battle_v2_confirm_queue")
@@ -1399,7 +1417,7 @@ def on_battle_v2_confirm_queue(data=None):
             run_battle_v2_cpu_turns(room_id)
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
-        emit_battle_v2_error(exc)
+        emit_battle_v2_command_error(exc, room_id, player_session)
 
 
 @socketio.on("battle_v2_cancel_queue")
@@ -1415,7 +1433,7 @@ def on_battle_v2_cancel_queue(data=None):
         execute_v2_player_command(room_id, player_session, "cancel_queue", data)
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
-        emit_battle_v2_error(exc)
+        emit_battle_v2_command_error(exc, room_id, player_session)
 
 
 @socketio.on("battle_v2_convert_energy")
@@ -1434,13 +1452,13 @@ def on_battle_v2_convert_energy(data=None):
             "convert_energy",
             data,
             {
-                "source": clean_v2_energy_color(data.get("source")),
+                "sources": clean_v2_energy_colors(data.get("sources")),
                 "target": clean_v2_energy_color(data.get("target")),
             },
         )
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
-        emit_battle_v2_error(exc)
+        emit_battle_v2_command_error(exc, room_id, player_session)
 
 
 @socketio.on("battle_v2_end_turn")
@@ -1458,7 +1476,7 @@ def on_battle_v2_end_turn(data=None):
             run_battle_v2_cpu_turns(room_id)
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
-        emit_battle_v2_error(exc)
+        emit_battle_v2_command_error(exc, room_id, player_session)
 
 
 @socketio.on("battle_v2_surrender")
@@ -1474,7 +1492,7 @@ def on_battle_v2_surrender(data=None):
         execute_v2_player_command(room_id, player_session, "surrender", data)
         emit_battle_v2_update(room_id, player_session)
     except BattleV2Error as exc:
-        emit_battle_v2_error(exc)
+        emit_battle_v2_command_error(exc, room_id, player_session)
 
 
 @socketio.on("disconnect")

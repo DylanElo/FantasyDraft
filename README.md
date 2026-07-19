@@ -6,6 +6,14 @@ Players enter the Phaser arena, choose a three-fighter Battle v2 team, and resol
 
 ## Run Locally
 
+On Windows, double-click `start_server.bat`. The launcher creates the local
+virtual environment when needed, synchronizes dependencies whenever
+`requirements.txt` changes, waits for the server readiness check, and opens the
+arena in the default browser. Set `JJK_NO_BROWSER=1` before launching if you do
+not want it to open a browser automatically.
+
+The equivalent manual launch is:
+
 ```bash
 pip install -r requirements.txt
 python run_server.py
@@ -25,7 +33,7 @@ python -m pytest -q
 - `web/app.py` is the Flask-SocketIO bridge.
 - `web/static/phaser-shell.js` owns the v2 browser client, scene stack, SocketIO bridge, and Phaser UI.
 - `web/static/phaser-design-tokens.js` exposes the portrait-first mobile UI tokens consumed by Phaser.
-- The current Phaser visual direction is Ink + Talisman: ink surfaces, aged paper accents, restrained cursed-energy glow, and strict combat-state colors.
+- The current Phaser visual direction is the Season 3 Culling Current system: sharp ink and hatch work, hard cel shadows, storm-lit painted cities, bone/smoke UI surfaces, barrier red, curse cyan, and strict combat-state colors. See `docs/season3_visual_system.md`.
 - `web/static/phaser-shell.css` is only the canvas/container reset. Phaser draws the v2 screens.
 - `jjk_arena/battle_v2/` contains the Battle v2 rules engine and roster data.
 - Battle v2 currently supports CPU Practice and Private PvP room lobbies. PvP waiting rooms clean up when a player cancels, resets, or disconnects.

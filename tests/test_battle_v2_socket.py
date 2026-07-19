@@ -1,6 +1,7 @@
 import pytest
 from copy import deepcopy
 from itertools import count
+from threading import Barrier, Thread
 
 from jjk_arena.battle_v2.models import EnergyType, SkillClass, StatusEffect
 from jjk_arena.battle_v2.timers import BattleTimerPolicy
@@ -405,6 +406,53 @@ def test_invalid_or_rotated_resume_token_is_rejected(monkeypatch):
     assert rejected == {"battle_v2_resume_rejected": {"message": "Battle session could not be resumed."}}
 
 
+def test_concurrent_resume_replay_admits_only_atomic_rotation_winner(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    original = socket_client_with_player("resume-owner")
+    original.emit("battle_v2_start_classic", {"room_id": "resume-concurrent"})
+    grant = received_payloads(original)["battle_v2_session"]
+    original.disconnect()
+
+    first = socket_client_with_player("first-replay-session")
+    second = socket_client_with_player("second-replay-session")
+    contenders = (first, second)
+    rotate_barrier = Barrier(len(contenders))
+    original_rotate = web_app.battle_v2_sessions.rotate
+
+    def synchronized_rotate(room_id, player_id, token):
+        rotate_barrier.wait(timeout=2)
+        return original_rotate(room_id, player_id, token)
+
+    monkeypatch.setattr(web_app.battle_v2_sessions, "rotate", synchronized_rotate)
+    failures = []
+
+    def attempt_resume(client):
+        try:
+            client.emit("battle_v2_resume", grant)
+        except BaseException as exc:  # Surface worker failures in the test thread.
+            failures.append(exc)
+
+    workers = [Thread(target=attempt_resume, args=(client,)) for client in contenders]
+    for worker in workers:
+        worker.start()
+    for worker in workers:
+        worker.join(timeout=3)
+
+    assert not any(worker.is_alive() for worker in workers)
+    assert failures == []
+    messages = [received_payloads(client) for client in contenders]
+    winners = [payloads for payloads in messages if "battle_v2_session" in payloads]
+    losers = [payloads for payloads in messages if "battle_v2_resume_rejected" in payloads]
+
+    assert len(winners) == 1
+    assert len(losers) == 1
+    assert winners[0]["battle_v2_session"]["resume_token"] != grant["resume_token"]
+    assert "battle_v2_update" in winners[0]
+    assert losers[0] == {
+        "battle_v2_resume_rejected": {"message": "Battle session could not be resumed."},
+    }
+
+
 def test_battle_v2_socket_retry_does_not_repeat_energy_conversion(monkeypatch):
     monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
     client = socket_client()
@@ -412,9 +460,9 @@ def test_battle_v2_socket_retry_does_not_repeat_energy_conversion(monkeypatch):
     start = received_payload(client, "battle_v2_update")
     state = web_app.battle_v2_manager.get_state("retry-v2")
     player_id = start["turn_player_id"]
-    state.players[player_id].energy[EnergyType.GREEN] = 2
+    state.players[player_id].energy[EnergyType.GREEN] = 5
     command = {
-        "source": "green",
+        "sources": ["green"] * 5,
         "target": "red",
         "state_revision": 0,
         "client_action_nonce": "socket-retry",
@@ -436,6 +484,18 @@ def test_battle_v2_socket_rejects_stale_revision_without_mutation(monkeypatch):
     client.emit("battle_v2_start_classic", {"room_id": "stale-v2"})
     start = received_payload(client, "battle_v2_update")
     state = web_app.battle_v2_manager.get_state("stale-v2")
+    state.players[start["turn_player_id"]].team[0].statuses.append(
+        StatusEffect(
+            "stale_resync_secret",
+            "Stale Resync Secret",
+            "__cpu_v2__",
+            0,
+            start["turn_player_id"],
+            0,
+            2,
+            invisible=True,
+        )
+    )
     before = deepcopy(web_app.battle_v2_manager.serialize_for_player("stale-v2", start["turn_player_id"]))
 
     client.emit("battle_v2_end_turn", {
@@ -443,9 +503,58 @@ def test_battle_v2_socket_rejects_stale_revision_without_mutation(monkeypatch):
         "client_action_nonce": "stale-command",
     })
 
-    error = received_payload(client, "battle_v2_error")
+    messages = client.get_received()
+    assert [message["name"] for message in messages] == ["battle_v2_error", "battle_v2_update"]
+    error = messages[0]["args"][0]
+    resync = messages[1]["args"][0]
     assert "stale state revision" in error["message"]
-    assert web_app.battle_v2_manager.serialize_for_player("stale-v2", start["turn_player_id"]) == before
+    after = web_app.battle_v2_manager.serialize_for_player("stale-v2", start["turn_player_id"])
+    assert after == before
+    assert resync["state_revision"] == before["state_revision"] == state.state_revision
+    assert resync["phase"] == before["phase"]
+    assert resync["turn_player_id"] == before["turn_player_id"]
+    assert resync["pending_actions"] == before["pending_actions"]
+    assert resync["queue_order"] == before["queue_order"]
+    assert resync["event_log"] == before["event_log"]
+    assert all(
+        status["id"] != "stale_resync_secret"
+        for status in resync["players"][start["turn_player_id"]]["team"][0]["statuses"]
+    )
+    assert any(
+        status.id == "stale_resync_secret"
+        for status in state.players[start["turn_player_id"]].team[0].statuses
+    )
+    room_receipts = web_app.battle_v2_manager.command_receipts.get(state.room_id, {})
+    assert "stale-command" not in room_receipts.get(start["turn_player_id"], {})
+
+
+def test_battle_v2_socket_resyncs_after_deadline_makes_command_revision_stale(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    client = socket_client()
+    client.emit("battle_v2_start_classic", {"room_id": "deadline-stale-v2"})
+    start = received_payload(client, "battle_v2_update")
+    player_id = start["turn_player_id"]
+    state = web_app.battle_v2_manager.get_state("deadline-stale-v2")
+    web_app.battle_v2_timer_scheduler.cancel("deadline-stale-v2")
+    state.phase_deadline = web_app.battle_v2_manager.clock() - 1
+
+    client.emit("battle_v2_end_turn", {
+        "state_revision": start["state_revision"],
+        "client_action_nonce": "deadline-stale-command",
+    })
+
+    messages = client.get_received()
+    assert [message["name"] for message in messages] == ["battle_v2_error", "battle_v2_update"]
+    error = messages[0]["args"][0]
+    resync = messages[1]["args"][0]
+    assert "stale state revision" in error["message"]
+    assert resync["state_revision"] == state.state_revision == start["state_revision"] + 1
+    assert resync["turn_player_id"] == "__cpu_v2__"
+    assert [event["type"] for event in resync["event_log"]].count("phase_timeout") == 1
+    assert [event["type"] for event in resync["event_log"]].count("auto_pass") == 1
+    assert not any(event["type"] == "turn_skipped" for event in resync["event_log"])
+    room_receipts = web_app.battle_v2_manager.command_receipts.get(state.room_id, {})
+    assert "deadline-stale-command" not in room_receipts.get(player_id, {})
 
 
 def test_battle_v2_socket_start_submit_confirm(monkeypatch):
@@ -507,16 +616,45 @@ def test_battle_v2_socket_convert_energy(monkeypatch):
     start_state = received_payload(client, "battle_v2_update")
     player_id = start_state["turn_player_id"]
     state = web_app.battle_v2_manager.get_state("socket-v2")
-    state.players[player_id].energy[EnergyType.GREEN] = 2
+    state.players[player_id].energy[EnergyType.GREEN] = 5
     state.players[player_id].energy[EnergyType.RED] = 0
 
-    client.emit("battle_v2_convert_energy", command_payload(state, {"source": "green", "target": "red"}))
+    client.emit(
+        "battle_v2_convert_energy",
+        command_payload(state, {"sources": ["green"] * 5, "target": "red"}),
+    )
     converted = received_payload(client, "battle_v2_update")
 
     assert converted["players"][player_id]["energy"]["green"] == 0
     assert converted["players"][player_id]["energy"]["red"] == 1
     assert converted["players"][player_id]["energy_converted_this_turn"] is True
     assert any(event["type"] == "energy_converted" for event in converted["event_log"])
+
+
+def test_battle_v2_socket_rejects_six_transmutation_sources_without_truncating(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    client = socket_client()
+    client.emit("battle_v2_start_classic", {"room_id": "six-source-transmutation"})
+    started = received_payload(client, "battle_v2_update")
+    state = web_app.battle_v2_manager.get_state("six-source-transmutation")
+    player_id = started["turn_player_id"]
+    state.players[player_id].energy = {energy: 0 for energy in EnergyType}
+    state.players[player_id].energy[EnergyType.GREEN] = 6
+
+    client.emit(
+        "battle_v2_convert_energy",
+        command_payload(state, {"sources": ["green"] * 6, "target": "red"}),
+    )
+    messages = received_payloads(client)
+
+    assert "battle_v2_error" in messages
+    assert "exactly 5" in messages["battle_v2_error"]["message"]
+    refreshed = messages["battle_v2_update"]
+    assert refreshed["state_revision"] == 0
+    assert refreshed["players"][player_id]["energy"]["green"] == 6
+    assert refreshed["players"][player_id]["energy"]["red"] == 0
+    assert refreshed["players"][player_id]["energy_converted_this_turn"] is False
+    assert not any(event["type"] == "energy_converted" for event in refreshed["event_log"])
 
 
 def test_battle_v2_socket_surrender_finishes_match(monkeypatch):
@@ -681,12 +819,20 @@ def test_battle_v2_pvp_join_waits_then_starts_two_human_room(monkeypatch):
         },
     )
 
-    p1_update = received_payload(p1_client, "battle_v2_update")
-    p2_update = received_payload(p2_client, "battle_v2_update")
+    p1_messages = received_payloads(p1_client)
+    p2_messages = received_payloads(p2_client)
+    p1_update = p1_messages["battle_v2_update"]
+    p2_update = p2_messages["battle_v2_update"]
+    p1_session = p1_messages["battle_v2_session"]
+    p2_session = p2_messages["battle_v2_session"]
 
     assert set(p1_update["players"]) == {"p1", "p2"}
     assert set(p2_update["players"]) == {"p1", "p2"}
     assert "__cpu_v2__" not in p1_update["players"]
+    assert p1_session["player_id"] == "p1"
+    assert p2_session["player_id"] == "p2"
+    assert p1_session["room_id"] == p1_update["match_id"]
+    assert p2_session["room_id"] == p2_update["match_id"]
 
 
 def test_battle_v2_pvp_waiting_player_can_cancel_lobby(monkeypatch):

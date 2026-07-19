@@ -1,9 +1,9 @@
-import { BOOT, CORE_ENERGY } from '../core/runtime-config.js?v=35';
-import { safeText } from '../core/text.js?v=35';
-import { readStorage, writeStorage } from '../core/storage.js?v=35';
-import { AssetRegistry } from '../core/asset-registry.js?v=35';
-import { firstCreationRoster, preset, presetTitle } from '../core/roster.js?v=35';
-import { damageEventAmount } from '../fx/event-metrics.js?v=35';
+import { BOOT, CORE_ENERGY } from '../core/runtime-config.js?v=36';
+import { safeText } from '../core/text.js?v=36';
+import { readStorage, writeStorage } from '../core/storage.js?v=36';
+import { AssetRegistry } from '../core/asset-registry.js?v=36';
+import { firstCreationRoster, preset, presetTitle } from '../core/roster.js?v=36';
+import { damageEventAmount } from '../fx/event-metrics.js?v=36';
 
 export const MATCH_LAUNCH_TIMEOUT_MS = 10000;
 

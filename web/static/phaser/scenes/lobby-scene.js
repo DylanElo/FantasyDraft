@@ -1,7 +1,7 @@
-import { CULLING_COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=35';
-import { safeText, shortText } from '../core/text.js?v=35';
-import { drawCurrentWorld } from '../ui/culling-current-ui.js?v=35';
-import { BaseScene } from './base-scene.js?v=35';
+import { CULLING_COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=36';
+import { safeText, shortText } from '../core/text.js?v=36';
+import { drawCurrentWorld } from '../ui/culling-current-ui.js?v=36';
+import { BaseScene } from './base-scene.js?v=36';
 
 const HOME_WORLD_KEY = 'culling-current-home-hero';
 
@@ -24,9 +24,21 @@ export class LobbyScene extends BaseScene {
 
     editIdentity(type) {
       const current = type === 'name' ? this.store.playerName : this.store.roomId;
-      const label = type === 'name' ? 'Player name' : 'Room code';
-      const next = window.prompt(label, current);
-      if (next !== null) this.store.setIdentity(type, next);
+      const isName = type === 'name';
+      const label = isName ? 'Player name' : 'Private room code';
+      if (!this.domUI) {
+        if (this.store && this.store.showToast) this.store.showToast('Identity editor is unavailable.');
+        return;
+      }
+      this.domUI.openIdentityEditor({
+        type: isName ? 'name' : 'room',
+        title: isName ? 'EDIT PLAYER NAME' : 'EDIT PRIVATE ROOM',
+        label,
+        value: current,
+        maxLength: isName ? 24 : 32,
+        restoreActionId: isName ? 'identity-name' : 'identity-room',
+        onSave: (value) => this.store.setIdentity(type, value),
+      });
     }
 
     homeLayout(frame) {
@@ -112,7 +124,7 @@ export class LobbyScene extends BaseScene {
         color: CULLING_COLORS.inverseText,
       }).setMaxLines(1);
       this.mono(nameX, region.y + 32, `${this.store.playerTeam.length}/3 ACTIVE`, {
-        fontSize: '10px',
+        fontSize: '12px',
         fontStyle: '700',
         color: CULLING_COLORS.cyan,
       });
@@ -123,7 +135,7 @@ export class LobbyScene extends BaseScene {
       this.graphics.lineTo(roomX - 4, region.y + region.h - 9);
       this.graphics.strokePath();
       this.mono(roomX + 3, region.y + 8, 'PRIVATE ROOM', {
-        fontSize: '9px',
+        fontSize: '10px',
         fontStyle: '700',
         color: CULLING_COLORS.concrete,
       });
@@ -144,13 +156,17 @@ export class LobbyScene extends BaseScene {
         { x: statusX + 7, y: region.y + 20 },
       ], true);
       this.mono(statusX + 2, region.y + 36, live ? 'LIVE' : 'OFF', {
-        fontSize: '9px',
+        fontSize: '12px',
         fontStyle: '900',
         color: live ? CULLING_COLORS.cyan : CULLING_COLORS.vermilion,
       });
 
-      this.registerHitTarget(region.x + 2, region.y + 2, Math.max(44, roomX - region.x - 8), region.h - 4, `Edit player name ${this.store.playerName}`, () => this.editIdentity('name'));
-      this.registerHitTarget(roomX - 2, region.y + 2, roomW, region.h - 4, `Edit room code ${this.store.roomId}`, () => this.editIdentity('room'));
+      this.registerHitTarget(region.x + 2, region.y + 2, Math.max(44, roomX - region.x - 8), region.h - 4, `Edit player name ${this.store.playerName}`, () => this.editIdentity('name'), {
+        accessibilityId: 'identity-name',
+      });
+      this.registerHitTarget(roomX - 2, region.y + 2, roomW, region.h - 4, `Edit room code ${this.store.roomId}`, () => this.editIdentity('room'), {
+        accessibilityId: 'identity-room',
+      });
     }
 
     renderEditorialTitle(region) {
@@ -176,59 +192,10 @@ export class LobbyScene extends BaseScene {
       this.graphics.fillStyle(CULLING_COLORS.ivory, 0.88);
       this.graphics.fillRect(region.x + 84, region.y + 54, Math.min(216, region.w - 102), 18);
       this.mono(region.x + 98, region.y + 56, 'CURSED CLASH  //  3V3 TACTICAL', {
-        fontSize: isSmall ? '9px' : '10px',
+        fontSize: '10px',
         fontStyle: '900',
         color: CULLING_COLORS.cobaltText,
       });
-    }
-
-    renderHeroComposition(region) {
-      const team = this.store.playerTeam.slice(0, 3);
-      const sideW = Math.round(region.w * 0.45);
-      const centerW = Math.round(region.w * 0.53);
-      const sideH = Math.round(region.h * 0.78);
-      const centerH = Math.round(region.h * 0.94);
-      const sideY = region.y + region.h - sideH - 2;
-      const centerY = region.y + region.h - centerH - 4;
-      const placements = [
-        { x: region.x - 3, y: sideY, w: sideW, h: sideH, depth: -4, tone: CULLING_COLORS.cyan },
-        { x: region.x + (region.w - centerW) / 2, y: centerY, w: centerW, h: centerH, depth: -3, tone: CULLING_COLORS.cobalt },
-        { x: region.x + region.w - sideW + 3, y: sideY, w: sideW, h: sideH, depth: -4, tone: CULLING_COLORS.vermilion },
-      ];
-
-      const backing = this.add.graphics().setDepth(-6);
-      backing.fillStyle(CULLING_COLORS.ivory, 0.58);
-      backing.fillTriangle(region.x - 18, region.y + region.h, region.x + region.w * 0.46, region.y + 18, region.x + region.w * 0.38, region.y + region.h);
-      backing.fillStyle(CULLING_COLORS.cobalt, 0.2);
-      backing.fillTriangle(region.x + region.w * 0.3, region.y + region.h, region.x + region.w * 0.72, region.y, region.x + region.w + 10, region.y + region.h);
-      backing.fillStyle(CULLING_COLORS.vermilion, 0.18);
-      backing.fillTriangle(region.x + region.w * 0.78, region.y + 12, region.x + region.w + 12, region.y + region.h * 0.74, region.x + region.w, region.y + region.h);
-      this.nodes.push(backing);
-
-      team.forEach((characterId, index) => {
-        const place = placements[index];
-        if (!place) return;
-        this.portraitArtwork(characterId, place.x, place.y, place.w, place.h, {
-          context: 'hero',
-          depth: place.depth,
-          alpha: 0.99,
-          tone: place.tone,
-        });
-      });
-
-      this.graphics.lineStyle(3, CULLING_COLORS.cyan, 0.56);
-      this.graphics.beginPath();
-      this.graphics.moveTo(region.x - 10, region.y + region.h - 24);
-      this.graphics.lineTo(region.x + region.w * 0.39, region.y + 34);
-      this.graphics.strokePath();
-      this.graphics.lineStyle(3, CULLING_COLORS.vermilion, 0.52);
-      this.graphics.beginPath();
-      this.graphics.moveTo(region.x + region.w * 0.64, region.y + 18);
-      this.graphics.lineTo(region.x + region.w + 12, region.y + region.h - 34);
-      this.graphics.strokePath();
-      this.graphics.fillStyle(CULLING_COLORS.ivory, 0.58);
-      this.graphics.fillTriangle(region.x, region.y + region.h - 52, region.x + region.w * 0.28, region.y + region.h, region.x, region.y + region.h);
-      this.graphics.fillTriangle(region.x + region.w, region.y + region.h - 62, region.x + region.w * 0.73, region.y + region.h, region.x + region.w, region.y + region.h);
     }
 
     renderBattleSlab(region) {
@@ -333,7 +300,7 @@ export class LobbyScene extends BaseScene {
       this.graphics.fillTriangle(x, y, x + w * 0.72, y, x, y + h * 0.74);
       this.featureIcon(x, y + 1, w, tone, type);
       this.mono(x + 9, y + 45, kicker, {
-        fontSize: '9px',
+        fontSize: '10px',
         fontStyle: '900',
         color: tone === CULLING_COLORS.gold ? '#7A5200' : (tone === CULLING_COLORS.vermilion ? CULLING_COLORS.redText : CULLING_COLORS.cobaltText),
       });

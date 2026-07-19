@@ -1,36 +1,34 @@
-import { ENERGY_COLORS, ENERGY_LABELS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=35';
-import { safeText } from '../core/text.js?v=35';
+import { ENERGY_COLORS, ENERGY_LABELS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=36';
+import { safeText } from '../core/text.js?v=36';
+import { stageEnvironmentTexture } from '../core/asset-registry.js?v=36';
+import {
+  S3_PALETTE,
+  S3_TEXT_COLORS,
+  season3ClipPoints,
+} from './season3-tokens.js?v=36';
 
-export const S3_COLORS = {
-  bone: 0xf2e8d5,
-  paper: 0xf8f2e6,
-  smoke: 0xd6d1c7,
-  smokeDeep: 0xb7b5ad,
-  ink: 0x17191e,
-  navy: 0x101b36,
-  red: 0xe32620,
-  cyan: 0x35dde8,
-  cyanDeep: 0x087d86,
-  gold: 0xd8bf68,
+// Compatibility view. New code should import Season3UI from season3-ui.js.
+export const S3_COLORS = Object.freeze({
+  bone: S3_PALETTE.bone,
+  paper: S3_PALETTE.paper,
+  smoke: S3_PALETTE.smoke,
+  smokeDeep: S3_PALETTE.smokeDeep,
+  ink: S3_PALETTE.ink,
+  navy: S3_PALETTE.indigo,
+  red: S3_PALETTE.red,
+  cyan: S3_PALETTE.cyan,
+  cyanDeep: S3_PALETTE.cyanDeep,
+  gold: S3_PALETTE.gold,
   green: 0x3f8d61,
-  whiteText: '#F8F2E6',
-  inkText: '#17191E',
-  mutedText: '#5F625F',
+  whiteText: S3_TEXT_COLORS.inverse,
+  inkText: S3_TEXT_COLORS.ink,
+  mutedText: S3_TEXT_COLORS.muted,
   redText: '#B91F1A',
-  cyanText: '#087D86',
-};
+  cyanText: S3_TEXT_COLORS.cyan,
+});
 
 function clipPoints(x, y, w, h, cut = 8) {
-  return [
-    { x: x + cut, y },
-    { x: x + w - cut, y },
-    { x: x + w, y: y + cut },
-    { x: x + w, y: y + h - cut },
-    { x: x + w - cut, y: y + h },
-    { x: x + cut, y: y + h },
-    { x, y: y + h - cut },
-    { x, y: y + cut },
-  ];
+  return season3ClipPoints(x, y, w, h, cut);
 }
 
 export function missionMapS3Layout(frame) {
@@ -117,6 +115,7 @@ export function draftS3Layout(frame, options = {}) {
 
 export function drawS3World(scene, frame, textureKey, options = {}) {
   const g = scene.graphics;
+  stageEnvironmentTexture(scene, textureKey);
   const world = scene.coverImage(textureKey, frame.x, 0, frame.width, frame.height, {
     depth: -30,
     alpha: options.imageAlpha ?? 0.42,
@@ -230,7 +229,12 @@ export function drawS3Button(scene, x, y, w, h, label, onClick, options = {}) {
     wordWrap: { width: w - 16 },
   }).setOrigin(0.5, 0);
   node.setMaxLines(2);
-  scene.registerHitTarget(x, y, w, h, safeText(label), onClick, { disabled, cue: options.cue });
+  scene.registerHitTarget(x, y, w, h, safeText(options.accessibilityLabel || label), onClick, {
+    disabled,
+    disabledReason: options.disabledReason || options.reason,
+    accessibilityId: options.accessibilityId,
+    cue: options.cue,
+  });
 }
 
 export function drawS3Header(scene, frame, options = {}) {
@@ -261,6 +265,8 @@ export function drawS3Header(scene, frame, options = {}) {
       accent: S3_COLORS.cyan,
       fontSize: '16px',
       mono: true,
+      accessibilityLabel: options.backLabel || 'Back',
+      accessibilityId: options.backAccessibilityId || 'back',
     });
   }
   return { x, y, w, h, bottom: y + h };

@@ -1,9 +1,9 @@
-import { focalCoverCrop, portraitEntryFor, starterPortraitEntries } from '../core/portrait-registry.js?v=35';
-import { COLORS, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=35';
-import { initials, safeText } from '../core/text.js?v=35';
-import { LayoutService } from '../core/layout-service.js?v=35';
-import { costColors } from '../core/roster.js?v=35';
-import { SKILL_ACTION_ATLASES, createPresentationLayer } from '../core/presentation-layer.js?v=35';
+import { focalCoverCrop, portraitEntryFor, starterPortraitEntries } from '../core/portrait-registry.js?v=36';
+import { COLORS, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=36';
+import { initials, safeText } from '../core/text.js?v=36';
+import { LayoutService } from '../core/layout-service.js?v=36';
+import { costColors } from '../core/roster.js?v=36';
+import { SKILL_ACTION_ATLASES, createPresentationLayer } from '../core/presentation-layer.js?v=36';
 
 const COMBAT_SKILL_ASSETS = Object.freeze([
   Object.freeze({ key: 's3-skill-body', url: '/static/assets/skills/culling-current/body.webp' }),
@@ -52,6 +52,7 @@ export class BaseScene extends Phaser.Scene {
       this.nodes = [];
       this.layout = null;
       this.store = null;
+      this.domUI = null;
       this.graphics = null;
       this.unsubscribe = null;
       this.lastTap = null;
@@ -65,6 +66,7 @@ export class BaseScene extends Phaser.Scene {
 
     create() {
       this.store = window.JJKPhaserShell.store;
+      this.domUI = window.JJKPhaserShell.domUI || null;
       this.layout = new LayoutService(this);
       this.graphics = this.add.graphics();
       this.presentationLayer = createPresentationLayer(this);
@@ -89,6 +91,8 @@ export class BaseScene extends Phaser.Scene {
         this.load.off('loaderror', this.presentationAssetLoadError);
       }
       this.presentationAssetLoadError = null;
+      if (this.domUI) this.domUI.clearScene(this.keyName);
+      this.domUI = null;
     }
 
     handlePointer(pointer) {
@@ -105,28 +109,42 @@ export class BaseScene extends Phaser.Scene {
           Promise.resolve().then(() => {
             if (ACTIVE_POINTER_DISPATCH === dispatchToken) ACTIVE_POINTER_DISPATCH = null;
           });
-          this.lastTap = { x: pointer.x, y: pointer.y, t: this.time.now, disabled: !!button.disabled };
-          window.dispatchEvent(new CustomEvent('jjk:ui-tap', { detail: { scene: this.keyName, disabled: !!button.disabled } }));
-          const cue = button.disabled ? 'disabled' : (button.cue || 'press');
-          const playCue = () => {
-            if (this.presentationLayer && !this.presentationLayer.isDestroyed()) {
-              this.presentationLayer.interactionCue(this, { cue });
-            }
-          };
-          const audio = this.presentationLayer && this.presentationLayer.audio;
-          if (audio && audio.isUnlocked && !audio.isUnlocked() && audio.unlockFromGesture) {
-            Promise.resolve(audio.unlockFromGesture()).then(playCue).catch(() => {});
-          } else {
-            playCue();
-          }
-          if (!button.disabled) button.onClick();
-          if (this.scene.isActive(this.keyName)) this.render();
-          this.time.delayedCall(180, () => {
-            if (this.scene.isActive(this.keyName)) this.render();
-          });
+          this.activateHitTarget(button, pointer);
           return;
         }
       }
+    }
+
+    activateHitTarget(button, pointer = null) {
+      if (!button || !this.scene) return;
+      // Pointer dispatch originates from Phaser's active scene and must be
+      // allowed to complete even when the callback immediately transitions
+      // away. A stale DOM mirror, however, must never activate an inactive
+      // scene after that transition.
+      if (!pointer && !this.scene.isActive(this.keyName)) return;
+      const tapX = pointer && Number.isFinite(pointer.x) ? pointer.x : button.x + button.w / 2;
+      const tapY = pointer && Number.isFinite(pointer.y) ? pointer.y : button.y + button.h / 2;
+      this.lastTap = { x: tapX, y: tapY, t: this.time.now, disabled: !!button.disabled };
+      window.dispatchEvent(new CustomEvent('jjk:ui-tap', {
+        detail: { scene: this.keyName, disabled: !!button.disabled, input: pointer ? 'pointer' : 'keyboard' },
+      }));
+      const cue = button.disabled ? 'disabled' : (button.cue || 'press');
+      const playCue = () => {
+        if (this.presentationLayer && !this.presentationLayer.isDestroyed()) {
+          this.presentationLayer.interactionCue(this, { cue });
+        }
+      };
+      const audio = this.presentationLayer && this.presentationLayer.audio;
+      if (audio && audio.isUnlocked && !audio.isUnlocked() && audio.unlockFromGesture) {
+        Promise.resolve(audio.unlockFromGesture()).then(playCue).catch(() => {});
+      } else {
+        playCue();
+      }
+      if (!button.disabled) button.onClick();
+      if (this.scene.isActive(this.keyName)) this.render();
+      this.time.delayedCall(180, () => {
+        if (this.scene.isActive(this.keyName)) this.render();
+      });
     }
 
     clearSurface() {
@@ -134,6 +152,7 @@ export class BaseScene extends Phaser.Scene {
       this.nodes.forEach((node) => node.destroy());
       this.nodes = [];
       this.buttons = [];
+      this.syncButtonDebug();
       this.ensureSceneAssets();
     }
 
@@ -234,7 +253,7 @@ export class BaseScene extends Phaser.Scene {
       // always gives the visible settings buttons priority.
       this.registerHitTarget(0, 0, fullW, fullH, 'Close presentation settings', () => {
         this.togglePresentationSettings(false);
-      });
+      }, { blocker: true, mirror: false });
       panel.fillStyle(CULLING_COLORS.charcoal, 0.58);
       panel.fillRect(0, 0, fullW, fullH);
       const points = [
@@ -374,6 +393,31 @@ export class BaseScene extends Phaser.Scene {
         h: Math.round(button.h),
         disabled: !!button.disabled,
       }));
+      if (!this.domUI) return;
+      const width = Number((this.scale && this.scale.width) || (this.game && this.game.config && this.game.config.width) || 0);
+      const height = Number((this.scale && this.scale.height) || (this.game && this.game.config && this.game.config.height) || 0);
+      const phase = this.store && this.store.state && this.store.state.phase;
+      this.domUI.queueSceneActions({
+        sceneKey: this.keyName,
+        heading: this.accessibilityHeading || '',
+        queueReviewOpen: this.keyName === 'CombatScene' && Boolean(this.store && this.store.queueReviewOpen),
+        resolving: this.keyName === 'CombatScene' && phase === 'resolving',
+        bounds: { width, height },
+        toast: this.store && this.store.toast,
+        actions: this.buttons.map((button) => ({
+          key: button.accessibilityKey,
+          label: button.label || 'Action',
+          x: button.x,
+          y: button.y,
+          w: button.w,
+          h: button.h,
+          disabled: !!button.disabled,
+          disabledReason: button.disabledReason,
+          blocker: !!button.blocker,
+          mirror: button.mirror,
+          activate: () => this.activateHitTarget(button),
+        })),
+      });
     }
 
     registerHitTarget(x, y, w, h, label, onClick, options) {
@@ -389,7 +433,13 @@ export class BaseScene extends Phaser.Scene {
         label,
         onClick,
         disabled: !!opts.disabled,
+        disabledReason: opts.disabled
+          ? (opts.disabledReason || opts.reason || 'Unavailable in the current state.')
+          : '',
         cue: opts.cue || null,
+        accessibilityKey: opts.accessibilityId || opts.a11yId || label || 'action',
+        blocker: !!opts.blocker,
+        mirror: opts.mirror !== false,
       });
       this.syncButtonDebug();
     }
@@ -627,7 +677,13 @@ export class BaseScene extends Phaser.Scene {
         align: 'center',
       }).setOrigin(0.5, 0);
       if (opts.maxWidth) text.setWordWrapWidth(opts.maxWidth);
-      this.registerHitTarget(x, y, w, h, label, onClick, { disabled: opts.disabled });
+      this.registerHitTarget(x, y, w, h, label, onClick, {
+        disabled: opts.disabled,
+        disabledReason: opts.disabledReason || opts.reason,
+        accessibilityId: opts.accessibilityId || opts.a11yId,
+        blocker: opts.blocker,
+        mirror: opts.mirror,
+      });
     }
 
     iconButton(x, y, w, h, label, onClick, options) {

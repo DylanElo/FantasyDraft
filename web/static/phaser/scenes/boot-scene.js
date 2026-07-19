@@ -3,11 +3,16 @@ import {
   PORTRAIT_SOURCE_WIDTH,
   starterPortraitContractIssues,
   starterPortraitEntries,
-} from '../core/portrait-registry.js?v=35';
-import { TOKEN_MOTION, TOKEN_TYPE } from '../core/runtime-config.js?v=35';
-import { LayoutService } from '../core/layout-service.js?v=35';
-import { firstCreationRoster } from '../core/roster.js?v=35';
-import { getPersistentPresentationSettings } from '../core/presentation-settings.js?v=35';
+} from '../core/portrait-registry.js?v=36';
+import { TOKEN_MOTION, TOKEN_TYPE } from '../core/runtime-config.js?v=36';
+import { LayoutService } from '../core/layout-service.js?v=36';
+import { firstCreationRoster } from '../core/roster.js?v=36';
+import { getPersistentPresentationSettings } from '../core/presentation-settings.js?v=36';
+import {
+  INITIAL_ENVIRONMENT_KEYS,
+  environmentAssetFor,
+  registerEnvironmentTextureAttempt,
+} from '../core/asset-registry.js?v=36';
 import {
   S3_COLORS,
   bootS3Layout,
@@ -15,8 +20,8 @@ import {
   drawS3Panel,
   drawS3Progress,
   drawS3World,
-} from '../ui/season-three-ui.js?v=35';
-import { BaseScene } from './base-scene.js?v=35';
+} from '../ui/season-three-ui.js?v=36';
+import { BaseScene } from './base-scene.js?v=36';
 
 export class BootScene extends BaseScene {
     constructor() {
@@ -33,11 +38,12 @@ export class BootScene extends BaseScene {
       this.load.on('loaderror', (file) => {
         if (assets && assets.reportPortraitLoadError) assets.reportPortraitLoadError(file);
       });
-      this.load.image('culling-current-home', '/static/assets/environments/culling-current-home.webp');
-      this.load.image('culling-current-home-hero', '/static/assets/environments/culling-current-home-hero-v2.webp');
-      this.load.image('culling-current-rooftop', '/static/assets/environments/culling-current-rooftop-v2.webp');
-      this.load.image('culling-current-campus', '/static/assets/environments/culling-current-campus.webp');
-      this.load.image('culling-current-map', '/static/assets/environments/culling-current-map.webp');
+      INITIAL_ENVIRONMENT_KEYS.forEach((key) => {
+        const environment = environmentAssetFor(key);
+        if (!environment) return;
+        registerEnvironmentTextureAttempt(this, environment.key);
+        this.load.image(environment.key, environment.url);
+      });
       starterPortraitContractIssues(firstCreationRoster()).forEach((issue) => {
         if (assets && assets.reportPortraitContractIssue) assets.reportPortraitContractIssue(issue);
       });

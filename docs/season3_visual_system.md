@@ -105,6 +105,9 @@ implementation of this direction.
 
 - A full-screen, character-led city illustration owns the frame. It is not a
   background behind a stack of dashboard panels.
+- Home is explicitly promotional key art: the fixed Yuji/Megumi/Nobara hero
+  composition does not claim to depict the player's active trio. The actual
+  selected team is communicated by the profile strip and roster flows.
 - A compact top strip carries profile, level, currencies, inbox, and menu.
 - The title is an oversized editorial mark within the world composition.
 - One giant, high-contrast battle CTA is the unmistakable primary action.
@@ -260,10 +263,10 @@ unique art never creates a fifth action slot.
 
 ## Mobile loading contract
 
-- Boot keeps the environment plates needed by the current scene flow but no
-  longer eagerly downloads every portrait, fallback skill image, and action
-  atlas. It initially requests the story trio plus the player’s saved active
-  team.
+- Boot loads only the splash and immediate Home environment plates. Campus,
+  Map, and Rooftop are staged by their first active scene; Boot no longer
+  eagerly downloads every portrait, fallback skill image, or action atlas. It
+  initially requests the story trio plus the player’s saved active team.
 - `BaseScene` stages missing portrait textures for the active screen. First
   Creation and Team Setup request the locked 19-person roster; Lobby, Mission,
   Result, and Combat request the currently relevant player/server teams.
@@ -275,7 +278,14 @@ unique art never creates a fifth action slot.
   attempted once per scene instance so routine rerenders cannot create a retry
   loop.
 
-The maintained asset registry is
+The canonical component/token facade, environment allocation, exact startup
+texture budgets, release-clearance status, and QA cache/version gate are
+documented in `docs/phaser_asset_delivery_contract.md`. The machine-readable
+sources are `web/static/assets/runtime-texture-budget.json` and
+`web/static/assets/asset-clearance-manifest.json`.
+
+The maintained environment and portrait registries are
+`web/static/phaser/core/asset-registry.js` and
 `web/static/phaser/core/portrait-registry.js`. Full generation prompts,
 identifiers, hashes, processing, and limitations are recorded under
 `web/static/assets/portraits/PROVENANCE.md`,
@@ -283,7 +293,7 @@ identifiers, hashes, processing, and limitations are recorded under
 `web/static/assets/skills/PROVENANCE.md`, and
 `artifacts/ui-redesign/s3-style/PROMPTS.md`.
 
-The maintained Phaser cache version for this structural and vocabulary pass is `v35`.
+The maintained Phaser cache version for this structural and vocabulary pass is `v36`.
 
 ## Gameplay invariants
 

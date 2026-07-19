@@ -369,7 +369,7 @@ def test_combat_presentation_closes_readability_motion_and_target_vfx_gaps():
     assert "preloadPresentationAssets(this)" not in boot
     assert "Object.values(SKILL_ACTION_ATLASES)" in base
     legacy = (ROOT / "web/static/phaser/legacy-shell.js").read_text(encoding="utf-8")
-    assert "window.JJKPhaserShell = { store, bootReady: false }" in legacy
+    assert "window.JJKPhaserShell = { store, domUI, bootReady: false }" in legacy
     assert "if (!window.JJKPhaserShell.bootReady) return;" in legacy
     assert "window.JJKPhaserShell.bootReady = true" in boot
     assert "this.scene.start(destination)" in boot

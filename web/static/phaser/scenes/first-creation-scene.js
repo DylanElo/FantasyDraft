@@ -1,7 +1,7 @@
-import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=35';
-import { firstCreationRoster } from '../core/roster.js?v=35';
-import { skillVisualFor } from '../core/skill-visual-registry.js?v=35';
-import { clamp, safeText, titleize } from '../core/text.js?v=35';
+import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=36';
+import { firstCreationRoster } from '../core/roster.js?v=36';
+import { skillVisualFor } from '../core/skill-visual-registry.js?v=36';
+import { clamp, safeText, titleize } from '../core/text.js?v=36';
 import {
   S3_COLORS,
   drawS3Button,
@@ -10,8 +10,8 @@ import {
   drawS3Pager,
   drawS3Panel,
   drawS3World,
-} from '../ui/season-three-ui.js?v=35';
-import { BaseScene } from './base-scene.js?v=35';
+} from '../ui/season-three-ui.js?v=36';
+import { BaseScene } from './base-scene.js?v=36';
 
 const FIRST_CREATION_WORLD_KEY = 'culling-current-campus';
 
@@ -524,11 +524,14 @@ export class FirstCreationScene extends BaseScene {
         fontSize: '11px',
         fontStyle: '900',
       });
-      this.mono(textX, metaY + 85, targetRule.flags, {
+      const targetFlags = this.mono(textX, metaY + 83, targetRule.flags, {
         color: S3_COLORS.mutedText,
-        fontSize: '9px',
+        fontSize: '12px',
         fontStyle: '800',
+        lineSpacing: -2,
+        wordWrap: { width: Math.max(112, region.x + region.w - textX - 10) },
       });
+      targetFlags.setMaxLines(2);
       const classes = (skill.classes || []).map((entry) => titleize(entry).toUpperCase()).join(' / ') || 'TECHNIQUE';
       const classNode = this.mono(region.x + 12, region.y + 118, `CLASSES / ${classes}`, {
         color: S3_COLORS.mutedText,
@@ -566,6 +569,7 @@ export class FirstCreationScene extends BaseScene {
         title: 'Character Study',
         accent: selected ? S3_COLORS.cyan : S3_COLORS.red,
         backHandler: () => this.store.closeCharacterDetail(),
+        backLabel: 'Back to First Creation',
       });
       this.renderStudyHero(character, selected, layout.hero);
       let skillTargets = [];
@@ -620,6 +624,7 @@ export class FirstCreationScene extends BaseScene {
     render() {
       const frame = this.layout.frame();
       const detail = this.store.detailCharacterId ? this.store.character(this.store.detailCharacterId) : null;
+      this.accessibilityHeading = detail ? 'Character Study' : 'First Creation';
       this.clearSurface();
       drawS3World(this, frame, FIRST_CREATION_WORLD_KEY, {
         imageAlpha: detail ? 0.34 : 0.54,
@@ -637,6 +642,7 @@ export class FirstCreationScene extends BaseScene {
         eyebrow: 'STUDENT ERA / BUILD YOUR TEAM',
         title: 'First Creation',
         backHandler: () => this.store.resetToLobby(),
+        backLabel: 'Back to Home',
       });
       this.renderTrioSlots(layout);
       this.renderRosterBrowser(frame, layout);

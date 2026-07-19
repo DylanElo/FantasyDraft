@@ -1,13 +1,13 @@
-import { TOKEN_TYPE } from '../core/runtime-config.js?v=35';
-import { safeText } from '../core/text.js?v=35';
+import { TOKEN_TYPE } from '../core/runtime-config.js?v=36';
+import { safeText } from '../core/text.js?v=36';
 import {
   S3_COLORS,
   drawS3Button,
   drawS3Header,
   drawS3Panel,
   drawS3World,
-} from '../ui/season-three-ui.js?v=35';
-import { DraftRosterScene } from './draft-roster-scene.js?v=35';
+} from '../ui/season-three-ui.js?v=36';
+import { DraftRosterScene } from './draft-roster-scene.js?v=36';
 
 const TEAM_SETUP_WORLD_KEY = 'culling-current-campus';
 const DIFFICULTIES = Object.freeze(['easy', 'normal', 'hard']);

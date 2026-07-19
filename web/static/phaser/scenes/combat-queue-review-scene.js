@@ -1,6 +1,6 @@
-import { CORE_ENERGY, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_TYPE } from '../core/runtime-config.js?v=35';
-import { CombatPlaybackScene } from '../fx/combat-playback-scene.js?v=35';
-import { drawCurrentButton, drawCurrentPanel } from '../ui/culling-current-ui.js?v=35';
+import { CORE_ENERGY, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, ENERGY_NAMES, TOKEN_TYPE } from '../core/runtime-config.js?v=36';
+import { CombatPlaybackScene } from '../fx/combat-playback-scene.js?v=36';
+import { drawCurrentButton, drawCurrentPanel } from '../ui/culling-current-ui.js?v=36';
 
 const SKILL_ART_BY_ENERGY = {
   green: 's3-skill-body',
@@ -81,7 +81,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
       const sheetY = Math.max(frame.top + 300, Math.min(battle ? battle.dockY : fallbackDockY, allyBottom + 8));
       const footerH = 44;
       const footerY = frame.bottom - footerH;
-      const headerH = battle && battle.compressed ? 42 : 46;
+      const headerH = battle && battle.compressed ? 50 : 54;
       const cardsY = sheetY + headerH + 4;
       const cardsBottom = footerY - 4;
       return {
@@ -127,7 +127,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
 
       this.mono(right - 88, layout.sheetY + 4, 'POOL / AFTER', {
         color: CULLING_COLORS.mutedText,
-        fontSize: '9px',
+        fontSize: '12px',
         fontStyle: '700',
       });
       CORE_ENERGY.forEach((color, index) => {
@@ -135,18 +135,18 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         const current = Number(energy[color] || 0);
         const remaining = Number(after[color] === undefined ? current : after[color]);
         this.graphics.fillStyle(CULLING_COLORS.ivory, 0.98);
-        this.graphics.fillCircle(cx, layout.sheetY + 22, 8);
+        this.graphics.fillCircle(cx, layout.sheetY + 26, 8);
         this.graphics.fillStyle(ENERGY_COLORS[color], current ? 0.96 : 0.16);
-        this.graphics.fillCircle(cx, layout.sheetY + 22, 5.7);
+        this.graphics.fillCircle(cx, layout.sheetY + 26, 5.7);
         this.graphics.lineStyle(1, color === 'white' ? CULLING_COLORS.charcoal : ENERGY_COLORS[color], current ? 0.8 : 0.28);
-        this.graphics.strokeCircle(cx, layout.sheetY + 22, 7.5);
-        this.mono(cx, layout.sheetY + 18.5, ENERGY_LABELS[color], {
+        this.graphics.strokeCircle(cx, layout.sheetY + 26, 7.5);
+        this.mono(cx, layout.sheetY + 22.5, ENERGY_LABELS[color], {
           color: color === 'white' ? CULLING_COLORS.text : CULLING_COLORS.inverseText,
-          fontSize: '9px',
+          fontSize: '10px',
         }).setOrigin(0.5, 0);
-        this.mono(cx, layout.sheetY + 31, `${current}/${remaining}`, {
+        this.mono(cx, layout.sheetY + 36, `${current}/${remaining}`, {
           color: remaining < 0 ? CULLING_COLORS.redText : CULLING_COLORS.text,
-          fontSize: '9px',
+          fontSize: '12px',
           fontStyle: '700',
         }).setOrigin(0.5, 0);
       });
@@ -157,7 +157,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
       if (!wildCount) {
         this.mono(x + w - 8, y + 9, 'FIXED', {
           color: CULLING_COLORS.mutedText,
-          fontSize: '9px',
+          fontSize: '10px',
           fontStyle: '700',
         }).setOrigin(1, 0);
         return 0;
@@ -173,10 +173,12 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
           this.presentationLayerCall('interactionCue', { cue: 'select', context: 'wild-cycle', action, wildIndex, pay });
           this.store.cycleWildcardPay(action.id, wildIndex);
         }, {
+          accessibilityLabel: `Assign Wild payment ${wildIndex + 1} for ${meta.skill ? meta.skill.name : 'queued action'}: ${ENERGY_NAMES[pay] || 'Unassigned'}`,
+          accessibilityId: `queue-wild-${action.id}-${wildIndex}`,
           fill: pay === 'white' ? CULLING_COLORS.ivory : (ENERGY_COLORS[pay] || CULLING_COLORS.charcoal),
           stroke: pay === 'black' ? CULLING_COLORS.charcoal : (ENERGY_COLORS[pay] || CULLING_COLORS.gold),
           color: pay === 'white' ? CULLING_COLORS.text : CULLING_COLORS.inverseText,
-          fontSize: '10px',
+          fontSize: '12px',
           display: false,
           cut: 7,
         });
@@ -284,26 +286,28 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
       const classLine = dense
         ? `CD ${meta.cooldown} / ${meta.targetLabel}`
         : `${meta.classes.slice(0, 2).join('/') || 'SKILL'} / CD ${meta.cooldown} / ${meta.targetLabel}`;
-      const classNode = this.text(x + 8, metaY, classLine, {
-        fontFamily: TOKEN_TYPE.mono || 'monospace',
-        fontSize: '9px',
+      const classNode = this.text(x + 6, metaY, classLine, {
+        fontFamily: dense ? (TOKEN_TYPE.ui || 'Arial, sans-serif') : (TOKEN_TYPE.mono || 'monospace'),
+        fontSize: '12px',
         fontStyle: '700',
         color: CULLING_COLORS.inverseText,
         backgroundColor: '#17191E',
         padding: { x: 2, y: 1 },
-        wordWrap: { width: w - 20 },
+        lineSpacing: -2,
+        wordWrap: { width: w - 12 },
       });
       classNode.setMaxLines(dense ? 1 : 2);
       classNode.setDepth(1);
 
       if (meta.summary && !dense) {
-        const summaryNode = this.text(x + 8, metaY + 19, meta.summary, {
+        const summaryNode = this.text(x + 8, metaY + 22, meta.summary, {
           fontFamily: TOKEN_TYPE.mono || 'monospace',
-          fontSize: '9px',
+          fontSize: '12px',
           fontStyle: '700',
           color: CULLING_COLORS.inverseText,
           backgroundColor: '#17191E',
           padding: { x: 2, y: 1 },
+          lineSpacing: -2,
           wordWrap: { width: w - 20 },
         });
         summaryNode.setMaxLines(2);
@@ -312,23 +316,27 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
 
       const routeParts = [`${meta.caster ? meta.caster.name : 'Unknown'} > ${meta.targetRoute}`];
       routeParts.push(...detailParts);
-      const routeY = Math.min(controlY - (dense ? 38 : 40), metaY + (dense ? 18 : 42));
+      const routeY = Math.min(controlY - (dense ? 30 : 46), metaY + (dense ? 18 : 50));
       const route = this.text(x + 8, routeY, rowError || routeParts.join(' / '), {
         fontFamily: TOKEN_TYPE.mono || 'monospace',
-        fontSize: dense ? '9px' : '10px',
+        fontSize: '12px',
         fontStyle: '700',
         color: rowError ? CULLING_COLORS.redText : CULLING_COLORS.cobaltText,
         backgroundColor: '#F2E8D5',
         padding: { x: 2, y: 1 },
+        lineSpacing: -2,
         wordWrap: { width: w - 20 },
       });
-      route.setMaxLines(3);
+      route.setMaxLines(dense ? 2 : 3);
       route.setDepth(1);
 
       drawCurrentButton(this, x + 4, controlY, controlSize, controlSize, '<', () => {
         this.presentationLayerCall('interactionCue', { cue: 'queue', context: 'queue-reorder', action, direction: -1 });
         this.store.moveQueuedAction(action.id, -1);
       }, {
+        accessibilityLabel: `Move ${meta.skill ? meta.skill.name : 'queued action'} earlier in the queue`,
+        accessibilityId: `queue-move-earlier-${action.id}`,
+        disabledReason: 'This action is already first in the queue.',
         fill: CULLING_COLORS.ivory,
         stroke: CULLING_COLORS.cobalt,
         color: CULLING_COLORS.cobaltText,
@@ -341,6 +349,9 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         this.presentationLayerCall('interactionCue', { cue: 'queue', context: 'queue-reorder', action, direction: 1 });
         this.store.moveQueuedAction(action.id, 1);
       }, {
+        accessibilityLabel: `Move ${meta.skill ? meta.skill.name : 'queued action'} later in the queue`,
+        accessibilityId: `queue-move-later-${action.id}`,
+        disabledReason: 'This action is already last in the queue.',
         fill: CULLING_COLORS.ivory,
         stroke: CULLING_COLORS.cobalt,
         color: CULLING_COLORS.cobaltText,
@@ -425,7 +436,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
       });
       this.mono(layout.sheetX + 13, layout.sheetY + 29, queueFit.ok ? 'LEFT > RIGHT / READY' : 'PAYMENT INVALID', {
         color: queueFit.ok ? CULLING_COLORS.inverseText : '#FFE4DF',
-        fontSize: '9px',
+        fontSize: '12px',
         fontStyle: '800',
       });
       this.renderEnergyCommitment(frame, layout, queueFit);
@@ -461,10 +472,12 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         this.presentationLayerCall('interactionCue', { cue: 'press', context: 'queue-review-close' });
         this.store.closeQueueReview();
       }, {
+        accessibilityLabel: 'Return to combat planning',
+        accessibilityId: 'queue-review-back',
         fill: CULLING_COLORS.ivory,
         stroke: CULLING_COLORS.charcoal,
         color: CULLING_COLORS.text,
-        fontSize: '10px',
+        fontSize: '12px',
         display: false,
         cut: 8,
       });
@@ -472,10 +485,12 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         this.presentationLayerCall('interactionCue', { cue: 'queue-clear' });
         this.store.cancelQueue();
       }, {
+        accessibilityLabel: 'Clear all queued actions',
+        accessibilityId: 'queue-review-clear',
         fill: CULLING_COLORS.ivory,
         stroke: CULLING_COLORS.vermilion,
         color: CULLING_COLORS.redText,
-        fontSize: '10px',
+        fontSize: '12px',
         display: false,
         cut: 8,
       });
@@ -483,10 +498,15 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         this.presentationLayerCall('interactionCue', { cue: 'queue-confirm', valid: queueFit.ok });
         this.store.confirmQueue();
       }, {
+        accessibilityLabel: this.store.queueSubmitting ? 'Queue confirmation is resolving' : 'Confirm queue',
+        accessibilityId: 'queue-review-confirm',
+        disabledReason: this.store.queueSubmitting
+          ? 'Queue confirmation is already being submitted.'
+          : (queueFit.reason || 'The queue cannot be confirmed yet.'),
         fill: queueFit.ok ? CULLING_COLORS.cobalt : CULLING_COLORS.concrete,
         stroke: queueFit.ok ? CULLING_COLORS.gold : CULLING_COLORS.vermilion,
         color: queueFit.ok ? CULLING_COLORS.inverseText : CULLING_COLORS.mutedText,
-        fontSize: confirmW < 154 ? '10px' : '12px',
+        fontSize: confirmW < 154 ? '12px' : '14px',
         display: false,
         cut: 10,
         subtitle: 'SERVER VALIDATES',

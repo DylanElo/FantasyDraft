@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "runtime_cache_version": "36",
+  "measurement": {
+    "compressed": "Exact repository file bytes; network transfer encoding may differ.",
+    "decoded": "Width multiplied by height multiplied by four bytes (RGBA8 estimate); browser/GPU overhead is excluded."
+  },
+  "startup_policy": {
+    "required_environment_keys": [
+      "culling-current-home",
+      "culling-current-home-hero"
+    ],
+    "required_portrait_ids": [
+      "yuji_itadori",
+      "megumi_fushiguro",
+      "nobara_kugisaki"
+    ],
+    "saved_team_portraits_maximum_additional": 3,
+    "compressed_budget_bytes": 2097152,
+    "decoded_rgba8_budget_bytes": 25165824
+  },
+  "cold_boot_default": {
+    "compressed_file_bytes": 1234652,
+    "decoded_rgba8_bytes": 17221552,
+    "assets": [
+      {
+        "key": "culling-current-home",
+        "path": "environments/culling-current-home.webp",
+        "width": 773,
+        "height": 1672,
+        "compressed_file_bytes": 308240,
+        "decoded_rgba8_bytes": 5169824
+      },
+      {
+        "key": "culling-current-home-hero",
+        "path": "environments/culling-current-home-hero-v2.webp",
+        "width": 853,
+        "height": 1844,
+        "compressed_file_bytes": 472224,
+        "decoded_rgba8_bytes": 6291728
+      },
+      {
+        "key": "portrait_yuji_itadori",
+        "path": "portraits/culling-current/yuji-itadori.webp",
+        "width": 600,
+        "height": 800,
+        "compressed_file_bytes": 152268,
+        "decoded_rgba8_bytes": 1920000
+      },
+      {
+        "key": "portrait_megumi_fushiguro",
+        "path": "portraits/culling-current/megumi-fushiguro.webp",
+        "width": 600,
+        "height": 800,
+        "compressed_file_bytes": 145064,
+        "decoded_rgba8_bytes": 1920000
+      },
+      {
+        "key": "portrait_nobara_kugisaki",
+        "path": "portraits/culling-current/nobara-kugisaki.webp",
+        "width": 600,
+        "height": 800,
+        "compressed_file_bytes": 156856,
+        "decoded_rgba8_bytes": 1920000
+      }
+    ]
+  },
+  "cold_boot_maximum_saved_team": {
+    "compressed_file_bytes": 1745286,
+    "decoded_rgba8_bytes": 22981552,
+    "calculation": "Default cold boot plus the three largest non-default starter portraits in this checkout.",
+    "additional_portraits": [
+      {
+        "path": "portraits/culling-current/aoi-todo.webp",
+        "width": 600,
+        "height": 800,
+        "compressed_file_bytes": 175096,
+        "decoded_rgba8_bytes": 1920000
+      },
+      {
+        "path": "portraits/culling-current/utahime-iori-young.webp",
+        "width": 600,
+        "height": 800,
+        "compressed_file_bytes": 170788,
+        "decoded_rgba8_bytes": 1920000
+      },
+      {
+        "path": "portraits/culling-current/momo-nishimiya.webp",
+        "width": 600,
+        "height": 800,
+        "compressed_file_bytes": 164750,
+        "decoded_rgba8_bytes": 1920000
+      }
+    ]
+  },
+  "deferred_environment_assets": [
+    {
+      "key": "culling-current-campus",
+      "path": "environments/culling-current-campus.webp",
+      "width": 773,
+      "height": 1672,
+      "compressed_file_bytes": 330502,
+      "decoded_rgba8_bytes": 5169824
+    },
+    {
+      "key": "culling-current-map",
+      "path": "environments/culling-current-map.webp",
+      "width": 773,
+      "height": 1672,
+      "compressed_file_bytes": 445122,
+      "decoded_rgba8_bytes": 5169824
+    },
+    {
+      "key": "culling-current-rooftop",
+      "path": "environments/culling-current-rooftop-v2.webp",
+      "width": 853,
+      "height": 1844,
+      "compressed_file_bytes": 414092,
+      "decoded_rgba8_bytes": 6291728
+    }
+  ]
+}

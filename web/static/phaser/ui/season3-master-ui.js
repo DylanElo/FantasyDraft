@@ -1,36 +1,33 @@
-import { CULLING_COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=35';
-import { safeText, titleize } from '../core/text.js?v=35';
-import { damageEventAmount } from '../fx/event-metrics.js?v=35';
+import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=36';
+import { safeText, titleize } from '../core/text.js?v=36';
+import { damageEventAmount } from '../fx/event-metrics.js?v=36';
+import { stageEnvironmentTexture } from '../core/asset-registry.js?v=36';
+import {
+  S3_PALETTE,
+  S3_TEXT_COLORS,
+  season3ClipPoints,
+} from './season3-tokens.js?v=36';
 
-export const S3_COLORS = {
-  bone: 0xf2e8d5,
-  boneBright: 0xf8f2e6,
-  smoke: 0xd6d1c7,
-  smokeDeep: 0xb7b5ad,
-  ink: 0x17191e,
-  inkBlue: 0x101b36,
-  barrier: 0xe32620,
-  cyan: CULLING_COLORS.cyan,
-  gold: 0xd8bf68,
-  vermilion: CULLING_COLORS.vermilion,
-  shadow: 0x101b36,
-  text: '#17191E',
+// Compatibility view. New code should import Season3UI from season3-ui.js.
+export const S3_COLORS = Object.freeze({
+  bone: S3_PALETTE.bone,
+  boneBright: S3_PALETTE.boneBright,
+  smoke: S3_PALETTE.smoke,
+  smokeDeep: S3_PALETTE.smokeDeep,
+  ink: S3_PALETTE.ink,
+  inkBlue: S3_PALETTE.indigo,
+  barrier: S3_PALETTE.red,
+  cyan: S3_PALETTE.cyan,
+  gold: S3_PALETTE.gold,
+  vermilion: S3_PALETTE.red,
+  shadow: S3_PALETTE.indigo,
+  text: S3_TEXT_COLORS.ink,
   mutedText: '#5B6168',
-  inverseText: '#F8F2E6',
-};
+  inverseText: S3_TEXT_COLORS.inverse,
+});
 
 function cutRectPoints(x, y, w, h, cut = 12) {
-  const safeCut = Math.max(0, Math.min(cut, w / 4, h / 3));
-  return [
-    { x: x + safeCut, y },
-    { x: x + w - safeCut, y },
-    { x: x + w, y: y + safeCut },
-    { x: x + w, y: y + h - safeCut },
-    { x: x + w - safeCut, y: y + h },
-    { x: x + safeCut, y: y + h },
-    { x, y: y + h - safeCut },
-    { x, y: y + safeCut },
-  ];
+  return season3ClipPoints(x, y, w, h, cut);
 }
 
 function clamp(value, low, high) {
@@ -39,6 +36,7 @@ function clamp(value, low, high) {
 
 export function drawS3World(scene, frame, textureKey, options = {}) {
   const g = scene.graphics;
+  stageEnvironmentTexture(scene, textureKey);
   const world = scene.coverImage(textureKey, frame.x, 0, frame.width, frame.height, {
     depth: -30,
     alpha: options.imageAlpha === undefined ? 0.78 : options.imageAlpha,
@@ -180,7 +178,12 @@ export function drawS3Button(scene, x, y, w, h, label, onClick, options = {}) {
     color: disabled ? S3_COLORS.mutedText : (options.color || S3_COLORS.inverseText),
     align: 'center',
   }).setOrigin(0.5, 0);
-  scene.registerHitTarget(x, y, w, h, label, onClick, { disabled });
+  scene.registerHitTarget(x, y, w, h, options.accessibilityLabel || label, onClick, {
+    disabled,
+    disabledReason: options.disabledReason || options.reason,
+    accessibilityId: options.accessibilityId,
+    cue: options.cue,
+  });
 }
 
 export function drawS3Progress(scene, x, y, w, value, options = {}) {

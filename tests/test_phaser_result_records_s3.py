@@ -274,4 +274,4 @@ def test_scenes_use_master_world_and_preserve_navigation_contracts():
     assert "this.store.changeScene('DraftScene')" in result
     assert "this.store.resetToLobby()" in result
     assert "this.store.changeScene('LobbyScene')" in records
-    assert "?v=35" in result and "?v=35" in records and "?v=35" in master
+    assert "?v=36" in result and "?v=36" in records and "?v=36" in master

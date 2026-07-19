@@ -1,4 +1,5 @@
-import { CULLING_COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=35';
+import { CULLING_COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=36';
+import { stageEnvironmentTexture } from '../core/asset-registry.js?v=36';
 
 function clipPoints(x, y, w, h, cut = 9) {
   const safeCut = Math.max(0, Math.min(cut, w / 4, h / 3));
@@ -15,6 +16,7 @@ function clipPoints(x, y, w, h, cut = 9) {
 export function drawCurrentWorld(scene, frame, textureKey, options) {
   const opts = options || {};
   const g = scene.graphics;
+  stageEnvironmentTexture(scene, textureKey);
   const world = scene.coverImage(textureKey, frame.x, 0, frame.width, frame.height, { depth: -30, alpha: opts.imageAlpha || 1 });
   if (!world) {
     g.fillGradientStyle(CULLING_COLORS.sky, CULLING_COLORS.sky, CULLING_COLORS.ivory, CULLING_COLORS.concrete, 1);
@@ -135,7 +137,12 @@ export function drawCurrentButton(scene, x, y, w, h, label, onClick, options) {
       color: disabled ? CULLING_COLORS.mutedText : (opts.subtitleColor || color),
     }).setOrigin(0.5, 0);
   }
-  scene.registerHitTarget(x, y, w, h, label, onClick, { disabled });
+  scene.registerHitTarget(x, y, w, h, opts.accessibilityLabel || label, onClick, {
+    disabled,
+    disabledReason: opts.disabledReason || opts.reason,
+    accessibilityId: opts.accessibilityId,
+    cue: opts.cue,
+  });
 }
 
 export function drawCurrentModeCard(scene, x, y, w, h, label, kicker, onClick, options) {
@@ -170,7 +177,12 @@ export function drawCurrentModeCard(scene, x, y, w, h, label, kicker, onClick, o
   scene.graphics.moveTo(x + w - 12, y + h - 16);
   scene.graphics.lineTo(x + w - 17, y + h - 11);
   scene.graphics.strokePath();
-  scene.registerHitTarget(x, y, w, h, label, onClick, { disabled: opts.disabled });
+  scene.registerHitTarget(x, y, w, h, opts.accessibilityLabel || label, onClick, {
+    disabled: opts.disabled,
+    disabledReason: opts.disabledReason || opts.reason,
+    accessibilityId: opts.accessibilityId,
+    cue: opts.cue,
+  });
 }
 
 export function drawCurrentNav(scene, region, items) {
@@ -197,6 +209,10 @@ export function drawCurrentNav(scene, region, items) {
       fontStyle: item.active ? '900' : '700',
       color: item.active ? CULLING_COLORS.cobaltText : CULLING_COLORS.mutedText,
     }).setOrigin(0.5, 0);
-    scene.registerHitTarget(x + 6, region.y + 4, itemW - 12, region.h - 8, item.label, item.onClick, { disabled: !!item.disabled });
+    scene.registerHitTarget(x + 6, region.y + 4, itemW - 12, region.h - 8, item.accessibilityLabel || item.label, item.onClick, {
+      disabled: !!item.disabled,
+      disabledReason: item.disabledReason || item.reason,
+      accessibilityId: item.accessibilityId,
+    });
   });
 }

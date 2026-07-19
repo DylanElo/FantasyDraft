@@ -15,7 +15,8 @@ from .simulation import run_headless_match
 from .starter_roster import FIRST_CREATION_PRESETS
 
 
-REPORT_SCHEMA_VERSION = 2
+REPORT_SCHEMA_VERSION = 3
+_SIMULATION_SIDES = ("team_a", "team_b")
 
 
 def wilson_interval(wins: int, total: int, z: float = 1.96) -> list[float]:
@@ -26,6 +27,84 @@ def wilson_interval(wins: int, total: int, z: float = 1.96) -> list[float]:
     center = (rate + z * z / (2 * total)) / denominator
     margin = z * math.sqrt((rate * (1 - rate) + z * z / (4 * total)) / total) / denominator
     return [max(0.0, center - margin), min(1.0, center + margin)]
+
+
+def _energy_conversion_count(result: dict[str, Any], side: str) -> int:
+    team = result.get("teams", {}).get(side, {})
+    raw_count = team.get("energy_conversions")
+    if raw_count is None:
+        raw_count = len(team.get("energy_conversion_events", []))
+    return max(0, int(raw_count or 0))
+
+
+def _record_energy_conversion_metrics(
+    accumulator: Counter[str],
+    result: dict[str, Any],
+) -> None:
+    counts = {
+        side: _energy_conversion_count(result, side)
+        for side in _SIMULATION_SIDES
+    }
+    accumulator["events"] += sum(counts.values())
+    if any(counts.values()):
+        accumulator["games_with_conversion"] += 1
+    accumulator["side_games_with_conversion"] += sum(
+        1 for count in counts.values() if count > 0
+    )
+
+    winner_side = result.get("winner_side")
+    if result.get("result_type") != "WIN" or winner_side not in _SIMULATION_SIDES:
+        return
+    accumulator["decided_games"] += 1
+    losing_side = "team_b" if winner_side == "team_a" else "team_a"
+    accumulator["winning_side_events"] += counts[winner_side]
+    accumulator["losing_side_events"] += counts[losing_side]
+    for side, count in counts.items():
+        if count > 0:
+            accumulator["decided_side_games_with_conversion"] += 1
+            if side == winner_side:
+                accumulator["wins_by_sides_with_conversion"] += 1
+        else:
+            accumulator["decided_side_games_without_conversion"] += 1
+            if side == winner_side:
+                accumulator["wins_by_sides_without_conversion"] += 1
+
+
+def _finalize_energy_conversion_metrics(
+    accumulator: Counter[str],
+    total_games: int,
+) -> dict[str, Any]:
+    side_games = total_games * len(_SIMULATION_SIDES)
+    used_decided = accumulator["decided_side_games_with_conversion"]
+    unused_decided = accumulator["decided_side_games_without_conversion"]
+    return {
+        "events": accumulator["events"],
+        "games_with_conversion": accumulator["games_with_conversion"],
+        "game_usage_rate": (
+            accumulator["games_with_conversion"] / total_games if total_games else 0.0
+        ),
+        "side_games_with_conversion": accumulator["side_games_with_conversion"],
+        "side_usage_rate": (
+            accumulator["side_games_with_conversion"] / side_games if side_games else 0.0
+        ),
+        "win_correlation": {
+            "decided_games": accumulator["decided_games"],
+            "winning_side_events": accumulator["winning_side_events"],
+            "losing_side_events": accumulator["losing_side_events"],
+            "decided_side_games_with_conversion": used_decided,
+            "wins_by_sides_with_conversion": accumulator["wins_by_sides_with_conversion"],
+            "descriptive_win_rate_when_used": (
+                accumulator["wins_by_sides_with_conversion"] / used_decided
+                if used_decided else 0.0
+            ),
+            "decided_side_games_without_conversion": unused_decided,
+            "wins_by_sides_without_conversion": accumulator["wins_by_sides_without_conversion"],
+            "descriptive_win_rate_when_not_used": (
+                accumulator["wins_by_sides_without_conversion"] / unused_decided
+                if unused_decided else 0.0
+            ),
+        },
+    }
 
 
 def build_balance_report(
@@ -46,11 +125,13 @@ def build_balance_report(
     turn_caps = 0
     draws = 0
     no_contests = 0
+    energy_conversion = Counter()
     seed = seed_start
     for left_index, left_name in enumerate(names):
         for right_name in names[left_index + 1:]:
             wins = Counter()
             turns = []
+            matchup_energy_conversion = Counter()
             for orientation in range(2):
                 first_name, second_name = (left_name, right_name) if orientation == 0 else (right_name, left_name)
                 first_team = list(teams[first_name])
@@ -59,6 +140,8 @@ def build_balance_report(
                     result = run_headless_match(first_team, second_team, seed=seed, max_turns=max_turns)
                     seed += 1
                     turns.append(result["turns_executed"])
+                    _record_energy_conversion_metrics(energy_conversion, result)
+                    _record_energy_conversion_metrics(matchup_energy_conversion, result)
                     for character in first_team + second_team:
                         character_appearances[character] += 1
                     result_type = result.get("result_type")
@@ -94,6 +177,9 @@ def build_balance_report(
                 "turn_cap_rate": wins["turn_cap"] / total,
                 "draw_rate": wins["draw"] / total,
                 "no_contest_rate": wins["no_contest"] / total,
+                "energy_conversion": _finalize_energy_conversion_metrics(
+                    matchup_energy_conversion, total
+                ),
             })
     characters = {
         character: {
@@ -119,6 +205,9 @@ def build_balance_report(
         "no_contests": no_contests,
         "no_contest_rate": no_contests / total_games if total_games else 0.0,
         "first_seat_win_rate": first_seat_wins / decided_games if decided_games else 0.0,
+        "energy_conversion": _finalize_energy_conversion_metrics(
+            energy_conversion, total_games
+        ),
         "matchups": matchups,
         "characters": characters,
     }
@@ -129,10 +218,17 @@ def report_csv(report: dict[str, Any]) -> str:
     writer = csv.DictWriter(output, fieldnames=[
         "team_a_name", "team_b_name", "games", "team_a_wins", "team_b_wins",
         "draws", "no_contests", "turn_caps", "average_turns",
+        "energy_conversion_events", "games_with_energy_conversion",
+        "side_games_with_energy_conversion", "side_energy_conversion_rate",
+        "conversion_side_wins", "conversion_side_decided_games",
+        "conversion_side_win_rate", "non_conversion_side_wins",
+        "non_conversion_side_decided_games", "non_conversion_side_win_rate",
     ])
     writer.writeheader()
     for matchup in report["matchups"]:
         wins = matchup["wins"]
+        conversion = matchup["energy_conversion"]
+        correlation = conversion["win_correlation"]
         writer.writerow({
             "team_a_name": matchup["team_a_name"],
             "team_b_name": matchup["team_b_name"],
@@ -143,6 +239,16 @@ def report_csv(report: dict[str, Any]) -> str:
             "no_contests": wins.get("no_contest", 0),
             "turn_caps": wins.get("turn_cap", 0),
             "average_turns": matchup["average_turns"],
+            "energy_conversion_events": conversion["events"],
+            "games_with_energy_conversion": conversion["games_with_conversion"],
+            "side_games_with_energy_conversion": conversion["side_games_with_conversion"],
+            "side_energy_conversion_rate": conversion["side_usage_rate"],
+            "conversion_side_wins": correlation["wins_by_sides_with_conversion"],
+            "conversion_side_decided_games": correlation["decided_side_games_with_conversion"],
+            "conversion_side_win_rate": correlation["descriptive_win_rate_when_used"],
+            "non_conversion_side_wins": correlation["wins_by_sides_without_conversion"],
+            "non_conversion_side_decided_games": correlation["decided_side_games_without_conversion"],
+            "non_conversion_side_win_rate": correlation["descriptive_win_rate_when_not_used"],
         })
     return output.getvalue()
 

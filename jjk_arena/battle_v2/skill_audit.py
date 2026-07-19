@@ -50,7 +50,8 @@ KIT_GRAMMAR_DOC = REPO_ROOT / "docs" / "jjk_kit_grammar.md"
 BLANKET_TEST_FILE = "test_first_creation_skill_execution.py"
 
 DOCUMENTED_EFFECT_VOCABULARY = {
-    "damage", "heal", "health_steal", "apply_status", "remove_status",
+    "damage", "heal", "health_steal", "apply_status", "apply_team_status",
+    "remove_status", "cleanse", "consume_status_stacks", "extend_status",
     "damage_reduction", "destructible_defense", "invulnerability",
     "stun_classes", "counter", "reflect", "cooldown_increase",
     "cost_modifier", "damage_modifier", "domain", "skill_replacement",

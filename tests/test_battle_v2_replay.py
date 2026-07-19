@@ -103,6 +103,49 @@ def test_captured_cpu_replay_records_and_honors_difficulty(difficulty):
     assert run_replay(document)["final_state_hash"] == document["final_state_hash"]
 
 
+def test_captured_cpu_replay_replays_an_authoritative_transmutation_decision():
+    manager = BattleV2Manager(rng_seed=1, clock=lambda: 0.0, capture_replays=True)
+    room_id = "cpu-transmutation-replay"
+    manager.start_first_creation_match(
+        room_id,
+        [
+            {
+                "id": "a",
+                "name": "A",
+                "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"],
+            },
+            {
+                "id": "b",
+                "name": "B",
+                "team": ["satoru_gojo_young", "shoko_ieiri_young", "utahime_iori_young"],
+            },
+        ],
+        difficulty="hard",
+    )
+    for turn in range(10):
+        state = manager.get_state(room_id)
+        manager.execute_player_command(
+            room_id,
+            state.turn_player_id,
+            "cpu_turn",
+            state.state_revision,
+            f"cpu-turn-{turn}",
+            {},
+        )
+
+    document = manager.replay_document(room_id)
+    conversion = next(
+        event
+        for event in manager.get_state(room_id).event_log
+        if event.type == "energy_converted"
+    )
+
+    assert conversion.payload["player_id"] == "b"
+    assert conversion.payload["sources"] == {"green": 3, "red": 2}
+    assert conversion.payload["target"] == "blue"
+    assert run_replay(document)["final_state_hash"] == document["final_state_hash"]
+
+
 def test_replay_without_cpu_difficulty_remains_normal_compatible():
     document = captured_cpu_replay("normal")
     document.pop("cpu_difficulty")
@@ -127,9 +170,13 @@ def test_replay_detects_command_hash_tampering():
         run_replay(recorded)
 
 
-def test_replay_rejects_the_pre_cpu_planning_rules_version():
+@pytest.mark.parametrize("old_version", [
+    "battle-v2-2026-07-aggregate-dr",
+    "battle-v2-2026-07-transmute-5",
+])
+def test_replay_rejects_superseded_rules_versions(old_version):
     document = replay_document()
-    document["rules_version"] = "battle-v2-2026-07-aggregate-dr"
+    document["rules_version"] = old_version
 
     with pytest.raises(ReplayError, match="unsupported rules version"):
         run_replay(document)

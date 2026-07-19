@@ -1,7 +1,7 @@
 import pytest
 
 from jjk_arena.battle_v2.conditions import has_status
-from jjk_arena.battle_v2.models import BattleEvent, BattleState, CharacterState, EffectSpec, EnergyType, PendingAction, PlayerState, SkillClass, SkillSpec, StatusEffect, StatusFamily, TargetRule
+from jjk_arena.battle_v2.models import BattleEvent, BattleState, CharacterState, DamageType, DurationClock, EffectSpec, EnergyType, PendingAction, PlayerState, SkillClass, SkillSpec, StatusEffect, StatusFamily, TargetRule
 from jjk_arena.battle_v2.resolver import ResolverError, finish_turn, resolve_queue, validate_action
 from jjk_arena.battle_v2.starter_roster import FIRST_CREATION_SKILLS_BY_ID
 
@@ -130,5 +130,19 @@ def test_momo_selection_and_junpei_retaliation_are_real_state_changes():
     state.pending_actions["p1"] = [action]
     state.queue_order["p1"] = [action.id]
     events = resolve_queue(state, "p1", {"strike": strike})
-    assert any(event.type == "retaliation" for event in events)
-    assert has_status(state.players["p1"].team[0], "poison")
+    retaliation = next(event for event in events if event.type == "retaliation")
+    assert retaliation.payload == {
+        "action_id": "strike",
+        "source_player_id": "p2",
+        "source_slot": 0,
+        "target_player_id": "p1",
+        "target_slot": 0,
+        "amount": 10,
+        "actual_hp_damage": 10,
+        "attempted_amount": 10,
+        "damage_type": DamageType.SOUL.value,
+        "status": "jellyfish_screen",
+    }
+    poison = next(status for status in state.players["p1"].team[0].statuses if status.id == "poison")
+    assert poison.source_player_id == "p2" and poison.source_slot == 0
+    assert poison.duration_clock == DurationClock.TARGET_TURN

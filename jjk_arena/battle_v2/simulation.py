@@ -7,12 +7,40 @@ from collections import Counter
 import json
 from typing import Any
 
+from .damage_accounting import enemy_hp_damage_attribution
+from .energy import CORE_ENERGY
 from .manager import BattleV2Manager
 from .replay import RULES_VERSION, authoritative_state_hash
 from .timers import BattleTimerPolicy
 
 
-SIMULATION_SCHEMA_VERSION = 2
+SIMULATION_SCHEMA_VERSION = 3
+
+
+def _core_energy_snapshot(value: Any, *, sparse: bool = False) -> dict[str, int]:
+    """Return a deterministic, privacy-safe copy of one core-energy mapping."""
+
+    raw = value if isinstance(value, dict) else {}
+    snapshot: dict[str, int] = {}
+    for energy in CORE_ENERGY:
+        amount = int(raw.get(energy.value, 0) or 0)
+        if not sparse or amount:
+            snapshot[energy.value] = amount
+    return snapshot
+
+
+def _energy_conversion_diagnostic(event: Any) -> dict[str, Any]:
+    """Copy the public diagnostic fields from one authoritative conversion event."""
+
+    payload = event.payload
+    return {
+        "turn_number": int(event.turn_number),
+        "sources": _core_energy_snapshot(payload.get("sources"), sparse=True),
+        "cost": int(payload.get("cost", 0) or 0),
+        "target": str(payload.get("target", "")),
+        "pool_before": _core_energy_snapshot(payload.get("pool_before")),
+        "pool_after": _core_energy_snapshot(payload.get("pool_after")),
+    }
 
 
 def run_headless_match(
@@ -57,13 +85,23 @@ def run_headless_match(
         manager._finish_match(state, "TURN_CAP", None, "simulation_turn_cap")
     damage_received = Counter()
     healing_received = Counter()
+    energy_conversion_events: dict[str, list[dict[str, Any]]] = {
+        player_id: [] for player_id in state.players
+    }
     for event in state.event_log:
         target = event.payload.get("target_player_id")
         amount = int(event.payload.get("amount", 0) or 0)
-        if target in state.players and event.type in {"damage", "turn_end_damage", "retaliation"}:
-            damage_received[str(target)] += max(0, amount)
+        attribution = enemy_hp_damage_attribution(event, state.players.keys())
+        if attribution is not None:
+            _source, damaged_player_id, actual_hp_damage = attribution
+            damage_received[damaged_player_id] += actual_hp_damage
         if target in state.players and event.type == "heal":
             healing_received[str(target)] += max(0, amount)
+        conversion_player = event.payload.get("player_id")
+        if event.type == "energy_converted" and conversion_player in state.players:
+            energy_conversion_events[str(conversion_player)].append(
+                _energy_conversion_diagnostic(event)
+            )
 
     def team_result(player_id: str) -> dict[str, Any]:
         player = state.players[player_id]
@@ -74,6 +112,8 @@ def run_headless_match(
             "actions_resolved": actions[player_id],
             "damage_received": damage_received[player_id],
             "healing_received": healing_received[player_id],
+            "energy_conversions": len(energy_conversion_events[player_id]),
+            "energy_conversion_events": energy_conversion_events[player_id],
         }
 
     return {

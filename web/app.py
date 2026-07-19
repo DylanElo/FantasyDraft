@@ -39,6 +39,43 @@ def env_flag(name: str, default: bool = False) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _http_origin(host: str, port: int) -> str:
+    """Build an exact HTTP origin for a development bind host."""
+
+    normalized = str(host or "").strip().strip("[]")
+    rendered_host = f"[{normalized}]" if ":" in normalized else normalized
+    return f"http://{rendered_host}:{int(port)}"
+
+
+def resolve_cors_origins(
+    configured_origins: str | None,
+    host: str,
+    port: int,
+    *,
+    production_mode: bool,
+) -> list[str]:
+    """Resolve explicit Socket.IO origins without a permissive wildcard.
+
+    Development defaults follow the actual bind port and include the two
+    common loopback browser aliases. Production deliberately has no implicit
+    HTTP fallback: readiness continues to require an explicit HTTPS list.
+    """
+
+    if configured_origins and configured_origins.strip():
+        return list(dict.fromkeys(
+            origin.strip()
+            for origin in configured_origins.split(",")
+            if origin.strip()
+        ))
+    if production_mode:
+        return []
+
+    normalized_host = str(host or "").strip().strip("[]")
+    hosts = [] if normalized_host in {"", "0.0.0.0", "::"} else [normalized_host]
+    hosts.extend(["127.0.0.1", "localhost"])
+    return list(dict.fromkeys(_http_origin(item, port) for item in hosts))
+
+
 DEBUG_MODE = env_flag("JJK_DEBUG", False)
 PRODUCTION_MODE = env_flag("JJK_PRODUCTION", False)
 HOST = os.getenv("JJK_HOST", "127.0.0.1")
@@ -50,11 +87,12 @@ FINISHED_ROOM_TTL_SECONDS = max(60, int(os.getenv("JJK_FINISHED_ROOM_TTL_SECONDS
 ACTIVE_ROOM_TTL_SECONDS = max(300, int(os.getenv("JJK_ACTIVE_ROOM_TTL_SECONDS", "7200")))
 LOBBY_TTL_SECONDS = max(60, int(os.getenv("JJK_LOBBY_TTL_SECONDS", "900")))
 configured_cors_origins = os.getenv("JJK_CORS_ORIGINS")
-CORS_ORIGINS = [
-    origin.strip()
-    for origin in (configured_cors_origins or "http://127.0.0.1:5000,http://localhost:5000").split(",")
-    if origin.strip()
-]
+CORS_ORIGINS = resolve_cors_origins(
+    configured_cors_origins,
+    HOST,
+    PORT,
+    production_mode=PRODUCTION_MODE,
+)
 
 app = Flask(__name__)
 configured_secret = os.getenv("FLASK_SECRET_KEY")
@@ -198,7 +236,7 @@ def production_readiness_issues() -> list[str]:
         issues.append("FLASK_SECRET_KEY must contain at least 32 characters in production")
     if WEB_WORKERS != 1:
         issues.append("JJK_WEB_WORKERS must remain 1 until authoritative rooms use an external coordinator")
-    if PRODUCTION_MODE and not configured_cors_origins:
+    if PRODUCTION_MODE and (not configured_cors_origins or not CORS_ORIGINS):
         issues.append("JJK_CORS_ORIGINS must be explicitly configured in production")
     if PRODUCTION_MODE and ("*" in CORS_ORIGINS or any(not origin.startswith("https://") for origin in CORS_ORIGINS)):
         issues.append("JJK_CORS_ORIGINS must contain only explicit HTTPS origins in production")

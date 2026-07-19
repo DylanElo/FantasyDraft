@@ -43,6 +43,10 @@ function freshStore(mode) {
     detailCharacterId: null,
     lobbyStatus: null,
     matchLaunchPending: false,
+    matchLaunchError: '',
+    matchLaunchTimer: null,
+    matchLaunchAttempt: 0,
+    connectionState: 'connected',
     state: null,
     disconnectDeadline: null,
     actions: [],
@@ -225,3 +229,196 @@ def test_private_matchup_never_renders_the_local_cpu_roster_as_the_opponent():
     assert "OPPONENT ROSTER HIDDEN" in source
     assert "this.store.returnFromMatchup()" in source
     assert "else this.store.changeScene('DraftScene')" not in source
+    assert "ARENA ENTRY FAILED" in source
+    assert "Retry Arena Entry" in source
+
+
+def test_matchup_launch_timeout_and_transport_errors_are_bounded_and_retryable():
+    probe = _run_node(
+        r"""
+globalThis.JJK_BOOTSTRAP = { battleV2Enabled: true, firstCreation: { roster: {} } };
+globalThis.JJK_MOBILE_TOKENS = {};
+const timers = new Map();
+let nextTimer = 1;
+globalThis.window = {
+  JJKPhaserShell: null,
+  setTimeout(fn, ms) {
+    const id = nextTimer++;
+    timers.set(id, { fn, ms });
+    return id;
+  },
+  clearTimeout(id) { timers.delete(id); },
+  setInterval: () => {},
+};
+globalThis.document = { getElementById: () => null };
+globalThis.localStorage = { getItem: () => null, setItem: () => {} };
+const { GameStore, MATCH_LAUNCH_TIMEOUT_MS } = await import('./web/static/phaser/store/game-store.js');
+
+function matchupStore({ connected = true } = {}) {
+  const emitted = [];
+  const socketClient = {
+    connected,
+    isConnected() { return this.connected; },
+    emit(name, payload) { emitted.push({ name, payload }); },
+  };
+  const store = Object.create(GameStore.prototype);
+  Object.assign(store, {
+    matchMode: 'cpu',
+    difficulty: 'normal',
+    scene: 'MatchupScene',
+    playerId: 'player',
+    playerName: 'Player',
+    roomId: 'friends',
+    playerTeam: ['yuji', 'megumi', 'nobara'],
+    enemyTeam: ['yuta', 'maki', 'toge'],
+    connectionState: connected ? 'connected' : 'disconnected',
+    state: null,
+    lobbyStatus: null,
+    matchLaunchPending: false,
+    matchLaunchError: '',
+    matchLaunchTimer: null,
+    matchLaunchAttempt: 0,
+    disconnectDeadline: null,
+    actions: [],
+    actionWildPays: {},
+    queueReviewOpen: false,
+    selectedCasterSlot: null,
+    selectedSkillId: null,
+    queueSubmitting: false,
+    eventCursor: 0,
+    playbackEvents: [],
+    recentEvents: [],
+    ignoreBattleUpdates: false,
+    resumeSession: null,
+    socketClient,
+    changeScene(scene) { this.scene = scene; },
+    clearResumeSession() { this.resumeSession = null; },
+    setStatus(status) { this.status = status; },
+    showToast(message) { this.toast = message; },
+  });
+  return { store, emitted, socketClient };
+}
+
+const timed = matchupStore();
+timed.store.startMatch();
+const launchTimer = Array.from(timers.values())[0];
+const launched = {
+  pending: timed.store.matchLaunchPending,
+  eventCount: timed.emitted.length,
+  timeoutMs: launchTimer.ms,
+};
+launchTimer.fn();
+const timedOut = {
+  pending: timed.store.matchLaunchPending,
+  error: timed.store.matchLaunchError,
+  toast: timed.store.toast,
+  timerCount: timers.size,
+};
+timed.store.startMatch();
+const retry = {
+  pending: timed.store.matchLaunchPending,
+  error: timed.store.matchLaunchError,
+  eventCount: timed.emitted.length,
+};
+timed.store.receiveLobbyState({ status: 'waiting', room_id: 'friends' });
+const accepted = {
+  pending: timed.store.matchLaunchPending,
+  error: timed.store.matchLaunchError,
+  timerCount: timers.size,
+};
+
+const offline = matchupStore({ connected: false });
+offline.store.startMatch();
+const unavailable = {
+  pending: offline.store.matchLaunchPending,
+  error: offline.store.matchLaunchError,
+  eventCount: offline.emitted.length,
+};
+
+const handlers = {};
+const transport = matchupStore();
+transport.store.matchLaunchPending = true;
+transport.store.socketClient.on = (name, handler) => { handlers[name] = handler; };
+transport.store.bindSocket();
+handlers.connect_error();
+const transportError = {
+  pending: transport.store.matchLaunchPending,
+  error: transport.store.matchLaunchError,
+  connectionState: transport.store.connectionState,
+};
+
+console.log(JSON.stringify({
+  timeoutConstant: MATCH_LAUNCH_TIMEOUT_MS,
+  launched,
+  timedOut,
+  retry,
+  accepted,
+  unavailable,
+  transportError,
+}));
+"""
+    )
+
+    assert probe["timeoutConstant"] == 10_000
+    assert probe["launched"] == {
+        "pending": True,
+        "eventCount": 1,
+        "timeoutMs": 10_000,
+    }
+    assert probe["timedOut"] == {
+        "pending": False,
+        "error": "The arena did not answer in time. Check the connection and try again.",
+        "toast": "The arena did not answer in time. Check the connection and try again.",
+        "timerCount": 0,
+    }
+    assert probe["retry"] == {
+        "pending": True,
+        "error": "",
+        "eventCount": 2,
+    }
+    assert probe["accepted"] == {
+        "pending": False,
+        "error": "",
+        "timerCount": 0,
+    }
+    assert probe["unavailable"] == {
+        "pending": False,
+        "error": "Arena server is not connected yet. Check the address and try again.",
+        "eventCount": 0,
+    }
+    assert probe["transportError"] == {
+        "pending": False,
+        "error": "Arena server could not be reached. Check the address and try again.",
+        "connectionState": "disconnected",
+    }
+
+
+def test_socket_client_reports_live_connectivity_and_binds_terminal_reconnect_failure():
+    probe = _run_node(
+        r"""
+const socketEvents = [];
+const managerEvents = [];
+const socket = {
+  connected: false,
+  on(name) { socketEvents.push(name); },
+  emit() {},
+  io: { on(name) { managerEvents.push(name); } },
+};
+globalThis.window = { io: () => socket };
+const { SocketClient } = await import('./web/static/phaser/network/socket-client.js');
+const client = new SocketClient();
+client.on('connect_error', () => {});
+client.on('reconnect_failed', () => {});
+const before = client.isConnected();
+socket.connected = true;
+const after = client.isConnected();
+console.log(JSON.stringify({ socketEvents, managerEvents, before, after }));
+"""
+    )
+
+    assert probe == {
+        "socketEvents": ["connect_error"],
+        "managerEvents": ["reconnect_failed"],
+        "before": False,
+        "after": True,
+    }

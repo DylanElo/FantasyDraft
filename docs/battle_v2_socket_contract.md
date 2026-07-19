@@ -41,11 +41,17 @@ authoritative match id. For local/dev testing the client may provide both teams:
 ```json
 {
   "player_name": "Player",
+  "roster_mode": "classic",
   "player_team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"],
   "enemy_team": ["satoru_gojo", "ryomen_sukuna", "mahito"],
   "difficulty": "hard"
 }
 ```
+
+`roster_mode` is optional and accepts `classic` or `first_creation`; omitted
+or unrecognized values normalize to `classic`. `first_creation` selects the
+locked 19-character roster, its skill catalog, and its mission-progress
+payload. The authoritative `battle_v2_update` echoes the normalized mode.
 
 If `player_team` is omitted, the starter trio Yuji/Nobara/Megumi is used. If
 `enemy_team` is omitted, Gojo/Sukuna/Mahito is used. `difficulty` is optional
@@ -93,9 +99,14 @@ lobby; the second player starts the match with each player's selected team.
 {
   "room_id": "private-room",
   "player_name": "Player",
+  "roster_mode": "first_creation",
   "player_team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]
 }
 ```
+
+`roster_mode` follows the same `classic`/`first_creation` normalization as CPU
+practice. Both players must submit the same normalized mode; an incompatible
+second join is rejected without mutating the waiting player's lobby entry.
 
 A private code and a player's active-match slot become available for reuse the
 instant the bound match reaches `FINISHED` — this does not require the client
@@ -324,11 +335,12 @@ Emitted to each human player in the room through that player's private socket
 room. Every payload is serialized for its viewer, so invisible statuses,
 private events, and pending queues do not leak to opponents.
 
-The payload includes authoritative `state_revision` and
-`phase_seconds_remaining`. Remaining time is a display value derived from the
-server's monotonic deadline. The server independently wakes the room and emits
-a new viewer-specific update when Planning or Queue Review expires; the client
-must not perform the timeout transition itself.
+The payload includes authoritative `state_revision`, normalized `roster_mode`
+(`classic` or `first_creation`), and `phase_seconds_remaining`. Remaining time
+is a display value derived from the server's monotonic deadline. The server
+independently wakes the room and emits a new viewer-specific update when
+Planning or Queue Review expires; the client must not perform the timeout
+transition itself.
 
 The payload also includes `disconnect_grace_seconds_remaining` (`float |
 null`): when `paused` is `true` because a player disconnected, this is the

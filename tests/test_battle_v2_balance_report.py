@@ -45,7 +45,7 @@ def test_report_keeps_draw_no_contest_and_turn_cap_distinct(monkeypatch):
     report = build_balance_report(TEAMS, games_per_orientation=2, seed_start=1, max_turns=20)
     matchup = report["matchups"][0]
 
-    assert report["schema_version"] == 2
+    assert report["schema_version"] == 3
     assert (report["draws"], report["no_contests"], report["turn_caps"]) == (1, 1, 1)
     assert matchup["wins"]["draw"] == 1
     assert matchup["wins"]["no_contest"] == 1
@@ -59,6 +59,60 @@ def test_csv_export_has_one_row_per_matchup():
 
     assert len(rows) == 1
     assert rows[0]["team_a_name"] in TEAMS
+    assert "energy_conversion_events" in rows[0]
+    assert "conversion_side_win_rate" in rows[0]
+
+
+def test_report_aggregates_energy_conversion_usage_and_win_correlation(monkeypatch):
+    def result(
+        result_type,
+        winner_side,
+        team_a_conversions,
+        team_b_conversions,
+    ):
+        return {
+            "turns_executed": 4,
+            "result_type": result_type,
+            "winner_side": winner_side,
+            "teams": {
+                "team_a": {"energy_conversions": team_a_conversions},
+                "team_b": {"energy_conversions": team_b_conversions},
+            },
+        }
+
+    results = iter([
+        result("WIN", "team_a", 2, 0),
+        result("WIN", "team_b", 1, 0),
+        result("DRAW", None, 0, 1),
+        result("WIN", "team_a", 0, 0),
+    ])
+    monkeypatch.setattr(
+        balance_report,
+        "run_headless_match",
+        lambda *_args, **_kwargs: next(results),
+    )
+
+    report = build_balance_report(
+        TEAMS, games_per_orientation=2, seed_start=1, max_turns=20
+    )
+    conversion = report["energy_conversion"]
+    correlation = conversion["win_correlation"]
+
+    assert conversion == report["matchups"][0]["energy_conversion"]
+    assert conversion["events"] == 4
+    assert conversion["games_with_conversion"] == 3
+    assert conversion["game_usage_rate"] == 0.75
+    assert conversion["side_games_with_conversion"] == 3
+    assert conversion["side_usage_rate"] == 3 / 8
+    assert correlation["decided_games"] == 3
+    assert correlation["winning_side_events"] == 2
+    assert correlation["losing_side_events"] == 1
+    assert correlation["decided_side_games_with_conversion"] == 2
+    assert correlation["wins_by_sides_with_conversion"] == 1
+    assert correlation["descriptive_win_rate_when_used"] == 0.5
+    assert correlation["decided_side_games_without_conversion"] == 4
+    assert correlation["wins_by_sides_without_conversion"] == 2
+    assert correlation["descriptive_win_rate_when_not_used"] == 0.5
 
 
 def test_balance_report_cli_emits_json():

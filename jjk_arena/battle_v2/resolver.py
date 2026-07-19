@@ -616,11 +616,41 @@ def resolve_queue_prefix(
             for slot in effect_slots:
                 effect_target_player_id = target_player_id
                 effect_target_slot = slot
-                if slot in reflected_slots and _is_harmful_effect(effect):
+                reflector = reflected_slots.get(slot) if _is_harmful_effect(effect) else None
+                if reflector is not None:
                     effect_target_player_id = action.player_id
                     effect_target_slot = action.caster_slot
                 recipient = state.players[effect_target_player_id].team[effect_target_slot]
-                event = apply_effect(state, action, effect, effect_target_player_id, effect_target_slot, skill.name, condition_target=original_target, selected_target_count=len(target_slots), selected_targets=resolved_targets, skill_id=skill.id, skill_classes=skill.classes, context=effect_context(recipient))
+                event = apply_effect(
+                    state,
+                    action,
+                    effect,
+                    effect_target_player_id,
+                    effect_target_slot,
+                    skill.name,
+                    condition_target=original_target,
+                    selected_target_count=len(target_slots),
+                    selected_targets=resolved_targets,
+                    skill_id=skill.id,
+                    skill_classes=skill.classes,
+                    context=effect_context(recipient),
+                    status_source_player_id=(
+                        reflector.source_player_id
+                        if reflector is not None and effect.type == "apply_status"
+                        else None
+                    ),
+                    status_source_slot=(
+                        reflector.source_slot
+                        if reflector is not None and effect.type == "apply_status"
+                        else None
+                    ),
+                )
+                if reflector is not None:
+                    event.payload.update({
+                        "is_reflected": True,
+                        "reflected_by_player_id": reflector.source_player_id,
+                        "reflected_by_slot": reflector.source_slot,
+                    })
                 _append_event(events, state, event)
                 if event.type == "damage" and event.payload.get("amount", 0) > 0 and effect.target != "self":
                     recipient.statuses = [status for status in recipient.statuses if status.id != "damaged_last_turn"]
@@ -632,8 +662,28 @@ def resolve_queue_prefix(
                         actual = apply_damage(caster, retaliation, DamageType.SOUL)
                         retaliate_status = guard.payload.get("retaliate_status")
                         if retaliate_status:
-                            apply_status(state, action, action.player_id, action.caster_slot, EffectSpec(type="apply_status", status=str(retaliate_status), duration=2, payload={"name": str(retaliate_status).title(), "turn_end_damage": retaliation, "turn_end_damage_type": DamageType.SOUL.value}))
-                        _append_event(events, state, BattleEvent("retaliation", f"{guard.name} retaliated for {actual}", state.turn_number, {"action_id": action.id, "amount": actual, "status": guard.id}))
+                            apply_status(
+                                state,
+                                action,
+                                action.player_id,
+                                action.caster_slot,
+                                EffectSpec(type="apply_status", status=str(retaliate_status), duration=2, payload={"name": str(retaliate_status).title(), "turn_end_damage": retaliation, "turn_end_damage_type": DamageType.SOUL.value}),
+                                source_player_id=guard.source_player_id,
+                                source_slot=guard.source_slot,
+                                source_skill_id=guard.payload.get("source_skill_id"),
+                            )
+                        _append_event(events, state, BattleEvent("retaliation", f"{guard.name} retaliated for {actual}", state.turn_number, {
+                            "action_id": action.id,
+                            "source_player_id": guard.source_player_id,
+                            "source_slot": guard.source_slot,
+                            "target_player_id": action.player_id,
+                            "target_slot": action.caster_slot,
+                            "amount": actual,
+                            "actual_hp_damage": actual,
+                            "attempted_amount": retaliation,
+                            "damage_type": DamageType.SOUL.value,
+                            "status": guard.id,
+                        }))
                         break
         if any(effect.type == "damage" and effect.target != "self" for effect in skill.effects):
             _consume_statuses_by_payload(caster, "consume_after_damage")

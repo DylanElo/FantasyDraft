@@ -87,6 +87,14 @@ The resolver implements these rule families:
 - Sure-hit damage is for Domain effects and ignores normal target protection unless anti-domain effects apply.
 - Health steal heals the user only for actual HP damage dealt.
 
+Authoritative HP-damage events (`damage`, `status_damage`, `retaliation`, and
+`health_steal`) identify their source and target player/slot and carry
+`actual_hp_damage`. Lifecycle progress, damage tiebreaks, and diagnostic
+simulation totals consume that field exclusively. Nominal effect amounts,
+damage absorbed by reduction or defense, invulnerable hits, overkill, and
+self/friendly damage never count as enemy HP damage. Reflected HP loss is
+credited to the reflector while the event retains the original skill source.
+
 `Physical` describes a damage/technique family, not reach. `Melee` and `Ranged`
 are explicit independent tags used by counters and punishments.
 
@@ -94,8 +102,10 @@ are explicit independent tags used by counters and punishments.
 
 Planning and Queue Review have server-owned deadlines. Timing policy is
 isolated in `jjk_arena/battle_v2/timers.py`; the manager owns timeout
-transitions. Planning timeout skips the turn. A valid Queue Review timeout
-resolves the submitted queue; an invalid queue is discarded before advancing.
+transitions. Planning timeout skips the turn. A Queue Review timeout does not
+confirm the submitted queue: all unconfirmed actions are discarded and the
+turn auto-passes before advancing. Only an explicit confirmation resolves
+queued actions.
 Internal deadlines use a monotonic clock. A stale-safe background scheduler
 wakes idle rooms, runs the authoritative transition under the room lock, then
 broadcasts viewer-specific state. Re-arming or deleting a room invalidates old
@@ -114,6 +124,11 @@ into one chosen core-energy pip. The five sacrificed pips may be any mixture of
 the four core types. Transmutation is limited to once per player turn, is
 server-validated, and never creates or accepts Wild (`X`) energy. See
 `docs/decisions/battle_v2_energy_transmutation.md`.
+
+CPU players have rule parity through that same authoritative command path.
+Easy only converts to avoid an otherwise empty useful queue, Normal requires a
+material queue improvement, and Hard compares viewer-safe authoritative
+outcomes against the 5-to-1 opportunity cost. No difficulty converts blindly.
 
 The player-facing core vocabulary is `T` Taijutsu (green), `J` Jujutsu (blue),
 `S` Strategic (white), and `B` Bloodline (red). Authoritative state, sockets,

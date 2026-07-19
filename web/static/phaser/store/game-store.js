@@ -5,6 +5,8 @@ import { AssetRegistry } from '../core/asset-registry.js?v=35';
 import { firstCreationRoster, preset, presetTitle } from '../core/roster.js?v=35';
 import { damageEventAmount } from '../fx/event-metrics.js?v=35';
 
+export const MATCH_LAUNCH_TIMEOUT_MS = 10000;
+
 export class GameStore {
     constructor(socketClient) {
       this.socketClient = socketClient;
@@ -19,6 +21,9 @@ export class GameStore {
       this.state = null;
       this.lobbyStatus = null;
       this.matchLaunchPending = false;
+      this.matchLaunchError = '';
+      this.matchLaunchTimer = null;
+      this.matchLaunchAttempt = 0;
       this.matchupReturnScene = 'DraftScene';
       this.selectedCasterSlot = null;
       this.selectedSkillId = null;
@@ -35,7 +40,9 @@ export class GameStore {
       this.transmuteTarget = null;
       this.toast = '';
       this.toastSerial = 0;
-      this.connectionState = 'connected';
+      this.connectionState = typeof this.socketClient.isConnected === 'function' && !this.socketClient.isConnected()
+        ? 'connecting'
+        : 'connected';
       this.disconnectDeadline = null;
       this.draftPage = 0;
       this.draftTarget = 'playerTeam';
@@ -108,9 +115,31 @@ export class GameStore {
         this.connectionState = 'disconnected';
         this.pendingCommand = null;
         this.queueSubmitting = false;
+        if (this.scene === 'MatchupScene' && !this.state) {
+          const matchmakingStarted = !!(this.matchLaunchPending || this.lobbyStatus);
+          this.lobbyStatus = null;
+          this.failMatchLaunch(matchmakingStarted
+            ? 'Connection lost before matchmaking completed. Reconnect and try again.'
+            : 'Arena connection was lost. Reconnect before entering the match.');
+          return;
+        }
         this.setStatus('Reconnecting…');
         this.notify();
       });
+      const connectionFailed = () => {
+        this.connectionState = 'disconnected';
+        this.pendingCommand = null;
+        this.queueSubmitting = false;
+        this.setStatus('Connection failed');
+        if (this.scene === 'MatchupScene' && !this.state) {
+          this.lobbyStatus = null;
+          this.failMatchLaunch('Arena server could not be reached. Check the address and try again.');
+          return;
+        }
+        this.notify();
+      };
+      this.socketClient.on('connect_error', connectionFailed);
+      this.socketClient.on('reconnect_failed', connectionFailed);
       this.socketClient.on('battle_v2_session', (data) => this.saveResumeSession(data));
       this.socketClient.on('battle_v2_resume_rejected', (data) => {
         this.clearResumeSession();
@@ -120,9 +149,11 @@ export class GameStore {
       this.socketClient.on('battle_v2_lobby', (data) => this.receiveLobbyState(data));
       this.socketClient.on('battle_v2_error', (data) => {
         const failedCommand = this.pendingCommand;
+        const failedLaunch = this.matchLaunchPending;
         this.pendingCommand = null;
         this.queueSubmitting = false;
         this.matchLaunchPending = false;
+        this.clearMatchLaunchTimeout();
         if (
           failedCommand
           && ['queue_update_before_confirm', 'queue_confirm'].includes(failedCommand.kind)
@@ -133,6 +164,10 @@ export class GameStore {
           this.queueReviewOpen = true;
         }
         const message = data && data.message ? String(data.message) : 'Battle command failed.';
+        if (failedLaunch && this.scene === 'MatchupScene') {
+          this.matchLaunchError = safeText(message);
+          this.setStatus('Arena request rejected');
+        }
         this.showToast(message.toLowerCase().includes('stale state revision')
           ? 'Battle state refreshed. Review your queue and try again.'
           : message);
@@ -189,6 +224,38 @@ export class GameStore {
       if (!this.toast) return;
       this.toast = '';
       this.notify();
+    }
+
+    clearMatchLaunchTimeout() {
+      this.matchLaunchAttempt = Number(this.matchLaunchAttempt || 0) + 1;
+      if (this.matchLaunchTimer !== null && typeof window.clearTimeout === 'function') {
+        window.clearTimeout(this.matchLaunchTimer);
+      }
+      this.matchLaunchTimer = null;
+    }
+
+    armMatchLaunchTimeout() {
+      this.clearMatchLaunchTimeout();
+      const attempt = this.matchLaunchAttempt;
+      this.matchLaunchTimer = window.setTimeout(() => {
+        if (attempt !== this.matchLaunchAttempt || !this.matchLaunchPending || this.state || this.lobbyStatus) return;
+        this.failMatchLaunch('The arena did not answer in time. Check the connection and try again.');
+      }, MATCH_LAUNCH_TIMEOUT_MS);
+    }
+
+    failMatchLaunch(message) {
+      const failure = safeText(message, 'Arena connection failed. Try again.');
+      const alreadyVisible = !this.matchLaunchPending && this.matchLaunchError === failure;
+      this.clearMatchLaunchTimeout();
+      this.matchLaunchPending = false;
+      this.matchLaunchError = failure;
+      this.setStatus('Connection failed');
+      if (!alreadyVisible) this.showToast(failure);
+    }
+
+    matchConnectionReady() {
+      if (this.connectionState !== 'connected') return false;
+      return typeof this.socketClient.isConnected !== 'function' || this.socketClient.isConnected();
     }
 
     commandPayload(payload = {}) {
@@ -491,6 +558,8 @@ export class GameStore {
       this.detailCharacterId = null;
       this.lobbyStatus = null;
       this.matchLaunchPending = false;
+      this.matchLaunchError = '';
+      this.clearMatchLaunchTimeout();
       this.changeScene('MatchupScene');
     }
 
@@ -522,6 +591,10 @@ export class GameStore {
         return;
       }
       if (this.matchLaunchPending) return;
+      if (!this.matchConnectionReady()) {
+        this.failMatchLaunch('Arena server is not connected yet. Check the address and try again.');
+        return;
+      }
       this.state = null;
       this.disconnectDeadline = null;
       this.clearResumeSession();
@@ -537,6 +610,8 @@ export class GameStore {
       this.recentEvents = [];
       this.ignoreBattleUpdates = false;
       this.matchLaunchPending = true;
+      this.matchLaunchError = '';
+      this.armMatchLaunchTimeout();
       const payload = {
         room_id: this.matchMode === 'pvp' ? this.roomId : `classic_v2_${Math.random().toString(36).slice(2, 8)}`,
         player_name: this.playerName,
@@ -558,6 +633,7 @@ export class GameStore {
     }
 
     receiveLobbyState(data) {
+      this.clearMatchLaunchTimeout();
       this.state = null;
       this.pendingCommand = null;
       this.disconnectDeadline = null;
@@ -565,6 +641,7 @@ export class GameStore {
       this.lobbyStatus = cancelled ? null : data;
       this.queueSubmitting = false;
       this.matchLaunchPending = false;
+      this.matchLaunchError = '';
       if (cancelled) {
         // A player-initiated cancel changes to Lobby before the server ack.
         // Do not let that later ack pull the app back into team setup.
@@ -577,6 +654,8 @@ export class GameStore {
 
     receiveBattleState(data) {
       if (this.ignoreBattleUpdates || !data) return;
+      this.clearMatchLaunchTimeout();
+      this.matchLaunchError = '';
       const currentMatchId = this.state && this.state.match_id;
       const nextMatchId = data.match_id;
       const sameMatch = !!this.state && (
@@ -1489,6 +1568,8 @@ export class GameStore {
       this.selectedSkillId = null;
       this.queueSubmitting = false;
       this.matchLaunchPending = false;
+      this.matchLaunchError = '';
+      this.clearMatchLaunchTimeout();
       this.matchupReturnScene = 'DraftScene';
       this.queueReviewOpen = false;
       this.transmuteOpen = false;

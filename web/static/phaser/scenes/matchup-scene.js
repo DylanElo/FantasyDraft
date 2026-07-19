@@ -173,33 +173,37 @@ export class MatchupScene extends BaseScene {
     }
 
     renderStatus(region, isCpu, waiting, pending) {
+      const connectionError = safeText(this.store.matchLaunchError);
       drawS3Panel(this, region.x, region.y, region.w, region.h, {
-        fill: pending || waiting ? S3_COLORS.smoke : S3_COLORS.paper,
-        accent: pending ? S3_COLORS.gold : waiting ? S3_COLORS.cyan : S3_COLORS.red,
+        fill: connectionError || pending || waiting ? S3_COLORS.smoke : S3_COLORS.paper,
+        accent: connectionError ? S3_COLORS.red : pending ? S3_COLORS.gold : waiting ? S3_COLORS.cyan : S3_COLORS.red,
         cut: 7,
         washAlpha: 0.16,
       });
       const lobbyMessage = this.store.lobbyStatus && this.store.lobbyStatus.message;
-      const title = pending
-        ? 'CONNECTING TO ARENA'
-        : waiting
-          ? 'WAITING FOR CHALLENGER'
-          : isCpu
-            ? 'BOTH TRIOS READY FOR SERVER CHECK'
-            : 'YOUR TRIO IS READY TO JOIN';
+      const title = connectionError
+        ? 'ARENA ENTRY FAILED'
+        : pending
+          ? 'CONNECTING TO ARENA'
+          : waiting
+            ? 'WAITING FOR CHALLENGER'
+            : isCpu
+              ? 'BOTH TRIOS READY FOR SERVER CHECK'
+              : 'YOUR TRIO IS READY TO JOIN';
       this.mono(region.x + 12, region.y + 8, title, {
-        color: pending || waiting ? S3_COLORS.cyanText : S3_COLORS.inkText,
+        color: connectionError ? S3_COLORS.redText : pending || waiting ? S3_COLORS.cyanText : S3_COLORS.inkText,
         fontSize: '12px',
         fontStyle: '900',
       });
-      const subline = lobbyMessage
-        ? safeText(lobbyMessage).slice(0, 44)
-        : waiting
-          ? `ROOM ${safeText(this.store.lobbyStatus && this.store.lobbyStatus.room_id, this.store.roomId).toUpperCase()}`
-          : 'ROSTERS LOCK ONLY AFTER THE SERVER ACCEPTS THE MATCH';
+      const subline = connectionError
+        || (lobbyMessage
+          ? safeText(lobbyMessage).slice(0, 44)
+          : waiting
+            ? `ROOM ${safeText(this.store.lobbyStatus && this.store.lobbyStatus.room_id, this.store.roomId).toUpperCase()}`
+            : 'ROSTERS LOCK ONLY AFTER THE SERVER ACCEPTS THE MATCH');
       const sublineNode = this.mono(region.x + 12, region.y + 27, subline, {
         color: S3_COLORS.mutedText,
-        fontSize: '9px',
+        fontSize: '10px',
         fontStyle: '800',
         lineSpacing: -1,
         wordWrap: { width: region.w - 24 },
@@ -212,6 +216,7 @@ export class MatchupScene extends BaseScene {
       const layout = this.matchupLayout(frame);
       const isCpu = this.store.matchMode === 'cpu';
       const pending = !!this.store.matchLaunchPending;
+      const connectionError = !!this.store.matchLaunchError;
       const waiting = !isCpu && !!(this.store.lobbyStatus && this.store.lobbyStatus.status !== 'cancelled');
       const enemyIds = isCpu ? this.store.enemyTeam.slice(0, 3) : [];
       this.clearSurface();
@@ -240,15 +245,17 @@ export class MatchupScene extends BaseScene {
         ? 'Cancel Private Room'
         : pending
           ? 'Connecting To Arena...'
-          : isCpu
-            ? 'Enter Arena'
-            : 'Join Private Room';
+          : connectionError
+            ? 'Retry Arena Entry'
+            : isCpu
+              ? 'Enter Arena'
+              : 'Join Private Room';
       drawS3Button(this, layout.cta.x, layout.cta.y, layout.cta.w, layout.cta.h, label, () => {
         if (waiting) this.store.resetToLobby();
         else this.store.startMatch();
       }, {
-        variant: waiting ? 'bone' : pending ? 'smoke' : 'primary',
-        accent: waiting ? S3_COLORS.red : pending ? S3_COLORS.gold : S3_COLORS.cyan,
+        variant: waiting || connectionError ? 'bone' : pending ? 'smoke' : 'primary',
+        accent: waiting || connectionError ? S3_COLORS.red : pending ? S3_COLORS.gold : S3_COLORS.cyan,
         disabled: pending,
         fontSize: '18px',
       });

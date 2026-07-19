@@ -1,7 +1,7 @@
 import pytest
 
 from jjk_arena.battle_v2.manager import BattleV2Error, BattleV2Manager
-from jjk_arena.battle_v2.models import BattleEvent, BattlePhase, StatusFamily
+from jjk_arena.battle_v2.models import BattleEvent, BattlePhase, DamageType, DurationClock, StatusEffect, StatusFamily
 from jjk_arena.battle_v2.replay import authoritative_state_hash, run_replay
 from jjk_arena.battle_v2.timers import BattleTimerPolicy
 
@@ -247,11 +247,56 @@ def test_damage_ledger_counts_only_enemy_hp_damage():
         BattleEvent("damage", "enemy", 1, {"source_player_id": "p1", "target_player_id": "p2", "actual_hp_damage": 10}),
         BattleEvent("damage", "self", 1, {"source_player_id": "p1", "target_player_id": "p1", "actual_hp_damage": 20}),
         BattleEvent("status_damage", "dot", 1, {"source_player_id": "p1", "target_player_id": "p2", "actual_hp_damage": 5}),
-        BattleEvent("damage", "reflect", 1, {"source_player_id": "p1", "target_player_id": "p1", "actual_hp_damage": 7, "is_reflected": True}),
+        BattleEvent("health_steal", "steal", 1, {"source_player_id": "p1", "target_player_id": "p2", "actual_hp_damage": 4}),
+        BattleEvent("retaliation", "retaliate", 1, {"source_player_id": "p2", "target_player_id": "p1", "actual_hp_damage": 3}),
+        BattleEvent("damage", "shield only", 1, {"source_player_id": "p1", "target_player_id": "p2", "amount": 25, "actual_hp_damage": 0}),
+        BattleEvent("damage", "nominal only", 1, {"source_player_id": "p1", "target_player_id": "p2", "amount": 30}),
+        BattleEvent("damage", "reflect", 1, {"source_player_id": "p1", "target_player_id": "p1", "actual_hp_damage": 7, "is_reflected": True, "reflected_by_player_id": "p2"}),
     ])
     manager._capture_turn_ledger(state)
-    assert state.damage_to_hp["p1"] == 15
-    assert state.damage_to_hp["p2"] == 7
+    assert state.damage_to_hp["p1"] == 19
+    assert state.damage_to_hp["p2"] == 10
+
+
+def test_real_turn_end_status_damage_resets_no_progress_and_credits_actual_enemy_hp_loss():
+    manager, _ = manager_with_clock()
+    state = manager.get_state("match")
+    target = state.players["p2"].team[0]
+    target.hp = 4
+    target.statuses.append(StatusEffect(
+        id="poison",
+        name="Poison",
+        source_player_id="p1",
+        source_slot=2,
+        target_player_id="p2",
+        target_slot=0,
+        duration=1,
+        duration_clock=DurationClock.TARGET_TURN,
+        payload={
+            "turn_end_damage": 10,
+            "turn_end_damage_type": DamageType.SOUL.value,
+        },
+    ))
+    state.turn_player_id = "p2"
+    state.no_progress_turns = 7
+
+    manager.end_turn("match", "p2")
+
+    event = next(event for event in state.event_log if event.type == "status_damage")
+    assert event.payload == {
+        "status": "poison",
+        "source_player_id": "p1",
+        "source_slot": 2,
+        "target_player_id": "p2",
+        "target_slot": 0,
+        "amount": 4,
+        "actual_hp_damage": 4,
+        "attempted_amount": 10,
+        "damage_type": DamageType.SOUL.value,
+    }
+    assert target.hp == 0
+    assert state.damage_to_hp["p1"] == 4
+    assert state.no_progress_turns == 0
 
 
 @pytest.mark.parametrize("result_type", ["DRAW", "NO_CONTEST"])

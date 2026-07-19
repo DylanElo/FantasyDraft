@@ -2679,3 +2679,61 @@ passed, 1 skipped**, `python -m compileall -q jjk_arena web/app.py`, and
 remote heads, worktrees, and open-PR queries were independently checked, and
 `http://127.0.0.1:5017/readyz` returned HTTP 200. Existing untracked concept and
 QA artwork remains intentionally preserved and uncommitted.
+
+## 2026-07-19 - Audit correctness closure: damage, CPU parity, delivery, and truth
+
+**Scope and locked invariants.** This focused pass closes the engine/delivery
+findings from the supplied repository audits without adding characters,
+changing starter balance numbers, or redesigning the UI. Battle v2 remains the
+only authoritative resolver; viewer-private state stays filtered; First
+Creation remains exactly 19 characters / 78 shipping skills; human energy
+transmutation remains an explicit 5-to-1 Planning choice using stable wire
+colors and the player-facing T/J/S/B vocabulary. The stale design sentence
+claiming Queue Review timeout resolution conflicted with the approved lifecycle
+decision and executable regressions, so documentation was corrected to the
+locked discard-and-auto-pass behavior rather than changing gameplay.
+
+**Correctness and parity.** Direct damage, recurring status damage,
+retaliation, and health steal now emit source/target identity plus actual HP
+loss. Lifecycle progress, tiebreak damage, and simulation diagnostics share a
+strict attribution helper that excludes shield absorption, overkill,
+self/friendly damage, and nominal-only amounts. Reflected damage is credited to
+the reflector, including delayed reflected statuses; invisible recurring
+events remain source-private. A real turn-cleanup DoT regression verifies HP,
+no-progress reset, and damage credit.
+
+Easy, Normal, and Hard CPU players now use the same authoritative 5-to-1
+conversion path as humans, but never convert blindly. Easy only avoids an
+otherwise empty useful queue, Normal requires a material queue improvement,
+and Hard compares viewer-safe authoritative outcomes against an explicit
+opportunity-cost margin. A bounded aggregate cost-vector gate preserves shared
+color multi-caster unlocks while skipping color trials that cannot enable a new
+payable queue. Conversion events include complete core pools before/after;
+simulation and balance schemas are now version 3 with usage and descriptive win
+correlation telemetry. The incompatible event/CPU semantics bump replay rules
+to `battle-v2-2026-07-accounting-cpu-transmute-6`, with deterministic captured
+CPU-conversion replay coverage.
+
+Local Socket.IO CORS defaults now derive from `JJK_HOST`/`JJK_PORT`, while
+production remains fail-closed without explicit HTTPS origins. Matchup launch
+waits for a live transport, times out after ten seconds, explains transport or
+server failures, and remains retryable; only an authoritative viewer-specific
+battle update opens Combat. Shipping kit descriptions were corrected to the
+implemented effects and pinned with exact-text tests. The effect vocabulary,
+`roster_mode`, Queue Review timeout, and transmutation policies are documented.
+The order-dependent absolute-RSS test now measures a fresh subprocess while
+retaining worker/thread/shutdown and ceiling assertions.
+
+**Performance, verification, and delivery state.** The real eight-preset,
+56-game matrix (both orientations, seed start 1, 200-turn cap) completed in
+132.481 seconds with zero turn caps and 141 conversion events, below the new
+240-second local diagnostic budget. Full pytest passed in normal order with
+**576 passed, 1 skipped** in 281.34 seconds and in reverse file order with
+**576 passed, 1 skipped** in 130.94 seconds. Python compileall, syntax checks
+for all three changed Phaser modules, and `git diff --check` passed. Existing
+untracked concept/QA artwork was preserved and is excluded from delivery. This
+correctness pass is prepared as a focused local commit on
+`codex/audit-correctness-closure`; no remote push or pull request was created.
+The separate mobile readability/accessibility/asset-QA pass remains next, and
+candidate-planning deep copies remain the primary simulation optimization
+opportunity if batches scale beyond the verified matrix.

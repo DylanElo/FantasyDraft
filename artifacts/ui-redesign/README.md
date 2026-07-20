@@ -1,5 +1,12 @@
 # Combat UI Redesign Evidence
 
+## Approved concept source
+
+`concepts/culling-current/` contains the user-approved, non-shipping visual
+north star, exact generation prompts, and provenance/caution notes that led to
+the maintained Season 3 system. These files are intentional design history,
+not runtime assets or current release QA.
+
 ## Before
 
 - `before/390-combat-default.png` — original live combat canvas at 390x844.

@@ -22,4 +22,15 @@ The runtime portrait source of truth is
 hashes, and release limitations are recorded in the `PROVENANCE.md` files under
 `portraits/`, `environments/`, and `skills/`.
 
+Release and loading truth are machine-readable:
+
+- `asset-clearance-manifest.json` labels runtime-generated,
+  review-required, and prototype-only visual groups. No current group is
+  commercially release-cleared.
+- `runtime-texture-budget.json` records exact checkout bytes, decoded RGBA8
+  estimates, cold-start caps, and the scene-deferred environment plates.
+
+See `docs/phaser_asset_delivery_contract.md` for the canonical Season 3 UI
+facade, environment staging behavior, and exact QA cache/version policy.
+
 Use Lucide-compatible icon styling for any new line icon: `stroke-width="2"`, round caps, round joins, no fill, and `stroke="currentColor"`.

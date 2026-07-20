@@ -11,4 +11,9 @@ policy. The full normative wording is in `docs/CODEX_PROJECT_MEMORY.md`.
 - Planning and Queue Review timeout discard all unconfirmed actions and auto-pass. Three consecutive or five total timeout-struck player turns forfeit. Manual confirmation/pass resets consecutive strikes.
 - Warn after eight no-progress player turns; tiebreak after twelve; hard cap after 72 player turns.
 - Tiebreak order: living characters, current HP, actual enemy HP damage, fewer timeout strikes, then `DRAW`.
+- Actual enemy HP damage is sourced only from attributed authoritative damage
+  events and their `actual_hp_damage` field. Recurring status damage,
+  retaliation, health steal, and reflected damage count for the responsible
+  opponent; shield-only hits, overkill beyond HP removed, self/friendly damage,
+  and nominal amounts do not reset no-progress or increase the tiebreak ledger.
 - Lifecycle replay is based on authoritative logical event order, never wall-clock reconstruction.

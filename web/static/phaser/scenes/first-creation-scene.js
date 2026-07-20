@@ -1,17 +1,19 @@
-import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=35';
-import { firstCreationRoster } from '../core/roster.js?v=35';
-import { skillVisualFor } from '../core/skill-visual-registry.js?v=35';
-import { clamp, safeText, titleize } from '../core/text.js?v=35';
-import {
-  S3_COLORS,
-  drawS3Button,
-  drawS3Cost,
-  drawS3Header,
-  drawS3Pager,
-  drawS3Panel,
-  drawS3World,
-} from '../ui/season-three-ui.js?v=35';
-import { BaseScene } from './base-scene.js?v=35';
+import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=42';
+import { firstCreationRoster } from '../core/roster.js?v=42';
+import { skillVisualFor } from '../core/skill-visual-registry.js?v=42';
+import { clamp, safeText, titleize } from '../core/text.js?v=42';
+import { Season3UI } from '../ui/season3-ui.js?v=42';
+import { BaseScene } from './base-scene.js?v=42';
+
+const {
+  colors: S3_COLORS,
+  button: drawS3Button,
+  cost: drawS3Cost,
+  header: drawS3Header,
+  pager: drawS3Pager,
+  panel: drawS3Panel,
+  world: drawS3World,
+} = Season3UI.flow;
 
 const FIRST_CREATION_WORLD_KEY = 'culling-current-campus';
 
@@ -406,7 +408,7 @@ export class FirstCreationScene extends BaseScene {
         tone: selected ? S3_COLORS.cyan : S3_COLORS.red,
       });
 
-      const identityH = 112;
+      const identityH = 126;
       const bandY = region.y + region.h - identityH - 4;
       this.overlayRect(region.x + 4, bandY, region.w - 8, identityH, S3_COLORS.bone, 0.95);
       this.overlayRect(region.x + 4, bandY, region.w - 8, 4, selected ? S3_COLORS.cyan : S3_COLORS.red, 0.96);
@@ -455,11 +457,14 @@ export class FirstCreationScene extends BaseScene {
         wordWrap: { width: region.w - 28 },
       });
       role.setMaxLines(2);
-      this.mono(region.x + 14, bandY + 88, `TACTICAL IDENTITY / ${safeText(character.state, 'FOUNDATIONS').toUpperCase()}`, {
+      const tacticalIdentity = this.mono(region.x + 14, bandY + 88, `TACTICAL IDENTITY / ${safeText(character.state, 'FOUNDATIONS').toUpperCase()}`, {
         color: S3_COLORS.redText,
         fontSize: '12px',
         fontStyle: '900',
+        lineSpacing: -2,
+        wordWrap: { width: region.w - 28 },
       });
+      tacticalIdentity.setMaxLines(2);
     }
 
     renderAuthoritativeSkill(skill, index, total, region) {
@@ -524,11 +529,14 @@ export class FirstCreationScene extends BaseScene {
         fontSize: '11px',
         fontStyle: '900',
       });
-      this.mono(textX, metaY + 85, targetRule.flags, {
+      const targetFlags = this.mono(textX, metaY + 83, targetRule.flags, {
         color: S3_COLORS.mutedText,
-        fontSize: '9px',
+        fontSize: '12px',
         fontStyle: '800',
+        lineSpacing: -2,
+        wordWrap: { width: Math.max(112, region.x + region.w - textX - 10) },
       });
+      targetFlags.setMaxLines(2);
       const classes = (skill.classes || []).map((entry) => titleize(entry).toUpperCase()).join(' / ') || 'TECHNIQUE';
       const classNode = this.mono(region.x + 12, region.y + 118, `CLASSES / ${classes}`, {
         color: S3_COLORS.mutedText,
@@ -566,6 +574,7 @@ export class FirstCreationScene extends BaseScene {
         title: 'Character Study',
         accent: selected ? S3_COLORS.cyan : S3_COLORS.red,
         backHandler: () => this.store.closeCharacterDetail(),
+        backLabel: 'Back to First Creation',
       });
       this.renderStudyHero(character, selected, layout.hero);
       let skillTargets = [];
@@ -620,6 +629,7 @@ export class FirstCreationScene extends BaseScene {
     render() {
       const frame = this.layout.frame();
       const detail = this.store.detailCharacterId ? this.store.character(this.store.detailCharacterId) : null;
+      this.accessibilityHeading = detail ? 'Character Study' : 'First Creation';
       this.clearSurface();
       drawS3World(this, frame, FIRST_CREATION_WORLD_KEY, {
         imageAlpha: detail ? 0.34 : 0.54,
@@ -637,6 +647,7 @@ export class FirstCreationScene extends BaseScene {
         eyebrow: 'STUDENT ERA / BUILD YOUR TEAM',
         title: 'First Creation',
         backHandler: () => this.store.resetToLobby(),
+        backLabel: 'Back to Home',
       });
       this.renderTrioSlots(layout);
       this.renderRosterBrowser(frame, layout);

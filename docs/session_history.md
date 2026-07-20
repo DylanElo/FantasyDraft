@@ -2679,3 +2679,199 @@ passed, 1 skipped**, `python -m compileall -q jjk_arena web/app.py`, and
 remote heads, worktrees, and open-PR queries were independently checked, and
 `http://127.0.0.1:5017/readyz` returned HTTP 200. Existing untracked concept and
 QA artwork remains intentionally preserved and uncommitted.
+
+## 2026-07-19 - Audit correctness closure: damage, CPU parity, delivery, and truth
+
+**Scope and locked invariants.** This focused pass closes the engine/delivery
+findings from the supplied repository audits without adding characters,
+changing starter balance numbers, or redesigning the UI. Battle v2 remains the
+only authoritative resolver; viewer-private state stays filtered; First
+Creation remains exactly 19 characters / 78 shipping skills; human energy
+transmutation remains an explicit 5-to-1 Planning choice using stable wire
+colors and the player-facing T/J/S/B vocabulary. The stale design sentence
+claiming Queue Review timeout resolution conflicted with the approved lifecycle
+decision and executable regressions, so documentation was corrected to the
+locked discard-and-auto-pass behavior rather than changing gameplay.
+
+**Correctness and parity.** Direct damage, recurring status damage,
+retaliation, and health steal now emit source/target identity plus actual HP
+loss. Lifecycle progress, tiebreak damage, and simulation diagnostics share a
+strict attribution helper that excludes shield absorption, overkill,
+self/friendly damage, and nominal-only amounts. Reflected damage is credited to
+the reflector, including delayed reflected statuses; invisible recurring
+events remain source-private. A real turn-cleanup DoT regression verifies HP,
+no-progress reset, and damage credit.
+
+Easy, Normal, and Hard CPU players now use the same authoritative 5-to-1
+conversion path as humans, but never convert blindly. Easy only avoids an
+otherwise empty useful queue, Normal requires a material queue improvement,
+and Hard compares viewer-safe authoritative outcomes against an explicit
+opportunity-cost margin. A bounded aggregate cost-vector gate preserves shared
+color multi-caster unlocks while skipping color trials that cannot enable a new
+payable queue. Conversion events include complete core pools before/after;
+simulation and balance schemas are now version 3 with usage and descriptive win
+correlation telemetry. The incompatible event/CPU semantics bump replay rules
+to `battle-v2-2026-07-accounting-cpu-transmute-6`, with deterministic captured
+CPU-conversion replay coverage.
+
+Local Socket.IO CORS defaults now derive from `JJK_HOST`/`JJK_PORT`, while
+production remains fail-closed without explicit HTTPS origins. Matchup launch
+waits for a live transport, times out after ten seconds, explains transport or
+server failures, and remains retryable; only an authoritative viewer-specific
+battle update opens Combat. Shipping kit descriptions were corrected to the
+implemented effects and pinned with exact-text tests. The effect vocabulary,
+`roster_mode`, Queue Review timeout, and transmutation policies are documented.
+The order-dependent absolute-RSS test now measures a fresh subprocess while
+retaining worker/thread/shutdown and ceiling assertions.
+
+**Performance, verification, and delivery state.** The real eight-preset,
+56-game matrix (both orientations, seed start 1, 200-turn cap) completed in
+132.481 seconds with zero turn caps and 141 conversion events, below the new
+240-second local diagnostic budget. Full pytest passed in normal order with
+**576 passed, 1 skipped** in 281.34 seconds and in reverse file order with
+**576 passed, 1 skipped** in 130.94 seconds. Python compileall, syntax checks
+for all three changed Phaser modules, and `git diff --check` passed. Existing
+untracked concept/QA artwork was preserved and is excluded from delivery. This
+correctness pass is prepared as a focused local commit on
+`codex/audit-correctness-closure`; no remote push or pull request was created.
+The separate mobile readability/accessibility/asset-QA pass remains next, and
+candidate-planning deep copies remain the primary simulation optimization
+opportunity if batches scale beyond the verified matrix.
+
+## 2026-07-20 - Mobile Season 3 structure, accessibility, and live-play closure
+
+**Scope and locked invariants.** This pass completes the separate mobile UI
+closure requested after the deprecated layout was found underneath the earlier
+art reskin. It does not change the exact 19-character First Creation roster,
+the 3v3 / one-action-per-living-character loop, Battle v2 authority, targeting
+or damage rules, energy generation/payment, or the stable socket/replay values
+`green`, `blue`, `white`, `red`, and `black`. Player-facing energy remains
+T/Taijutsu, J/Jujutsu, S/Strategic, B/Bloodline, and X/Wild. The maintained
+390x844 portrait target and the 360x800 / 430x932 validation sizes remain locked.
+
+**Mobile product and presentation closure.** A shared Season 3 facade and token
+layer now coordinate the white-paper, sky-blue, ink, red, cyan, and gold visual
+language across Home, First Creation, Character Study, Matchup, Combat, Queue
+Review, Results, and Records. First Creation uses a readable featured-fighter
+composition and routes directly to the full Character Study page. The browser
+shell now includes a native identity editor, semantic headings and live regions,
+an accessibility action bridge, explicit disabled reasons, keyboard-safe single
+activation, 44-48px interaction targets, responsive typography, focus handling,
+and safe-area/virtual-keyboard containment. Runtime art is staged lazily under a
+documented clearance manifest and texture budget. A bounded retired-match guard
+rejects delayed packets from the previous fight during Return Home or Rematch.
+
+Combat and Final Order expose the server decisions the player needs: complete
+player-facing adjusted-cost failures, legal target language, Q order, active
+fighter, visible enemy skill, status families, timers, Wild assignment, reorder,
+and confirmation. The final feedback pass moves Q markers away from state chips,
+puts public replay events in a dedicated strip beneath the battlefield prompt,
+and shortens the last narrow-card failure to the fully visible `Short on Wild
+energy.` The coordinated browser/module cache is `v42`.
+
+**Live QA and evidence.** The in-app browser exercised Home, the native identity
+dialog, First Creation, Character Study, Matchup, Combat Planning, genuine Final
+Order, authoritative queue confirmation, subsequent combat state, Battle
+Results, and Return Home against the local Flask-SocketIO server. The final CPU
+match `m_f517d6e5aca74e5396fe0a50aef13e` reached terminal revision/turn 33. Browser
+diagnostics contained no warning/error logs, portrait failures, or portrait
+contract issues; all required Home/combat environment and skill-atlas textures
+were loaded. The native-resolution independent audit found no blocking clipping,
+overlap, dimension, or extension/format defect. All three Final Order captures
+contain Q1 plus explicit X-to-T or X-to-S payment, and the 390px capture proves
+the instruction and public-event ticker occupy separate lanes. The 16-file,
+hash-pinned evidence set and its manifest are under
+`artifacts/ui-redesign/runtime-v42/`.
+
+**Verification and delivery state.** Final source commit `2ddefb3` passed the full suite
+in normal order with **595 passed, 1 skipped** in 115.34 seconds and through the
+dependency-free descending-file-order fallback with **595 passed, 1 skipped**
+in 113.70 seconds. The focused cache/parity/presentation set passed 34 tests.
+`python -m compileall -q jjk_arena web/app.py`, syntax checks for all 32 changed
+JavaScript files, the evidence manifest/hash/dimension validator, and
+`git diff --check` passed. Subjective speaker/headphone timbre, loudness, and
+physical vibration feel still require a short real-phone pass. Superseded local
+QA captures were moved recoverably to the user temp directory; the user's
+existing untracked concept and QA artwork remains untouched. This pass is local
+on `codex/audit-mobile-ui-closure`; no remote push or pull request was created.
+
+## 2026-07-20 - Audit mobile-interaction, accessibility, and observability closure
+
+**Scope and locked invariants.** This pass addresses the supplied
+`FantasyDraft14_latest_audit.md` without adding characters, changing any kit or
+combat number, introducing progression tiers, or performing another visual
+redesign. The authoritative engine phases and timeout policy are unchanged;
+Phaser still submits intent and renders viewer-specific state. First Creation
+remains exactly 19 characters / 78 shipping skills, all four original skill
+slots remain available, and invisible enemy information remains private. The
+approved Home decision is fixed promotional key art, with the player profile
+separately and explicitly labeled `ACTIVE TRIO`.
+
+**Interaction and mobile closure.** The client now derives three explicit
+player-facing stages over the unchanged server phase: Planning before the
+first saved action, Orders Open while additional fighter actions can still be
+added, and Queue Review only while the order/Wild/confirm sheet is visibly
+open. HUD, timer captions, accessibility state, reconnect snapshots, and debug
+analytics use that vocabulary while retaining a separately named
+`authoritativePhase`. A resumed authoritative `queue_review` snapshot returns
+to Orders Open with its local queue intact. Transport loss locks commands and
+holds the last confirmed displayed timer; resume-in-flight is labeled as
+restoring, and rejection clears stale local battle state without sending a
+surrender. Battlefield prompts now distinguish reconnect, server validation,
+opponent turn, and confirmed-wait states.
+
+Combat uses a two-column by two-row technique deck at 360px. Every card keeps
+its name, adjusted cost, and readable disabled reason on the face; long status
+reasons use compact rule-family copy on the card while their complete reason
+remains in the accessible label and detail path. `season3-ui.js` is the only
+scene-facing public UI import and delegates to the existing current/flow/
+post-match helpers without changing their output. Remaining meaningful 9px
+labels in Records, Mission Map, BaseScene, and the long Result fallback now use
+the 10px Micro floor. The DOM mirror adds viewer-safe fighter HP/status lists,
+T/J/S/B energy, interaction phase/timer/connection state, and the local queue
+with target routes and Wild payment; it never reads enemy pending actions,
+private status fields, or event history. Runtime cache metadata and coordinated
+imports remain `v42`.
+
+**Balance observability, not balance adjustment.** Headless batches can run in
+up to four worker processes, preserve deterministic seed/result order, and
+stream compact reductions without retaining per-match payloads. Report schema
+4 adds symmetric trio matchup matrices plus conversion target, source-pip,
+mixed-source, usage, timing, and descriptive win-correlation metrics; the
+gameplay rules/replay version is unchanged. The Story Tutorial investigation
+did not reproduce the audit's exact 18/20 window but confirmed the same signal:
+16-4 over seeds 1-20, 86-14 over seeds 1001-1100, and 23-5 across the seven
+other named trios in a 112-match matrix. With no turn caps or no-contests, the
+evidence points to a broader deterministic CPU/team-heuristic matchup effect,
+so no kit number was changed. Full commands and limitations are recorded in
+`docs/story_tutorial_balance_investigation.md`.
+
+**Artifact resolution and live QA.** The approved Culling Current concept pack
+(`README`, prompts, two screen concepts, and the direction board) is now
+intentional non-runtime design history under
+`artifacts/ui-redesign/concepts/culling-current/`. The superseded/rejected
+`artifacts/ui-redesign/s3-style/qa/` tree and the two undocumented
+`s3-structure-v2/qa/home-390x844-*` probes were moved to the Windows Recycle Bin
+and remain recoverable. No unresolved QA/concept path remains.
+
+The in-app browser verified Home at 390x844; Planning, all four techniques,
+Orders Open, Queue Review, HP/status/energy/queue accessibility summaries, and
+a real offline/reconnect cycle at 360x800, 390x844, and 430x932. At 360px all
+four cards remained simultaneously accessible and readable. During the forced
+network interruption, controls locked and the displayed phase timer stayed at
+45 seconds across the offline interval; a fresh viewer-specific state restored
+input after reconnect. Browser diagnostics had no warnings or errors.
+
+**Verification and delivery state.** Full pytest passed normally with **606
+passed, 1 skipped** in 127.03 seconds and with test files in reverse order with
+**606 passed, 1 skipped** in 131.25 seconds. Independent 1,000-match lifecycle
+soaks passed with zero softlocks and zero final rooms: seed 1 in 111.90 seconds
+at 85,254,144-byte RSS and seed 2 in 112.01 seconds at 80,920,576-byte RSS;
+both stayed below the 419,430,400-byte ceiling and shut the scheduler worker
+down to zero. The focused final interaction/accessibility set passed 43 tests,
+the final simulation/report set passed 16, all 16 changed JavaScript files
+passed `node --check`, `python -m compileall -q jjk_arena web/app.py` passed,
+and `git diff --check` passed. Implementation commit `ff9c25c` was pushed on
+`codex/audit-mobile-ui-closure`; mergeable draft PR
+[#60](https://github.com/DylanElo/FantasyDraft/pull/60) is open against `main`.
+GitHub's `quality` check was in progress when this delivery record was written.

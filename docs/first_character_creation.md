@@ -77,7 +77,9 @@ This pool gives players Taijutsu bruisers, Jujutsu controllers, Strategic suppor
 
 Each first-creation kit should be implemented as a readable Arena-style starter kit with four primary skills and, where appropriate, replacement skills unlocked by states.
 
-- Yuji Itadori: beginner bruiser / finisher; teaches damage sequencing with Momentum and Soul Bruise.
+- Yuji Itadori: beginner bruiser / finisher; teaches Soul Bruise damage
+  sequencing. A successful conditional Black Flash records Momentum for First
+  Creation mission progress; Momentum is not a separate combat buff.
 - Megumi Fushiguro: shikigami control / setup; teaches marks and soft control with Scent.
 - Nobara Kugisaki: ranged mark / punish; teaches mark into payoff with Nail.
 - Maki Zenin: weapon specialist / anti-defense; teaches destructible defense interactions.

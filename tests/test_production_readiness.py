@@ -1,8 +1,9 @@
-from types import SimpleNamespace
+import json
 import os
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 from web import app as web_app
 from jjk_arena.battle_v2.models import BattlePhase
@@ -33,6 +34,99 @@ def test_readiness_fails_closed_for_ephemeral_production_secret(monkeypatch):
 
     assert response.status_code == 503
     assert "FLASK_SECRET_KEY" in " ".join(response.get_json()["issues"])
+
+
+def test_local_socket_cors_defaults_follow_the_configured_bind_port():
+    assert web_app.resolve_cors_origins(
+        None,
+        "127.0.0.1",
+        5017,
+        production_mode=False,
+    ) == [
+        "http://127.0.0.1:5017",
+        "http://localhost:5017",
+    ]
+    assert web_app.resolve_cors_origins(
+        None,
+        "0.0.0.0",
+        6400,
+        production_mode=False,
+    ) == [
+        "http://127.0.0.1:6400",
+        "http://localhost:6400",
+    ]
+
+
+def test_app_initialization_uses_custom_port_for_default_socket_cors(tmp_path):
+    env = {**os.environ}
+    env.pop("JJK_CORS_ORIGINS", None)
+    env.update({
+        "JJK_PRODUCTION": "0",
+        "JJK_HOST": "127.0.0.1",
+        "JJK_PORT": "5017",
+        "JJK_DATABASE_PATH": str(tmp_path / "cors-runtime.sqlite3"),
+    })
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import json; from web import app as web_app; "
+                "print(json.dumps({'port': web_app.PORT, 'origins': web_app.CORS_ORIGINS, "
+                "'socket_origins': web_app.socketio.server.eio.cors_allowed_origins}))"
+            ),
+        ],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+
+    assert json.loads(result.stdout.strip().splitlines()[-1]) == {
+        "port": 5017,
+        "origins": ["http://127.0.0.1:5017", "http://localhost:5017"],
+        "socket_origins": ["http://127.0.0.1:5017", "http://localhost:5017"],
+    }
+
+
+def test_explicit_socket_cors_origins_are_trimmed_and_deduplicated():
+    assert web_app.resolve_cors_origins(
+        " https://arena.example,https://arena.example, https://admin.example ",
+        "127.0.0.1",
+        5017,
+        production_mode=True,
+    ) == ["https://arena.example", "https://admin.example"]
+
+
+def test_production_socket_cors_has_no_implicit_http_fallback(monkeypatch):
+    assert web_app.resolve_cors_origins(
+        None,
+        "127.0.0.1",
+        5017,
+        production_mode=True,
+    ) == []
+
+    monkeypatch.setattr(web_app, "PRODUCTION_MODE", True)
+    monkeypatch.setattr(web_app, "configured_secret", "s" * 32)
+    monkeypatch.setattr(web_app, "configured_cors_origins", "   ")
+    monkeypatch.setattr(web_app, "CORS_ORIGINS", [])
+    monkeypatch.setenv("JJK_DATABASE_PATH", str(web_app.runtime_store.path))
+    issues = web_app.production_readiness_issues()
+
+    assert "JJK_CORS_ORIGINS must be explicitly configured in production" in issues
+
+
+def test_production_readiness_still_requires_explicit_https_cors(monkeypatch):
+    monkeypatch.setattr(web_app, "PRODUCTION_MODE", True)
+    monkeypatch.setattr(web_app, "configured_secret", "s" * 32)
+    monkeypatch.setattr(web_app, "configured_cors_origins", "http://arena.example")
+    monkeypatch.setattr(web_app, "CORS_ORIGINS", ["http://arena.example"])
+    monkeypatch.setenv("JJK_DATABASE_PATH", str(web_app.runtime_store.path))
+
+    issues = web_app.production_readiness_issues()
+
+    assert "JJK_CORS_ORIGINS must contain only explicit HTTPS origins in production" in issues
 
 
 def test_ops_runtime_is_hidden_without_configured_bearer(monkeypatch):

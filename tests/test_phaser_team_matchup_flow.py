@@ -43,6 +43,10 @@ function freshStore(mode) {
     detailCharacterId: null,
     lobbyStatus: null,
     matchLaunchPending: false,
+    matchLaunchError: '',
+    matchLaunchTimer: null,
+    matchLaunchAttempt: 0,
+    connectionState: 'connected',
     state: null,
     disconnectDeadline: null,
     actions: [],
@@ -225,3 +229,381 @@ def test_private_matchup_never_renders_the_local_cpu_roster_as_the_opponent():
     assert "OPPONENT ROSTER HIDDEN" in source
     assert "this.store.returnFromMatchup()" in source
     assert "else this.store.changeScene('DraftScene')" not in source
+    assert "ARENA ENTRY FAILED" in source
+    assert "Retry Arena Entry" in source
+
+
+def test_matchup_launch_timeout_and_transport_errors_are_bounded_and_retryable():
+    probe = _run_node(
+        r"""
+globalThis.JJK_BOOTSTRAP = { battleV2Enabled: true, firstCreation: { roster: {} } };
+globalThis.JJK_MOBILE_TOKENS = {};
+const timers = new Map();
+let nextTimer = 1;
+globalThis.window = {
+  JJKPhaserShell: null,
+  setTimeout(fn, ms) {
+    const id = nextTimer++;
+    timers.set(id, { fn, ms });
+    return id;
+  },
+  clearTimeout(id) { timers.delete(id); },
+  setInterval: () => {},
+};
+globalThis.document = { getElementById: () => null };
+globalThis.localStorage = { getItem: () => null, setItem: () => {} };
+const { GameStore, MATCH_LAUNCH_TIMEOUT_MS } = await import('./web/static/phaser/store/game-store.js');
+
+function matchupStore({ connected = true } = {}) {
+  const emitted = [];
+  const socketClient = {
+    connected,
+    isConnected() { return this.connected; },
+    emit(name, payload) { emitted.push({ name, payload }); },
+  };
+  const store = Object.create(GameStore.prototype);
+  Object.assign(store, {
+    matchMode: 'cpu',
+    difficulty: 'normal',
+    scene: 'MatchupScene',
+    playerId: 'player',
+    playerName: 'Player',
+    roomId: 'friends',
+    playerTeam: ['yuji', 'megumi', 'nobara'],
+    enemyTeam: ['yuta', 'maki', 'toge'],
+    connectionState: connected ? 'connected' : 'disconnected',
+    state: null,
+    lobbyStatus: null,
+    matchLaunchPending: false,
+    matchLaunchError: '',
+    matchLaunchTimer: null,
+    matchLaunchAttempt: 0,
+    disconnectDeadline: null,
+    actions: [],
+    actionWildPays: {},
+    queueReviewOpen: false,
+    selectedCasterSlot: null,
+    selectedSkillId: null,
+    queueSubmitting: false,
+    eventCursor: 0,
+    playbackEvents: [],
+    recentEvents: [],
+    ignoreBattleUpdates: false,
+    resumeSession: null,
+    socketClient,
+    changeScene(scene) { this.scene = scene; },
+    clearResumeSession() { this.resumeSession = null; },
+    setStatus(status) { this.status = status; },
+    showToast(message) { this.toast = message; },
+  });
+  return { store, emitted, socketClient };
+}
+
+const timed = matchupStore();
+timed.store.startMatch();
+const launchTimer = Array.from(timers.values())[0];
+const launched = {
+  pending: timed.store.matchLaunchPending,
+  eventCount: timed.emitted.length,
+  timeoutMs: launchTimer.ms,
+};
+launchTimer.fn();
+const timedOut = {
+  pending: timed.store.matchLaunchPending,
+  error: timed.store.matchLaunchError,
+  toast: timed.store.toast,
+  timerCount: timers.size,
+};
+timed.store.startMatch();
+const retry = {
+  pending: timed.store.matchLaunchPending,
+  error: timed.store.matchLaunchError,
+  eventCount: timed.emitted.length,
+};
+timed.store.receiveLobbyState({ status: 'waiting', room_id: 'friends' });
+const accepted = {
+  pending: timed.store.matchLaunchPending,
+  error: timed.store.matchLaunchError,
+  timerCount: timers.size,
+};
+
+const offline = matchupStore({ connected: false });
+offline.store.startMatch();
+const unavailable = {
+  pending: offline.store.matchLaunchPending,
+  error: offline.store.matchLaunchError,
+  eventCount: offline.emitted.length,
+};
+
+const handlers = {};
+const transport = matchupStore();
+transport.store.matchLaunchPending = true;
+transport.store.socketClient.on = (name, handler) => { handlers[name] = handler; };
+transport.store.bindSocket();
+handlers.connect_error();
+const transportError = {
+  pending: transport.store.matchLaunchPending,
+  error: transport.store.matchLaunchError,
+  connectionState: transport.store.connectionState,
+};
+
+console.log(JSON.stringify({
+  timeoutConstant: MATCH_LAUNCH_TIMEOUT_MS,
+  launched,
+  timedOut,
+  retry,
+  accepted,
+  unavailable,
+  transportError,
+}));
+"""
+    )
+
+    assert probe["timeoutConstant"] == 10_000
+    assert probe["launched"] == {
+        "pending": True,
+        "eventCount": 1,
+        "timeoutMs": 10_000,
+    }
+    assert probe["timedOut"] == {
+        "pending": False,
+        "error": "The arena did not answer in time. Check the connection and try again.",
+        "toast": "The arena did not answer in time. Check the connection and try again.",
+        "timerCount": 0,
+    }
+    assert probe["retry"] == {
+        "pending": True,
+        "error": "",
+        "eventCount": 2,
+    }
+    assert probe["accepted"] == {
+        "pending": False,
+        "error": "",
+        "timerCount": 0,
+    }
+    assert probe["unavailable"] == {
+        "pending": False,
+        "error": "Arena server is not connected yet. Check the address and try again.",
+        "eventCount": 0,
+    }
+    assert probe["transportError"] == {
+        "pending": False,
+        "error": "Arena server could not be reached. Check the address and try again.",
+        "connectionState": "disconnected",
+    }
+
+
+def test_socket_client_reports_live_connectivity_and_binds_terminal_reconnect_failure():
+    probe = _run_node(
+        r"""
+const socketEvents = [];
+const managerEvents = [];
+const socket = {
+  connected: false,
+  on(name) { socketEvents.push(name); },
+  emit() {},
+  io: { on(name) { managerEvents.push(name); } },
+};
+globalThis.window = { io: () => socket };
+const { SocketClient } = await import('./web/static/phaser/network/socket-client.js');
+const client = new SocketClient();
+client.on('connect_error', () => {});
+client.on('reconnect_failed', () => {});
+const before = client.isConnected();
+socket.connected = true;
+const after = client.isConnected();
+console.log(JSON.stringify({ socketEvents, managerEvents, before, after }));
+"""
+    )
+
+    assert probe == {
+        "socketEvents": ["connect_error"],
+        "managerEvents": ["reconnect_failed"],
+        "before": False,
+        "after": True,
+    }
+
+
+def test_retired_match_updates_cannot_hijack_a_fresh_match_launch():
+    probe = _run_node(
+        r"""
+globalThis.JJK_BOOTSTRAP = { battleV2Enabled: true, firstCreation: { roster: {} } };
+globalThis.JJK_MOBILE_TOKENS = {};
+globalThis.window = {
+  JJKPhaserShell: null,
+  setTimeout: () => 1,
+  clearTimeout: () => {},
+  setInterval: () => {},
+};
+globalThis.document = { getElementById: () => null };
+globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+const { GameStore, MAX_RETIRED_MATCH_IDS } = await import('./web/static/phaser/store/game-store.js');
+
+function terminalState(matchId) {
+  return {
+    match_id: matchId,
+    state_revision: 5,
+    phase: 'finished',
+    result_type: 'WIN',
+    winner_id: 'player',
+    event_log: [],
+    pending_actions: {},
+    players: { player: { id: 'player', queue_confirmed: false, energy: {}, team: [] } },
+  };
+}
+
+function planningState(matchId) {
+  return {
+    match_id: matchId,
+    state_revision: 0,
+    phase: 'planning',
+    result_type: null,
+    winner_id: null,
+    turn_player_id: 'player',
+    event_log: [],
+    pending_actions: {},
+    players: {
+      player: { id: 'player', queue_confirmed: false, energy: {}, team: [] },
+      cpu: { id: 'cpu', queue_confirmed: false, energy: {}, team: [] },
+    },
+  };
+}
+
+function freshStore(oldMatchId) {
+  const emitted = [];
+  const store = Object.create(GameStore.prototype);
+  Object.assign(store, {
+    matchMode: 'cpu',
+    difficulty: 'normal',
+    scene: 'ResultScene',
+    playerId: 'player',
+    playerName: 'Player',
+    roomId: 'friends',
+    playerTeam: ['yuji', 'megumi', 'nobara'],
+    enemyTeam: ['yuta', 'maki', 'toge'],
+    connectionState: 'connected',
+    state: oldMatchId ? terminalState(oldMatchId) : null,
+    lobbyStatus: null,
+    matchLaunchPending: false,
+    matchLaunchError: '',
+    matchLaunchTimer: null,
+    matchLaunchAttempt: 0,
+    disconnectDeadline: null,
+    actions: [],
+    actionWildPays: {},
+    queueReviewOpen: false,
+    selectedCasterSlot: null,
+    selectedSkillId: null,
+    queueSubmitting: false,
+    pendingCommand: null,
+    eventCursor: 0,
+    playbackEvents: [],
+    recentEvents: [],
+    visiblePublicAction: null,
+    visiblePublicActionUntil: 0,
+    transmuteOpen: false,
+    transmuteSources: [],
+    transmuteTarget: null,
+    ignoreBattleUpdates: false,
+    resumeSession: null,
+    firstCreationAccount: null,
+    toast: '',
+    socketClient: {
+      isConnected: () => true,
+      emit: (name, payload) => emitted.push({ name, payload }),
+    },
+    changeScene(scene) { this.scene = scene; },
+    notify() {},
+    clearResumeSession() { this.resumeSession = null; },
+    mineId() { return 'player'; },
+    me() { return this.state && this.state.players ? this.state.players.player : null; },
+    ensureSelectedCaster() {},
+    ensureWildcardPayments() {},
+    rememberResult() {},
+  });
+  return { store, emitted };
+}
+
+function launchFromCurrentScene(store) {
+  store.startMatch();
+  store.startMatch();
+  return store.matchLaunchAttempt;
+}
+
+const returned = freshStore('old-returned');
+returned.store.resetToLobby();
+const returnLaunchAttempt = launchFromCurrentScene(returned.store);
+returned.store.receiveBattleState(terminalState('old-returned'));
+const afterReturnedStale = {
+  scene: returned.store.scene,
+  pending: returned.store.matchLaunchPending,
+  state: returned.store.state,
+  launchAttempt: returned.store.matchLaunchAttempt,
+  emitted: returned.emitted.map((entry) => entry.name),
+};
+returned.store.receiveBattleState(planningState('new-returned'));
+const afterReturnedFresh = {
+  scene: returned.store.scene,
+  pending: returned.store.matchLaunchPending,
+  matchId: returned.store.state.match_id,
+};
+
+const rematch = freshStore('old-rematch');
+rematch.store.changeScene('DraftScene');
+const rematchLaunchAttempt = launchFromCurrentScene(rematch.store);
+rematch.store.receiveBattleState(terminalState('old-rematch'));
+const afterRematchStale = {
+  scene: rematch.store.scene,
+  pending: rematch.store.matchLaunchPending,
+  state: rematch.store.state,
+  launchAttempt: rematch.store.matchLaunchAttempt,
+};
+rematch.store.receiveBattleState(planningState('new-rematch'));
+
+const bounded = freshStore(null).store;
+for (let index = 0; index < MAX_RETIRED_MATCH_IDS + 2; index += 1) {
+  bounded.retireMatchId(`match-${index}`);
+}
+
+console.log(JSON.stringify({
+  max: MAX_RETIRED_MATCH_IDS,
+  returnLaunchAttempt,
+  afterReturnedStale,
+  afterReturnedFresh,
+  rematchLaunchAttempt,
+  afterRematchStale,
+  afterRematchFresh: {
+    scene: rematch.store.scene,
+    pending: rematch.store.matchLaunchPending,
+    matchId: rematch.store.state.match_id,
+  },
+  boundedIds: Array.from(bounded.retiredMatchIds),
+}));
+"""
+    )
+
+    assert probe["max"] == 8
+    assert probe["afterReturnedStale"] == {
+        "scene": "MatchupScene",
+        "pending": True,
+        "state": None,
+        "launchAttempt": probe["returnLaunchAttempt"],
+        "emitted": ["battle_v2_start_classic"],
+    }
+    assert probe["afterReturnedFresh"] == {
+        "scene": "CombatScene",
+        "pending": False,
+        "matchId": "new-returned",
+    }
+    assert probe["afterRematchStale"] == {
+        "scene": "MatchupScene",
+        "pending": True,
+        "state": None,
+        "launchAttempt": probe["rematchLaunchAttempt"],
+    }
+    assert probe["afterRematchFresh"] == {
+        "scene": "CombatScene",
+        "pending": False,
+        "matchId": "new-rematch",
+    }
+    assert probe["boundedIds"] == [f"match-{index}" for index in range(2, 10)]

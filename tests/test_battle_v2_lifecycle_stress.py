@@ -1,3 +1,9 @@
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+
 from flask_socketio.test_client import SocketIOTestClient
 
 from jjk_arena.battle_v2.lifecycle_stress import MEMORY_CEILING_BYTES, run_stress_batch
@@ -25,16 +31,37 @@ def test_lifecycle_stress_batch_produces_zero_softlocks():
     assert result["peak_rooms"] <= result["matches"] * 2 + 5
 
 
-def test_lifecycle_stress_batch_stays_within_one_scheduler_worker_and_memory_ceiling():
+def test_lifecycle_stress_batch_stays_within_one_scheduler_worker_and_memory_ceiling(tmp_path):
     """The real teeth of "no stale timer thread, memory-bounded run": a batch
     of matches (each arming and cancelling many phase/disconnect timers)
     must never accumulate extra background threads beyond the scheduler's
     single shared worker, and must stay under the documented RSS ceiling."""
 
-    # Thread-count/memory-ceiling behavior doesn't need a full 100-match
-    # batch to demonstrate -- a smaller batch across many rooms proves the
-    # same property (one shared scheduler worker, bounded memory) much faster.
-    result = run_stress_batch(matches=25, seed=2)
+    # Measure the harness in a fresh interpreter. An absolute RSS value from
+    # this pytest worker includes every previously imported test module,
+    # plugin, and fixture, so it is an order-dependent assertion about pytest
+    # rather than a memory guard for the lifecycle batch itself.
+    env = os.environ.copy()
+    env["JJK_DATABASE_PATH"] = str(tmp_path / "fresh-process-runtime.sqlite3")
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "jjk_arena.battle_v2.lifecycle_stress",
+            "--matches",
+            "25",
+            "--seed",
+            "2",
+        ],
+        cwd=Path(__file__).resolve().parents[1],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=180,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    result = json.loads(completed.stdout)
 
     assert result["softlock_count"] == 0, result["softlocks"]
     # Exactly one scheduler worker thread total, no matter how many rooms
@@ -44,11 +71,12 @@ def test_lifecycle_stress_batch_stays_within_one_scheduler_worker_and_memory_cei
     # (test clients, socket handlers) beyond what already existed.
     assert result["extra_threads_after_batch"] <= 1
     assert result["memory_ceiling_bytes"] == MEMORY_CEILING_BYTES
-    if result["process_rss_bytes"] is not None:
-        assert not result["over_memory_ceiling"], (
-            f"process RSS {result['process_rss_bytes']} exceeded the "
-            f"documented ceiling of {MEMORY_CEILING_BYTES} bytes"
-        )
+    assert result["process_rss_bytes"] is not None
+    assert not result["over_memory_ceiling"], (
+        f"fresh-process RSS {result['process_rss_bytes']} exceeded the "
+        f"documented ceiling of {MEMORY_CEILING_BYTES} bytes"
+    )
+    assert result["scheduler_worker_threads_after_shutdown"] == 0
 
 
 def test_lifecycle_stress_batch_does_not_leak_socketio_test_client_state():

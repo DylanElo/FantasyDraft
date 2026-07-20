@@ -327,3 +327,17 @@ def test_scoped_mobile_controls_and_copy_keep_accessibility_contracts():
     assert "TAP ART FOR STUDY" in roster
 
     assert 44 + 4 + 44 <= 92
+
+
+def test_secondary_scene_labels_respect_the_ten_pixel_micro_floor():
+    paths = [
+        "web/static/phaser/scenes/base-scene.js",
+        "web/static/phaser/scenes/mission-map-scene.js",
+        "web/static/phaser/scenes/records-scene.js",
+        "web/static/phaser/scenes/result-scene.js",
+    ]
+    for relative in paths:
+        source = (ROOT / relative).read_text(encoding="utf-8")
+        assert "fontSize: '9px'" not in source, relative
+        assert 'fontSize: "9px"' not in source, relative
+        assert "TYPE_SCALE.micro" in source, relative

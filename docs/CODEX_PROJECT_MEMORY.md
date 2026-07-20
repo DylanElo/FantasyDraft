@@ -176,6 +176,11 @@ internal keys `green`, `blue`, `white`, `red`, and `black`.
 - Wild (`X`) cannot be sacrificed or created.
 - Python validates and applies the exchange authoritatively. See
   `docs/decisions/battle_v2_energy_transmutation.md`.
+- CPU-controlled players use that same authoritative exchange. Easy converts
+  only to unlock a useful action from an otherwise empty plan, Normal requires
+  a materially better queue, and Hard compares viewer-safe dry-run outcomes
+  against an explicit 5-to-1 opportunity-cost margin. Human clients still
+  never auto-select sources or results.
 
 ## Opportunity cost
 
@@ -518,7 +523,9 @@ Suggested narrative tiers remain:
 
 The detailed numeric contracts live in `docs/first_character_creation.md` and `starter_roster.py`. These identity statements prevent drift when balancing:
 
-- Yuji: readable bruiser/finisher; sequencing, Momentum/Soul Bruise; honest and predictable.
+- Yuji: readable bruiser/finisher; Soul Bruise sequencing; a successful
+  conditional Black Flash records Momentum for First Creation mission
+  progress, not as a separate combat buff; honest and predictable.
 - Megumi: shikigami setup/control; marks and soft control; no starter Mahoraga or completed Domain apocalypse.
 - Nobara: Nail mark into Resonance/Hairpin payoff; scary after setup, not instant burst.
 - Maki: starter weapon specialist and anti-defense unit; not Awakened Maki and not universal anti-Domain assassin.

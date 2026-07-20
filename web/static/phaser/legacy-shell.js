@@ -1,13 +1,15 @@
-import { SocketClient } from './network/socket-client.js?v=35';
-import { GameStore } from './store/game-store.js?v=35';
-import { SCENE_LIST } from './scenes/scene-registry.js?v=35';
+import { SocketClient } from './network/socket-client.js?v=42';
+import { GameStore } from './store/game-store.js?v=42';
+import { SCENE_LIST } from './scenes/scene-registry.js?v=42';
+import { DomUiBridge } from './core/dom-ui-bridge.js?v=42';
 
 function startShell() {
   const element = document.getElementById('v2-phaser-shell');
   if (!element || !window.Phaser) return;
+  const domUI = new DomUiBridge(document);
   const socketClient = new SocketClient();
   const store = new GameStore(socketClient);
-  window.JJKPhaserShell = { store, bootReady: false };
+  window.JJKPhaserShell = { store, domUI, bootReady: false };
   const game = new Phaser.Game({
     type: Phaser.CANVAS,
     parent: element,
@@ -24,6 +26,11 @@ function startShell() {
     scene: SCENE_LIST,
   });
   window.JJKPhaserShell.game = game;
+  if (game.canvas) {
+    game.canvas.setAttribute('aria-hidden', 'true');
+    game.canvas.tabIndex = -1;
+  }
+  if (game.events && game.events.once) game.events.once('destroy', () => domUI.destroy());
   store.onChange(() => {
     // Boot owns the initial transition. Socket/status notifications can arrive
     // while its loader is still active; starting Lobby here would create a

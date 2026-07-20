@@ -11,14 +11,47 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=IBM+Plex+Mono:wght@500;600;700&family=Shippori+Mincho+B1:wght@600;700;800&family=Zen+Kaku+Gothic+New:wght@500;600;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='phaser-shell.css') }}?v=35">
+  <link rel="stylesheet" href="{{ url_for('static', filename='phaser-shell.css') }}?v=42">
   <script src="{{ url_for('static', filename='socket.io.min.js') }}?v=4.7.2"></script>
 </head>
 <body>
   <main id="classic-v2" class="phaser-shell-screen" aria-label="Cursed Clash Phaser game shell">
-    <div id="v2-phaser-shell" aria-label="Cursed Clash mobile arena"></div>
-    <div id="connection-status" hidden>Connecting</div>
-    <div id="toast" hidden></div>
+    <div id="v2-phaser-shell" aria-label="Cursed Clash mobile arena">
+      <section id="jjk-dom-ui" aria-label="Accessible game controls">
+        <h1 id="jjk-scene-heading" class="jjk-sr-only" tabindex="-1">Loading JJK Arena</h1>
+        <nav id="jjk-action-mirror" aria-labelledby="jjk-scene-heading"></nav>
+        <section id="jjk-combat-state" class="jjk-sr-only" aria-label="Viewer-safe combat status" aria-hidden="true">
+          <h2>Combat status</h2>
+          <p id="jjk-combat-phase"></p>
+          <p id="jjk-combat-connection"></p>
+          <p id="jjk-combat-energy"></p>
+          <h3>Allied fighters</h3>
+          <ul id="jjk-combat-allies"></ul>
+          <h3>Enemy fighters</h3>
+          <ul id="jjk-combat-enemies"></ul>
+          <h3>Your queue, left to right</h3>
+          <ol id="jjk-combat-queue"></ol>
+        </section>
+        <p id="jjk-scene-live" class="jjk-sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
+
+        <section id="jjk-identity-dialog" class="jjk-identity-overlay" role="dialog" aria-modal="true" aria-labelledby="jjk-identity-title" aria-describedby="jjk-identity-hint jjk-identity-error" aria-hidden="true" hidden>
+          <form id="jjk-identity-form" class="jjk-identity-card" novalidate>
+            <span class="jjk-identity-kicker">PLAYER IDENTITY // LOCAL DEVICE</span>
+            <h2 id="jjk-identity-title">EDIT PLAYER NAME</h2>
+            <label id="jjk-identity-label" for="jjk-identity-input">Player name</label>
+            <input id="jjk-identity-input" name="identity" type="text" maxlength="32" enterkeyhint="done" autocomplete="nickname" aria-describedby="jjk-identity-hint jjk-identity-error" required>
+            <p id="jjk-identity-hint">Enter the identity shown in the arena.</p>
+            <p id="jjk-identity-error" class="jjk-identity-error" role="status" aria-live="polite" aria-atomic="true"></p>
+            <div class="jjk-identity-actions">
+              <button id="jjk-identity-cancel" type="button">CANCEL</button>
+              <button id="jjk-identity-save" type="submit">SAVE</button>
+            </div>
+          </form>
+        </section>
+      </section>
+    </div>
+    <div id="connection-status" class="jjk-sr-only" role="status" aria-live="polite" aria-atomic="true">Connecting</div>
+    <div id="toast" class="jjk-sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
   </main>
 
   <script>
@@ -34,7 +67,7 @@
     };
   </script>
   <script src="{{ url_for('static', filename='vendor/phaser.min.js') }}?v=3.90.0"></script>
-  <script src="{{ url_for('static', filename='phaser-design-tokens.js') }}?v=35"></script>
-  <script src="{{ url_for('static', filename='phaser-shell.js') }}?v=35"></script>
+  <script src="{{ url_for('static', filename='phaser-design-tokens.js') }}?v=42"></script>
+  <script src="{{ url_for('static', filename='phaser-shell.js') }}?v=42"></script>
 </body>
 </html>

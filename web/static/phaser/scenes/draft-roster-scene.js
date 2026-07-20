@@ -1,15 +1,17 @@
-import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=35';
-import { firstCreationRoster } from '../core/roster.js?v=35';
-import { skillVisualFor } from '../core/skill-visual-registry.js?v=35';
-import { clamp, safeText, titleize } from '../core/text.js?v=35';
-import {
-  S3_COLORS,
-  drawS3Button,
-  drawS3Cost,
-  drawS3Pager,
-  drawS3Panel,
-} from '../ui/season-three-ui.js?v=35';
-import { BaseScene } from './base-scene.js?v=35';
+import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=42';
+import { firstCreationRoster } from '../core/roster.js?v=42';
+import { skillVisualFor } from '../core/skill-visual-registry.js?v=42';
+import { clamp, safeText, titleize } from '../core/text.js?v=42';
+import { Season3UI } from '../ui/season3-ui.js?v=42';
+import { BaseScene } from './base-scene.js?v=42';
+
+const {
+  colors: S3_COLORS,
+  button: drawS3Button,
+  cost: drawS3Cost,
+  pager: drawS3Pager,
+  panel: drawS3Panel,
+} = Season3UI.flow;
 
 export const TEAM_SETUP_FILTERS = Object.freeze([
   Object.freeze({ id: 'all', label: 'ALL 19' }),

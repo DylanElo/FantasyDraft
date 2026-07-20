@@ -5,8 +5,17 @@ export class SocketClient {
     }
 
     on(eventName, handler) {
-      if (this.socket) this.socket.on(eventName, handler);
+      if (this.socket) {
+        const eventSource = eventName === 'reconnect_failed' && this.socket.io
+          ? this.socket.io
+          : this.socket;
+        eventSource.on(eventName, handler);
+      }
       this.offlineHandlers[eventName] = handler;
+    }
+
+    isConnected() {
+      return !!(this.socket && this.socket.connected);
     }
 
     emit(eventName, payload) {

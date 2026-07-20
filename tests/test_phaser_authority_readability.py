@@ -135,6 +135,8 @@ globalThis.localStorage = { getItem: () => null, setItem: () => {} };
 const { GameStore } = await import('./web/static/phaser/store/game-store.js');
 const store = Object.create(GameStore.prototype);
 store.state = { phase: 'planning', paused: false };
+store.connectionState = 'connected';
+store.resumeInFlight = false;
 store.phaseTimerSnapshotSeconds = 17;
 store.phaseTimerSnapshotAt = 1000;
 const originalNow = Date.now;
@@ -150,6 +152,345 @@ console.log(JSON.stringify({ running, paused, finished }));
     )
 
     assert probe == {"running": 11, "paused": 17, "finished": None}
+
+
+def test_disconnect_and_resume_hold_the_confirmed_timer_and_lock_controls():
+    probe = _run_node(
+        r"""
+globalThis.window = { JJK_BOOT: {} };
+globalThis.document = { getElementById: () => null };
+globalThis.localStorage = { getItem: () => null, setItem: () => {} };
+const { GameStore } = await import('./web/static/phaser/store/game-store.js');
+const store = Object.create(GameStore.prototype);
+Object.assign(store, {
+  state: {
+    phase: 'planning', paused: false, result_type: null, turn_player_id: 'mine',
+    players: { mine: { queue_confirmed: false }, enemy: { queue_confirmed: false } },
+  },
+  playerId: 'mine', connectionState: 'connected', resumeInFlight: false,
+  phaseTimerSnapshotSeconds: 20, phaseTimerSnapshotAt: 1000,
+  pendingCommand: null, queueSubmitting: false,
+});
+store.mineId = () => 'mine';
+const originalNow = Date.now;
+Date.now = () => 6000;
+store.freezePhaseTimer();
+store.connectionState = 'disconnected';
+const disconnected = {
+  seconds: store.phaseSecondsRemaining(),
+  locked: store.controlsLocked(),
+  connection: store.combatConnectionStatus(),
+};
+Date.now = () => 16000;
+store.connectionState = 'connected';
+store.resumeInFlight = true;
+const resuming = {
+  seconds: store.phaseSecondsRemaining(),
+  locked: store.controlsLocked(),
+  connection: store.combatConnectionStatus(),
+};
+const pausedStore = Object.create(GameStore.prototype);
+Object.assign(pausedStore, {
+  state: { phase: 'planning', paused: true },
+  connectionState: 'connected', resumeInFlight: false,
+  phaseTimerSnapshotSeconds: 20, phaseTimerSnapshotAt: 1000,
+});
+pausedStore.freezePhaseTimer();
+const pausedBeforeDisconnect = pausedStore.phaseSecondsRemaining();
+Date.now = originalNow;
+console.log(JSON.stringify({ disconnected, resuming, pausedBeforeDisconnect }));
+"""
+    )
+
+    assert probe["disconnected"]["seconds"] == 15
+    assert probe["disconnected"]["locked"] is True
+    assert probe["disconnected"]["connection"]["key"] == "reconnecting"
+    assert "held at the last confirmed value" in probe["disconnected"]["connection"]["label"]
+    assert probe["resuming"]["seconds"] == 15
+    assert probe["resuming"]["locked"] is True
+    assert probe["resuming"]["connection"]["key"] == "resuming"
+    assert "viewer-safe battle state" in probe["resuming"]["connection"]["label"]
+    assert probe["pausedBeforeDisconnect"] == 20
+
+
+def test_resume_rejection_discards_cached_battle_without_surrendering():
+    probe = _run_node(
+        r"""
+globalThis.window = {
+  JJK_BOOT: {}, JJKPhaserShell: null,
+  setTimeout: () => 1, clearTimeout: () => {},
+};
+globalThis.document = { getElementById: () => null };
+globalThis.localStorage = { getItem: () => null, setItem: () => {} };
+const { GameStore } = await import('./web/static/phaser/store/game-store.js');
+const handlers = {};
+const emitted = [];
+const store = Object.create(GameStore.prototype);
+Object.assign(store, {
+  socketClient: {
+    on: (name, handler) => { handlers[name] = handler; },
+    emit: (name, payload) => emitted.push({ name, payload }),
+  },
+  listeners: new Set(), playerId: 'mine', connectionState: 'connected',
+  state: { match_id: 'expired-match', result_type: null },
+  pendingCommand: null, resumeInFlight: true, resumeSession: { room_id: 'room', player_id: 'mine', resume_token: 'token' },
+  disconnectDeadline: null, lobbyStatus: null, actions: [{ id: 'cached' }], actionWildPays: {},
+  selectedCasterSlot: 0, selectedSkillId: 'cached', queueSubmitting: false,
+  matchLaunchPending: false, matchLaunchError: '', matchLaunchTimer: null, matchLaunchAttempt: 0,
+  queueReviewOpen: true, transmuteOpen: false, transmuteSources: [], transmuteTarget: null,
+  detailCharacterId: null, detailSkillId: null, inspectedFighter: null,
+  eventCursor: 0, playbackEvents: [], recentEvents: [], visiblePublicAction: null, visiblePublicActionUntil: 0,
+  phaseTimerSnapshotSeconds: 20, phaseTimerSnapshotAt: 1000, retiredMatchIds: new Set(), toast: '', toastSerial: 0,
+});
+store.bindSocket();
+handlers.battle_v2_resume_rejected({ message: 'Battle session could not be resumed.' });
+console.log(JSON.stringify({
+  scene: store.scene,
+  hasState: !!store.state,
+  actionCount: store.actions.length,
+  resumeSession: store.resumeSession,
+  resumeInFlight: store.resumeInFlight,
+  toast: store.toast,
+  surrendered: emitted.some((entry) => entry.name === 'battle_v2_surrender'),
+}));
+"""
+    )
+
+    assert probe == {
+        "scene": "LobbyScene",
+        "hasState": False,
+        "actionCount": 0,
+        "resumeSession": None,
+        "resumeInFlight": False,
+        "toast": "Battle session could not be resumed.",
+        "surrendered": False,
+    }
+
+
+def test_long_status_reasons_have_compact_scannable_skill_card_copy():
+    probe = _run_node(
+        r"""
+globalThis.Phaser = { Scene: class { constructor() {} } };
+const { compactSkillCardDisabledReason } = await import('./web/static/phaser/scenes/combat-scene.js');
+console.log(JSON.stringify({
+  puppet: compactSkillCardDisabledReason('Remote Puppet Net: non-damaging skills are disabled.'),
+  hookworm: compactSkillCardDisabledReason('Hookworm Strategic Stun: this skill class is disabled.'),
+  energy: compactSkillCardDisabledReason('Short on Taijutsu, Strategic.'),
+}));
+"""
+    )
+
+    assert probe == {
+        "puppet": "Non-damaging skills disabled.",
+        "hookworm": "Skill class disabled.",
+        "energy": "Short on Taijutsu, Strategic.",
+    }
+
+
+def test_user_facing_interaction_stage_distinguishes_planning_orders_and_review():
+    probe = _run_node(
+        r"""
+globalThis.window = { JJK_BOOT: {} };
+globalThis.document = { getElementById: () => null };
+globalThis.localStorage = { getItem: () => null, setItem: () => {} };
+const { combatInteractionStageFor } = await import('./web/static/phaser/store/game-store.js');
+const stage = (context) => {
+  const value = combatInteractionStageFor(context);
+  return { key: value.key, label: value.label, heading: value.heading, timer: value.timerLabel };
+};
+const validating = (kind, queueCount) => {
+  const value = combatInteractionStageFor({
+    authoritativePhase: 'planning', isMyTurn: true, queueCount,
+    pendingCommandKind: kind, queueSubmitting: false,
+  });
+  return { key: value.key, hud: value.hudLabel, description: value.description };
+};
+console.log(JSON.stringify({
+  planning: stage({ authoritativePhase: 'planning', isMyTurn: true, queueCount: 0 }),
+  ordersFromPlanning: stage({ authoritativePhase: 'planning', isMyTurn: true, queueCount: 1, queueReviewOpen: false }),
+  ordersFromRawReview: stage({ authoritativePhase: 'queue_review', isMyTurn: true, queueCount: 2, queueReviewOpen: false }),
+  review: stage({ authoritativePhase: 'queue_review', isMyTurn: true, queueCount: 2, queueReviewOpen: true }),
+  opponentPrivateReview: stage({ authoritativePhase: 'queue_review', isMyTurn: false, queueCount: 0, queueReviewOpen: false }),
+  passing: stage({ authoritativePhase: 'planning', isMyTurn: true, queueCount: 0, queueSubmitting: true, pendingCommandKind: 'end_turn' }),
+  resolving: stage({ authoritativePhase: 'resolving', isMyTurn: true, queueCount: 2 }),
+  validatingSubmit: validating('submit_plan', 1),
+  validatingCancel: validating('cancel_queue', 0),
+  validatingConvert: validating('convert_energy', 0),
+}));
+"""
+    )
+
+    assert probe == {
+        "planning": {"key": "planning", "label": "Planning", "heading": "Combat Planning", "timer": "PLAN TIME"},
+        "ordersFromPlanning": {"key": "orders_open", "label": "Orders Open", "heading": "Combat Orders Open", "timer": "ORDER TIME"},
+        "ordersFromRawReview": {"key": "orders_open", "label": "Orders Open", "heading": "Combat Orders Open", "timer": "ORDER TIME"},
+        "review": {"key": "queue_review", "label": "Queue Review", "heading": "Queue Review", "timer": "REVIEW TIME"},
+        "opponentPrivateReview": {"key": "opponent_turn", "label": "Opponent Turn", "heading": "Opponent Turn", "timer": "TURN TIME"},
+        "passing": {"key": "planning", "label": "Planning", "heading": "Combat Planning", "timer": "PLAN TIME"},
+        "resolving": {"key": "resolution", "label": "Resolution", "heading": "Resolution Playback", "timer": "SERVER"},
+        "validatingSubmit": {
+            "key": "orders_open",
+            "hud": "VALIDATING",
+            "description": "The server is validating the latest battle command.",
+        },
+        "validatingCancel": {
+            "key": "planning",
+            "hud": "VALIDATING",
+            "description": "The server is validating the latest battle command.",
+        },
+        "validatingConvert": {
+            "key": "planning",
+            "hud": "VALIDATING",
+            "description": "The server is validating the latest battle command.",
+        },
+    }
+
+
+def test_resume_with_authoritative_pending_queue_returns_to_orders_open():
+    probe = _run_node(
+        r"""
+globalThis.window = { JJK_BOOT: {} };
+globalThis.document = { getElementById: () => null };
+globalThis.localStorage = { getItem: () => null, setItem: () => {} };
+const { GameStore } = await import('./web/static/phaser/store/game-store.js');
+const store = Object.create(GameStore.prototype);
+Object.assign(store, {
+  state: null,
+  pendingCommand: null,
+  resumeInFlight: true,
+  queueReviewOpen: true,
+  queueSubmitting: false,
+  actions: [],
+  actionWildPays: {},
+  eventCursor: 0,
+  playbackEvents: [],
+  recentEvents: [],
+  visiblePublicAction: null,
+  visiblePublicActionUntil: 0,
+  inspectedFighter: null,
+  transmuteOpen: false,
+  firstCreationAccount: null,
+  lobbyStatus: null,
+  matchLaunchPending: false,
+  connectionState: 'connected',
+});
+store.clearMatchLaunchTimeout = () => {};
+store.isRetiredMatchId = () => false;
+store.mineId = () => 'mine';
+store.enemyId = () => 'enemy';
+store.ensureWildcardPayments = () => {};
+store.ensureSelectedCaster = () => {};
+store.changeScene = () => {};
+store.notify = () => {};
+store.receiveBattleState({
+  match_id: 'resume-room',
+  state_revision: 7,
+  phase: 'queue_review',
+  phase_seconds_remaining: 31,
+  turn_player_id: 'mine',
+  paused: false,
+  event_log: [],
+  players: {
+    mine: { team: [], queue_confirmed: false },
+    enemy: { team: [], queue_confirmed: false },
+  },
+  pending_actions: {
+    mine: [{ id: 'a1', caster_slot: 0, skill_id: 'skill', wildcard_pays: [] }],
+  },
+  queue_order: { mine: ['a1'] },
+});
+const stage = store.interactionStage();
+console.log(JSON.stringify({
+  actionCount: store.actions.length,
+  queueReviewOpen: store.queueReviewOpen,
+  resumeInFlight: store.resumeInFlight,
+  stage: stage.key,
+  label: stage.label,
+  seconds: store.phaseSecondsRemaining(),
+}));
+"""
+    )
+
+    assert probe == {
+        "actionCount": 1,
+        "queueReviewOpen": False,
+        "resumeInFlight": False,
+        "stage": "orders_open",
+        "label": "Orders Open",
+        "seconds": 31,
+    }
+
+
+def test_store_combat_accessibility_snapshot_whitelists_viewer_state_and_own_queue():
+    probe = _run_node(
+        r"""
+globalThis.window = { JJK_BOOT: {} };
+globalThis.document = { getElementById: () => null };
+globalThis.localStorage = { getItem: () => null, setItem: () => {} };
+const { GameStore } = await import('./web/static/phaser/store/game-store.js');
+const store = Object.create(GameStore.prototype);
+const fighter = (name, hp, statuses = []) => ({ name, character_id: name.toLowerCase(), hp, max_hp: 100, alive: hp > 0, statuses });
+store.state = {
+  phase: 'queue_review', turn_player_id: 'mine', paused: false,
+  players: {
+    mine: {
+      energy: { green: 2, blue: 1, white: 0, red: 3 },
+      team: [fighter('Yuji', 80, [{ name: 'Soul Bruise', duration: 1, duration_clock: 'target_turn' }])],
+    },
+    enemy: {
+      team: [Object.assign(fighter('Yuta', 60, []), { private_statuses: [{ name: 'PRIVATE TRAP' }] })],
+    },
+  },
+  pending_actions: { enemy: [{ skill_id: 'PRIVATE ENEMY ACTION' }] },
+  event_log: [{ message: 'PRIVATE EVENT' }],
+};
+store.actions = [{
+  id: 'a1', caster_slot: 0, skill_id: 'divergent_fist',
+  target_player_id: 'enemy', target_slot: 0, target_slots: [],
+}];
+store.actionWildPays = { a1: ['blue'] };
+store.queueReviewOpen = false;
+store.queueSubmitting = false;
+store.connectionState = 'connected';
+store.disconnectDeadline = null;
+store.phaseTimerSnapshotSeconds = 25;
+store.phaseTimerSnapshotAt = Date.now();
+store.mineId = () => 'mine';
+store.enemyId = () => 'enemy';
+store.skillFor = () => ({ id: 'divergent_fist', name: 'Divergent Fist', cost: ['green', 'black'], effects: [] });
+store.adjustedCost = (_caster, skill) => skill.cost.slice();
+const snapshot = store.combatAccessibilitySnapshot();
+const serialized = JSON.stringify(snapshot);
+console.log(JSON.stringify({
+  stage: snapshot.interactionStage,
+  energy: snapshot.energy.map(({ label, count }) => [label, count]),
+  allies: snapshot.allies,
+  enemies: snapshot.enemies,
+  queue: snapshot.queue,
+  leaksPrivateTrap: serialized.includes('PRIVATE TRAP'),
+  leaksEnemyAction: serialized.includes('PRIVATE ENEMY ACTION'),
+  leaksPrivateEvent: serialized.includes('PRIVATE EVENT'),
+}));
+"""
+    )
+
+    assert probe["stage"] == "orders_open"
+    assert probe["energy"] == [["T", 2], ["J", 1], ["S", 0], ["B", 3]]
+    assert probe["allies"][0]["statuses"][0]["name"] == "Soul Bruise"
+    assert probe["enemies"][0]["statuses"] == []
+    assert probe["queue"] == [
+        {
+            "order": 1,
+            "caster": "Yuji",
+            "skill": "Divergent Fist",
+            "target": "Enemy 1, Yuta",
+            "cost": ["T", "X"],
+            "wildcardPays": ["J"],
+        }
+    ]
+    assert probe["leaksPrivateTrap"] is False
+    assert probe["leaksEnemyAction"] is False
+    assert probe["leaksPrivateEvent"] is False
 
 
 def test_known_stun_reason_is_exposed_before_targeting_and_matches_server_semantics():
@@ -265,10 +606,22 @@ def test_combat_source_uses_explicit_target_words_status_sheet_and_public_events
     assert "'LEGAL'" not in combat
     assert "renderFighterStatusSheet" in combat
     assert "SOURCE SKILL" in combat
-    assert "TIME ${clockLabel(detailSeconds)}" in combat
-    assert "TIME ${clockLabel(sheetSeconds)}" in combat
+    assert "${detailStage.timerLabel} ${clockLabel(detailSeconds)}" in combat
+    assert "${sheetStage.timerLabel} ${clockLabel(sheetSeconds)}" in combat
     assert "safeText(event && event.type) === 'skill_resolved'" in store
     assert "currentVisibleAction()" in store
+    assert "interactionStage: this.interactionStage().key" in store
+    assert "interactionStageHudLabel: this.interactionStage().hudLabel" in store
+    assert "interactionStageDescription: this.interactionStage().description" in store
+    assert "authoritativePhase: safeText(this.state && this.state.phase)" in store
+    assert "authoritativePhaseSecondsRemaining: this.phaseSecondsRemaining()" in store
+    assert "combatConnection: this.combatConnectionStatus().key" in store
+    assert "HOSTILE ACTION IN PROGRESS" not in combat
+    assert "RESTORING BATTLE SESSION" in combat
+    assert "PASSING TURN" in combat
+    assert "SERVER VALIDATING QUEUE" in combat
+    prompt_block = combat[combat.index("const prompt =") : combat.index("if (this.store.queueReviewOpen)")]
+    assert prompt_block.index("this.store.controlsLocked()") < prompt_block.index("this.store.queueReviewOpen")
     assert "this.clearToast();\n      this.queueReviewOpen = true" in store
 
 

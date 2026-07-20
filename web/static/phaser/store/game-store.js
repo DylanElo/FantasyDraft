@@ -1,9 +1,105 @@
-import { BOOT, CORE_ENERGY } from '../core/runtime-config.js?v=35';
-import { safeText } from '../core/text.js?v=35';
-import { readStorage, writeStorage } from '../core/storage.js?v=35';
-import { AssetRegistry } from '../core/asset-registry.js?v=35';
-import { firstCreationRoster, preset, presetTitle } from '../core/roster.js?v=35';
-import { damageEventAmount } from '../fx/event-metrics.js?v=35';
+import { BOOT, CORE_ENERGY, ENERGY_LABELS, energyName } from '../core/runtime-config.js?v=42';
+import { safeText } from '../core/text.js?v=42';
+import { readStorage, writeStorage } from '../core/storage.js?v=42';
+import { AssetRegistry } from '../core/asset-registry.js?v=42';
+import { firstCreationRoster, preset, presetTitle } from '../core/roster.js?v=42';
+import { damageEventAmount } from '../fx/event-metrics.js?v=42';
+
+export const MATCH_LAUNCH_TIMEOUT_MS = 10000;
+export const MAX_RETIRED_MATCH_IDS = 8;
+
+export const COMBAT_INTERACTION_STAGES = Object.freeze({
+  planning: Object.freeze({
+    key: 'planning',
+    label: 'Planning',
+    heading: 'Combat Planning',
+    hudLabel: 'YOUR MOVE',
+    timerLabel: 'PLAN TIME',
+    description: 'Choose a ready fighter, technique, and every required target.',
+  }),
+  orders_open: Object.freeze({
+    key: 'orders_open',
+    label: 'Orders Open',
+    heading: 'Combat Orders Open',
+    hudLabel: 'ADD OR REVIEW',
+    timerLabel: 'ORDER TIME',
+    description: 'One or more orders are saved; add another fighter action or open Queue Review.',
+  }),
+  queue_review: Object.freeze({
+    key: 'queue_review',
+    label: 'Queue Review',
+    heading: 'Queue Review',
+    hudLabel: 'FINAL ORDER',
+    timerLabel: 'REVIEW TIME',
+    description: 'Set left-to-right order, assign Wild payments, and confirm the queue.',
+  }),
+  resolution: Object.freeze({
+    key: 'resolution',
+    label: 'Resolution',
+    heading: 'Resolution Playback',
+    hudLabel: 'RESOLVING',
+    timerLabel: 'SERVER',
+    description: 'The server is resolving confirmed actions left to right.',
+  }),
+  opponent_turn: Object.freeze({
+    key: 'opponent_turn',
+    label: 'Opponent Turn',
+    heading: 'Opponent Turn',
+    hudLabel: 'ENEMY MOVE',
+    timerLabel: 'TURN TIME',
+    description: 'Waiting for the opponent\'s viewer-private decisions.',
+  }),
+  finished: Object.freeze({
+    key: 'finished',
+    label: 'Battle Finished',
+    heading: 'Battle Results',
+    hudLabel: 'FINISHED',
+    timerLabel: 'FINAL',
+    description: 'The authoritative battle result is ready.',
+  }),
+});
+
+export function combatInteractionStageFor(context = {}) {
+  const phase = safeText(context.authoritativePhase || context.phase).toLowerCase();
+  const queueCount = Math.max(0, Number(context.queueCount || 0));
+  const isMyTurn = Boolean(context.isMyTurn);
+  const withPendingValidation = (stage) => context.pendingCommandKind && !context.queueSubmitting
+    ? Object.freeze({
+        ...stage,
+        hudLabel: 'VALIDATING',
+        description: 'The server is validating the latest battle command.',
+      })
+    : stage;
+
+  if (phase === 'finished') return COMBAT_INTERACTION_STAGES.finished;
+  if (phase === 'resolving' || phase === 'turn_end') return COMBAT_INTERACTION_STAGES.resolution;
+  if (!isMyTurn) return COMBAT_INTERACTION_STAGES.opponent_turn;
+  if (context.queueSubmitting && context.pendingCommandKind === 'end_turn') {
+    return Object.freeze({
+      ...COMBAT_INTERACTION_STAGES.planning,
+      hudLabel: 'PASSING',
+      description: 'The server is ending this turn without resolving fighter actions.',
+    });
+  }
+  if (context.queueSubmitting) {
+    return Object.freeze({
+      ...COMBAT_INTERACTION_STAGES.queue_review,
+      hudLabel: 'CONFIRMING',
+      description: 'The server is validating and locking the reviewed queue.',
+    });
+  }
+  if (context.queueReviewOpen) return withPendingValidation(COMBAT_INTERACTION_STAGES.queue_review);
+  // The server enters QUEUE_REVIEW as soon as the first plan is submitted.
+  // Until the player explicitly opens the review sheet, the mobile interaction
+  // stage remains Orders Open so a second or third fighter can still act.
+  if (queueCount > 0 && (phase === 'planning' || phase === 'queue_review')) {
+    return withPendingValidation(COMBAT_INTERACTION_STAGES.orders_open);
+  }
+  if (phase === 'planning' || phase === 'queue_review') {
+    return withPendingValidation(COMBAT_INTERACTION_STAGES.planning);
+  }
+  return COMBAT_INTERACTION_STAGES.opponent_turn;
+}
 
 export class GameStore {
     constructor(socketClient) {
@@ -19,6 +115,9 @@ export class GameStore {
       this.state = null;
       this.lobbyStatus = null;
       this.matchLaunchPending = false;
+      this.matchLaunchError = '';
+      this.matchLaunchTimer = null;
+      this.matchLaunchAttempt = 0;
       this.matchupReturnScene = 'DraftScene';
       this.selectedCasterSlot = null;
       this.selectedSkillId = null;
@@ -35,7 +134,9 @@ export class GameStore {
       this.transmuteTarget = null;
       this.toast = '';
       this.toastSerial = 0;
-      this.connectionState = 'connected';
+      this.connectionState = typeof this.socketClient.isConnected === 'function' && !this.socketClient.isConnected()
+        ? 'connecting'
+        : 'connected';
       this.disconnectDeadline = null;
       this.draftPage = 0;
       this.draftTarget = 'playerTeam';
@@ -54,7 +155,9 @@ export class GameStore {
       this.commandNonceCounter = 0;
       this.pendingCommand = null;
       this.resumeSession = this.loadResumeSession();
+      this.resumeInFlight = false;
       this.ignoreBattleUpdates = false;
+      this.retiredMatchIds = new Set();
       // Live-updated from the most recent battle_v2_update's
       // first_creation_account field; falls back to the page-load bootstrap
       // profile only until the first update arrives, so mission counters,
@@ -86,6 +189,13 @@ export class GameStore {
           selectedSkillId: this.selectedSkillId,
           detailSkillId: this.detailSkillId,
           queueReviewOpen: this.queueReviewOpen,
+          interactionStage: this.interactionStage().key,
+          interactionStageLabel: this.interactionStage().label,
+          interactionStageHudLabel: this.interactionStage().hudLabel,
+          interactionStageDescription: this.interactionStage().description,
+          authoritativePhase: safeText(this.state && this.state.phase).toLowerCase() || null,
+          authoritativePhaseSecondsRemaining: this.phaseSecondsRemaining(),
+          combatConnection: this.combatConnectionStatus().key,
           detailCharacterId: this.detailCharacterId,
           hasBattle: !!this.state,
           playbackEvents: this.playbackEvents.length,
@@ -98,31 +208,64 @@ export class GameStore {
     bindSocket() {
       this.socketClient.on('connect', () => {
         this.connectionState = 'connected';
-        this.setStatus('Connected');
         if (this.resumeSession) {
+          this.resumeInFlight = true;
+          this.setStatus('Restoring battle session\u2026');
           this.socketClient.emit('battle_v2_resume', { ...this.resumeSession });
+        } else {
+          this.resumeInFlight = false;
+          this.setStatus('Connected');
         }
         this.notify();
       });
       this.socketClient.on('disconnect', () => {
+        this.freezePhaseTimer();
         this.connectionState = 'disconnected';
         this.pendingCommand = null;
         this.queueSubmitting = false;
+        if (this.scene === 'MatchupScene' && !this.state) {
+          const matchmakingStarted = !!(this.matchLaunchPending || this.lobbyStatus);
+          this.lobbyStatus = null;
+          this.failMatchLaunch(matchmakingStarted
+            ? 'Connection lost before matchmaking completed. Reconnect and try again.'
+            : 'Arena connection was lost. Reconnect before entering the match.');
+          return;
+        }
         this.setStatus('Reconnecting…');
         this.notify();
       });
+      const connectionFailed = () => {
+        this.freezePhaseTimer();
+        this.connectionState = 'disconnected';
+        this.pendingCommand = null;
+        this.queueSubmitting = false;
+        this.setStatus('Connection failed');
+        if (this.scene === 'MatchupScene' && !this.state) {
+          this.lobbyStatus = null;
+          this.failMatchLaunch('Arena server could not be reached. Check the address and try again.');
+          return;
+        }
+        this.notify();
+      };
+      this.socketClient.on('connect_error', connectionFailed);
+      this.socketClient.on('reconnect_failed', connectionFailed);
       this.socketClient.on('battle_v2_session', (data) => this.saveResumeSession(data));
       this.socketClient.on('battle_v2_resume_rejected', (data) => {
-        this.clearResumeSession();
-        this.showToast(data && data.message ? data.message : 'Battle session expired.');
+        const message = data && data.message ? data.message : 'Battle session expired.';
+        this.resumeInFlight = false;
+        this.resetToLobby({ surrender: false });
+        this.setStatus('Connected');
+        this.showToast(message);
       });
       this.socketClient.on('battle_v2_update', (data) => this.receiveBattleState(data));
       this.socketClient.on('battle_v2_lobby', (data) => this.receiveLobbyState(data));
       this.socketClient.on('battle_v2_error', (data) => {
         const failedCommand = this.pendingCommand;
+        const failedLaunch = this.matchLaunchPending;
         this.pendingCommand = null;
         this.queueSubmitting = false;
         this.matchLaunchPending = false;
+        this.clearMatchLaunchTimeout();
         if (
           failedCommand
           && ['queue_update_before_confirm', 'queue_confirm'].includes(failedCommand.kind)
@@ -133,6 +276,10 @@ export class GameStore {
           this.queueReviewOpen = true;
         }
         const message = data && data.message ? String(data.message) : 'Battle command failed.';
+        if (failedLaunch && this.scene === 'MatchupScene') {
+          this.matchLaunchError = safeText(message);
+          this.setStatus('Arena request rejected');
+        }
         this.showToast(message.toLowerCase().includes('stale state revision')
           ? 'Battle state refreshed. Review your queue and try again.'
           : message);
@@ -189,6 +336,38 @@ export class GameStore {
       if (!this.toast) return;
       this.toast = '';
       this.notify();
+    }
+
+    clearMatchLaunchTimeout() {
+      this.matchLaunchAttempt = Number(this.matchLaunchAttempt || 0) + 1;
+      if (this.matchLaunchTimer !== null && typeof window.clearTimeout === 'function') {
+        window.clearTimeout(this.matchLaunchTimer);
+      }
+      this.matchLaunchTimer = null;
+    }
+
+    armMatchLaunchTimeout() {
+      this.clearMatchLaunchTimeout();
+      const attempt = this.matchLaunchAttempt;
+      this.matchLaunchTimer = window.setTimeout(() => {
+        if (attempt !== this.matchLaunchAttempt || !this.matchLaunchPending || this.state || this.lobbyStatus) return;
+        this.failMatchLaunch('The arena did not answer in time. Check the connection and try again.');
+      }, MATCH_LAUNCH_TIMEOUT_MS);
+    }
+
+    failMatchLaunch(message) {
+      const failure = safeText(message, 'Arena connection failed. Try again.');
+      const alreadyVisible = !this.matchLaunchPending && this.matchLaunchError === failure;
+      this.clearMatchLaunchTimeout();
+      this.matchLaunchPending = false;
+      this.matchLaunchError = failure;
+      this.setStatus('Connection failed');
+      if (!alreadyVisible) this.showToast(failure);
+    }
+
+    matchConnectionReady() {
+      if (this.connectionState !== 'connected') return false;
+      return typeof this.socketClient.isConnected !== 'function' || this.socketClient.isConnected();
     }
 
     commandPayload(payload = {}) {
@@ -491,6 +670,8 @@ export class GameStore {
       this.detailCharacterId = null;
       this.lobbyStatus = null;
       this.matchLaunchPending = false;
+      this.matchLaunchError = '';
+      this.clearMatchLaunchTimeout();
       this.changeScene('MatchupScene');
     }
 
@@ -503,6 +684,25 @@ export class GameStore {
       const returnScene = this.matchupReturnScene === 'FirstCreationScene' ? 'FirstCreationScene' : 'DraftScene';
       this.lobbyStatus = null;
       this.changeScene(returnScene);
+    }
+
+    retireMatchId(matchId) {
+      const normalized = String(matchId || '').trim();
+      if (!normalized) return;
+      if (!(this.retiredMatchIds instanceof Set)) this.retiredMatchIds = new Set();
+      this.retiredMatchIds.delete(normalized);
+      this.retiredMatchIds.add(normalized);
+      while (this.retiredMatchIds.size > MAX_RETIRED_MATCH_IDS) {
+        const oldest = this.retiredMatchIds.values().next().value;
+        this.retiredMatchIds.delete(oldest);
+      }
+    }
+
+    isRetiredMatchId(matchId) {
+      const normalized = String(matchId || '').trim();
+      return !!normalized
+        && this.retiredMatchIds instanceof Set
+        && this.retiredMatchIds.has(normalized);
     }
 
     startMatch() {
@@ -522,6 +722,11 @@ export class GameStore {
         return;
       }
       if (this.matchLaunchPending) return;
+      if (!this.matchConnectionReady()) {
+        this.failMatchLaunch('Arena server is not connected yet. Check the address and try again.');
+        return;
+      }
+      this.retireMatchId(this.state && this.state.match_id);
       this.state = null;
       this.disconnectDeadline = null;
       this.clearResumeSession();
@@ -537,6 +742,8 @@ export class GameStore {
       this.recentEvents = [];
       this.ignoreBattleUpdates = false;
       this.matchLaunchPending = true;
+      this.matchLaunchError = '';
+      this.armMatchLaunchTimeout();
       const payload = {
         room_id: this.matchMode === 'pvp' ? this.roomId : `classic_v2_${Math.random().toString(36).slice(2, 8)}`,
         player_name: this.playerName,
@@ -558,13 +765,16 @@ export class GameStore {
     }
 
     receiveLobbyState(data) {
+      this.clearMatchLaunchTimeout();
       this.state = null;
       this.pendingCommand = null;
+      this.resumeInFlight = false;
       this.disconnectDeadline = null;
       const cancelled = !!(data && data.status === 'cancelled');
       this.lobbyStatus = cancelled ? null : data;
       this.queueSubmitting = false;
       this.matchLaunchPending = false;
+      this.matchLaunchError = '';
       if (cancelled) {
         // A player-initiated cancel changes to Lobby before the server ack.
         // Do not let that later ack pull the app back into team setup.
@@ -576,7 +786,9 @@ export class GameStore {
     }
 
     receiveBattleState(data) {
-      if (this.ignoreBattleUpdates || !data) return;
+      if (this.ignoreBattleUpdates || !data || this.isRetiredMatchId(data.match_id)) return;
+      this.clearMatchLaunchTimeout();
+      this.matchLaunchError = '';
       const currentMatchId = this.state && this.state.match_id;
       const nextMatchId = data.match_id;
       const sameMatch = !!this.state && (
@@ -594,6 +806,9 @@ export class GameStore {
       ) {
         return;
       }
+      const resumedSnapshot = this.resumeInFlight;
+      this.resumeInFlight = false;
+      if (resumedSnapshot) this.setStatus('Connected');
 
       if (!sameMatch && this.state) {
         this.eventCursor = 0;
@@ -677,6 +892,11 @@ export class GameStore {
             .map((action) => [action.id, action.wildcard_pays.slice()]),
         );
         this.ensureWildcardPayments();
+        // A resumed authoritative QUEUE_REVIEW snapshot only tells us that
+        // orders exist; it cannot tell us whether the local review sheet was
+        // open before the socket changed. Resume at Orders Open, preserving
+        // every action while avoiding a raw phase/UI-stage mismatch.
+        if (resumedSnapshot) this.queueReviewOpen = false;
       } else if (data.phase === 'planning' || data.phase === 'finished' || data.turn_player_id !== this.mineId() || (me && me.queue_confirmed)) {
         this.actions = [];
         this.actionWildPays = {};
@@ -746,6 +966,7 @@ export class GameStore {
       const me = this.me();
       return (
         this.connectionState !== 'connected'
+        || this.resumeInFlight
         || !!(this.state && this.state.paused)
         || !!(this.state && this.state.result_type)
         || !this.isMyTurn()
@@ -760,14 +981,172 @@ export class GameStore {
       return Math.max(0, Math.ceil((this.disconnectDeadline - Date.now()) / 1000));
     }
 
+    freezePhaseTimer() {
+      if (!Number.isFinite(this.phaseTimerSnapshotSeconds)) return;
+      const timerWasRunning = !!this.state
+        && ['planning', 'queue_review'].includes(this.state.phase)
+        && !this.state.paused
+        && this.connectionState === 'connected'
+        && !this.resumeInFlight;
+      if (timerWasRunning && Number.isFinite(this.phaseTimerSnapshotAt)) {
+        const elapsed = Math.max(0, (Date.now() - this.phaseTimerSnapshotAt) / 1000);
+        this.phaseTimerSnapshotSeconds = Math.max(0, this.phaseTimerSnapshotSeconds - elapsed);
+      }
+      this.phaseTimerSnapshotAt = null;
+    }
+
     phaseSecondsRemaining() {
       if (!this.state || !['planning', 'queue_review'].includes(this.state.phase)) return null;
       if (!Number.isFinite(this.phaseTimerSnapshotSeconds)) return null;
-      if (this.state.paused || !Number.isFinite(this.phaseTimerSnapshotAt)) {
+      if (
+        this.state.paused
+        || this.connectionState !== 'connected'
+        || this.resumeInFlight
+        || !Number.isFinite(this.phaseTimerSnapshotAt)
+      ) {
         return Math.max(0, Math.ceil(this.phaseTimerSnapshotSeconds));
       }
       const elapsed = Math.max(0, (Date.now() - this.phaseTimerSnapshotAt) / 1000);
       return Math.max(0, Math.ceil(this.phaseTimerSnapshotSeconds - elapsed));
+    }
+
+    interactionStage() {
+      return combatInteractionStageFor({
+        authoritativePhase: this.state && this.state.phase,
+        isMyTurn: this.isMyTurn(),
+        queueCount: this.actions.length,
+        queueReviewOpen: this.queueReviewOpen,
+        queueSubmitting: this.queueSubmitting,
+        pendingCommandKind: this.pendingCommand && this.pendingCommand.kind,
+      });
+    }
+
+    combatConnectionStatus() {
+      if (this.connectionState !== 'connected') {
+        return {
+          key: this.connectionState === 'connecting' ? 'connecting' : 'reconnecting',
+          label: this.connectionState === 'connecting'
+            ? 'Connecting to the arena.'
+            : 'Reconnecting to the arena. The displayed phase clock is held at the last confirmed value.',
+        };
+      }
+      if (this.resumeInFlight) {
+        return {
+          key: 'resuming',
+          label: 'Restoring the viewer-safe battle state. The displayed phase clock is held at the last confirmed value.',
+        };
+      }
+      if (this.state && this.state.paused) {
+        const seconds = this.disconnectSecondsRemaining();
+        return {
+          key: 'paused_for_reconnect',
+          label: seconds === null
+            ? 'Battle paused while a player reconnects.'
+            : `Battle paused for reconnect; ${seconds} second${seconds === 1 ? '' : 's'} remain.`,
+        };
+      }
+      return { key: 'connected', label: 'Connected to the arena.' };
+    }
+
+    fighterAccessibilitySummary(character, side, slot) {
+      if (!character) return null;
+      const hp = Math.max(0, Number(character.hp || 0));
+      const maxHp = Math.max(hp, Number(character.max_hp || 100));
+      // Battle state is already serialized for this viewer. Only summarize
+      // status records present in that viewer-specific payload; never recover
+      // omitted enemy traps from catalogs, event history, or resolver data.
+      const statuses = (Array.isArray(character.statuses) ? character.statuses : [])
+        .filter((status) => status && Number(status.duration || 0) !== 0)
+        .map((status) => {
+          const duration = Number(status.duration);
+          const clock = safeText(status.duration_clock, 'round').replaceAll('_', ' ');
+          return {
+            name: safeText(status.name || status.id, 'Visible status'),
+            duration: Number.isFinite(duration) && duration >= 0 ? duration : null,
+            clock,
+            visibility: status.invisible && !status.revealed ? 'owner-visible hidden' : status.revealed ? 'revealed' : 'visible',
+          };
+        });
+      return {
+        side,
+        slot: Number(slot) + 1,
+        name: safeText(character.name || character.character_id, `Fighter ${Number(slot) + 1}`),
+        hp,
+        maxHp,
+        alive: character.alive !== false && hp > 0,
+        statuses,
+      };
+    }
+
+    actionTargetAccessibility(action) {
+      const me = this.me();
+      const foe = this.foe();
+      const mineId = this.mineId();
+      const enemyId = this.enemyId();
+      const route = (playerId, slot, prefix = '') => {
+        if (slot === null || slot === undefined) return '';
+        const side = playerId === mineId ? 'Ally' : playerId === enemyId ? 'Enemy' : 'Target';
+        const player = playerId === mineId ? me : playerId === enemyId ? foe : null;
+        const fighter = player && player.team ? player.team[Number(slot)] : null;
+        const name = safeText(fighter && (fighter.name || fighter.character_id), `slot ${Number(slot) + 1}`);
+        return `${prefix}${side} ${Number(slot) + 1}, ${name}`;
+      };
+      const targets = [];
+      const add = (label) => {
+        if (label && !targets.includes(label)) targets.push(label);
+      };
+      add(route(action.target_player_id, action.target_slot));
+      (Array.isArray(action.target_slots) ? action.target_slots : []).forEach((slot) => (
+        add(route(action.target_player_id, slot))
+      ));
+      add(route(action.target_player_id, action.secondary_target_slot, 'Secondary: '));
+      add(route(action.alternate_target_player_id, action.alternate_target_slot, 'Alternate: '));
+      return targets.length ? targets.join('; ') : 'Automatic team target';
+    }
+
+    combatAccessibilitySnapshot() {
+      const stage = this.interactionStage();
+      const me = this.me();
+      const foe = this.foe();
+      const energy = CORE_ENERGY.map((color) => ({
+        key: color,
+        label: ENERGY_LABELS[color],
+        name: energyName(color),
+        count: Math.max(0, Number((me && me.energy && me.energy[color]) || 0)),
+      }));
+      const summarizeTeam = (player, side) => (player && Array.isArray(player.team) ? player.team : [])
+        .slice(0, 3)
+        .map((character, slot) => this.fighterAccessibilitySummary(character, side, slot))
+        .filter(Boolean);
+      const queue = this.actions.map((action, index) => {
+        const caster = me && me.team ? me.team[Number(action.caster_slot)] : null;
+        const skill = caster ? this.skillFor(caster, action.skill_id) : null;
+        const cost = this.adjustedCost(caster, skill).map((color) => ENERGY_LABELS[color] || 'X');
+        const wildcardPays = (this.actionWildPays[action.id] || [])
+          .map((color) => ENERGY_LABELS[color] || safeText(color).toUpperCase());
+        return {
+          order: index + 1,
+          caster: safeText(caster && (caster.name || caster.character_id), `Fighter ${Number(action.caster_slot) + 1}`),
+          skill: safeText(skill && skill.name, action.skill_id || 'Technique'),
+          target: this.actionTargetAccessibility(action),
+          cost,
+          wildcardPays,
+        };
+      });
+      return {
+        interactionStage: stage.key,
+        interactionStageLabel: stage.label,
+        interactionHeading: stage.heading,
+        interactionDescription: stage.description,
+        interactionTimerLabel: stage.timerLabel,
+        authoritativePhase: safeText(this.state && this.state.phase).toLowerCase() || null,
+        authoritativePhaseSecondsRemaining: this.phaseSecondsRemaining(),
+        connection: this.combatConnectionStatus(),
+        energy,
+        allies: summarizeTeam(me, 'ally'),
+        enemies: summarizeTeam(foe, 'enemy'),
+        queue,
+      };
     }
 
     currentVisibleAction() {
@@ -1158,9 +1537,9 @@ export class GameStore {
         else remaining[color] = (remaining[color] || 0) - 1;
       });
       const short = Object.entries(remaining).filter(([, value]) => value < 0).map(([color]) => color);
-      if (short.length) return { ok: false, reason: `Short on ${short.join(', ')}.` };
+      if (short.length) return { ok: false, reason: `Short on ${short.map(energyName).join(', ')}.` };
       const spare = Object.values(remaining).reduce((total, value) => total + Math.max(0, value), 0);
-      if (spare < wildcardNeeded) return { ok: false, reason: 'Not enough energy for wildcard cost.' };
+      if (spare < wildcardNeeded) return { ok: false, reason: 'Short on Wild energy.' };
       return { ok: true, reason: '' };
     }
 
@@ -1467,19 +1846,21 @@ export class GameStore {
       this.openTransmute();
     }
 
-    resetToLobby() {
+    resetToLobby({ surrender = true } = {}) {
+      this.retireMatchId(this.state && this.state.match_id);
       if (!this.state && this.lobbyStatus && this.lobbyStatus.status !== 'cancelled') {
         this.socketClient.emit('battle_v2_leave_pvp', { room_id: this.lobbyStatus.room_id });
       }
       // Only surrender a match that's actually still live -- a finished draw
       // or no-contest has no winner_id either, but result_type is already
       // set for it, so it must not send a surrender on the way out.
-      if (this.state && !this.state.result_type) {
+      if (surrender && this.state && !this.state.result_type) {
         this.ignoreBattleUpdates = true;
         this.socketClient.emit('battle_v2_surrender', this.commandPayload());
       }
       this.state = null;
       this.pendingCommand = null;
+      this.resumeInFlight = false;
       this.disconnectDeadline = null;
       this.clearResumeSession();
       this.lobbyStatus = null;
@@ -1489,6 +1870,8 @@ export class GameStore {
       this.selectedSkillId = null;
       this.queueSubmitting = false;
       this.matchLaunchPending = false;
+      this.matchLaunchError = '';
+      this.clearMatchLaunchTimeout();
       this.matchupReturnScene = 'DraftScene';
       this.queueReviewOpen = false;
       this.transmuteOpen = false;

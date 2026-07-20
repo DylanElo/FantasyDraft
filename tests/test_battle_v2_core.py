@@ -3,6 +3,7 @@ import random
 import pytest
 
 from jjk_arena.battle_v2.effects import apply_damage
+from jjk_arena.battle_v2.damage_accounting import enemy_hp_damage_attribution
 from jjk_arena.battle_v2.energy import EnergyValidationError, energy_display_name, gain_energy_for_living, spend_skill_energy
 from jjk_arena.battle_v2.models import (
     BattlePhase,
@@ -20,6 +21,7 @@ from jjk_arena.battle_v2.models import (
     TargetRule,
 )
 from jjk_arena.battle_v2.resolver import ResolverError, confirm_queue, finish_turn, resolve_queue, validate_action, validate_queue
+from jjk_arena.battle_v2.serialization import serialize_event
 
 
 def make_player(player_id, names):
@@ -178,11 +180,23 @@ def test_health_steal_only_heals_actual_hp_damage():
     state.pending_actions["p1"] = [action]
     state.queue_order["p1"] = ["a1"]
 
-    resolve_queue(state, "p1", {"steal": steal})
+    events = resolve_queue(state, "p1", {"steal": steal})
 
     assert caster.hp == 60
     assert target.hp == 0
     assert target.alive is False
+    event = next(event for event in events if event.type == "health_steal")
+    assert event.payload == {
+        "action_id": "a1",
+        "source_player_id": "p1",
+        "source_slot": 0,
+        "target_player_id": "p2",
+        "target_slot": 0,
+        "amount": 10,
+        "actual_hp_damage": 10,
+        "attempted_amount": 30,
+        "damage_type": DamageType.HEALTH_STEAL.value,
+    }
 
 
 def test_health_steal_hits_destructible_defense_before_hp():
@@ -416,6 +430,7 @@ def test_target_status_condition_and_queue_order_resolution():
 
     damage_events = [event for event in events if event.type == "damage"]
     assert [event.payload["amount"] for event in damage_events] == [30, 10]
+    assert [event.payload["actual_hp_damage"] for event in damage_events] == [30, 10]
     assert target.hp == 60
     assert state.turn_player_id == "p2"
 
@@ -528,6 +543,12 @@ def test_reflect_redirects_harmful_effect_to_caster_and_is_consumed():
     events = resolve_queue(state, "p1", {"strike": skill()})
 
     assert any(event.type == "skill_reflected" for event in events)
+    reflected_damage = next(event for event in events if event.type == "damage")
+    assert reflected_damage.payload["source_player_id"] == "p1"
+    assert reflected_damage.payload["target_player_id"] == "p1"
+    assert reflected_damage.payload["actual_hp_damage"] == 20
+    assert reflected_damage.payload["is_reflected"] is True
+    assert reflected_damage.payload["reflected_by_player_id"] == "p2"
     assert caster.hp == 80
     assert target.hp == 100
     assert target.statuses == []
@@ -571,6 +592,53 @@ def test_reflect_redirects_full_harmful_skill_payload():
     assert any(status.id == "stunned" for status in caster.statuses)
     assert target.hp == 100
     assert not any(status.id == "stunned" for status in target.statuses)
+
+
+def test_reflected_recurring_status_credits_the_reflector_when_it_ticks():
+    state = make_state()
+    caster = state.players["p1"].team[0]
+    target = state.players["p2"].team[0]
+    target.statuses.append(StatusEffect(
+        "mirror",
+        "Mirror",
+        "p2",
+        0,
+        "p2",
+        0,
+        duration=2,
+        payload={"reflect": "user"},
+    ))
+    poison_hit = skill(
+        "poison_hit",
+        effects=[EffectSpec(
+            type="apply_status",
+            status="poison",
+            duration=2,
+            payload={
+                "name": "Poison",
+                "duration_clock": "target_turn",
+                "turn_end_damage": 5,
+                "turn_end_damage_type": DamageType.SOUL.value,
+            },
+        )],
+    )
+    state.pending_actions["p1"] = [PendingAction("a1", "p1", 0, "poison_hit", "p2", 0)]
+    state.queue_order["p1"] = ["a1"]
+
+    events = resolve_queue(state, "p1", {"poison_hit": poison_hit})
+
+    poison = next(status for status in caster.statuses if status.id == "poison")
+    status_applied = next(event for event in events if event.type == "status_applied")
+    tick = next(event for event in finish_turn(state, "p1") if event.type == "status_damage")
+    assert poison.source_player_id == "p2"
+    assert poison.source_slot == 0
+    assert poison.target_player_id == "p1"
+    assert tick.payload["source_player_id"] == "p2"
+    assert tick.payload["target_player_id"] == "p1"
+    assert tick.payload["actual_hp_damage"] == 5
+    assert status_applied.payload["source_player_id"] == "p1"
+    assert status_applied.payload["reflected_by_player_id"] == "p2"
+    assert enemy_hp_damage_attribution(tick, state.players.keys()) == ("p2", "p1", 5)
 
 
 def test_unreflectable_skill_bypasses_reflect():
@@ -692,9 +760,42 @@ def test_turn_end_status_damage_ticks_and_expires():
     assert not any(event.type == "status_damage" for event in events)
     events = finish_turn(state, "p2")
 
-    assert any(event.type == "status_damage" for event in events)
+    status_damage = next(event for event in events if event.type == "status_damage")
+    assert status_damage.payload == {
+        "status": "burning",
+        "source_player_id": "p1",
+        "source_slot": 0,
+        "target_player_id": "p2",
+        "target_slot": 0,
+        "amount": 15,
+        "actual_hp_damage": 15,
+        "attempted_amount": 15,
+        "damage_type": DamageType.NORMAL.value,
+    }
     assert target.hp == 85
     assert target.statuses == []
+
+
+def test_invisible_turn_end_damage_keeps_source_attribution_private_until_reveal():
+    state = make_state()
+    target = state.players["p2"].team[0]
+    target.statuses.append(StatusEffect(
+        "hidden_burn",
+        "Hidden Burn",
+        "p1",
+        1,
+        "p2",
+        0,
+        duration=1,
+        invisible=True,
+        payload={"duration_clock": "target_turn", "turn_end_damage": 5},
+    ))
+
+    event = next(event for event in finish_turn(state, "p2") if event.type == "status_damage")
+
+    assert event.private_to == "p1"
+    assert serialize_event(event, "p1")["payload"]["source_slot"] == 1
+    assert serialize_event(event, "p2") is None
 
 
 def test_sure_hit_turn_end_status_damage_bypasses_invulnerability():

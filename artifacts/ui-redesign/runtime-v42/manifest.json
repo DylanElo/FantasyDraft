@@ -1,0 +1,204 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-07-20T05:06:36+09:00",
+  "source": {
+    "branch": "codex/audit-mobile-ui-closure",
+    "commit": "2ddefb360db7d8d5491628e469a231f5e7996b63",
+    "tree": "8bbee5d2dedeaac10468dd9bb2e6fb7f85706611",
+    "cache_version": 42,
+    "tracked_worktree_clean_at_capture": true
+  },
+  "runtime": {
+    "origin": "http://localhost:5017/",
+    "client": "Phaser canvas with native DOM identity dialog",
+    "networking": "Flask-SocketIO",
+    "gameplay_engine": "Python Battle v2",
+    "scripts": [
+      "/static/socket.io.min.js?v=4.7.2",
+      "/static/vendor/phaser.min.js?v=3.90.0",
+      "/static/phaser-design-tokens.js?v=42",
+      "/static/phaser-shell.js?v=42"
+    ],
+    "browser_warning_error_logs": [],
+    "portrait_diagnostics": {
+      "contract_issues": [],
+      "failures": []
+    },
+    "required_textures": {
+      "culling-current-home": true,
+      "culling-current-home-hero": true,
+      "culling-current-campus": true,
+      "culling-current-rooftop": true,
+      "s3-skill-atlas-body-v3": true,
+      "s3-skill-atlas-technique-v3": true
+    }
+  },
+  "live_play": {
+    "match_id": "m_f517d6e5aca74e5396fe0a50aef13e",
+    "mode": "CPU",
+    "entered_via": "First Creation -> Matchup -> Enter Arena",
+    "confirmed_real_queue": true,
+    "observed_authoritative_post_confirm_state": true,
+    "terminal": {
+      "phase": "finished",
+      "result_type": "WIN",
+      "winner_id": "__cpu_v2__",
+      "turn_number": 33,
+      "state_revision": 33
+    },
+    "returned_home_through_result_action": true
+  },
+  "dialog_geometry": {
+    "css_viewport": { "width": 390, "height": 844 },
+    "encoded_image": { "width": 390, "height": 843 },
+    "dialog": { "x": 0, "y": 0, "width": 390.4, "height": 844, "bottom": 844 },
+    "input": { "x": 31.6, "y": 640.7, "width": 327.2, "height": 48, "bottom": 688.7 },
+    "buttons": [
+      { "label": "CANCEL", "x": 31.6, "y": 760.4, "width": 134.975, "height": 48, "bottom": 808.4 },
+      { "label": "SAVE", "x": 176.575, "y": 760.4, "width": 182.225, "height": 48, "bottom": 808.4 }
+    ]
+  },
+  "audit": {
+    "independent_native_resolution_visual_audit": "passed",
+    "blocking_defects": [],
+    "canvas_dimension_failures": [],
+    "extension_format_mismatches": [],
+    "duplicate_hashes": [],
+    "queue_review_is_genuine_final_order": true,
+    "wild_reason_fully_readable_at_360": true,
+    "queue_marker_chip_collisions": 0,
+    "instruction_event_ticker_collisions": 0,
+    "raw_wire_energy_key_leaks": 0
+  },
+  "captures": [
+    {
+      "file": "qa/360x800-01-home.png",
+      "screen": "Home",
+      "viewport": { "width": 360, "height": 800 },
+      "mime": "image/png",
+      "bytes": 577790,
+      "sha256": "2ee5b85d5a8a05f7cf2205befddb41c3c78e1a1addf62f7d1e45588f57c773c0"
+    },
+    {
+      "file": "qa/360x800-02-first-creation.png",
+      "screen": "First Creation",
+      "viewport": { "width": 360, "height": 800 },
+      "mime": "image/png",
+      "bytes": 498585,
+      "sha256": "89608c182e9f35c195bae2e265346a28cff4a69c13db3e4ebfda3dc686363f23"
+    },
+    {
+      "file": "qa/360x800-03-character-study.png",
+      "screen": "Character Study",
+      "viewport": { "width": 360, "height": 800 },
+      "mime": "image/png",
+      "bytes": 378418,
+      "sha256": "039ff899aedf4920743cddc6a83279ba5e3789a8fd0e719318c2cc2363a10290"
+    },
+    {
+      "file": "qa/360x800-04-combat-planning.png",
+      "screen": "Combat Planning",
+      "viewport": { "width": 360, "height": 800 },
+      "mime": "image/png",
+      "bytes": 605765,
+      "sha256": "63755003ceb387e10c0045abbe43c4c5ffcc3504dbaa6bc65d8fcb01c593f1fb"
+    },
+    {
+      "file": "qa/360x800-05-queue-review.png",
+      "screen": "Queue Review / Final Order",
+      "viewport": { "width": 360, "height": 800 },
+      "mime": "image/png",
+      "bytes": 530903,
+      "sha256": "26e45c5457706582e75320eeb33f81ece4cea0f321a270098d3f6924a0a14aee"
+    },
+    {
+      "file": "qa/390x844-01-home.png",
+      "screen": "Home",
+      "viewport": { "width": 390, "height": 844 },
+      "mime": "image/png",
+      "bytes": 657673,
+      "sha256": "c8ce29371dae4b21cf9c6961c1e9a7f6618b7f7553c29bc0756a183b191dc3da"
+    },
+    {
+      "file": "qa/390x844-02-first-creation.png",
+      "screen": "First Creation",
+      "viewport": { "width": 390, "height": 844 },
+      "mime": "image/png",
+      "bytes": 576651,
+      "sha256": "21cff71979499d846d6d22d6f195bbf100e67042d21b8233635630fa821d8cab"
+    },
+    {
+      "file": "qa/390x844-03-character-study.png",
+      "screen": "Character Study",
+      "viewport": { "width": 390, "height": 844 },
+      "mime": "image/png",
+      "bytes": 429612,
+      "sha256": "0586c7d80ef564f0975a62c37fce51de3d930c455d89cec9303eb6b842be0847"
+    },
+    {
+      "file": "qa/390x844-04-combat-planning.png",
+      "screen": "Combat Planning",
+      "viewport": { "width": 390, "height": 844 },
+      "mime": "image/png",
+      "bytes": 698525,
+      "sha256": "bc06d35153d02ee98d30613246737485bb76801d5df50145451d177902f083b2"
+    },
+    {
+      "file": "qa/390x844-05-queue-review.png",
+      "screen": "Queue Review / Final Order with public event ticker",
+      "viewport": { "width": 390, "height": 844 },
+      "mime": "image/png",
+      "bytes": 595465,
+      "sha256": "82951907405362fb7a42afa6d8a47f6ae052887490de23588a9299b1ad87271f"
+    },
+    {
+      "file": "qa/390x844-06-edit-identity-modal.jpg",
+      "screen": "Native Edit Player Name dialog",
+      "viewport": { "width": 390, "height": 844 },
+      "encoded": { "width": 390, "height": 843 },
+      "mime": "image/jpeg",
+      "bytes": 49123,
+      "sha256": "e29a1205a395d398e455c9761b8b7761baa425a725f0caf3ca184c9f3fde07e8"
+    },
+    {
+      "file": "qa/430x932-01-home.png",
+      "screen": "Home",
+      "viewport": { "width": 430, "height": 932 },
+      "mime": "image/png",
+      "bytes": 835162,
+      "sha256": "b175a6acdeeb137fa2421c4d33db2c03ae33d1d04e1ce7d02dc07b70e89c810f"
+    },
+    {
+      "file": "qa/430x932-02-first-creation.png",
+      "screen": "First Creation",
+      "viewport": { "width": 430, "height": 932 },
+      "mime": "image/png",
+      "bytes": 688393,
+      "sha256": "490875aaf2bac27968958aa5ee00c889d26059f2efc96351ece69b8186685acf"
+    },
+    {
+      "file": "qa/430x932-03-character-study.png",
+      "screen": "Character Study",
+      "viewport": { "width": 430, "height": 932 },
+      "mime": "image/png",
+      "bytes": 458322,
+      "sha256": "3f14a4275e26252bffed64deae6c95ff05d52db98859689c72607d9d421c7662"
+    },
+    {
+      "file": "qa/430x932-04-combat-planning.png",
+      "screen": "Combat Planning",
+      "viewport": { "width": 430, "height": 932 },
+      "mime": "image/png",
+      "bytes": 835780,
+      "sha256": "d9bb421e6aeb935210623b505a716bf74a3f655c0db6038ed26bb679d5c2c3f6"
+    },
+    {
+      "file": "qa/430x932-05-queue-review.png",
+      "screen": "Queue Review / Final Order",
+      "viewport": { "width": 430, "height": 932 },
+      "mime": "image/png",
+      "bytes": 750341,
+      "sha256": "8069009ee026aa32e1da9f8b8f65426d3b952215135eacdcf44d54b35889e0f8"
+    }
+  ]
+}

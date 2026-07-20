@@ -13,11 +13,12 @@ import json
 from threading import RLock
 from typing import Any, Callable
 
+from .damage_accounting import enemy_hp_damage_attribution
 from .energy import CORE_ENERGY, energy_display_name, gain_turn_energy, normalize_energy, split_cost
 from .conditions import has_status
 from .models import BattleEvent, BattlePhase, BattleState, CharacterState, DamageType, PendingAction, PlayerState, SkillClass, SkillSpec, use_battle_v2
 from .first_creation_progression import evaluate_first_creation_progress, initial_first_creation_progress
-from .resolver import ResolverError, check_winner, finish_turn, get_skill_for_action, resolve_queue, resolve_queue_prefix, validate_action_identity, validate_queue, validate_queue_identity
+from .resolver import ResolverError, _adjusted_cost_skill, check_winner, finish_turn, get_skill_for_action, resolve_queue, resolve_queue_prefix, validate_action_identity, validate_queue, validate_queue_identity
 from .serialization import serialize_battle_state
 from .targeting import invulnerability_blocks_skill
 from .starter_roster import (
@@ -709,6 +710,95 @@ def _cpu_outcome_utility(outcome: dict[str, int]) -> int:
     )
 
 
+def _cpu_transmutation_sources(
+    player: PlayerState,
+    target: EnergyType,
+) -> list[EnergyType] | None:
+    """Choose one deterministic five-pip sacrifice for a target color.
+
+    The CPU drains abundant non-target colors first. This preserves scarce
+    colors and avoids throwing away the very color it is trying to create
+    unless the pool leaves no alternative. Player transmutation remains fully
+    manual; this policy is only used by the CPU decision path.
+    """
+
+    available = {
+        energy: max(0, int(player.energy.get(energy, 0)))
+        for energy in CORE_ENERGY
+    }
+    if sum(available.values()) < 5:
+        return None
+    core_order = {energy: index for index, energy in enumerate(CORE_ENERGY)}
+    sacrifice_order = sorted(
+        CORE_ENERGY,
+        key=lambda energy: (
+            energy == target,
+            -available[energy],
+            core_order[energy],
+        ),
+    )
+    sources: list[EnergyType] = []
+    for energy in sacrifice_order:
+        take = min(available[energy], 5 - len(sources))
+        sources.extend([energy] * take)
+        if len(sources) == 5:
+            return sources
+    return None
+
+
+def _cpu_feasible_cost_queues(
+    state: BattleState,
+    player_id: str,
+    roster: dict[str, CharacterSpec],
+    skills: dict[str, SkillSpec],
+) -> frozenset[tuple[str | None, ...]]:
+    """Return aggregate one-skill-per-caster queues payable by the pool.
+
+    This deliberately ignores targeting and board conditions, making it a
+    conservative cost-only superset. A conversion cannot unlock a better legal
+    queue unless it first unlocks at least one new aggregate cost selection.
+    With at most three active casters and four primary skills each, exhaustive
+    enumeration stays tiny and avoids expensive battle-state copies for colors
+    that cannot change the payable queue set.
+    """
+
+    player = state.players[player_id]
+    options_by_caster: list[list[tuple[str | None, Counter[EnergyType], int]]] = []
+    for slot in player.active_slots:
+        if slot < 0 or slot >= len(player.team):
+            continue
+        caster = player.team[slot]
+        if not caster.alive or roster.get(caster.character_id) is None:
+            continue
+        options: list[tuple[str | None, Counter[EnergyType], int]] = [
+            (None, Counter(), 0)
+        ]
+        for base_skill_id in caster.base_skill_ids:
+            resolved_skill_id = caster.skill_replacements.get(base_skill_id, base_skill_id)
+            adjusted = _adjusted_cost_skill(caster, skills[resolved_skill_id])
+            specific, wildcard_count = split_cost(adjusted.cost)
+            options.append((base_skill_id, specific, wildcard_count))
+        options_by_caster.append(options)
+
+    feasible: set[tuple[str | None, ...]] = set()
+    for selection in product(*options_by_caster):
+        required: Counter[EnergyType] = Counter()
+        wildcard_count = 0
+        for _skill_id, specific, wildcards in selection:
+            required.update(specific)
+            wildcard_count += wildcards
+        if any(player.energy.get(energy, 0) < amount for energy, amount in required.items()):
+            continue
+        remaining_core = sum(
+            max(0, player.energy.get(energy, 0) - required.get(energy, 0))
+            for energy in CORE_ENERGY
+        )
+        if remaining_core < wildcard_count:
+            continue
+        feasible.add(tuple(skill_id for skill_id, _specific, _wildcards in selection))
+    return frozenset(feasible)
+
+
 class BattleV2Manager:
     """Manage authoritative v2 battle states by room id."""
 
@@ -1122,14 +1212,15 @@ class BattleV2Manager:
         state.progress_event_cursor = len(state.event_log)
         progress = False
         for event in events:
-            amount = int(event.payload.get("actual_hp_damage", event.payload.get("amount", 0)) or 0)
-            source = event.payload.get("source_player_id")
-            target = event.payload.get("target_player_id")
-            if event.type in {"damage", "status_damage"} and amount > 0 and source and target:
-                credited = next((pid for pid in state.players if pid != source), source) if event.payload.get("is_reflected") else source
-                if source != target or event.payload.get("is_reflected"):
-                    state.damage_to_hp[credited] = state.damage_to_hp.get(credited, 0) + amount
-                progress = progress or source != target
+            attribution = enemy_hp_damage_attribution(event, state.players.keys())
+            if attribution is not None:
+                source, _target, amount = attribution
+                state.damage_to_hp[source] = state.damage_to_hp.get(source, 0) + amount
+                progress = True
+                continue
+            amount = int(event.payload.get("amount", 0) or 0)
+            if event.type in {"damage", "status_damage", "retaliation", "health_steal"}:
+                continue
             elif event.type in {"energy_drained", "energy_stolen", "status_stack_changed", "status_consumed"}:
                 progress = progress or amount > 0
             elif event.type == "status_applied":
@@ -1295,10 +1386,18 @@ class BattleV2Manager:
                 raise BattleV2Error(
                     f"not enough {energy_display_name(source_energy)} energy to transmute"
                 )
+        pool_before = {
+            energy.value: int(player.energy.get(energy, 0))
+            for energy in CORE_ENERGY
+        }
         for source_energy, amount in source_counts.items():
             player.energy[source_energy] -= amount
         player.energy[target_energy] += 1
         player.energy_converted_this_turn = True
+        pool_after = {
+            energy.value: int(player.energy.get(energy, 0))
+            for energy in CORE_ENERGY
+        }
         serialized_sources = {
             energy.value: source_counts.get(energy, 0)
             for energy in CORE_ENERGY
@@ -1314,6 +1413,8 @@ class BattleV2Manager:
                     "sources": serialized_sources,
                     "cost": 5,
                     "target": target_energy.value,
+                    "pool_before": pool_before,
+                    "pool_after": pool_after,
                 },
             )
         )
@@ -1342,14 +1443,17 @@ class BattleV2Manager:
         self._grant_next_turn_energy(room_id, player_id)
         return self.serialize_for_player(room_id, player_id)
 
-    def take_cpu_turn(self, room_id: str, player_id: str) -> dict:
-        """Submit and resolve a simple first-legal CPU queue for the active turn."""
+    def _plan_cpu_actions(
+        self,
+        room_id: str,
+        player_id: str,
+        state: BattleState,
+        difficulty: str,
+    ) -> list[PendingAction]:
+        """Build a legal deterministic queue without mutating battle state."""
 
-        self.expire_phase_if_needed(room_id)
-        state = self.get_state(room_id)
-        self._ensure_turn_player(state, player_id)
         player = state.players[player_id]
-        difficulty = self._cpu_difficulty_for_room(room_id)
+        skills = self._skills_for_room(room_id)
         actions: list[PendingAction] = []
         for slot_index, slot in enumerate(player.active_slots):
             if slot < 0 or slot >= len(player.team):
@@ -1369,15 +1473,15 @@ class BattleV2Manager:
             planning_state = state
             if difficulty == "hard" and actions:
                 planning_state = _cpu_simulate_queue(
-                    state, player_id, actions, self._skills_for_room(room_id)
+                    state, player_id, actions, skills
                 ) or state
             for base_skill_id in caster.base_skill_ids:
                 resolved_skill_id = caster.skill_replacements.get(base_skill_id, base_skill_id)
-                resolved_skill = self._skills_for_room(room_id)[resolved_skill_id]
+                resolved_skill = skills[resolved_skill_id]
                 for target_payload in _cpu_target_payloads(
-                    planning_state, player_id, resolved_skill_id, slot, self._skills_for_room(room_id)
+                    planning_state, player_id, resolved_skill_id, slot, skills
                 ):
-                    for wildcard_pays in _wildcard_payment_options(player, resolved_skill_id, self._skills_for_room(room_id)):
+                    for wildcard_pays in _wildcard_payment_options(player, resolved_skill_id, skills):
                         candidate = PendingAction(
                             id=f"{player_id}:cpu:{slot}:{base_skill_id}",
                             player_id=player_id,
@@ -1397,13 +1501,13 @@ class BattleV2Manager:
                         trial_state.pending_actions[player_id] = ordered
                         trial_state.queue_order[player_id] = [queued.id for queued in ordered]
                         try:
-                            validate_queue(trial_state, player_id, self._skills_for_room(room_id))
+                            validate_queue(trial_state, player_id, skills)
                         except ResolverError:
                             continue
                         score = _cpu_action_score(
                             planning_state, player_id, candidate, resolved_skill,
                             difficulty=difficulty, remaining_teammates=remaining_teammates,
-                            skills=self._skills_for_room(room_id),
+                            skills=skills,
                         )
                         if best is None or score > best[0]:
                             best = (score, deepcopy(ordered))
@@ -1414,11 +1518,11 @@ class BattleV2Manager:
             for ordering in permutations(actions):
                 ordered = list(ordering)
                 if not _cpu_queue_targets_survive_prefixes(
-                    state, player_id, ordered, self._skills_for_room(room_id)
+                    state, player_id, ordered, skills
                 ):
                     continue
                 outcome = _cpu_effective_outcome(
-                    state, player_id, ordered, self._skills_for_room(room_id)
+                    state, player_id, ordered, skills
                 )
                 utility = _cpu_outcome_utility(outcome)
                 if best_order is None or utility > best_order[0]:
@@ -1427,6 +1531,147 @@ class BattleV2Manager:
                 actions = best_order[1]
         for queue_index, queued in enumerate(actions):
             queued.queue_index = queue_index
+        return actions
+
+    def _cpu_plan_value(
+        self,
+        room_id: str,
+        player_id: str,
+        state: BattleState,
+        difficulty: str,
+        actions: list[PendingAction],
+    ) -> int:
+        """Return a comparable, viewer-safe value for one complete CPU plan."""
+
+        if not actions:
+            return 0
+        skills = self._skills_for_room(room_id)
+        if difficulty == "hard":
+            return _cpu_outcome_utility(
+                _cpu_effective_outcome(state, player_id, actions, skills)
+            )
+        value = 0
+        for index, action in enumerate(actions):
+            caster = state.players[player_id].team[action.caster_slot]
+            skill = get_skill_for_action(skills, caster, action)
+            value += _cpu_action_score(
+                state,
+                player_id,
+                action,
+                skill,
+                difficulty=difficulty,
+                remaining_teammates=max(0, len(actions) - index - 1),
+                skills=skills,
+            )
+        return value
+
+    def _cpu_transmutation_choice(
+        self,
+        room_id: str,
+        player_id: str,
+        state: BattleState,
+        difficulty: str,
+        baseline_actions: list[PendingAction],
+    ) -> tuple[list[EnergyType], EnergyType, list[PendingAction]] | None:
+        """Choose a useful 5 -> 1 conversion, or preserve the current pool."""
+
+        player = state.players[player_id]
+        if (
+            state.phase != BattlePhase.PLANNING
+            or player.energy_converted_this_turn
+            or state.pending_actions.get(player_id)
+            or sum(max(0, int(player.energy.get(energy, 0))) for energy in CORE_ENERGY) < 5
+        ):
+            return None
+        if difficulty == "easy" and baseline_actions:
+            return None
+        roster = self._roster_for_room(room_id)
+        skills = self._skills_for_room(room_id)
+        baseline_cost_queues = _cpu_feasible_cost_queues(
+            state, player_id, roster, skills
+        )
+        baseline_value = self._cpu_plan_value(
+            room_id, player_id, state, difficulty, baseline_actions
+        )
+        best: tuple[
+            tuple[int, int],
+            list[EnergyType],
+            EnergyType,
+            list[PendingAction],
+        ] | None = None
+        for target in CORE_ENERGY:
+            sources = _cpu_transmutation_sources(player, target)
+            if sources is None:
+                continue
+            trial = deepcopy(state)
+            trial_player = trial.players[player_id]
+            for source in sources:
+                trial_player.energy[source] -= 1
+            trial_player.energy[target] += 1
+            trial_player.energy_converted_this_turn = True
+            candidate_cost_queues = _cpu_feasible_cost_queues(
+                trial, player_id, roster, skills
+            )
+            if candidate_cost_queues.issubset(baseline_cost_queues):
+                continue
+            candidate_actions = self._plan_cpu_actions(
+                room_id, player_id, trial, difficulty
+            )
+            if not candidate_actions:
+                continue
+            candidate_value = self._cpu_plan_value(
+                room_id, player_id, trial, difficulty, candidate_actions
+            )
+            if difficulty == "easy":
+                material = not baseline_actions and candidate_value > 0
+            elif difficulty == "hard":
+                # Five pips are a major opportunity cost. Hard only converts
+                # when the authoritative dry-run clears a meaningful margin.
+                material = candidate_value >= baseline_value + 15
+            else:
+                material = (
+                    (not baseline_actions and candidate_value > 0)
+                    or (
+                        len(candidate_actions) > len(baseline_actions)
+                        and candidate_value >= baseline_value
+                    )
+                    or (
+                        len(candidate_actions) == len(baseline_actions)
+                        and candidate_value >= baseline_value + 100
+                    )
+                )
+            if not material:
+                continue
+            rank = (
+                candidate_value if difficulty == "hard" else len(candidate_actions),
+                len(candidate_actions) if difficulty == "hard" else candidate_value,
+            )
+            if best is None or rank > best[0]:
+                best = (rank, sources, target, candidate_actions)
+        if best is None:
+            return None
+        return best[1], best[2], deepcopy(best[3])
+
+    def take_cpu_turn(self, room_id: str, player_id: str) -> dict:
+        """Plan and resolve one CPU turn with full authoritative rule parity."""
+
+        self.expire_phase_if_needed(room_id)
+        state = self.get_state(room_id)
+        self._ensure_turn_player(state, player_id)
+        difficulty = self._cpu_difficulty_for_room(room_id)
+        actions = self._plan_cpu_actions(room_id, player_id, state, difficulty)
+        conversion = self._cpu_transmutation_choice(
+            room_id, player_id, state, difficulty, actions
+        )
+        if conversion is not None:
+            sources, target, actions = conversion
+            self.convert_energy(
+                room_id,
+                player_id,
+                [source.value for source in sources],
+                target.value,
+            )
+            state = self.get_state(room_id)
         if not actions:
             return self.end_turn(room_id, player_id)
         state.pending_actions[player_id] = actions

@@ -280,8 +280,10 @@ def test_boot_team_setup_and_matchup_use_s3_components_and_keep_authority_contra
     assert "combat-underpass-night" not in boot
     assert "underpass-courtyard-night.png" not in boot
     assert "culling-current-home" in boot
-    assert "culling-current-campus" in boot
-    assert "culling-current-map" in boot
+    assert "INITIAL_ENVIRONMENT_KEYS" in boot
+    assert "culling-current-campus" not in boot
+    assert "culling-current-map" not in boot
+    assert "culling-current-rooftop" not in boot
     assert "'JJK Arena'" in boot
     assert "'Culling Game'" not in boot
 

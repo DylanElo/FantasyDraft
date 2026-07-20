@@ -248,6 +248,10 @@ def apply_status(
     target_player_id: str,
     target_slot: int,
     effect: EffectSpec,
+    *,
+    source_player_id: str | None = None,
+    source_slot: int | None = None,
+    source_skill_id: str | None = None,
 ) -> StatusEffect:
     """Apply a status effect to a target slot."""
 
@@ -258,7 +262,12 @@ def apply_status(
     # Visible ongoing effects need a stable skill identity so the client can
     # name the technique currently being maintained. Invisible statuses are
     # still filtered before serialization, so this does not weaken privacy.
-    payload.setdefault("source_skill_id", action.skill_id)
+    status_source_player_id = action.player_id if source_player_id is None else source_player_id
+    status_source_slot = action.caster_slot if source_slot is None else source_slot
+    payload.setdefault(
+        "source_skill_id",
+        action.skill_id if source_player_id is None else source_skill_id,
+    )
     target = state.players[target_player_id].team[target_slot]
     if target.hp < 50 and int(payload.get("low_hp_destructible_defense", 0)) > 0:
         payload["destructible_defense"] = int(payload.get("destructible_defense", 0)) + int(payload["low_hp_destructible_defense"])
@@ -275,8 +284,8 @@ def apply_status(
     status = StatusEffect(
         id=effect.status,
         name=str(effect.payload.get("name", effect.status)),
-        source_player_id=action.player_id,
-        source_slot=action.caster_slot,
+        source_player_id=status_source_player_id,
+        source_slot=status_source_slot,
         target_player_id=target_player_id,
         target_slot=target_slot,
         duration=effect.duration if effect.duration is not None else 1,
@@ -285,7 +294,7 @@ def apply_status(
         soulbound=SkillClass.SOULBOUND in effect.classes or bool(effect.payload.get("soulbound", False)),
         stacks=effect.stacks,
         payload=payload,
-        duration_clock=DurationClock(payload.pop("duration_clock", (DurationClock.SOURCE_TURN if target_player_id == action.player_id else DurationClock.TARGET_TURN).value)),
+        duration_clock=DurationClock(payload.pop("duration_clock", (DurationClock.SOURCE_TURN if target_player_id == status_source_player_id else DurationClock.TARGET_TURN).value)),
         families=[StatusFamily(value) for value in payload.pop("families", [])],
     )
     max_stacks = int(payload.get("max_stacks", 0))
@@ -318,6 +327,8 @@ def apply_effect(
     skill_id: str | None = None,
     skill_classes: list[SkillClass] | None = None,
     context: EffectContext | None = None,
+    status_source_player_id: str | None = None,
+    status_source_slot: int | None = None,
 ) -> BattleEvent:
     """Apply one effect and return an event-log entry."""
 
@@ -393,6 +404,7 @@ def apply_effect(
                 "target_player_id": target_player_id,
                 "target_slot": target_slot,
                 "amount": actual,
+                "actual_hp_damage": actual,
                 "attempted_amount": amount,
                 "damage_type": damage_type.value,
                 "destroyed_defense": destroyed_defense,
@@ -412,7 +424,17 @@ def apply_effect(
             type="health_steal",
             message=f"{display_name} stole {actual} health from {target.name}",
             turn_number=state.turn_number,
-            payload={"action_id": action.id, "amount": actual},
+            payload={
+                "action_id": action.id,
+                "source_player_id": action.player_id,
+                "source_slot": action.caster_slot,
+                "target_player_id": target_player_id,
+                "target_slot": target_slot,
+                "amount": actual,
+                "actual_hp_damage": actual,
+                "attempted_amount": effect.amount or 0,
+                "damage_type": DamageType.HEALTH_STEAL.value,
+            },
         )
     if effect.type == "heal":
         if target_slot is None:
@@ -468,7 +490,16 @@ def apply_effect(
                 turn_number=state.turn_number,
                 payload={"action_id": action.id, "status": effect.status},
             )
-        status = apply_status(state, action, target_player_id, target_slot, effect)
+        status = apply_status(
+            state,
+            action,
+            target_player_id,
+            target_slot,
+            effect,
+            source_player_id=status_source_player_id,
+            source_slot=status_source_slot,
+            source_skill_id=skill_id or action.skill_id,
+        )
         ally_defense = int(effect.payload.get("ally_destructible_defense", 0))
         if ally_defense > 0 and has_status(caster, "gorilla_core"):
             ally_player = state.players[action.player_id]
@@ -481,7 +512,7 @@ def apply_effect(
                     ally_slot,
                     EffectSpec(type="apply_status", status=f"{effect.status}_ally_guard", duration=2, payload={"name": "Ally Guard", "destructible_defense": ally_defense}),
                 )
-        private_to = action.player_id if status.invisible and not status.revealed else None
+        private_to = status.source_player_id if status.invisible and not status.revealed else None
         return BattleEvent(
             type="status_applied",
             message=f"{status.name} applied",
@@ -682,11 +713,16 @@ def apply_turn_end_statuses(
                     type="status_damage",
                     message=f"{status.name} dealt {actual} turn-end damage",
                     turn_number=turn_number,
+                    private_to=status.source_player_id if status.invisible and not status.revealed else None,
                     payload={
                         "status": status.id,
+                        "source_player_id": status.source_player_id,
+                        "source_slot": status.source_slot,
                         "target_player_id": player_id,
                         "target_slot": slot,
                         "amount": actual,
+                        "actual_hp_damage": actual,
+                        "attempted_amount": amount,
                         "damage_type": damage_type.value,
                     },
                 )

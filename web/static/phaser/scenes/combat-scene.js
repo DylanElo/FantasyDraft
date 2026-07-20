@@ -6,14 +6,34 @@ import {
   ENERGY_LABELS,
   ENERGY_NAMES,
   TOKEN_TYPE,
-} from '../core/runtime-config.js?v=35';
-import { clamp, initials, safeText, shortText, titleize } from '../core/text.js?v=35';
-import { eventTone } from '../fx/event-metrics.js?v=35';
-import { drawCurrentButton, drawCurrentPanel, drawCurrentWorld } from '../ui/culling-current-ui.js?v=35';
-import { CombatQueueReviewScene } from './combat-queue-review-scene.js?v=35';
+} from '../core/runtime-config.js?v=42';
+import { clamp, initials, safeText, shortText, titleize } from '../core/text.js?v=42';
+import { eventTone } from '../fx/event-metrics.js?v=42';
+import { Season3UI } from '../ui/season3-ui.js?v=42';
+import { CombatQueueReviewScene } from './combat-queue-review-scene.js?v=42';
+
+const {
+  button: drawCurrentButton,
+  panel: drawCurrentPanel,
+  world: drawCurrentWorld,
+} = Season3UI.current;
 
 const WORLD_KEY = 'culling-current-rooftop';
 const LOCATION_LINE = 'TOKYO MUNICIPAL ROOFTOP';
+
+const COMPACT_DISABLED_REASONS = Object.freeze([
+  [': this skill class is disabled.', 'Skill class disabled.'],
+  [': harmful skills are disabled.', 'Harmful skills disabled.'],
+  [': ally skills are disabled.', 'Ally skills disabled.'],
+  [': non-damaging skills are disabled.', 'Non-damaging skills disabled.'],
+  [': counters are disabled.', 'Counters disabled.'],
+]);
+
+export function compactSkillCardDisabledReason(reason) {
+  const fullReason = safeText(reason, 'Unavailable.');
+  const compact = COMPACT_DISABLED_REASONS.find(([suffix]) => fullReason.endsWith(suffix));
+  return compact ? compact[1] : fullReason;
+}
 
 function clippedPoints(x, y, w, h, cut = 8) {
   return [
@@ -40,6 +60,16 @@ function stableHash(value) {
 export class CombatScene extends CombatQueueReviewScene {
   constructor() {
     super('CombatScene');
+  }
+
+  syncButtonDebug() {
+    if (this.domUI && typeof this.domUI.setCombatState === 'function') {
+      const snapshot = this.store && typeof this.store.combatAccessibilitySnapshot === 'function'
+        ? this.store.combatAccessibilitySnapshot()
+        : null;
+      this.domUI.setCombatState(snapshot);
+    }
+    super.syncButtonDebug();
   }
 
   renderIntegratedSkillArtwork(skill, region, options = {}) {
@@ -92,10 +122,12 @@ export class CombatScene extends CombatQueueReviewScene {
     const gap = frame.width < 380 ? 7 : 9;
     const cardW = (contentW - gap * 2) / 3;
     const identityW = clamp(Math.round(frame.width * 0.245), 86, 106);
-    const skillX = frame.x + identityW - 7;
-    const skillGap = 4;
-    const skillRight = frame.x + frame.width - 8;
-    const skillW = (skillRight - skillX - skillGap * 3) / 4;
+    const skillX = contentX;
+    const skillGap = frame.width < 380 ? 7 : 9;
+    const skillColumns = 2;
+    const skillRows = 2;
+    const skillW = (contentW - skillGap) / skillColumns;
+    const skillCardH = (skillH - skillGap) / skillRows;
     return {
       usableH,
       compressed,
@@ -119,6 +151,9 @@ export class CombatScene extends CombatQueueReviewScene {
       skillY,
       skillW,
       skillH,
+      skillCardH,
+      skillColumns,
+      skillRows,
       skillGap,
       reviewY,
       reviewH,
@@ -156,26 +191,21 @@ export class CombatScene extends CombatQueueReviewScene {
     const h = layout.topH;
     const mine = this.store.isMyTurn();
     const queueCount = this.store.actions.length;
+    const interactionStage = this.store.interactionStage();
     const authoritativeSeconds = Number(state.phase_seconds_remaining);
     const phaseSeconds = typeof this.store.phaseSecondsRemaining === 'function'
       ? this.store.phaseSecondsRemaining()
       : authoritativeSeconds;
     const disconnectSeconds = this.store.disconnectSecondsRemaining();
-    const warning = this.store.connectionState === 'disconnected'
-      ? 'OFFLINE'
+    const connection = this.store.combatConnectionStatus();
+    const warning = connection.key === 'resuming'
+      ? 'RESTORING'
+      : this.store.connectionState !== 'connected'
+        ? 'RECONNECTING'
       : disconnectSeconds !== null
         ? `PAUSED ${disconnectSeconds}S`
         : null;
-    const moveLabel = warning
-      || (this.store.queueSubmitting
-        ? 'RESOLVING'
-        : this.store.queueReviewOpen
-          ? 'QUEUE REVIEW'
-          : this.store.controlsLocked()
-            ? 'ENEMY MOVE'
-            : queueCount
-              ? 'ORDERS OPEN'
-              : 'YOUR MOVE');
+    const moveLabel = warning || interactionStage.hudLabel;
 
     const turnW = frame.width < 380 ? 68 : 76;
     const moveW = frame.width < 380 ? 94 : 106;
@@ -221,7 +251,7 @@ export class CombatScene extends CombatQueueReviewScene {
 
     this.mono(x + 9, y + 7, 'TURN', {
       color: CULLING_COLORS.mutedText,
-      fontSize: '9px',
+      fontSize: '10px',
       fontStyle: '700',
     });
     this.text(x + 10, y + 18, String(state.turn_number || 1), {
@@ -231,9 +261,9 @@ export class CombatScene extends CombatQueueReviewScene {
       color: CULLING_COLORS.text,
     });
 
-    this.mono(moveX + 8, y + 7, safeText(state.phase || 'PLANNING').replaceAll('_', ' '), {
+    this.mono(moveX + 8, y + 5, interactionStage.label.toUpperCase(), {
       color: CULLING_COLORS.inverseText,
-      fontSize: '9px',
+      fontSize: '12px',
       fontStyle: '700',
     });
     this.text(moveX + 8, y + 22, moveLabel, {
@@ -242,22 +272,32 @@ export class CombatScene extends CombatQueueReviewScene {
       fontStyle: '900',
       color: CULLING_COLORS.inverseText,
     });
-    this.mono(moveX + 9, y + h - 13, `QUEUE ${this.store.actions.length}/3`, {
+    this.mono(moveX + 9, y + h - 15, `QUEUE ${this.store.actions.length}/3`, {
       color: queueCount ? '#BCEECB' : '#D4D8E0',
-      fontSize: '9px',
+      fontSize: '12px',
       fontStyle: '700',
     });
 
-    const transmuteDisabled = this.store.controlsLocked()
+    const controlsLocked = this.store.controlsLocked();
+    const transmuteDisabled = controlsLocked
       || !!this.store.actions.length
       || !!(me && me.energy_converted_this_turn);
+    const transmuteDisabledReason = controlsLocked
+      ? 'Transmutation is available only during unlocked Planning.'
+      : this.store.actions.length
+        ? 'Clear the queued actions before transmuting energy.'
+        : me && me.energy_converted_this_turn
+          ? 'Transmutation has already been used this player turn.'
+          : '';
     this.renderEnergyMeter(energyX + 4, y + 4, Math.max(62, energyW - 7), h - 8, me && me.energy, transmuteDisabled);
     this.registerHitTarget(energyX, y, energyW, h, 'Transmute energy', () => this.store.convertEnergy(), {
       disabled: transmuteDisabled,
+      disabledReason: transmuteDisabledReason,
+      accessibilityId: 'transmute-energy',
     });
 
-    const urgent = Number.isFinite(phaseSeconds) && phaseSeconds <= 10;
-    const warningTime = Number.isFinite(phaseSeconds) && phaseSeconds <= 20;
+    const urgent = !warning && Number.isFinite(phaseSeconds) && phaseSeconds <= 10;
+    const warningTime = !warning && Number.isFinite(phaseSeconds) && phaseSeconds <= 20;
     if (warningTime) {
       g.fillStyle(urgent ? CULLING_COLORS.vermilion : CULLING_COLORS.gold, urgent ? 0.2 : 0.12);
       g.fillPoints([
@@ -270,9 +310,12 @@ export class CombatScene extends CombatQueueReviewScene {
       g.lineStyle(2, urgent ? CULLING_COLORS.vermilion : CULLING_COLORS.gold, urgent ? 0.96 : 0.72);
       g.strokePoints(clippedPoints(clockX - 4, y + 2, clockW + 4, h - 4, 7), true);
     }
-    this.mono(clockX + clockW / 2, y + 7, urgent ? 'HURRY' : 'TIME', {
+    const timerHeading = warning
+      ? connection.key === 'resuming' ? 'RESTORE' : disconnectSeconds !== null ? 'PAUSED' : 'OFFLINE'
+      : urgent ? 'HURRY' : interactionStage.timerLabel;
+    this.mono(clockX + clockW / 2, y + 5, timerHeading, {
       color: urgent ? '#FF938C' : warningTime ? '#FFE19A' : '#DDE2EA',
-      fontSize: '9px',
+      fontSize: '12px',
       fontStyle: '700',
     }).setOrigin(0.5, 0);
     this.text(clockX + clockW / 2, y + 19, clockLabel(phaseSeconds), {
@@ -284,9 +327,9 @@ export class CombatScene extends CombatQueueReviewScene {
     const presentationSettings = this.presentationLayer && this.presentationLayer.settings
       ? this.presentationLayer.settings.snapshot()
       : null;
-    this.mono(clockX + clockW / 2, y + h - 13, presentationSettings && presentationSettings.muted ? 'MUTED' : 'SOUND', {
+    this.mono(clockX + clockW / 2, y + h - 15, presentationSettings && presentationSettings.muted ? 'MUTED' : 'SOUND', {
       color: '#C9CBD1',
-      fontSize: '9px',
+      fontSize: '12px',
       fontStyle: '700',
     }).setOrigin(0.5, 0);
     this.registerHitTarget(clockX, y, clockW, h, 'Open sound and battle settings', () => this.togglePresentationSettings(true));
@@ -307,18 +350,18 @@ export class CombatScene extends CombatQueueReviewScene {
       this.graphics.strokeCircle(cx, cy, 8.5);
       this.mono(cx, cy - 5, slot.label, {
         color: slot.color === 'white' ? CULLING_COLORS.text : CULLING_COLORS.inverseText,
-        fontSize: '9px',
+        fontSize: '10px',
         fontStyle: '700',
       }).setOrigin(0.5, 0);
-      this.mono(cx, cy + 10, String(count), {
+      this.mono(cx, cy + 9, String(count), {
         color: disabled ? CULLING_COLORS.mutedText : CULLING_COLORS.text,
-        fontSize: '9px',
+        fontSize: '12px',
         fontStyle: '700',
       }).setOrigin(0.5, 0);
     });
-    this.mono(x + w / 2, y + h - 11, 'TRANSMUTE 5:1', {
+    this.mono(x + w / 2, y + h - 13, 'TRANSMUTE 5:1', {
       color: disabled ? CULLING_COLORS.mutedText : '#007C84',
-      fontSize: '9px',
+      fontSize: '12px',
       fontStyle: '700',
     }).setOrigin(0.5, 0);
   }
@@ -531,7 +574,7 @@ export class CombatScene extends CombatQueueReviewScene {
     ], true);
     this.mono(markerX, markerY - 5, String(slot + 1), {
       color: CULLING_COLORS.inverseText,
-      fontSize: '9px',
+      fontSize: '10px',
       fontStyle: '700',
     }).setOrigin(0.5, 0);
 
@@ -552,13 +595,14 @@ export class CombatScene extends CombatQueueReviewScene {
                     ? 'DOWN'
                     : '');
     if (stateLabel) {
-      const chipW = clamp(stateLabel.length * 5 + 12, 30, w - 27);
-      const chipX = x + w - chipW - 4;
+      const chipW = clamp(stateLabel.length * 7 + 14, 54, w);
+      const chipX = x + (w - chipW) / 2;
+      const chipY = y - 20;
       this.graphics.fillStyle(tone, protectedTarget ? 0.74 : 0.94);
-      this.graphics.fillPoints(clippedPoints(chipX, y + 3, chipW, 17, 4), true);
-      this.mono(chipX + chipW / 2, y + 7, stateLabel, {
+      this.graphics.fillPoints(clippedPoints(chipX, chipY, chipW, 22, 4), true);
+      this.mono(chipX + chipW / 2, chipY + 4, stateLabel, {
         color: protectedTarget || tone === CULLING_COLORS.cobalt ? CULLING_COLORS.inverseText : CULLING_COLORS.text,
-        fontSize: '9px',
+        fontSize: '12px',
         fontStyle: '700',
       }).setOrigin(0.5, 0);
     }
@@ -566,10 +610,10 @@ export class CombatScene extends CombatQueueReviewScene {
     const fighterName = (character && character.name) || 'Down';
     const nameNode = this.text(x + 28, nameBandY + 3, fighterName, {
       fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
-      fontSize: fighterName.length > 22 ? '10px' : w < 110 ? '10px' : '11px',
+      fontSize: '12px',
       fontStyle: '900',
       color: dead ? CULLING_COLORS.mutedText : CULLING_COLORS.text,
-      lineSpacing: -1,
+      lineSpacing: -2,
       wordWrap: { width: w - 34 },
     });
     nameNode.setMaxLines(2);
@@ -582,12 +626,12 @@ export class CombatScene extends CombatQueueReviewScene {
     const barY = y + h - 7;
     const barW = w - 8;
     const hpLabel = dead ? 'DOWN' : `${hp}/${maxHp}`;
-    const hpLabelW = Math.min(w - 8, Math.max(34, hpLabel.length * 5 + 9));
+    const hpLabelW = Math.min(w - 8, Math.max(40, hpLabel.length * 7 + 12));
     this.graphics.fillStyle(CULLING_COLORS.ivory, 0.9);
-    this.graphics.fillPoints(clippedPoints(x + 3, y + 3, hpLabelW, 18, 4), true);
+    this.graphics.fillPoints(clippedPoints(x + 3, y + 3, hpLabelW, 22, 4), true);
     this.mono(x + 7, y + 6, hpLabel, {
       color: dead ? CULLING_COLORS.mutedText : CULLING_COLORS.text,
-      fontSize: '9px',
+      fontSize: '12px',
       fontStyle: '700',
     });
     this.graphics.fillStyle(CULLING_COLORS.concrete, 0.96);
@@ -596,16 +640,17 @@ export class CombatScene extends CombatQueueReviewScene {
     this.graphics.fillRect(barX, barY, barW * hpPct, 5);
 
     const activeStatuses = this.activeStatuses(character);
-    this.visibleStatusLabels(character).forEach((label, index) => {
+    const visibleStatusLabels = this.visibleStatusLabels(character);
+    visibleStatusLabels.forEach((label, index) => {
       const renderedLabel = selectedSkill ? label : `${label} >`;
-      const chipW = Math.min(w - 8, Math.max(46, renderedLabel.length * 4.8 + 10));
+      const chipW = Math.min(w - 8, Math.max(52, renderedLabel.length * 6.6 + 12));
       const chipX = x + w - chipW - 4;
-      const chipY = y + 24 + index * 18;
+      const chipY = y + 27 + index * 20;
       this.graphics.fillStyle(this.statusTone(activeStatuses[index]), 0.9);
-      this.graphics.fillRect(chipX, chipY, chipW, 16);
-      this.mono(chipX + chipW / 2, chipY + 3, renderedLabel, {
+      this.graphics.fillRect(chipX, chipY, chipW, 18);
+      this.mono(chipX + chipW / 2, chipY + 2, renderedLabel, {
         color: CULLING_COLORS.inverseText,
-        fontSize: '9px',
+        fontSize: '12px',
         fontStyle: '700',
       }).setOrigin(0.5, 0);
     });
@@ -613,12 +658,12 @@ export class CombatScene extends CombatQueueReviewScene {
       const moreLabel = `+${activeStatuses.length - 2} MORE`;
       const chipW = Math.max(46, moreLabel.length * 5 + 9);
       const chipX = x + w - chipW - 4;
-      const chipY = y + 60;
+      const chipY = y + 67;
       this.graphics.fillStyle(CULLING_COLORS.charcoal, 0.88);
-      this.graphics.fillRect(chipX, chipY, chipW, 16);
-      this.mono(chipX + chipW / 2, chipY + 3, moreLabel, {
+      this.graphics.fillRect(chipX, chipY, chipW, 14);
+      this.mono(chipX + chipW / 2, chipY + 1, moreLabel, {
         color: CULLING_COLORS.inverseText,
-        fontSize: '9px',
+        fontSize: '10px',
         fontStyle: '700',
       }).setOrigin(0.5, 0);
     }
@@ -654,12 +699,18 @@ export class CombatScene extends CombatQueueReviewScene {
       dead,
     });
 
+    const sideLabel = side === 'mine' ? 'Ally' : 'Enemy';
+    const interactionLabel = targetable
+      ? 'Select legal target'
+      : side === 'mine' ? 'Select fighter' : 'Inspect fighter';
+    const fighterState = [stateLabel, ...visibleStatusLabels].filter(Boolean).join(', ');
     this.buttons.push({
       x: x - 2,
       y: y - 3,
       w: w + 4,
       h: h + 6,
-      label: `${side} fighter ${slot + 1}`,
+      label: `${interactionLabel}: ${sideLabel} ${slot + 1}, ${fighterName}, ${hpLabel}${fighterState ? `, ${fighterState}` : ''}`,
+      accessibilityKey: `fighter-${side}-${slot}`,
       onClick: () => {
         this.presentationLayerCall('interactionCue', {
           cue: targetable ? 'target-lock' : side === 'mine' ? 'fighter-select' : 'fighter-tap',
@@ -716,13 +767,13 @@ export class CombatScene extends CombatQueueReviewScene {
         { x: cx - 18, y },
       ], true);
       if (!action) {
-        this.mono(cx, y - 4, `Q${index + 1}`, { color: CULLING_COLORS.mutedText, fontSize: '9px' }).setOrigin(0.5, 0);
+        this.mono(cx, y - 5, `Q${index + 1}`, { color: CULLING_COLORS.mutedText, fontSize: '10px' }).setOrigin(0.5, 0);
         return;
       }
       const caster = me && me.team ? me.team[action.caster_slot] : null;
-      this.mono(cx, y - 4, caster ? initials(caster.name) : `Q${index + 1}`, {
+      this.mono(cx, y - 5, caster ? initials(caster.name) : `Q${index + 1}`, {
         color: '#275F39',
-        fontSize: '9px',
+        fontSize: '10px',
         fontStyle: '700',
       }).setOrigin(0.5, 0);
     });
@@ -740,9 +791,13 @@ export class CombatScene extends CombatQueueReviewScene {
         : tone === 'status'
           ? '#6240A8'
           : CULLING_COLORS.text;
-    this.mono(frame.x + frame.width / 2, layout.fieldTop + 3, shortText(event.message || event.type, 38), {
+    const replayY = Math.min(layout.fieldBottom - 34, layout.fieldTop + 30);
+    const replayW = Math.min(308, frame.width - 52);
+    this.graphics.fillStyle(CULLING_COLORS.ivory, 0.82);
+    this.graphics.fillRect(frame.x + (frame.width - replayW) / 2, replayY, replayW, 18);
+    this.mono(frame.x + frame.width / 2, replayY + 2, shortText(event.message || event.type, 38), {
       color,
-      fontSize: '9px',
+      fontSize: '12px',
       fontStyle: '700',
     }).setOrigin(0.5, 0);
   }
@@ -759,22 +814,22 @@ export class CombatScene extends CombatQueueReviewScene {
     const y = frame.top + layout.topH + 4;
     const w = layout.contentW;
     const h = Math.max(20, Math.min(28, layout.enemyY - y - 4));
-    const headingW = frame.width < 380 ? 86 : 98;
+    const headingW = frame.width < 380 ? 110 : 118;
     this.graphics.fillStyle(CULLING_COLORS.ivory, 0.96);
     this.graphics.fillPoints(clippedPoints(x, y, w, h, 5), true);
     this.graphics.fillStyle(tone, 0.92);
     this.graphics.fillPoints(clippedPoints(x, y, headingW, h, 5), true);
     this.graphics.lineStyle(1.5, tone, 0.82);
     this.graphics.strokePoints(clippedPoints(x, y, w, h, 5), true);
-    this.mono(x + 8, y + Math.max(5, (h - 10) / 2), opponent ? 'OPPONENT USED' : 'YOU USED', {
+    this.mono(x + 8, y + Math.max(3, (h - 14) / 2), opponent ? 'OPPONENT USED' : 'YOU USED', {
       color: CULLING_COLORS.inverseText,
-      fontSize: '9px',
+      fontSize: '12px',
       fontStyle: '700',
     });
-    this.text(x + headingW + 8, y + Math.max(3, (h - 14) / 2), shortText(action.message || 'Visible skill resolved', 42), {
+    this.text(x + headingW + 8, y + Math.max(2, (h - 16) / 2), shortText(action.message || 'Visible skill resolved', 42), {
       fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
       color: CULLING_COLORS.text,
-      fontSize: h <= 21 ? '10px' : '11px',
+      fontSize: h <= 21 ? '12px' : '13px',
       fontStyle: '900',
       wordWrap: { width: w - headingW - 14 },
     }).setMaxLines(1);
@@ -834,7 +889,7 @@ export class CombatScene extends CombatQueueReviewScene {
     g.strokePath();
     this.text(centerX, promptY, prompt, {
       fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
-      fontSize: layout.compressed ? '10px' : '11px',
+      fontSize: layout.compressed ? '13px' : '14px',
       fontStyle: '900',
       color: selectedSkill ? '#006B75' : CULLING_COLORS.cobaltText,
       stroke: CULLING_COLORS.inverseText,
@@ -853,7 +908,9 @@ export class CombatScene extends CombatQueueReviewScene {
       ringRadius,
     });
     this.renderReplayLine(frame, layout);
-    this.renderQueueMarks(frame, layout, layout.fieldBottom - 13);
+    // Keep Q1/Q2/Q3 above fighter state chips, which occupy the band beginning
+    // at allyY - 20. This gap remains readable in both Planning and Review.
+    this.renderQueueMarks(frame, layout, layout.fieldBottom - 42);
   }
 
   renderTechniqueArtwork(skill, index, x, y, w, h, tone, disabled, cost, selected = false) {
@@ -957,28 +1014,29 @@ export class CombatScene extends CombatQueueReviewScene {
     const cost = this.store.adjustedCost(caster, skill);
     const firstCost = cost[0];
     const tone = selected ? CULLING_COLORS.selected : (ENERGY_COLORS[firstCost] || CULLING_COLORS.cobalt);
-    const artH = Math.max(92, Math.round(h * 0.58));
+    const artW = clamp(Math.round(w * 0.3), 48, 58);
+    const contentX = x + artW + 7;
+    const contentW = Math.max(72, w - artW - 12);
 
     this.graphics.fillStyle(CULLING_COLORS.shadow, selected ? 0.28 : 0.16);
     this.graphics.fillPoints(clippedPoints(x + 2, y + 4, w, h, 7), true);
-    this.renderTechniqueArtwork(skill, index, x + 2, y + 2, w - 4, artH - 1, tone, state.disabled, cost, selected);
-    this.graphics.fillStyle(CULLING_COLORS.ivory, 0.98);
-    this.graphics.fillTriangle(x, y, x + 8, y, x, y + 8);
-    this.graphics.fillTriangle(x + w, y + h, x + w - 8, y + h, x + w, y + h - 8);
     this.graphics.fillStyle(CULLING_COLORS.ivory, state.disabled ? 0.82 : 0.98);
+    this.graphics.fillPoints(clippedPoints(x, y, w, h, 7), true);
+    this.renderTechniqueArtwork(skill, index, x + 2, y + 2, artW, h - 4, tone, state.disabled, cost, selected);
+    this.graphics.fillStyle(CULLING_COLORS.ivory, state.disabled ? 0.88 : 0.97);
     this.graphics.fillPoints([
-      { x: x + 2, y: y + artH + 7 },
-      { x: x + w - 2, y: y + artH },
+      { x: x + artW - 4, y: y + 2 },
+      { x: x + w - 2, y: y + 2 },
       { x: x + w - 2, y: y + h - 2 },
-      { x: x + 2, y: y + h - 2 },
+      { x: x + artW + 3, y: y + h - 2 },
     ], true);
-    this.graphics.fillStyle(tone, selected ? 0.98 : state.disabled ? 0.28 : 0.74);
-    this.graphics.fillRect(x + 2, y + artH, w - 4, 3);
+    this.graphics.fillStyle(tone, selected ? 0.98 : state.disabled ? 0.3 : 0.76);
+    this.graphics.fillRect(x + artW, y + 2, 3, h - 4);
     this.graphics.lineStyle(selected ? 3 : 1.25, tone, state.disabled ? 0.34 : selected ? 1 : 0.86);
     this.graphics.strokePoints(clippedPoints(x, y, w, h, 7), true);
 
-    const numberX = x + 11;
-    const numberY = y + 11;
+    const numberX = x + 12;
+    const numberY = y + 12;
     this.graphics.fillStyle(selected ? CULLING_COLORS.gold : CULLING_COLORS.charcoal, 0.96);
     this.graphics.fillPoints([
       { x: numberX, y: numberY - 9 },
@@ -988,81 +1046,74 @@ export class CombatScene extends CombatQueueReviewScene {
     ], true);
     this.mono(numberX, numberY - 5, String(index + 1), {
       color: selected ? CULLING_COLORS.text : CULLING_COLORS.inverseText,
-      fontSize: '9px',
+      fontSize: '10px',
       fontStyle: '700',
     }).setOrigin(0.5, 0);
 
     if (skill.effective_skill_id || state.casterQueued) {
-      const ribbonW = Math.max(34, w - 25);
+      const ribbonW = artW - 4;
       const ribbonLabel = skill.effective_skill_id
         ? state.casterQueued ? `REPLACED / Q${state.queuedIndex + 1}` : 'REPLACED'
         : `QUEUED Q${state.queuedIndex + 1}`;
       this.graphics.fillStyle(skill.effective_skill_id ? CULLING_COLORS.vermilion : CULLING_COLORS.queued, 0.94);
-      this.graphics.fillRect(x + w - ribbonW - 2, y + 3, ribbonW, 17);
-      this.mono(x + w - ribbonW / 2 - 2, y + 6, ribbonLabel, {
-        color: CULLING_COLORS.inverseText,
-        fontSize: '9px',
-        fontStyle: '700',
-      }).setOrigin(0.5, 0);
-    }
-
-    // Compact cards follow the approved illustrated-card grammar. Detailed
-    // classes, cooldown rules, and effect prose remain in the second-tap
-    // technique dossier instead of becoming unreadable six-pixel overlays.
-    if (state.disabled) {
-      const reasonY = y + artH - 24;
-      this.graphics.fillStyle(CULLING_COLORS.charcoal, 0.88);
-      this.graphics.fillRect(x + 2, reasonY, w - 4, 22);
-      const reasonNode = this.text(x + w / 2, reasonY + 3, state.reason, {
+      this.graphics.fillRect(x + 2, y + h - 37, ribbonW, 17);
+      const ribbonNode = this.text(x + 2 + ribbonW / 2, y + h - 35, ribbonLabel, {
         fontFamily: TOKEN_TYPE.mono || 'monospace',
-        fontSize: w < 70 ? '9px' : '10px',
-        fontStyle: '800',
-        color: '#F2C5C1',
-        align: 'center',
-        wordWrap: { width: w - 8 },
-      }).setOrigin(0.5, 0);
-      reasonNode.setMaxLines(2);
-    }
-
-    if (selected && !state.disabled) {
-      this.graphics.fillStyle(CULLING_COLORS.gold, 0.96);
-      this.graphics.fillRect(x + 2, y + artH - 19, w - 4, 17);
-      this.mono(x + w / 2, y + artH - 15, 'TAP AGAIN / INFO', {
-        color: CULLING_COLORS.text,
-        fontSize: '9px',
+        color: CULLING_COLORS.inverseText,
+        fontSize: '10px',
         fontStyle: '700',
+        align: 'center',
+        wordWrap: { width: ribbonW - 4 },
       }).setOrigin(0.5, 0);
+      ribbonNode.setMaxLines(1);
     }
 
-    const skillName = this.text(x + w / 2, y + artH + 7, skill.name, {
+    const skillName = this.text(contentX, y + 5, skill.name, {
       fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
-      fontSize: skill.name.length > 22 ? '10px' : '12px',
+      fontSize: '12px',
       fontStyle: '900',
       color: state.disabled ? CULLING_COLORS.mutedText : CULLING_COLORS.text,
-      align: 'center',
+      align: 'left',
       lineSpacing: -1,
-      wordWrap: { width: w - 8 },
-    }).setOrigin(0.5, 0);
-    skillName.setMaxLines(3);
+      wordWrap: { width: contentW },
+    });
+    skillName.setMaxLines(2);
 
-    const targetNode = this.text(x + w / 2, y + h - 34, this.store.targetLabel(skill).toUpperCase(), {
+    const statusLine = state.disabled
+      ? compactSkillCardDisabledReason(state.reason)
+      : selected
+        ? 'SELECTED / TAP AGAIN FOR INFO'
+        : `${this.store.targetLabel(skill).toUpperCase()} / READY`;
+    const statusTone = state.disabled
+      ? CULLING_COLORS.redText
+      : selected
+        ? CULLING_COLORS.text
+        : CULLING_COLORS.cobaltText;
+    if (selected && !state.disabled) {
+      this.graphics.fillStyle(CULLING_COLORS.gold, 0.22);
+      this.graphics.fillRect(contentX - 3, y + 31, contentW + 3, Math.max(22, h - 48));
+    }
+    const reasonNode = this.text(contentX, y + 31, statusLine, {
       fontFamily: TOKEN_TYPE.mono || 'monospace',
-      color: state.disabled ? CULLING_COLORS.mutedText : CULLING_COLORS.cobaltText,
-      fontSize: w < 70 ? '9px' : '10px',
-      fontStyle: '700',
-      align: 'center',
-      wordWrap: { width: w - 8 },
-    }).setOrigin(0.5, 0);
-    targetNode.setMaxLines(2);
+      fontSize: '12px',
+      fontStyle: '800',
+      color: statusTone,
+      align: 'left',
+      lineSpacing: state.disabled ? -4 : -2,
+      wordWrap: { width: contentW },
+    });
+    reasonNode.setMaxLines(state.disabled ? 4 : 3);
 
-    const pipY = y + h - 13;
+    const pipY = y + h - 10;
     const pipCount = Math.max(1, cost.length);
-    const pipGap = Math.min(12, (w - 16) / pipCount);
-    const pipStart = x + w / 2 - ((pipCount - 1) * pipGap) / 2;
+    const pipGap = Math.min(12, (artW - 14) / pipCount);
+    const pipStart = x + 2 + artW / 2 - ((pipCount - 1) * pipGap) / 2;
+    this.graphics.fillStyle(CULLING_COLORS.charcoal, 0.78);
+    this.graphics.fillRect(x + 2, y + h - 20, artW, 18);
     if (!cost.length) {
-      this.mono(x + w / 2, pipY - 4, 'FREE', {
-        color: state.disabled ? CULLING_COLORS.mutedText : CULLING_COLORS.cobaltText,
-        fontSize: '9px',
+      this.mono(x + 2 + artW / 2, pipY - 4, 'FREE', {
+        color: CULLING_COLORS.inverseText,
+        fontSize: '10px',
         fontStyle: '700',
       }).setOrigin(0.5, 0);
     }
@@ -1077,17 +1128,21 @@ export class CombatScene extends CombatQueueReviewScene {
       this.graphics.strokeCircle(px, pipY, 5.6);
       this.mono(px, pipY - 4.7, ENERGY_LABELS[color] || 'X', {
         color: color === 'white' ? CULLING_COLORS.text : CULLING_COLORS.inverseText,
-        fontSize: '9px',
+        fontSize: '10px',
         fontStyle: '700',
       }).setOrigin(0.5, 0);
     });
+
+    const costLabel = cost.length ? cost.map((color) => ENERGY_LABELS[color] || 'X').join(' ') : 'FREE';
 
     this.registerHitTarget(
       x,
       y,
       w,
       h,
-      state.disabled ? `Inspect disabled skill ${skill.name}: ${state.reason}` : `Skill ${skill.name}`,
+      state.disabled
+        ? `Inspect technique slot ${index + 1}, ${skill.name}, cost ${costLabel}: ${state.reason}`
+        : `Technique slot ${index + 1}, ${skill.name}, cost ${costLabel}`,
       () => {
         this.presentationLayerCall('interactionCue', {
           cue: selected || state.disabled ? 'skill-inspect' : 'skill-select',
@@ -1108,20 +1163,20 @@ export class CombatScene extends CombatQueueReviewScene {
     const h = layout.identityH;
     const tone = selected ? CULLING_COLORS.gold : CULLING_COLORS.cobalt;
     const identityW = layout.identityW;
-    const identityArtH = layout.identityH + layout.skillH;
+    const identityArtH = layout.identityH;
 
     if (selected) {
-      this.portraitArtwork(selected, x - 8, y + 2, identityW + 35, identityArtH - 3, {
+      this.portraitArtwork(selected, x - 8, y + 1, identityW + 35, identityArtH - 2, {
         context: 'hero',
         depth: -2,
         alpha: 0.98,
       });
       this.graphics.fillStyle(CULLING_COLORS.cobalt, 0.38);
-      this.graphics.fillTriangle(x, y + 12, x + identityW + 18, y + identityArtH, x, y + identityArtH);
+      this.graphics.fillTriangle(x, y + 5, x + identityW + 18, y + identityArtH, x, y + identityArtH);
       this.graphics.fillStyle(CULLING_COLORS.cobalt, 0.9);
       this.graphics.fillPoints([
-        { x, y: y + identityArtH - 58 },
-        { x: x + identityW + 12, y: y + identityArtH - 72 },
+        { x, y: y + 8 },
+        { x: x + identityW + 12, y: y + 2 },
         { x: x + identityW + 4, y: y + identityArtH },
         { x, y: y + identityArtH },
       ], true);
@@ -1151,26 +1206,26 @@ export class CombatScene extends CombatQueueReviewScene {
       });
       this.mono(x + identityW + 11, y + 31, 'TAP ONE OF THE THREE ALLY PORTRAITS', {
         color: CULLING_COLORS.cobaltText,
-        fontSize: '9px',
+        fontSize: '12px',
         fontStyle: '700',
       });
       return;
     }
 
-    this.mono(x + 8, y + identityArtH - 52, 'SELECTED FIGHTER', {
+    this.mono(x + 8, y + 5, 'SELECTED FIGHTER', {
       color: '#CDE6FF',
-      fontSize: '9px',
+      fontSize: '10px',
       fontStyle: '700',
     });
-    const identityName = this.text(x + 8, y + identityArtH - 38, selected.name, {
+    const identityName = this.text(x + 8, y + 19, selected.name, {
       fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
-      fontSize: selected.name.length > 20 ? '9px' : frame.width < 380 ? '11px' : '12px',
+      fontSize: frame.width < 380 ? '12px' : '13px',
       fontStyle: '900',
       color: CULLING_COLORS.inverseText,
-      lineSpacing: -1,
+      lineSpacing: -2,
       wordWrap: { width: identityW - 12 },
     });
-    identityName.setMaxLines(3);
+    identityName.setMaxLines(2);
     const selectedSkill = this.store.selectedSkill();
     const instruction = selectedSkill
       ? `TARGET / ${this.store.targetLabel(selectedSkill).toUpperCase()}`
@@ -1188,7 +1243,7 @@ export class CombatScene extends CombatQueueReviewScene {
     const queueX = x + w - 82;
     this.mono(queueX, y + 5, 'ORDER', {
       color: CULLING_COLORS.mutedText,
-      fontSize: '9px',
+      fontSize: '10px',
       fontStyle: '700',
     });
     [0, 1, 2].forEach((index) => {
@@ -1204,7 +1259,7 @@ export class CombatScene extends CombatQueueReviewScene {
       ], true);
       this.mono(cx, cy - 4, String(index + 1), {
         color: filled ? CULLING_COLORS.inverseText : CULLING_COLORS.mutedText,
-        fontSize: '9px',
+        fontSize: '10px',
         fontStyle: '700',
       }).setOrigin(0.5, 0);
     });
@@ -1226,30 +1281,36 @@ export class CombatScene extends CombatQueueReviewScene {
     const reviewX = x + sideW + gap;
     const reviewW = frame.width - 12 - sideW * 2 - gap * 2;
     const passX = reviewX + reviewW + gap;
-    const clearDisabled = !this.store.actions.length || this.store.controlsLocked();
-    const reviewDisabled = !this.store.actions.length || this.store.controlsLocked();
-    const passDisabled = this.store.controlsLocked();
+    const controlsLocked = this.store.controlsLocked();
+    const clearDisabled = !this.store.actions.length || controlsLocked;
+    const reviewDisabled = !this.store.actions.length || controlsLocked;
+    const passDisabled = controlsLocked;
+    const lockedReason = 'Planning controls are locked during the current phase.';
 
-    const drawAction = (bx, bw, label, tone, disabled, onClick, hitLabel) => {
+    const drawAction = (bx, bw, label, tone, disabled, disabledReason, onClick, hitLabel) => {
       this.graphics.fillStyle(CULLING_COLORS.shadow, disabled ? 0.06 : 0.16);
       this.graphics.fillPoints(clippedPoints(bx + 1, y + 3, bw, h - 3, 7), true);
       this.graphics.fillStyle(disabled ? CULLING_COLORS.concrete : CULLING_COLORS.ivory, disabled ? 0.74 : 0.97);
       this.graphics.fillPoints(clippedPoints(bx, y, bw, h - 4, 7), true);
       this.graphics.lineStyle(1.5, disabled ? CULLING_COLORS.muted : tone, disabled ? 0.3 : 0.88);
       this.graphics.strokePoints(clippedPoints(bx, y, bw, h - 4, 7), true);
-      this.mono(bx + bw / 2, y + 17, label, {
+      this.mono(bx + bw / 2, y + 15, label, {
         color: disabled ? CULLING_COLORS.mutedText : tone === CULLING_COLORS.vermilion ? CULLING_COLORS.redText : CULLING_COLORS.cobaltText,
-        fontSize: '9px',
+        fontSize: '12px',
         fontStyle: '700',
       }).setOrigin(0.5, 0);
-      this.registerHitTarget(bx, y, bw, h - 4, hitLabel, onClick, { disabled });
+      this.registerHitTarget(bx, y, bw, h - 4, hitLabel, onClick, {
+        disabled,
+        disabledReason,
+        accessibilityId: `combat-${hitLabel.toLowerCase().replaceAll(' ', '-')}`,
+      });
     };
 
-    drawAction(x, sideW, 'CLEAR', CULLING_COLORS.vermilion, clearDisabled, () => {
+    drawAction(x, sideW, 'CLEAR', CULLING_COLORS.vermilion, clearDisabled, controlsLocked ? lockedReason : 'There are no queued actions to clear.', () => {
       this.presentationLayerCall('interactionCue', { cue: 'queue-clear' });
       this.store.cancelQueue();
     }, 'Clear queue');
-    drawAction(passX, sideW, 'PASS', CULLING_COLORS.cobalt, passDisabled, () => {
+    drawAction(passX, sideW, 'PASS', CULLING_COLORS.cobalt, passDisabled, lockedReason, () => {
       this.presentationLayerCall('interactionCue', { cue: 'turn-pass' });
       this.store.endTurn();
     }, 'Pass turn');
@@ -1291,9 +1352,9 @@ export class CombatScene extends CombatQueueReviewScene {
       fontStyle: '900',
       color: reviewDisabled ? CULLING_COLORS.mutedText : CULLING_COLORS.inverseText,
     }).setOrigin(0.5, 0);
-    this.mono(reviewX + reviewW / 2, y + h - 15, 'ORDER / WILD / CONFIRM', {
+    this.mono(reviewX + reviewW / 2, y + h - 17, 'ORDER / WILD / CONFIRM', {
       color: reviewDisabled ? CULLING_COLORS.mutedText : '#CDE6FF',
-      fontSize: '9px',
+      fontSize: '12px',
       fontStyle: '700',
     }).setOrigin(0.5, 0);
     this.registerHitTarget(reviewX, y, reviewW, h - 4, 'Review queue', () => {
@@ -1301,6 +1362,8 @@ export class CombatScene extends CombatQueueReviewScene {
       this.store.openQueueReview();
     }, {
       disabled: reviewDisabled,
+      disabledReason: controlsLocked ? lockedReason : 'Queue at least one action before review.',
+      accessibilityId: 'review-queue',
     });
   }
 
@@ -1308,19 +1371,25 @@ export class CombatScene extends CombatQueueReviewScene {
     this.renderIdentityStrip(frame, layout, selected);
     if (selected) {
       this.store.skillsFor(selected).slice(0, 4).forEach((skill, index) => {
-        const x = layout.skillX + index * (layout.skillW + layout.skillGap);
-        this.renderSkillButton(skill, selected, index, x, layout.skillY, layout.skillW, layout.skillH);
+        const column = index % layout.skillColumns;
+        const row = Math.floor(index / layout.skillColumns);
+        const x = layout.skillX + column * (layout.skillW + layout.skillGap);
+        const y = layout.skillY + row * (layout.skillCardH + layout.skillGap);
+        this.renderSkillButton(skill, selected, index, x, y, layout.skillW, layout.skillCardH);
       });
     } else {
       [0, 1, 2, 3].forEach((index) => {
-        const x = layout.skillX + index * (layout.skillW + layout.skillGap);
+        const column = index % layout.skillColumns;
+        const row = Math.floor(index / layout.skillColumns);
+        const x = layout.skillX + column * (layout.skillW + layout.skillGap);
+        const y = layout.skillY + row * (layout.skillCardH + layout.skillGap);
         this.graphics.fillStyle(CULLING_COLORS.ivory, 0.74);
-        this.graphics.fillPoints(clippedPoints(x, layout.skillY, layout.skillW, layout.skillH, 8), true);
+        this.graphics.fillPoints(clippedPoints(x, y, layout.skillW, layout.skillCardH, 8), true);
         this.graphics.lineStyle(1, CULLING_COLORS.charcoal, 0.2);
-        this.graphics.strokePoints(clippedPoints(x, layout.skillY, layout.skillW, layout.skillH, 8), true);
-        this.mono(x + layout.skillW / 2, layout.skillY + layout.skillH / 2 - 5, `SLOT ${index + 1}`, {
+        this.graphics.strokePoints(clippedPoints(x, y, layout.skillW, layout.skillCardH, 8), true);
+        this.mono(x + layout.skillW / 2, y + layout.skillCardH / 2 - 5, `SLOT ${index + 1}`, {
           color: CULLING_COLORS.mutedText,
-          fontSize: '9px',
+          fontSize: '10px',
           fontStyle: '700',
         }).setOrigin(0.5, 0);
       });
@@ -1360,7 +1429,7 @@ export class CombatScene extends CombatQueueReviewScene {
 
     this.mono(x + 17, y + 16, 'TECHNIQUE DETAIL / SERVER STATE', {
       color: CULLING_COLORS.cobaltText,
-      fontSize: '9px',
+      fontSize: '12px',
       fontStyle: '700',
     });
     this.text(x + 17, y + 36, skill.name, {
@@ -1382,23 +1451,27 @@ export class CombatScene extends CombatQueueReviewScene {
 
     this.mono(x + 17, y + 92, `${titleize((skill.target_rule && skill.target_rule.kind) || 'enemy')} target`, {
       color: CULLING_COLORS.text,
-      fontSize: '10px',
+      fontSize: '12px',
     });
     const detailSeconds = typeof this.store.phaseSecondsRemaining === 'function'
       ? this.store.phaseSecondsRemaining()
       : Number(this.store.state && this.store.state.phase_seconds_remaining);
-    this.mono(x + w - 17, y + 92, `TIME ${clockLabel(detailSeconds)}`, {
+    const detailStage = this.store.interactionStage();
+    this.mono(x + w - 17, y + 92, `${detailStage.timerLabel} ${clockLabel(detailSeconds)}`, {
       color: Number.isFinite(detailSeconds) && detailSeconds <= 10 ? CULLING_COLORS.redText : CULLING_COLORS.cobaltText,
-      fontSize: '10px',
+      fontSize: '12px',
       fontStyle: '700',
     }).setOrigin(1, 0);
     this.costPips(x + 23, y + 123, adjusted, 15);
     const classLine = (skill.classes || []).map((value) => titleize(value)).join(' / ') || 'Technique';
     const slotLine = skill.effective_skill_id ? `${classLine} / REPLACED IN ORIGINAL SLOT` : classLine;
-    this.mono(x + 17, y + 148, slotLine, {
+    const slotNode = this.mono(x + 17, y + 148, slotLine, {
       color: CULLING_COLORS.cobaltText,
-      fontSize: '9px',
+      fontSize: '12px',
+      lineSpacing: -2,
+      wordWrap: { width: w - 34 },
     });
+    slotNode.setMaxLines(2);
     const available = reason === 'Available now';
     this.graphics.fillStyle(available ? COLORS.queued : CULLING_COLORS.enemy, 0.14);
     this.graphics.fillRect(x + 17, y + 175, w - 34, 38);
@@ -1406,27 +1479,27 @@ export class CombatScene extends CombatQueueReviewScene {
     this.graphics.fillRect(x + 17, y + 175, 4, 38);
     this.text(x + 29, y + 186, reason, {
       fontFamily: TOKEN_TYPE.mono || 'monospace',
-      fontSize: '10px',
+      fontSize: '12px',
       fontStyle: '700',
       color: available ? '#357D4B' : CULLING_COLORS.redText,
       wordWrap: { width: w - 62 },
     }).setMaxLines(2);
     this.mono(x + 17, y + 234, 'AUTHORITATIVE EFFECT', {
       color: CULLING_COLORS.cobaltText,
-      fontSize: '9px',
+      fontSize: '12px',
       fontStyle: '700',
     });
     this.text(x + 17, y + 256, skill.description || this.store.effectLine(skill), {
-      fontSize: '12px',
+      fontSize: '14px',
       color: CULLING_COLORS.text,
-      lineSpacing: 5,
+      lineSpacing: 3,
       wordWrap: { width: w - 34 },
     });
     drawCurrentButton(this, x + 17, frame.bottom - 44, w - 34, 44, 'RETURN TO BATTLEFIELD', () => this.store.closeSkillDetail(), {
       fill: CULLING_COLORS.cobalt,
       stroke: CULLING_COLORS.charcoal,
       color: CULLING_COLORS.inverseText,
-      fontSize: '12px',
+      fontSize: '14px',
       display: false,
       radius: 12,
     });
@@ -1503,7 +1576,7 @@ export class CombatScene extends CombatQueueReviewScene {
 
     this.mono(x + 16, y + 14, `${enemy ? 'ENEMY' : 'ALLY'} / STATUS & AILMENTS / SERVER VISIBLE`, {
       color: enemy ? CULLING_COLORS.redText : CULLING_COLORS.cobaltText,
-      fontSize: '9px',
+      fontSize: '12px',
       fontStyle: '700',
     });
     this.text(x + 16, y + 34, character.name || 'Fighter', {
@@ -1515,15 +1588,16 @@ export class CombatScene extends CombatQueueReviewScene {
     }).setMaxLines(2);
     this.mono(x + 16, y + 79, `${Number(character.hp || 0)}/${Number(character.max_hp || 0)} HP · ${statuses.length} ACTIVE ${statuses.length === 1 ? 'STATUS' : 'STATUSES'}`, {
       color: CULLING_COLORS.text,
-      fontSize: '10px',
+      fontSize: '12px',
       fontStyle: '700',
     });
     const sheetSeconds = typeof this.store.phaseSecondsRemaining === 'function'
       ? this.store.phaseSecondsRemaining()
       : Number(this.store.state && this.store.state.phase_seconds_remaining);
-    this.mono(x + w - 16, y + 79, `TIME ${clockLabel(sheetSeconds)}`, {
+    const sheetStage = this.store.interactionStage();
+    this.mono(x + w - 16, y + 79, `${sheetStage.timerLabel} ${clockLabel(sheetSeconds)}`, {
       color: Number.isFinite(sheetSeconds) && sheetSeconds <= 10 ? CULLING_COLORS.redText : CULLING_COLORS.cobaltText,
-      fontSize: '10px',
+      fontSize: '12px',
       fontStyle: '700',
     }).setOrigin(1, 0);
     drawCurrentButton(this, x + w - 56, y + 12, 44, 44, '×', () => this.store.closeFighterInspection(), {
@@ -1540,7 +1614,7 @@ export class CombatScene extends CombatQueueReviewScene {
     const buttonY = frame.bottom - 44;
     const rowGap = 6;
     const availableH = Math.max(0, buttonY - listY - 10);
-    const rowStep = 68;
+    const rowStep = 94;
     const maxRows = Math.max(1, Math.floor((availableH + rowGap) / rowStep));
     const visibleStatuses = statuses.slice(0, maxRows);
     if (!visibleStatuses.length) {
@@ -1553,7 +1627,8 @@ export class CombatScene extends CombatQueueReviewScene {
       });
       this.mono(x + 28, listY + 46, 'HIDDEN ENEMY INFORMATION REMAINS PRIVATE', {
         color: CULLING_COLORS.mutedText,
-        fontSize: '9px',
+        fontSize: '12px',
+        wordWrap: { width: w - 56 },
       });
     }
     visibleStatuses.forEach((status, index) => {
@@ -1562,41 +1637,44 @@ export class CombatScene extends CombatQueueReviewScene {
         && status.source_player_id !== status.target_player_id;
       const rowTone = hostile ? CULLING_COLORS.vermilion : CULLING_COLORS.cobalt;
       this.graphics.fillStyle(CULLING_COLORS.concrete, 0.46);
-      this.graphics.fillRect(x + 16, rowY, w - 32, 62);
+      this.graphics.fillRect(x + 16, rowY, w - 32, 88);
       this.graphics.fillStyle(rowTone, 0.9);
-      this.graphics.fillRect(x + 16, rowY, 4, 62);
+      this.graphics.fillRect(x + 16, rowY, 4, 88);
       const exactName = safeText(status.name || status.id || 'Status');
       this.text(x + 28, rowY + 7, exactName, {
         fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
-        fontSize: exactName.length > 26 ? '11px' : '13px',
+        fontSize: exactName.length > 26 ? '12px' : '13px',
         fontStyle: '900',
         color: CULLING_COLORS.text,
         wordWrap: { width: w - 152 },
-      }).setMaxLines(1);
+      }).setMaxLines(2);
       this.mono(x + w - 18, rowY + 8, this.statusDurationText(status), {
         color: hostile ? CULLING_COLORS.redText : CULLING_COLORS.cobaltText,
-        fontSize: '9px',
+        fontSize: '12px',
         fontStyle: '700',
       }).setOrigin(1, 0);
       const sourceSkillName = this.statusSourceSkillName(status);
       if (sourceSkillName) {
-        this.mono(x + 28, rowY + 27, `SOURCE SKILL · ${sourceSkillName.toUpperCase()}`, {
+        const sourceNode = this.mono(x + 28, rowY + 35, `SOURCE SKILL · ${sourceSkillName.toUpperCase()}`, {
           color: hostile ? CULLING_COLORS.redText : CULLING_COLORS.cobaltText,
-          fontSize: '9px',
+          fontSize: '12px',
           fontStyle: '700',
+          lineSpacing: -2,
+          wordWrap: { width: w - 56 },
         });
+        sourceNode.setMaxLines(2);
       }
-      this.text(x + 28, rowY + (sourceSkillName ? 43 : 31), this.statusEffectSummary(status), {
-        fontSize: '10px',
+      this.text(x + 28, rowY + (sourceSkillName ? 64 : 35), this.statusEffectSummary(status), {
+        fontSize: '12px',
         color: CULLING_COLORS.text,
-        lineSpacing: 1,
+        lineSpacing: -2,
         wordWrap: { width: w - 58 },
       }).setMaxLines(sourceSkillName ? 1 : 2);
     });
     if (statuses.length > visibleStatuses.length) {
-      this.mono(x + w / 2, buttonY - 17, `+${statuses.length - visibleStatuses.length} MORE ACTIVE STATUSES`, {
+      this.mono(x + w / 2, buttonY - 19, `+${statuses.length - visibleStatuses.length} MORE ACTIVE STATUSES`, {
         color: CULLING_COLORS.mutedText,
-        fontSize: '9px',
+        fontSize: '12px',
         fontStyle: '700',
       }).setOrigin(0.5, 0);
     }
@@ -1604,7 +1682,7 @@ export class CombatScene extends CombatQueueReviewScene {
       fill: CULLING_COLORS.cobalt,
       stroke: CULLING_COLORS.charcoal,
       color: CULLING_COLORS.inverseText,
-      fontSize: '12px',
+      fontSize: '14px',
       display: false,
       radius: 12,
     });
@@ -1618,7 +1696,7 @@ export class CombatScene extends CombatQueueReviewScene {
     const y = frame.top + 66;
     const w = frame.width - 16;
     const h = frame.bottom - y - 6;
-    const sourceStartY = y + 108;
+    const sourceStartY = y + 124;
     const rowH = 50;
     const rowGap = 5;
 
@@ -1647,7 +1725,7 @@ export class CombatScene extends CombatQueueReviewScene {
 
     this.mono(x + 16, y + 13, 'OPTIONAL / ONCE PER TURN / BEFORE QUEUE', {
       color: CULLING_COLORS.cobaltText,
-      fontSize: '9px',
+      fontSize: '12px',
       fontStyle: '700',
     });
     this.text(x + 16, y + 33, 'ENERGY TRANSMUTATION', {
@@ -1666,16 +1744,16 @@ export class CombatScene extends CombatQueueReviewScene {
       brush: 'red',
     });
     this.text(x + 16, y + 66, 'Sacrifice exactly 5 energy pips, in any mix, to create 1 energy of your choice.', {
-      fontSize: '11px',
+      fontSize: '13px',
       fontStyle: '700',
       color: CULLING_COLORS.text,
       lineSpacing: 2,
       wordWrap: { width: w - 32 },
     }).setMaxLines(2);
 
-    this.mono(x + 16, y + 94, `1 / CHOOSE SACRIFICE  ${selectedCount}/5`, {
+    this.mono(x + 16, y + 100, `1 / CHOOSE SACRIFICE  ${selectedCount}/5`, {
       color: selectedCount === 5 ? '#357D4B' : CULLING_COLORS.redText,
-      fontSize: '9px',
+      fontSize: '12px',
       fontStyle: '800',
     });
 
@@ -1702,13 +1780,16 @@ export class CombatScene extends CombatQueueReviewScene {
       });
       this.mono(x + 54, rowY + 28, `OWNED ${available} / CHOSEN ${chosen}`, {
         color: chosen ? CULLING_COLORS.cobaltText : CULLING_COLORS.mutedText,
-        fontSize: '9px',
+        fontSize: '12px',
         fontStyle: '700',
       });
       const minusX = x + w - 112;
       const plusX = x + w - 62;
       drawCurrentButton(this, minusX, rowY + 3, 44, 44, '-', () => this.store.removeTransmuteSource(color), {
         disabled: chosen <= 0,
+        disabledReason: `No ${ENERGY_NAMES[color]} energy is selected for sacrifice.`,
+        accessibilityLabel: `Remove one ${ENERGY_NAMES[color]} energy from sacrifice`,
+        accessibilityId: `transmute-remove-${color}`,
         fill: CULLING_COLORS.ivory,
         stroke: CULLING_COLORS.cobalt,
         color: CULLING_COLORS.cobaltText,
@@ -1718,6 +1799,11 @@ export class CombatScene extends CombatQueueReviewScene {
       });
       drawCurrentButton(this, plusX, rowY + 3, 44, 44, '+', () => this.store.addTransmuteSource(color), {
         disabled: selectedCount >= 5 || chosen >= available,
+        disabledReason: selectedCount >= 5
+          ? 'Exactly five sacrifice pips are already selected.'
+          : `No more ${ENERGY_NAMES[color]} energy is available.`,
+        accessibilityLabel: `Add one ${ENERGY_NAMES[color]} energy to sacrifice`,
+        accessibilityId: `transmute-add-${color}`,
         fill: CULLING_COLORS.cobalt,
         stroke: CULLING_COLORS.charcoal,
         color: CULLING_COLORS.inverseText,
@@ -1730,7 +1816,7 @@ export class CombatScene extends CombatQueueReviewScene {
     const targetLabelY = sourceStartY + CORE_ENERGY.length * (rowH + rowGap) + 5;
     this.mono(x + 16, targetLabelY, '2 / CHOOSE THE 1 ENERGY TO CREATE', {
       color: this.store.transmuteTarget ? '#357D4B' : CULLING_COLORS.redText,
-      fontSize: '9px',
+      fontSize: '12px',
       fontStyle: '800',
     });
     const targetY = targetLabelY + 20;
@@ -1739,7 +1825,9 @@ export class CombatScene extends CombatQueueReviewScene {
     CORE_ENERGY.forEach((color, index) => {
       const selected = this.store.transmuteTarget === color;
       const targetX = x + 14 + index * (targetW + targetGap);
-      drawCurrentButton(this, targetX, targetY, targetW, 56, ENERGY_LABELS[color], () => this.store.selectTransmuteTarget(color), {
+      drawCurrentButton(this, targetX, targetY, targetW, 68, ENERGY_LABELS[color], () => this.store.selectTransmuteTarget(color), {
+        accessibilityLabel: `Create one ${ENERGY_NAMES[color]} energy`,
+        accessibilityId: `transmute-create-${color}`,
         fill: selected ? ENERGY_COLORS[color] : CULLING_COLORS.ivory,
         stroke: selected ? CULLING_COLORS.gold : ENERGY_COLORS[color],
         color: selected && color !== 'white' ? CULLING_COLORS.inverseText : CULLING_COLORS.text,
@@ -1747,20 +1835,20 @@ export class CombatScene extends CombatQueueReviewScene {
         display: false,
         radius: 8,
       });
-      this.mono(targetX + targetW / 2, targetY + 39, ENERGY_NAMES[color].toUpperCase(), {
+      this.mono(targetX + targetW / 2, targetY + 49, ENERGY_NAMES[color].toUpperCase(), {
         color: selected && color !== 'white' ? CULLING_COLORS.inverseText : CULLING_COLORS.mutedText,
-        fontSize: frame.width < 380 ? '7px' : '8px',
+        fontSize: '12px',
         fontStyle: '800',
       }).setOrigin(0.5, 0);
     });
 
-    const resultY = targetY + 65;
+    const resultY = targetY + 77;
     const targetName = this.store.transmuteTarget ? ENERGY_NAMES[this.store.transmuteTarget] : 'not chosen';
     this.graphics.fillStyle(CULLING_COLORS.cobalt, 0.08);
     this.graphics.fillRect(x + 14, resultY, w - 28, 38);
     this.mono(x + w / 2, resultY + 13, `RESULT  ${selectedCount}/5 SPENT  ->  1 ${String(targetName).toUpperCase()}`, {
       color: selectedCount === 5 && this.store.transmuteTarget ? CULLING_COLORS.cobaltText : CULLING_COLORS.mutedText,
-      fontSize: frame.width < 380 ? '8px' : '9px',
+      fontSize: '12px',
       fontStyle: '800',
     }).setOrigin(0.5, 0);
 
@@ -1768,19 +1856,26 @@ export class CombatScene extends CombatQueueReviewScene {
     const actionGap = 8;
     const cancelW = Math.min(104, Math.round((w - 40) * 0.32));
     drawCurrentButton(this, x + 14, actionY, cancelW, 44, 'CANCEL', () => this.store.closeTransmute(), {
+      accessibilityLabel: 'Cancel transmutation',
+      accessibilityId: 'transmute-cancel',
       fill: CULLING_COLORS.ivory,
       stroke: CULLING_COLORS.vermilion,
       color: CULLING_COLORS.redText,
-      fontSize: '11px',
+      fontSize: '12px',
       display: false,
       radius: 9,
     });
     drawCurrentButton(this, x + 14 + cancelW + actionGap, actionY, w - 42 - cancelW - actionGap, 44, 'CONFIRM 5 -> 1', () => this.store.confirmTransmute(), {
       disabled: selectedCount !== 5 || !this.store.transmuteTarget,
+      disabledReason: selectedCount !== 5
+        ? `Select exactly five sacrifice pips; ${selectedCount} selected.`
+        : 'Choose the energy type to create.',
+      accessibilityLabel: 'Confirm five-to-one transmutation',
+      accessibilityId: 'transmute-confirm',
       fill: CULLING_COLORS.cobalt,
       stroke: CULLING_COLORS.gold,
       color: CULLING_COLORS.inverseText,
-      fontSize: '12px',
+      fontSize: '14px',
       display: false,
       radius: 9,
     });
@@ -1814,7 +1909,7 @@ export class CombatScene extends CombatQueueReviewScene {
       fill: CULLING_COLORS.vermilion,
       stroke: CULLING_COLORS.charcoal,
       color: CULLING_COLORS.inverseText,
-      fontSize: '10px',
+      fontSize: '12px',
       display: false,
       radius: 10,
       brush: 'red',
@@ -1893,12 +1988,30 @@ export class CombatScene extends CombatQueueReviewScene {
         : this.store.targetingStage === 'venom_primary'
           ? 'TAP A CYAN POISONED TARGET'
           : 'TAP A CYAN FIGHTER TO TARGET';
+    const connection = this.store.combatConnectionStatus();
+    const lockedPrompt = connection.key === 'resuming'
+      ? 'RESTORING BATTLE SESSION'
+      : ['connecting', 'reconnecting'].includes(connection.key)
+        ? 'RECONNECTING TO ARENA'
+        : connection.key === 'paused_for_reconnect'
+          ? 'BATTLE PAUSED FOR RECONNECT'
+          : this.store.queueSubmitting
+            ? this.store.pendingCommand && this.store.pendingCommand.kind === 'end_turn'
+              ? 'PASSING TURN'
+              : 'SERVER VALIDATING QUEUE'
+            : this.store.pendingCommand
+              ? 'SERVER VALIDATING ACTION'
+              : !this.store.isMyTurn()
+                ? 'OPPONENT TURN IN PROGRESS'
+                : me && me.queue_confirmed
+                  ? 'QUEUE CONFIRMED / WAITING'
+                  : 'WAITING FOR SERVER';
     const prompt = state.winner_id
       ? 'BATTLE FINISHED'
-      : this.store.queueReviewOpen
-        ? 'REVIEW RESOLUTION ORDER'
-        : this.store.controlsLocked()
-          ? 'HOSTILE ACTION IN PROGRESS'
+      : this.store.controlsLocked()
+        ? lockedPrompt
+        : this.store.queueReviewOpen
+          ? 'REVIEW RESOLUTION ORDER'
           : this.store.selectedSkillId
             ? targetStagePrompt
             : this.store.selectedCasterSlot !== null

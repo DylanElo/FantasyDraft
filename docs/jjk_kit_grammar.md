@@ -109,7 +109,11 @@ Initial effect types should include:
 - `heal`
 - `health_steal`
 - `apply_status`
+- `apply_team_status`
 - `remove_status`
+- `cleanse`
+- `consume_status_stacks`
+- `extend_status`
 - `damage_reduction`
 - `destructible_defense`
 - `invulnerability`
@@ -123,8 +127,9 @@ Initial effect types should include:
 - `skill_replacement`
 
 **Implementation note (2026-07-13):** cross-checked against the actual First
-Creation roster. `damage`, `heal`, `apply_status`, `remove_status` are used as
-literal `EffectSpec.type` values, as documented. `damage_reduction`,
+Creation roster. `damage`, `heal`, `apply_status`, `apply_team_status`,
+`remove_status`, `cleanse`, `consume_status_stacks`, and `extend_status` are
+used as literal `EffectSpec.type` values, as documented. `damage_reduction`,
 `destructible_defense`, `stun_classes`, and `counter` are used, but as
 **payload keys** on an `apply_status` effect's status (e.g.
 `status_effect(..., damage_reduction=10)`), not as their own `EffectSpec.type`.
@@ -138,9 +143,10 @@ differently named. `domain`, `health_steal`, `reflect`, and `cooldown_increase`
 exist as real engine mechanisms (see `effects.py`, `resolver.py`) but are
 genuinely unused by any First Creation skill — consistent with
 `docs/decisions/battle_v2_anti_domain.md`, which notes no First Creation
-character has a real Domain yet. Four effect types are used by First
-Creation but weren't in this original list: `apply_team_status`, `cleanse`,
-`consume_status_stacks`, and `extend_status`.
+character has a real Domain yet. The documented literal First Creation effect
+types also include `apply_team_status`, `cleanse`, `consume_status_stacks`, and
+`extend_status`; the vocabulary audit fails if a shipping effect type is
+missing from this list.
 
 ## Transformation and Replacement Rules
 

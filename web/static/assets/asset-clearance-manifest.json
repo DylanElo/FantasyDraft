@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "scope": "Maintained Phaser visual raster assets and retained visual lineage",
+  "status_definitions": {
+    "prototype_only": "Not a shipping asset. It may remain in the repository as lineage or development reference only.",
+    "generated_review_required": "Generated provenance exists, but qualified legal/commercial rights review is still required before release.",
+    "cleared": "Release approval is documented by the rights owner or qualified reviewer. Provenance alone never grants this status."
+  },
+  "release_rule": "Only entries marked cleared may be described as commercially release-cleared. Runtime use does not imply clearance.",
+  "summary": {
+    "cleared_groups": 0,
+    "generated_review_required_groups": 5,
+    "prototype_only_groups": 4
+  },
+  "groups": [
+    {
+      "id": "runtime_boot_and_world_environments",
+      "runtime": true,
+      "origin": "generated",
+      "clearance_status": "generated_review_required",
+      "provenance": "environments/PROVENANCE.md",
+      "paths": [
+        "environments/culling-current-home.webp",
+        "environments/culling-current-campus.webp",
+        "environments/culling-current-map.webp",
+        "environments/culling-current-rooftop-v2.webp"
+      ],
+      "release_caution": "Character-free generation lineage is recorded, but franchise/trademark and commercial-use review is not complete."
+    },
+    {
+      "id": "runtime_home_hero",
+      "runtime": true,
+      "origin": "generated_with_user_supplied_franchise_references",
+      "clearance_status": "generated_review_required",
+      "provenance": "environments/PROVENANCE.md#structural-rewrite-assets",
+      "paths": [
+        "environments/culling-current-home-hero-v2.webp"
+      ],
+      "release_caution": "Depicts named franchise characters and used franchise imagery as generation context; explicit legal and commercial review is mandatory."
+    },
+    {
+      "id": "runtime_starter_portraits",
+      "runtime": true,
+      "origin": "generated",
+      "clearance_status": "generated_review_required",
+      "provenance": "portraits/PROVENANCE.md",
+      "paths": [
+        "portraits/culling-current/yuji-itadori.webp",
+        "portraits/culling-current/megumi-fushiguro.webp",
+        "portraits/culling-current/nobara-kugisaki.webp",
+        "portraits/culling-current/maki-zenin.webp",
+        "portraits/culling-current/toge-inumaki.webp",
+        "portraits/culling-current/panda.webp",
+        "portraits/culling-current/aoi-todo.webp",
+        "portraits/culling-current/noritoshi-kamo.webp",
+        "portraits/culling-current/momo-nishimiya.webp",
+        "portraits/culling-current/mai-zenin.webp",
+        "portraits/culling-current/kasumi-miwa.webp",
+        "portraits/culling-current/kokichi-muta-mechamaru.webp",
+        "portraits/culling-current/junpei-yoshino.webp",
+        "portraits/culling-current/satoru-gojo-young.webp",
+        "portraits/culling-current/suguru-geto-young.webp",
+        "portraits/culling-current/shoko-ieiri-young.webp",
+        "portraits/culling-current/utahime-iori-young.webp",
+        "portraits/culling-current/mei-mei-young.webp",
+        "portraits/culling-current/yuta-okkotsu-jjk0.webp"
+      ],
+      "release_caution": "Generation records do not grant character likeness, copyright, or trademark rights."
+    },
+    {
+      "id": "runtime_unique_skill_atlases_v3",
+      "runtime": true,
+      "origin": "generated",
+      "clearance_status": "generated_review_required",
+      "provenance": "skills/PROVENANCE.md#unique-per-skill-action-atlases-v3",
+      "paths": [
+        "skills/culling-current/skill-atlas-body-v3.webp",
+        "skills/culling-current/skill-atlas-technique-v3.webp",
+        "skills/culling-current/skill-atlas-curse-v3.webp",
+        "skills/culling-current/skill-atlas-focus-guard-v3.webp",
+        "skills/culling-current/skill-atlas-focus-control-v3.webp"
+      ],
+      "release_caution": "Character-free generated effects still require project-level release-rights review."
+    },
+    {
+      "id": "runtime_semantic_skill_fallbacks",
+      "runtime": true,
+      "origin": "generated_with_user_supplied_franchise_reference",
+      "clearance_status": "generated_review_required",
+      "provenance": "skills/PROVENANCE.md#earlier-four-family-source-textures",
+      "paths": [
+        "skills/culling-current/body.webp",
+        "skills/culling-current/technique.webp",
+        "skills/culling-current/focus.webp",
+        "skills/culling-current/curse.webp"
+      ],
+      "release_caution": "Fallbacks used a franchise screenshot as style/intensity context and are not release-cleared."
+    },
+    {
+      "id": "superseded_environment_lineage",
+      "runtime": false,
+      "origin": "generated",
+      "clearance_status": "prototype_only",
+      "provenance": "environments/PROVENANCE.md",
+      "paths": [
+        "environments/culling-current-rooftop.webp",
+        "environments/underpass-courtyard-night.png"
+      ]
+    },
+    {
+      "id": "superseded_skill_atlas_v2",
+      "runtime": false,
+      "origin": "generated_with_user_supplied_franchise_references",
+      "clearance_status": "prototype_only",
+      "provenance": "skills/PROVENANCE.md#superseded-action-atlas-v2",
+      "paths": [
+        "skills/culling-current/skill-action-atlas-v2.png"
+      ]
+    },
+    {
+      "id": "legacy_abstract_portraits",
+      "runtime": false,
+      "origin": "project_prototype",
+      "clearance_status": "prototype_only",
+      "provenance": "README.md",
+      "path_glob": "portraits/*.svg"
+    },
+    {
+      "id": "concept_and_qa_artifacts",
+      "runtime": false,
+      "origin": "mixed_prototype_evidence",
+      "clearance_status": "prototype_only",
+      "provenance": "../../../artifacts/ui-redesign/README.md",
+      "path_globs": [
+        "../../../artifacts/ui-redesign/concepts/**",
+        "../../../artifacts/ui-redesign/**/qa/**",
+        "../../../artifacts/visual_qa/**"
+      ]
+    }
+  ]
+}

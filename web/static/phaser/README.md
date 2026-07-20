@@ -9,9 +9,20 @@ This folder is the module boundary for the mobile-first Phaser shell.
 - `store/` owns battle state, queue review state, First Creation selections, and socket event reactions.
 - `network/` owns the Socket.IO adapter.
 - `scenes/` owns the scene registry, reusable Phaser scene base primitives, concrete scene modules, and scene-adjacent UI bases such as combat queue review and draft roster/dossier browsing.
+- `ui/season3-ui.js` is the canonical Season 3 component facade. The three
+  older helper names remain compatibility variants for approved compositions;
+  shared palette, semantics, typography, and compatible clipped geometry live
+  in `ui/season3-tokens.js`.
 
-Next extraction targets:
+Environment allocation and lazy staging live in `core/asset-registry.js`.
+Boot owns only the splash and immediate Home plates; other world textures are
+requested by the active scene's world component and retain a deterministic
+gradient fallback.
 
-1. `ui/` for larger repeated scene widgets such as token rows, roster cards, and mission cards.
-2. Dedicated scene-adjacent modules for First Creation preset browsing.
-3. Smaller UI modules for repeated card rows once the scene bases settle.
+Next consolidation targets:
+
+1. Move approved scenes from compatibility imports to the canonical facade
+   only with visual-equivalence coverage.
+2. Extract larger repeated widgets such as token rows, roster cards, and
+   mission cards behind that facade.
+3. Keep scene flow separate from reusable rendering and interaction helpers.

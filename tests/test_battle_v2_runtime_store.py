@@ -342,6 +342,13 @@ def test_initial_settlement_enqueue_failure_uses_retryable_durable_fallback(monk
     assert not restarted.mission_settlement_fallback_path.exists()
 
 
+def test_empty_settlement_fallback_file_fails_closed(tmp_path):
+    store = SQLiteRuntimeStore(tmp_path / "runtime.sqlite3")
+    store.mission_settlement_fallback_path.touch()
+
+    assert store.mission_settlement_fallback_count() == 1
+
+
 def test_concurrent_settlement_workers_claim_before_invoking_handler(tmp_path):
     path = tmp_path / "runtime.sqlite3"
     first = SQLiteRuntimeStore(path)

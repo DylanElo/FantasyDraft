@@ -453,7 +453,9 @@ class SQLiteRuntimeStore:
                 return 0
             # Count malformed/blank rows too: restore retains them, so treating
             # them as zero would make a planned stop falsely appear complete.
-            return len(fallback.read_text(encoding="utf-8").splitlines())
+            # An existing zero-byte file can be left by a crash between the
+            # durable create and append, and must likewise fail closed.
+            return max(1, len(fallback.read_text(encoding="utf-8").splitlines()))
 
     def process_mission_settlements(
         self,

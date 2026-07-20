@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import itertools
 import json
+import math
 import os
 import socket
 import subprocess
@@ -19,12 +20,16 @@ import threading
 import time
 import urllib.error
 import urllib.request
+import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
 import requests
 import socketio
+
+from jjk_arena.battle_v2.runtime_store import SCHEMA_VERSION
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -38,6 +43,7 @@ OBSERVED_EVENTS = (
     "battle_v2_update",
 )
 DEFAULT_EVENT_TIMEOUT = 10.0
+NETWORK_ACCEPTANCE_OPS_TOKEN = "network-acceptance-ops-token-000000000000000000000000"
 
 
 class AcceptanceError(RuntimeError):
@@ -71,19 +77,32 @@ def diagnostic_event(event: RecordedEvent) -> dict[str, Any]:
 class SocketProbe:
     """One independent browser-like HTTP session and Socket.IO connection."""
 
-    def __init__(self, name: str, base_url: str, *, timeout: float = DEFAULT_EVENT_TIMEOUT):
+    def __init__(
+        self,
+        name: str,
+        base_url: str,
+        *,
+        timeout: float = DEFAULT_EVENT_TIMEOUT,
+        socket_origin: str | None = None,
+    ):
         self.name = name
         self.base_url = base_url
         self.timeout = timeout
+        self.socket_origin = socket_origin
         self.http = requests.Session()
         self.http.trust_env = False
+        websocket_options = {"http_no_proxy": ["127.0.0.1", "localhost"]}
+        if socket_origin:
+            # websocket-client otherwise adds the HTTP base URL as a second
+            # Origin alongside our production HTTPS Origin.
+            websocket_options["suppress_origin"] = True
         self.socket = socketio.Client(
             http_session=self.http,
             reconnection=False,
             logger=False,
             engineio_logger=False,
             request_timeout=timeout,
-            websocket_extra_options={"http_no_proxy": ["127.0.0.1", "localhost"]},
+            websocket_extra_options=websocket_options,
         )
         self._condition = threading.Condition()
         self._events: list[RecordedEvent] = []
@@ -106,6 +125,7 @@ class SocketProbe:
         self.socket.connect(
             self.base_url,
             transports=["websocket"],
+            headers={"Origin": self.socket_origin} if self.socket_origin else {},
             wait=True,
             wait_timeout=self.timeout,
         )
@@ -254,14 +274,20 @@ def wait_for_update(
     )
 
 
-def run_cpu_flow(base_url: str) -> dict[str, Any]:
-    client = SocketProbe("cpu-client", base_url)
+def run_cpu_flow(
+    base_url: str,
+    *,
+    socket_origin: str | None = None,
+    run_id: str = "acceptance",
+) -> dict[str, Any]:
+    client = SocketProbe("cpu-client", base_url, socket_origin=socket_origin)
+    finished_resume: SocketProbe | None = None
     try:
         client.connect()
         marker = client.emit(
             "battle_v2_start_classic",
             {
-                "room_id": "acceptance-cpu",
+                "room_id": f"{run_id}-cpu",
                 "player_name": "Network CPU",
                 "player_team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"],
                 "enemy_team": ["satoru_gojo", "ryomen_sukuna", "mahito"],
@@ -332,6 +358,14 @@ def run_cpu_flow(base_url: str) -> dict[str, Any]:
         terminal = wait_for_update(client, after=marker, match_id=match_id, phase="finished")
         if finished.get("winner_id") != "__cpu_v2__":
             raise AcceptanceError(f"unexpected CPU winner payload: {finished!r}")
+        finished_resume = SocketProbe(
+            "cpu-finished-resume",
+            base_url,
+            socket_origin=socket_origin,
+        )
+        finished_resume.connect()
+        marker = finished_resume.emit("battle_v2_resume", dict(grant))
+        finished_resume.wait_for("battle_v2_resume_rejected", after=marker)
         return {
             "transport": client.socket.transport(),
             "match_id": match_id,
@@ -339,20 +373,28 @@ def run_cpu_flow(base_url: str) -> dict[str, Any]:
             "queue_revision": reviewed["state_revision"],
             "final_revision": terminal["state_revision"],
             "winner_id": finished["winner_id"],
+            "finished_resume_rejected": True,
         }
     finally:
+        if finished_resume is not None:
+            finished_resume.disconnect()
         client.disconnect()
 
 
-def run_pvp_resume_flow(base_url: str) -> dict[str, Any]:
-    first = SocketProbe("pvp-first", base_url)
-    second = SocketProbe("pvp-second", base_url)
+def run_pvp_resume_flow(
+    base_url: str,
+    *,
+    socket_origin: str | None = None,
+    run_id: str = "acceptance",
+) -> dict[str, Any]:
+    first = SocketProbe("pvp-first", base_url, socket_origin=socket_origin)
+    second = SocketProbe("pvp-second", base_url, socket_origin=socket_origin)
     resumed: SocketProbe | None = None
     replay: SocketProbe | None = None
     try:
         first.connect()
         second.connect()
-        lobby_code = "acceptance-private"
+        lobby_code = f"{run_id}-private"
         marker = first.emit(
             "battle_v2_join_pvp",
             {
@@ -395,7 +437,7 @@ def run_pvp_resume_flow(base_url: str) -> dict[str, Any]:
         if paused.get("paused") is not True:
             raise AcceptanceError("opponent did not receive the authoritative disconnect pause")
 
-        resumed = SocketProbe("pvp-resumed", base_url)
+        resumed = SocketProbe("pvp-resumed", base_url, socket_origin=socket_origin)
         resumed.connect()
         marker = resumed.emit("battle_v2_resume", dict(first_grant))
         rotated = resumed.wait_for("battle_v2_session", after=marker)
@@ -407,7 +449,7 @@ def run_pvp_resume_flow(base_url: str) -> dict[str, Any]:
         if resumed_state.get("paused") is not False:
             raise AcceptanceError("successful resume did not unpause the match")
 
-        replay = SocketProbe("pvp-replay", base_url)
+        replay = SocketProbe("pvp-replay", base_url, socket_origin=socket_origin)
         replay.connect()
         marker = replay.emit("battle_v2_resume", dict(first_grant))
         rejected = replay.wait_for("battle_v2_resume_rejected", after=marker)
@@ -465,22 +507,30 @@ def run_pvp_resume_flow(base_url: str) -> dict[str, Any]:
                 probe.disconnect()
 
 
-def run_timeout_flow(base_url: str, *, planning_seconds: float) -> dict[str, Any]:
+def run_timeout_flow(
+    base_url: str,
+    *,
+    planning_seconds: float,
+    socket_origin: str | None = None,
+    run_id: str = "acceptance",
+) -> dict[str, Any]:
     client = SocketProbe(
         "timeout-client",
         base_url,
         timeout=max(DEFAULT_EVENT_TIMEOUT, planning_seconds + 8.0),
+        socket_origin=socket_origin,
     )
     try:
         client.connect()
         marker = client.emit(
             "battle_v2_start_classic",
-            {"room_id": "acceptance-timeout", "player_name": "Network Timeout"},
+            {"room_id": f"{run_id}-planning-timeout", "player_name": "Network Timeout"},
         )
         grant = client.wait_for("battle_v2_session", after=marker)
         match_id = grant["room_id"]
         state = wait_for_update(client, after=marker, match_id=match_id, phase="planning")
-        if not state.get("phase_seconds_remaining"):
+        observed_seconds = state.get("phase_seconds_remaining")
+        if not observed_seconds:
             raise AcceptanceError("planning state did not expose an authoritative deadline")
         timeout_marker = client.mark()
         started_at = time.monotonic()
@@ -492,14 +542,14 @@ def run_timeout_flow(base_url: str, *, planning_seconds: float) -> dict[str, Any
                 and int(payload.get("state_revision", -1)) > int(state["state_revision"])
                 and any(event.get("type") == "phase_timeout" for event in payload.get("event_log", []))
             ),
-            timeout=planning_seconds + 8.0,
+            timeout=max(planning_seconds, float(observed_seconds)) + 8.0,
         )
         elapsed = time.monotonic() - started_at
         # The deadline starts before the initial update traverses the socket,
         # so allow up to one second of delivery/scheduling latency in CI.
-        if elapsed + 1.0 < planning_seconds:
+        if elapsed + 1.0 < float(observed_seconds):
             raise AcceptanceError(
-                f"authoritative timeout fired too early: {elapsed:.3f}s < {planning_seconds:.3f}s"
+                f"authoritative timeout fired too early: {elapsed:.3f}s < {observed_seconds:.3f}s"
             )
         marker = client.emit(
             "battle_v2_surrender",
@@ -510,6 +560,7 @@ def run_timeout_flow(base_url: str, *, planning_seconds: float) -> dict[str, Any
             "transport": client.socket.transport(),
             "match_id": match_id,
             "elapsed_seconds": round(elapsed, 3),
+            "observed_deadline_seconds": observed_seconds,
             "state_revision": timed_out["state_revision"],
             "phase_timeout_event": True,
         }
@@ -517,7 +568,343 @@ def run_timeout_flow(base_url: str, *, planning_seconds: float) -> dict[str, Any
         client.disconnect()
 
 
-SAFE_STOP_OPS_TOKEN = "network-acceptance-safe-stop-ops-token-00000000"
+def run_queue_timeout_flow(
+    base_url: str,
+    *,
+    queue_review_seconds: float,
+    socket_origin: str | None = None,
+    run_id: str = "acceptance",
+) -> dict[str, Any]:
+    """Prove an unconfirmed real-network queue is discarded at its deadline."""
+
+    client = SocketProbe(
+        "queue-timeout-client",
+        base_url,
+        timeout=max(DEFAULT_EVENT_TIMEOUT, queue_review_seconds + 8.0),
+        socket_origin=socket_origin,
+    )
+    try:
+        client.connect()
+        marker = client.emit(
+            "battle_v2_start_classic",
+            {"room_id": f"{run_id}-queue-timeout", "player_name": "Network Queue Timeout"},
+        )
+        grant = client.wait_for("battle_v2_session", after=marker)
+        match_id = grant["room_id"]
+        player_id = grant["player_id"]
+        state = wait_for_update(client, after=marker, match_id=match_id, phase="planning")
+        action = payable_action(state, player_id)
+        marker = client.emit(
+            "battle_v2_submit_plan",
+            command_payload(state, "queue-timeout-submit", actions=[action]),
+        )
+        queued = wait_for_update(
+            client,
+            after=marker,
+            match_id=match_id,
+            minimum_revision=int(state["state_revision"]) + 1,
+            phase="queue_review",
+        )
+        observed_seconds = queued.get("phase_seconds_remaining")
+        if not observed_seconds:
+            raise AcceptanceError("Queue Review did not expose an authoritative deadline")
+
+        timeout_marker = client.mark()
+        started_at = time.monotonic()
+        timed_out = client.wait_for(
+            "battle_v2_update",
+            after=timeout_marker,
+            predicate=lambda payload: (
+                isinstance(payload, dict)
+                and payload.get("match_id") == match_id
+                and int(payload.get("state_revision", -1)) > int(queued["state_revision"])
+                and any(
+                    event.get("type") == "phase_timeout"
+                    and event.get("payload", {}).get("player_id") == player_id
+                    for event in payload.get("event_log", [])
+                )
+            ),
+            timeout=max(queue_review_seconds, float(observed_seconds)) + 8.0,
+        )
+        elapsed = time.monotonic() - started_at
+        if elapsed + 1.0 < float(observed_seconds):
+            raise AcceptanceError(
+                f"Queue Review timeout fired too early: {elapsed:.3f}s < {observed_seconds:.3f}s"
+            )
+        if timed_out.get("pending_actions", {}).get(player_id):
+            raise AcceptanceError("Queue Review timeout did not discard the pending action")
+        if any(
+            event.get("type") == "skill_resolved"
+            and event.get("payload", {}).get("action_id") == action["id"]
+            for event in timed_out.get("event_log", [])
+        ):
+            raise AcceptanceError("Queue Review timeout resolved an unconfirmed action")
+
+        marker = client.emit(
+            "battle_v2_surrender",
+            command_payload(timed_out, "queue-timeout-surrender"),
+        )
+        client.wait_for("battle_v2_finished", after=marker)
+        return {
+            "transport": client.socket.transport(),
+            "match_id": match_id,
+            "elapsed_seconds": round(elapsed, 3),
+            "observed_deadline_seconds": observed_seconds,
+            "phase_timeout_event": True,
+            "pending_queue_discarded": True,
+            "unconfirmed_action_resolved": False,
+        }
+    finally:
+        client.disconnect()
+
+
+def _assert_runtime_drained(ops_payload: dict[str, Any]) -> None:
+    zero_fields = (
+        "live_rooms",
+        "waiting_lobbies",
+        "scheduler_tasks",
+        "scheduler_callbacks_inflight",
+        "scheduler_callback_errors_total",
+        "battle_command_handlers_inflight",
+        "analytics_outbox_size",
+        "mission_snapshot_retry_rooms",
+        "terminal_persistence_pending_rooms",
+        "mission_settlement_fallback_pending",
+    )
+    nonzero = {
+        key: ops_payload.get(key)
+        for key in zero_fields
+        if ops_payload.get(key) != 0
+    }
+    settlements = ops_payload.get("mission_settlements")
+    if not isinstance(settlements, dict):
+        raise AcceptanceError("authorized ops payload has invalid mission_settlements")
+    for status in ("pending", "processing", "failed_retryable"):
+        value = settlements.get(status, 0)
+        if value != 0:
+            nonzero[f"mission_settlements.{status}"] = value
+    if ops_payload.get("accepting_new_matches") is not False:
+        nonzero["accepting_new_matches"] = ops_payload.get("accepting_new_matches")
+    if nonzero:
+        raise AcceptanceError(f"candidate is not safely drained: {nonzero!r}")
+
+
+def run_http_contract(
+    base_url: str,
+    *,
+    ops_token: str | None = None,
+    require_production: bool = False,
+    require_drained: bool = False,
+) -> dict[str, Any]:
+    """Check candidate liveness/readiness and fail-closed operations surfaces."""
+
+    if (require_production or require_drained) and not ops_token:
+        raise AcceptanceError("production candidate checks require JJK_OPS_TOKEN")
+    with requests.Session() as session:
+        session.trust_env = False
+        health = session.get(f"{base_url}/healthz", timeout=DEFAULT_EVENT_TIMEOUT)
+        ready = session.get(f"{base_url}/readyz", timeout=DEFAULT_EVENT_TIMEOUT)
+        debug = session.get(f"{base_url}/debug-state", timeout=DEFAULT_EVENT_TIMEOUT)
+        ops_missing = session.get(f"{base_url}/ops/runtime", timeout=DEFAULT_EVENT_TIMEOUT)
+        wrong_token = f"{ops_token}-wrong" if ops_token else "definitely-wrong-token"
+        ops_wrong = session.get(
+            f"{base_url}/ops/runtime",
+            headers={"Authorization": f"Bearer {wrong_token}"},
+            timeout=DEFAULT_EVENT_TIMEOUT,
+        )
+        if health.status_code != 200 or health.json() != {"service": "jjk-arena", "status": "ok"}:
+            raise AcceptanceError(f"unexpected /healthz response: {health.status_code} {health.text!r}")
+        ready_payload = ready.json()
+        if ready.status_code != 200 or ready_payload.get("status") != "ready":
+            raise AcceptanceError(f"unexpected /readyz response: {ready.status_code} {ready.text!r}")
+        if ready_payload.get("issues") != []:
+            raise AcceptanceError(f"/readyz returned non-empty issues: {ready_payload.get('issues')!r}")
+        storage = ready_payload.get("storage")
+        if not isinstance(storage, dict) or storage.get("ok") is not True:
+            raise AcceptanceError(f"/readyz storage is not healthy: {storage!r}")
+        if storage.get("schema_version") != SCHEMA_VERSION:
+            raise AcceptanceError(
+                f"/readyz schema is {storage.get('schema_version')!r}, expected {SCHEMA_VERSION}"
+            )
+        if ready_payload.get("topology") != "single-authority-worker":
+            raise AcceptanceError(f"unexpected authority topology: {ready_payload.get('topology')!r}")
+        if require_production and ready_payload.get("mode") != "production":
+            raise AcceptanceError(
+                f"external candidate is not in production mode: {ready_payload.get('mode')!r}"
+            )
+        if debug.status_code != 404:
+            raise AcceptanceError(f"debug endpoint returned {debug.status_code}, expected 404")
+        if ops_missing.status_code != 404 or ops_wrong.status_code != 404:
+            raise AcceptanceError("ops endpoint did not hide itself from missing/wrong tokens")
+
+        ops_payload = None
+        if ops_token:
+            ops = session.get(
+                f"{base_url}/ops/runtime",
+                headers={"Authorization": f"Bearer {ops_token}"},
+                timeout=DEFAULT_EVENT_TIMEOUT,
+            )
+            if ops.status_code != 200:
+                raise AcceptanceError(f"authorized ops endpoint returned {ops.status_code}")
+            ops_payload = ops.json()
+            for key in (
+                "accepting_new_matches",
+                "analytics",
+                "analytics_outbox_dropped_total",
+                "analytics_outbox_size",
+                "finished_rooms",
+                "live_rooms",
+                "battle_command_handlers_inflight",
+                "mission_settlements",
+                "mission_settlement_fallback_pending",
+                "mission_settlement_dead_lettered_total",
+                "mission_snapshot_retry_rooms",
+                "terminal_persistence_pending_rooms",
+                "scheduler_tasks",
+                "scheduler_callbacks_inflight",
+                "scheduler_callback_errors_total",
+                "waiting_lobbies",
+            ):
+                if key not in ops_payload:
+                    raise AcceptanceError(f"authorized ops payload is missing {key}")
+            if require_drained:
+                _assert_runtime_drained(ops_payload)
+
+    return {
+        "health_status": health.status_code,
+        "readiness_status": ready.status_code,
+        "schema_version": ready_payload.get("storage", {}).get("schema_version"),
+        "mode": ready_payload.get("mode"),
+        "topology": ready_payload.get("topology"),
+        "debug_status": debug.status_code,
+        "ops_missing_status": ops_missing.status_code,
+        "ops_wrong_status": ops_wrong.status_code,
+        "ops_authorized_status": 200 if ops_payload is not None else None,
+        "ops_snapshot": (
+            {
+                "live_rooms": ops_payload.get("live_rooms"),
+                "finished_rooms": ops_payload.get("finished_rooms"),
+                "scheduler_tasks": ops_payload.get("scheduler_tasks"),
+                "scheduler_callbacks_inflight": ops_payload.get(
+                    "scheduler_callbacks_inflight"
+                ),
+                "scheduler_callback_errors_total": ops_payload.get(
+                    "scheduler_callback_errors_total"
+                ),
+                "waiting_lobbies": ops_payload.get("waiting_lobbies"),
+                "battle_command_handlers_inflight": ops_payload.get(
+                    "battle_command_handlers_inflight"
+                ),
+                "accepting_new_matches": ops_payload.get("accepting_new_matches"),
+                "analytics_outbox_size": ops_payload.get("analytics_outbox_size"),
+                "analytics_outbox_dropped_total": ops_payload.get(
+                    "analytics_outbox_dropped_total"
+                ),
+                "mission_snapshot_retry_rooms": ops_payload.get("mission_snapshot_retry_rooms"),
+                "terminal_persistence_pending_rooms": ops_payload.get(
+                    "terminal_persistence_pending_rooms"
+                ),
+                "mission_settlements": ops_payload.get("mission_settlements"),
+                "mission_settlement_fallback_pending": ops_payload.get(
+                    "mission_settlement_fallback_pending"
+                ),
+                "mission_settlement_dead_lettered_total": ops_payload.get(
+                    "mission_settlement_dead_lettered_total"
+                ),
+            }
+            if ops_payload is not None
+            else None
+        ),
+    }
+
+
+def activate_runtime_drain(base_url: str, *, ops_token: str) -> dict[str, Any]:
+    """Enable the protected new-match gate and prompt bounded persistence work."""
+
+    with requests.Session() as session:
+        session.trust_env = False
+        response = session.post(
+            f"{base_url}/ops/drain",
+            headers={"Authorization": f"Bearer {ops_token}"},
+            json={"draining": True},
+            timeout=DEFAULT_EVENT_TIMEOUT,
+        )
+    if response.status_code != 200:
+        raise AcceptanceError(
+            f"drain activation returned {response.status_code}: {response.text!r}"
+        )
+    payload = response.json()
+    if payload.get("accepting_new_matches") is not False:
+        raise AcceptanceError(f"drain activation did not close new matches: {payload!r}")
+    maintenance = payload.get("maintenance")
+    if not isinstance(maintenance, dict) or maintenance.get("ok") is not True:
+        raise AcceptanceError(f"drain persistence maintenance failed: {maintenance!r}")
+    return payload
+
+
+def run_http_load(
+    base_url: str,
+    *,
+    request_count: int,
+    concurrency: int,
+) -> dict[str, Any]:
+    """Run a bounded endpoint correctness ramp and return latency/error evidence."""
+
+    if request_count < 1:
+        raise ValueError("request_count must be positive")
+    if concurrency < 1:
+        raise ValueError("concurrency must be positive")
+    worker_count = min(request_count, concurrency)
+
+    def request_once(index: int) -> float:
+        endpoint = "/healthz" if index % 2 == 0 else "/readyz"
+        started = time.perf_counter()
+        with requests.Session() as session:
+            session.trust_env = False
+            response = session.get(f"{base_url}{endpoint}", timeout=DEFAULT_EVENT_TIMEOUT)
+        elapsed_ms = (time.perf_counter() - started) * 1000.0
+        if response.status_code != 200:
+            raise AcceptanceError(f"{endpoint} returned {response.status_code}")
+        payload = response.json()
+        expected_status = "ok" if endpoint == "/healthz" else "ready"
+        if payload.get("status") != expected_status:
+            raise AcceptanceError(f"{endpoint} returned status {payload.get('status')!r}")
+        return elapsed_ms
+
+    started = time.perf_counter()
+    latencies: list[float] = []
+    errors: list[str] = []
+    with ThreadPoolExecutor(max_workers=worker_count) as pool:
+        futures = [pool.submit(request_once, index) for index in range(request_count)]
+        for future in as_completed(futures):
+            try:
+                latencies.append(future.result())
+            except Exception as exc:
+                errors.append(str(exc))
+    elapsed = time.perf_counter() - started
+    if errors:
+        raise AcceptanceError(
+            f"bounded HTTP load had {len(errors)} errors; first errors={errors[:5]!r}"
+        )
+    ordered = sorted(latencies)
+
+    def percentile(value: float) -> float:
+        index = max(0, math.ceil(value * len(ordered)) - 1)
+        return round(ordered[index], 3)
+
+    return {
+        "requests": request_count,
+        "concurrency": worker_count,
+        "errors": 0,
+        "elapsed_seconds": round(elapsed, 3),
+        "requests_per_second": round(request_count / elapsed, 3),
+        "latency_ms": {
+            "p50": percentile(0.50),
+            "p95": percentile(0.95),
+            "p99": percentile(0.99),
+            "max": round(ordered[-1], 3),
+        },
+    }
 
 
 def run_safe_stop_gate_flow(base_url: str) -> dict[str, Any]:
@@ -530,7 +917,7 @@ def run_safe_stop_gate_flow(base_url: str) -> dict[str, Any]:
     function is correct in isolation.
     """
 
-    headers = {"Authorization": f"Bearer {SAFE_STOP_OPS_TOKEN}"}
+    headers = {"Authorization": f"Bearer {NETWORK_ACCEPTANCE_OPS_TOKEN}"}
     deadline = time.monotonic() + DEFAULT_EVENT_TIMEOUT
     last_payload: dict[str, Any] | None = None
     while time.monotonic() < deadline:
@@ -588,7 +975,7 @@ def isolated_environment(port: int, database_path: Path) -> dict[str, str]:
             "JJK_DATABASE_PATH": str(database_path),
             "JJK_DEBUG": "0",
             "JJK_HOST": "127.0.0.1",
-            "JJK_OPS_TOKEN": SAFE_STOP_OPS_TOKEN,
+            "JJK_OPS_TOKEN": NETWORK_ACCEPTANCE_OPS_TOKEN,
             "JJK_PORT": str(port),
             "JJK_PRODUCTION": "0",
             "JJK_SOCKETIO_ASYNC_MODE": "threading",
@@ -601,6 +988,73 @@ def isolated_environment(port: int, database_path: Path) -> dict[str, str]:
     )
     environment.pop("JJK_FIRST_CREATION_PROFILE_STORE", None)
     return environment
+
+
+def run_acceptance_against(
+    base_url: str,
+    *,
+    planning_seconds: float,
+    queue_review_seconds: float,
+    ops_token: str | None = None,
+    socket_origin: str | None = None,
+    load_requests: int = 0,
+    load_concurrency: int = 16,
+    require_production: bool = False,
+    drain_at_end: bool = False,
+    require_drained: bool = False,
+) -> dict[str, Any]:
+    """Drive the complete contract against an already-running server."""
+
+    normalized_url = base_url.rstrip("/")
+    run_id = f"accept-{uuid.uuid4().hex[:12]}"
+    report = {
+        "base_url": normalized_url,
+        "run_id": run_id,
+        "http_before": run_http_contract(
+            normalized_url,
+            ops_token=ops_token,
+            require_production=require_production,
+        ),
+        "cpu": run_cpu_flow(
+            normalized_url,
+            socket_origin=socket_origin,
+            run_id=run_id,
+        ),
+        "pvp": run_pvp_resume_flow(
+            normalized_url,
+            socket_origin=socket_origin,
+            run_id=run_id,
+        ),
+        "timeout": run_timeout_flow(
+            normalized_url,
+            planning_seconds=planning_seconds,
+            socket_origin=socket_origin,
+            run_id=run_id,
+        ),
+        "queue_timeout": run_queue_timeout_flow(
+            normalized_url,
+            queue_review_seconds=queue_review_seconds,
+            socket_origin=socket_origin,
+            run_id=run_id,
+        ),
+    }
+    if load_requests:
+        report["load"] = run_http_load(
+            normalized_url,
+            request_count=load_requests,
+            concurrency=load_concurrency,
+        )
+    if drain_at_end:
+        if not ops_token:
+            raise AcceptanceError("drain activation requires JJK_OPS_TOKEN")
+        report["drain"] = activate_runtime_drain(normalized_url, ops_token=ops_token)
+    report["http_after"] = run_http_contract(
+        normalized_url,
+        ops_token=ops_token,
+        require_production=require_production,
+        require_drained=require_drained,
+    )
+    return report
 
 
 def run_network_acceptance(
@@ -645,15 +1099,20 @@ def run_network_acceptance(
                     start_new_session=os.name != "nt",
                 )
                 wait_until_ready(base_url, process)
-                report = {
-                    "base_url": base_url,
-                    "cpu": run_cpu_flow(base_url),
-                    "pvp": run_pvp_resume_flow(base_url),
-                    "timeout": run_timeout_flow(base_url, planning_seconds=planning_seconds),
-                }
-                # Run last: every scenario's matches have finished/disconnected
-                # by now, so this proves the drain gate reaches a real go
-                # decision once the server is genuinely idle.
+                report = run_acceptance_against(
+                    base_url,
+                    planning_seconds=planning_seconds,
+                    queue_review_seconds=queue_review_seconds,
+                    ops_token=NETWORK_ACCEPTANCE_OPS_TOKEN,
+                    drain_at_end=True,
+                    require_drained=True,
+                )
+                # Run last: every scenario's matches, and the drain-at-end
+                # activation above, have already completed, so this proves
+                # the safe-stop gate reaches a real go decision once the
+                # server is genuinely idle -- via a different endpoint than
+                # the raw /ops/runtime field checks `run_acceptance_against`
+                # already performed.
                 report["safe_stop"] = run_safe_stop_gate_flow(base_url)
                 return report
             except Exception as exc:  # Preserve the server log before TemporaryDirectory cleanup.
@@ -692,6 +1151,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--port", type=int, default=0, help=argparse.SUPPRESS)
     parser.add_argument("--planning-seconds", type=float, default=4.0)
     parser.add_argument("--queue-review-seconds", type=float, default=4.0)
+    parser.add_argument(
+        "--base-url",
+        help="drive an already-running Gunicorn/candidate server instead of starting Werkzeug",
+    )
+    parser.add_argument(
+        "--socket-origin",
+        help="explicit browser Origin header accepted by the candidate CORS policy",
+    )
+    parser.add_argument("--load-requests", type=int, default=0)
+    parser.add_argument("--load-concurrency", type=int, default=16)
     return parser.parse_args(argv)
 
 
@@ -702,10 +1171,31 @@ def main(argv: list[str] | None = None) -> int:
             raise SystemExit("--serve requires a valid --port")
         serve(args.port, args.planning_seconds, args.queue_review_seconds)
         return 0
-    report = run_network_acceptance(
-        planning_seconds=args.planning_seconds,
-        queue_review_seconds=args.queue_review_seconds,
-    )
+    if args.planning_seconds < 1.0 or args.queue_review_seconds < 1.0:
+        raise SystemExit("acceptance timer values must be at least one second")
+    if args.base_url:
+        ops_token = os.getenv("JJK_OPS_TOKEN", "").strip()
+        if not ops_token:
+            raise SystemExit("external candidate acceptance requires JJK_OPS_TOKEN in the environment")
+        if not args.socket_origin or "," in args.socket_origin:
+            raise SystemExit("external candidate acceptance requires one explicit --socket-origin")
+        report = run_acceptance_against(
+            args.base_url,
+            planning_seconds=args.planning_seconds,
+            queue_review_seconds=args.queue_review_seconds,
+            ops_token=ops_token,
+            socket_origin=args.socket_origin,
+            load_requests=args.load_requests,
+            load_concurrency=args.load_concurrency,
+            require_production=True,
+            drain_at_end=True,
+            require_drained=True,
+        )
+    else:
+        report = run_network_acceptance(
+            planning_seconds=args.planning_seconds,
+            queue_review_seconds=args.queue_review_seconds,
+        )
     print(json.dumps(report, indent=2, sort_keys=True))
     return 0
 

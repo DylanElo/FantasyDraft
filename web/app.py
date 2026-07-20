@@ -10,6 +10,7 @@ import time
 import uuid
 from collections import defaultdict, deque
 from threading import RLock
+from urllib.parse import urlsplit
 
 from flask import Flask, abort, jsonify, redirect, render_template, request, session
 from flask_socketio import SocketIO, emit, join_room, leave_room
@@ -94,6 +95,10 @@ CORS_ORIGINS = resolve_cors_origins(
     PORT,
     production_mode=PRODUCTION_MODE,
 )
+SOCKETIO_ASYNC_MODE = os.getenv("JJK_SOCKETIO_ASYNC_MODE", "threading").strip().lower() or "threading"
+EXAMPLE_SECRET = "replace-with-at-least-32-random-bytes"
+EXAMPLE_OPS_TOKEN = "replace-with-a-separate-random-token"
+EXAMPLE_CORS_ORIGIN = "https://arena.example.com"
 
 app = Flask(__name__)
 configured_secret = os.getenv("FLASK_SECRET_KEY")
@@ -107,7 +112,7 @@ app.config.update(
 socketio = SocketIO(
     app,
     cors_allowed_origins=CORS_ORIGINS,
-    async_mode=os.getenv("JJK_SOCKETIO_ASYNC_MODE", "threading"),
+    async_mode=SOCKETIO_ASYNC_MODE,
 )
 
 battle_v2_manager = BattleV2Manager(capture_replays=CAPTURE_REPLAYS)
@@ -131,6 +136,7 @@ analytics_recorded_matches: set[str] = set()
 mission_match_finished_at: dict[str, float] = {}
 operational_counters = defaultdict(int)
 last_runtime_prune_at = 0.0
+accepting_new_matches = True
 CPU_V2_PLAYER_ID = "__cpu_v2__"
 
 
@@ -229,25 +235,81 @@ battle_v2_timer_scheduler = PhaseTimerScheduler(
 ROOM_RE = re.compile(r"[^a-zA-Z0-9_-]+")
 CONTROL_RE = re.compile(r"[\x00-\x1f\x7f]+")
 RESUME_TOKEN_RE = re.compile(r"[^a-zA-Z0-9_-]+")
+NEW_MATCHES_DRAINED_MESSAGE = "New matches are temporarily unavailable during maintenance."
 
 
-def production_readiness_issues() -> list[str]:
+def _is_exact_https_origin(origin: str) -> bool:
+    """Return whether *origin* is an exact HTTPS origin, not a URL prefix."""
+
+    candidate = str(origin or "")
+    if not candidate or candidate != candidate.strip() or "*" in candidate:
+        return False
+    if any(character.isspace() for character in candidate) or "\\" in candidate:
+        return False
+    try:
+        parsed = urlsplit(candidate)
+        # Accessing port validates malformed and out-of-range explicit ports.
+        parsed.port
+    except ValueError:
+        return False
+    rendered_host = (
+        f"[{parsed.hostname}]"
+        if parsed.hostname and ":" in parsed.hostname
+        else parsed.hostname
+    )
+    expected_netloc = rendered_host or ""
+    if parsed.port is not None:
+        expected_netloc = f"{expected_netloc}:{parsed.port}"
+    return bool(
+        parsed.scheme.lower() == "https"
+        and parsed.hostname
+        and parsed.netloc.lower() == expected_netloc.lower()
+        and parsed.username is None
+        and parsed.password is None
+        and parsed.path == ""
+        and parsed.query == ""
+        and parsed.fragment == ""
+    )
+
+
+def _runtime_storage_health() -> dict:
+    try:
+        return runtime_store.healthcheck()
+    except Exception:
+        return {"ok": False, "schema_version": None}
+
+
+def production_readiness_issues(*, storage: dict | None = None) -> list[str]:
     issues = []
+    ops_token = os.getenv("JJK_OPS_TOKEN", "").strip()
     if PRODUCTION_MODE and (not configured_secret or len(configured_secret) < 32):
         issues.append("FLASK_SECRET_KEY must contain at least 32 characters in production")
+    elif PRODUCTION_MODE and configured_secret == EXAMPLE_SECRET:
+        issues.append("FLASK_SECRET_KEY must not use the .env.example placeholder")
+    if PRODUCTION_MODE and not ops_token:
+        issues.append("JJK_OPS_TOKEN must be configured in production")
+    elif PRODUCTION_MODE and len(ops_token) < 32:
+        issues.append("JJK_OPS_TOKEN must contain at least 32 characters in production")
+    elif PRODUCTION_MODE and ops_token == EXAMPLE_OPS_TOKEN:
+        issues.append("JJK_OPS_TOKEN must not use the .env.example placeholder")
+    elif PRODUCTION_MODE and configured_secret and ops_token == configured_secret:
+        issues.append("JJK_OPS_TOKEN must be distinct from FLASK_SECRET_KEY")
+    if PRODUCTION_MODE and DEBUG_MODE:
+        issues.append("JJK_DEBUG must remain disabled in production")
     if WEB_WORKERS != 1:
         issues.append("JJK_WEB_WORKERS must remain 1 until authoritative rooms use an external coordinator")
+    if PRODUCTION_MODE and SOCKETIO_ASYNC_MODE != "threading":
+        issues.append("JJK_SOCKETIO_ASYNC_MODE must remain threading in production")
     if PRODUCTION_MODE and (not configured_cors_origins or not CORS_ORIGINS):
         issues.append("JJK_CORS_ORIGINS must be explicitly configured in production")
-    if PRODUCTION_MODE and ("*" in CORS_ORIGINS or any(not origin.startswith("https://") for origin in CORS_ORIGINS)):
+    if PRODUCTION_MODE and any(not _is_exact_https_origin(origin) for origin in CORS_ORIGINS):
         issues.append("JJK_CORS_ORIGINS must contain only explicit HTTPS origins in production")
+    if PRODUCTION_MODE and EXAMPLE_CORS_ORIGIN in CORS_ORIGINS:
+        issues.append("JJK_CORS_ORIGINS must not use the .env.example origin")
     if PRODUCTION_MODE and not os.getenv("JJK_DATABASE_PATH"):
         issues.append("JJK_DATABASE_PATH must point to a durable production volume")
-    try:
-        storage = runtime_store.healthcheck()
-        if not storage.get("ok"):
-            issues.append("runtime database schema is unavailable")
-    except Exception:
+    storage = _runtime_storage_health() if storage is None else storage
+    if not storage.get("ok"):
         issues.append("runtime database is unavailable")
     return issues
 
@@ -278,33 +340,178 @@ def healthz():
 @app.route("/readyz")
 def readyz():
     operational_counters["readiness_checks"] += 1
-    issues = production_readiness_issues()
+    storage = _runtime_storage_health()
+    issues = production_readiness_issues(storage=storage)
     payload = {
         "status": "ready" if not issues else "not_ready",
         "issues": issues,
-        "storage": runtime_store.healthcheck() if not any("database" in issue for issue in issues) else {"ok": False},
+        "storage": storage,
         "topology": "single-authority-worker",
+        "mode": "production" if PRODUCTION_MODE else "development",
     }
     return jsonify(payload), 200 if not issues else 503
 
 
-@app.route("/ops/runtime")
-def runtime_status():
-    token = os.getenv("JJK_OPS_TOKEN", "")
+def _require_ops_token() -> None:
+    token = os.getenv("JJK_OPS_TOKEN", "").strip()
     supplied = request.headers.get("Authorization", "")
     if not token or not secrets.compare_digest(supplied, f"Bearer {token}"):
         abort(404)
+
+
+def _drain_storage_maintenance() -> dict:
+    """Make one bounded, operator-triggered attempt to persist deferred work."""
+
+    results = {
+        "mission_snapshots_reconstructed": 0,
+        "terminal_persistence_completed": 0,
+        "mission_settlements_flushed": 0,
+        "analytics_outbox_flushed": 0,
+        "ok": True,
+    }
+    terminal_room_ids = [
+        room_id
+        for room_id, state in list(battle_v2_manager.rooms.items())
+        if getattr(getattr(state, "phase", None), "value", None) == "finished"
+        and terminal_persistence_pending(room_id, state=state)
+    ][:50]
+    for room_id in terminal_room_ids:
+        was_pending = terminal_persistence_pending(room_id)
+        try:
+            completed = ensure_terminal_persistence(room_id)
+        except Exception:
+            completed = False
+        if completed and was_pending:
+            results["terminal_persistence_completed"] += 1
+        elif not completed:
+            results["ok"] = False
+            operational_counters["drain_storage_errors"] += 1
+    try:
+        results["mission_snapshots_reconstructed"] = reconstruct_terminal_mission_snapshots(
+            limit=max(50, len(mission_snapshot_retry_rooms)),
+        )
+    except Exception:
+        results["ok"] = False
+        operational_counters["drain_storage_errors"] += 1
+    try:
+        results["mission_settlements_flushed"] = len(
+            flush_mission_settlements(force_due=True)
+        )
+    except Exception:
+        results["ok"] = False
+        operational_counters["drain_storage_errors"] += 1
+    try:
+        results["analytics_outbox_flushed"] = runtime_store.flush_outbox()
+    except Exception:
+        results["ok"] = False
+        operational_counters["drain_storage_errors"] += 1
+    return results
+
+
+@app.route("/ops/drain", methods=["POST"])
+def runtime_drain():
+    """Atomically gate new matches and make deferred persistence observable."""
+
+    global accepting_new_matches
+    _require_ops_token()
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or type(payload.get("draining")) is not bool:
+        return jsonify({"error": "draining must be a boolean"}), 400
+
+    cancelled_lobbies: list[tuple[str, list[dict]]] = []
+    with lifecycle_lock:
+        accepting_new_matches = not payload["draining"]
+        if payload["draining"]:
+            cancelled_lobbies = [
+                (room_id, [dict(entry) for entry in entries])
+                for room_id, entries in v2_pvp_lobbies.items()
+            ]
+            v2_pvp_lobbies.clear()
+            waiting_code_by_player.clear()
+            lobby_last_activity.clear()
+            operational_counters["drain_activations"] += 1
+            operational_counters["drain_lobbies_cancelled"] += len(cancelled_lobbies)
+        else:
+            operational_counters["drain_releases"] += 1
+
+    for room_id, entries in cancelled_lobbies:
+        for entry in entries:
+            socketio.emit(
+                "battle_v2_lobby",
+                {
+                    "room_id": room_id,
+                    "status": "cancelled",
+                    "message": NEW_MATCHES_DRAINED_MESSAGE,
+                    "players": [],
+                },
+                room=player_room(entry["id"]),
+            )
+
+    maintenance = _drain_storage_maintenance() if payload["draining"] else None
     return jsonify(
         {
-            "active_rooms": len(battle_v2_manager.rooms),
-            "waiting_lobbies": len(v2_pvp_lobbies),
+            "accepting_new_matches": accepting_new_matches,
+            "cancelled_lobbies": len(cancelled_lobbies),
+            "maintenance": maintenance,
+        }
+    )
+
+
+@app.route("/ops/runtime")
+def runtime_status():
+    _require_ops_token()
+    with lifecycle_lock:
+        # Materialize room objects once. Cleanup can finish on another socket
+        # thread, so repeated dictionary iteration/lookups could otherwise
+        # raise or mix counts from two lifecycle instants.
+        room_items = list(battle_v2_manager.rooms.items())
+        active_rooms = len(room_items)
+        live_rooms = sum(
+            1
+            for _room_id, state in room_items
+            if getattr(getattr(state, "phase", None), "value", None) != "finished"
+        )
+        finished_rooms = active_rooms - live_rooms
+        terminal_persistence_pending_rooms = sum(
+            1
+            for room_id, state in room_items
+            if terminal_persistence_pending(room_id, state=state)
+        )
+        waiting_lobbies = len(v2_pvp_lobbies)
+        snapshot_retry_rooms = len(mission_snapshot_retry_rooms)
+        accepting_matches = accepting_new_matches
+    # Per-room aggregates: never a single global in-flight flag, so an
+    # unrelated busy room can never make this snapshot (or the safe-stop
+    # gate) look busier than it actually is for a specific room.
+    command_handlers_inflight = battle_v2_manager.in_flight_command_total()
+    # Fallback restoration publishes into SQLite before removing the sidecar;
+    # settlement publication writes analytics before marking a row settled.
+    # Preserve that order while reading so concurrent maintenance cannot appear
+    # absent from every side of this aggregate stop-safety snapshot.
+    mission_settlement_fallback_pending = runtime_store.mission_settlement_fallback_count()
+    mission_settlement_snapshot = runtime_store.mission_settlement_counts()
+    analytics_outbox_size = runtime_store.outbox_size()
+    return jsonify(
+        {
+            "active_rooms": active_rooms,
+            "live_rooms": live_rooms,
+            "finished_rooms": finished_rooms,
+            "scheduler_tasks": battle_v2_timer_scheduler.active_task_count(),
+            "scheduler_callbacks_inflight": battle_v2_timer_scheduler.in_flight_total(),
+            "scheduler_callback_errors_total": battle_v2_timer_scheduler.callback_errors_total,
+            "waiting_lobbies": waiting_lobbies,
+            "battle_command_handlers_inflight": command_handlers_inflight,
+            "accepting_new_matches": accepting_matches,
+            "mission_snapshot_retry_rooms": snapshot_retry_rooms,
+            "terminal_persistence_pending_rooms": terminal_persistence_pending_rooms,
             "rate_limit_keys": len(rate_limits),
             "counters": dict(operational_counters),
             "analytics": runtime_store.analytics_summary(),
             # Aggregate counts only -- never the queued events themselves.
-            "analytics_outbox_size": runtime_store.outbox_size(),
+            "analytics_outbox_size": analytics_outbox_size,
             "analytics_outbox_dropped_total": runtime_store.outbox_dropped_total,
-            "mission_settlements": runtime_store.mission_settlement_counts(),
+            "mission_settlements": mission_settlement_snapshot,
+            "mission_settlement_fallback_pending": mission_settlement_fallback_pending,
             "mission_settlement_dead_lettered_total": runtime_store.mission_settlement_dead_lettered_total,
             "mission_settlement_claimed_total": runtime_store.mission_settlement_claimed_total,
         }
@@ -320,10 +527,7 @@ def safe_stop():
     unauthenticated caller cannot use it to fingerprint operational state.
     """
 
-    token = os.getenv("JJK_OPS_TOKEN", "")
-    supplied = request.headers.get("Authorization", "")
-    if not token or not secrets.compare_digest(supplied, f"Bearer {token}"):
-        abort(404)
+    _require_ops_token()
     decision = evaluate_safe_stop(
         analytics_outbox_dropped_total=runtime_store.outbox_dropped_total,
         mission_settlement_counts=runtime_store.mission_settlement_counts(),
@@ -443,6 +647,7 @@ def record_match_finished_analytics(room_id: str) -> None:
     if state is None or state.phase.value != "finished":
         return
     vs_cpu = CPU_V2_PLAYER_ID in state.players
+    expected_event_keys = [f"match_finished:{room_id}"]
     try:
         runtime_store.record_analytics_event(
             "match_finished",
@@ -459,13 +664,17 @@ def record_match_finished_analytics(room_id: str) -> None:
         for player_id in state.players:
             if player_id == CPU_V2_PLAYER_ID:
                 continue
+            event_key = f"match_player_result:{room_id}:{player_id}"
+            expected_event_keys.append(event_key)
             runtime_store.record_analytics_event(
                 "match_player_result",
                 {"outcome": _player_outcome(state, player_id)},
                 match_id=room_id,
                 player_id=player_id,
-                event_key=f"match_player_result:{room_id}:{player_id}",
+                event_key=event_key,
             )
+        if not runtime_store.analytics_event_keys_exist(expected_event_keys):
+            return
     except Exception:
         operational_counters["analytics_write_errors"] += 1
         return
@@ -475,6 +684,31 @@ def record_match_finished_analytics(room_id: str) -> None:
 missions_settled_players: dict[str, set[str]] = defaultdict(set)
 missions_snapshotted_players: dict[str, set[str]] = defaultdict(set)
 mission_snapshot_retry_rooms: set[str] = set()
+
+
+def terminal_persistence_pending(room_id: str, *, state=None) -> bool:
+    """Return whether a terminal room still needs durable handoff work."""
+
+    state = state if state is not None else battle_v2_manager.rooms.get(room_id)
+    if state is None or getattr(getattr(state, "phase", None), "value", None) != "finished":
+        return False
+    if room_id not in analytics_recorded_matches:
+        return True
+    roster_mode = battle_v2_manager.room_roster_modes.get(room_id)
+    if roster_mode not in {"classic", "first_creation"}:
+        return True
+    if roster_mode == "first_creation":
+        players = getattr(state, "players", None)
+        if not isinstance(players, dict):
+            return True
+        human_players = {
+            player_id for player_id in players if player_id != CPU_V2_PLAYER_ID
+        }
+        if not human_players.issubset(missions_snapshotted_players.get(room_id, set())):
+            return True
+    if CAPTURE_REPLAYS and room_id not in archived_replays:
+        return True
+    return False
 
 
 def flush_mission_settlements(
@@ -767,11 +1001,9 @@ def emit_battle_v2_update(room_id: str, viewer_id: str | None = None):
     state = battle_v2_manager.get_state(room_id)
     room_last_activity[room_id] = time.monotonic()
     if state.phase.value == "finished":
-        # Match-finished analytics are recorded by battle_v2_manager.on_match_finished
-        # at the authoritative _finish_match transition. This finished-state
-        # path only reconstructs a snapshot when both initial durable writes
-        # failed; durable keys and atomic merges keep repeated broadcasts
-        # idempotent rather than making broadcast the primary settlement hook.
+        # Analytics and initial mission handoff belong to the authoritative
+        # terminal callback, not to a viewer broadcast. This path only retries
+        # an already-marked snapshot gap and archives the postcommit replay.
         reconstruct_terminal_mission_snapshots(room_id=room_id, limit=1)
         try:
             flush_mission_settlements()
@@ -886,6 +1118,35 @@ def ensure_terminal_mission_snapshots(room_id: str) -> bool:
     return True
 
 
+def ensure_terminal_persistence(room_id: str) -> bool:
+    """Retry every room-bound durable handoff before cleanup or planned stop."""
+
+    state = battle_v2_manager.rooms.get(room_id)
+    if state is None or getattr(getattr(state, "phase", None), "value", None) != "finished":
+        return True
+    lock = battle_v2_manager.room_locks.get(room_id)
+    if lock is None:
+        return False
+    with lock:
+        state = battle_v2_manager.rooms.get(room_id)
+        if state is None or getattr(getattr(state, "phase", None), "value", None) != "finished":
+            return True
+        try:
+            record_match_finished_analytics(room_id)
+        except Exception:
+            operational_counters["analytics_write_errors"] += 1
+        try:
+            ensure_terminal_mission_snapshots(room_id)
+        except Exception:
+            mission_snapshot_retry_rooms.add(room_id)
+            operational_counters["mission_settlement_snapshot_failures"] += 1
+        try:
+            archive_finished_replay(room_id)
+        except Exception:
+            operational_counters["replay_archive_errors"] += 1
+        return not terminal_persistence_pending(room_id, state=state)
+
+
 def reconstruct_terminal_mission_snapshots(
     *,
     room_id: str | None = None,
@@ -919,13 +1180,7 @@ def reconstruct_terminal_mission_snapshots(
 
 
 def remove_battle_v2_room(room_id: str) -> bool:
-    """Cancel timer work and remove room-owned authoritative runtime state."""
-
-    if not ensure_terminal_mission_snapshots(room_id):
-        return False
-
-    battle_v2_timer_scheduler.cancel(room_id)
-    lock = battle_v2_manager.room_locks.get(room_id)
+    """Cancel timer work and atomically remove room-owned runtime state."""
 
     def remove_state() -> None:
         for player_id, active_match_id in list(active_match_by_player.items()):
@@ -963,12 +1218,38 @@ def remove_battle_v2_room(room_id: str) -> bool:
             if new_match == room_id:
                 rematch_by_old_match.pop(old_match_id, None)
 
-    if lock is None:
-        remove_state()
-    else:
-        with lock:
+    # Rematch creation holds lifecycle_lock while it snapshots the old match's
+    # players, roster mode, and CPU difficulty. Use the same lock order
+    # (lifecycle -> room) so cleanup cannot erase part of that configuration
+    # midway through the handoff.
+    with lifecycle_lock:
+        # Per-room, not a global flag: an unrelated room's in-flight command
+        # must never defer this room's cleanup. Scoped to command execution
+        # itself (see `BattleV2Manager.in_flight_commands_for_room`), not the
+        # client-visible broadcast that follows it in the socket handler.
+        if battle_v2_manager.in_flight_commands_for_room(room_id):
+            return False
+        lock = battle_v2_manager.room_locks.get(room_id)
+        if lock is None:
+            if not ensure_terminal_persistence(room_id):
+                return False
+            if not battle_v2_timer_scheduler.cancel_if_idle(room_id):
+                return False
             remove_state()
-        battle_v2_manager.room_locks.pop(room_id, None)
+        else:
+            with lock:
+                # The room may have become terminal while cleanup waited for an
+                # active command. Recheck the durable handoff under the same lock
+                # before deleting any room-owned retry markers or replay state.
+                if not ensure_terminal_persistence(room_id):
+                    return False
+                # This check and deadline cancellation are atomic with respect
+                # to the scheduler worker. Its in-flight count spans expiry,
+                # result broadcast, and re-arm work.
+                if not battle_v2_timer_scheduler.cancel_if_idle(room_id):
+                    return False
+                remove_state()
+            battle_v2_manager.room_locks.pop(room_id, None)
     return True
 
 
@@ -1121,7 +1402,7 @@ def new_session():
 
 @app.route("/debug-state")
 def debug_state():
-    if not DEBUG_MODE:
+    if not DEBUG_MODE or PRODUCTION_MODE:
         abort(404)
     room_id = session.get("room_id", "lobby")
     player_id = session.get("player_id", "NONE")
@@ -1148,6 +1429,8 @@ def on_battle_v2_start_classic(data=None):
     enemy_team = clean_v2_team(data.get("enemy_team"), battle_v2_default_enemy_team(roster_mode))
     try:
         with lifecycle_lock:
+            if not accepting_new_matches:
+                raise BattleV2Error(NEW_MATCHES_DRAINED_MESSAGE)
             bound_match = active_by_code.get(requested_code)
             if _is_live_match(requested_code) or (bound_match and _is_live_match(bound_match)):
                 raise BattleV2Error("Lobby code is already bound to an active match.")
@@ -1194,6 +1477,8 @@ def on_battle_v2_join_pvp(data=None):
     player_team = clean_v2_team(data.get("player_team") or data.get("team"), battle_v2_default_team(roster_mode))
     try:
         with lifecycle_lock:
+            if not accepting_new_matches:
+                raise BattleV2Error(NEW_MATCHES_DRAINED_MESSAGE)
             prune_context_indexes()
             active_match_id = active_match_by_player.get(player_session)
             if active_match_id and _is_live_match(active_match_id):
@@ -1393,6 +1678,8 @@ def on_battle_v2_rematch(data=None):
                 raise BattleV2Error("client_action_nonce was already used for a different rematch request")
             new_id = rematch_by_old_match.get(old_match_id)
             if new_id is None:
+                if not accepting_new_matches:
+                    raise BattleV2Error(NEW_MATCHES_DRAINED_MESSAGE)
                 players = [dict(entry) for entry in match_players.get(old_match_id, [])]
                 if len(players) != 2:
                     raise BattleV2Error("Original match configuration is unavailable.")

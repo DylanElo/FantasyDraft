@@ -1,9 +1,13 @@
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
 import json
 import sqlite3
 import threading
 import time
 
+import pytest
+
+from jjk_arena.battle_v2 import runtime_store as runtime_store_module
 from jjk_arena.battle_v2.first_creation_profile import (
     load_first_creation_profile,
     merge_first_creation_profile_snapshot,
@@ -11,6 +15,92 @@ from jjk_arena.battle_v2.first_creation_profile import (
     save_first_creation_profile,
 )
 from jjk_arena.battle_v2.runtime_store import SQLiteRuntimeStore
+
+
+def test_runtime_store_closes_every_sqlite_connection(monkeypatch, tmp_path):
+    real_connect = sqlite3.connect
+    opened_connections = []
+
+    def tracked_connect(*args, **kwargs):
+        connection = real_connect(*args, **kwargs)
+        opened_connections.append(connection)
+        return connection
+
+    monkeypatch.setattr(runtime_store_module.sqlite3, "connect", tracked_connect)
+    path = tmp_path / "runtime.sqlite3"
+    store = SQLiteRuntimeStore(path)
+    for index in range(20):
+        store.save_profile(f"player-{index}", {"completed_missions": []})
+
+    assert opened_connections
+    for connection in opened_connections:
+        with pytest.raises(sqlite3.ProgrammingError, match="closed"):
+            connection.execute("SELECT 1")
+
+
+def test_runtime_store_refuses_to_downgrade_a_future_schema(tmp_path):
+    path = tmp_path / "future.sqlite3"
+    with closing(sqlite3.connect(path)) as connection:
+        with connection:
+            connection.execute(
+                "CREATE TABLE runtime_meta(key TEXT PRIMARY KEY, value TEXT NOT NULL)"
+            )
+            connection.execute(
+                "INSERT INTO runtime_meta(key, value) VALUES('schema_version', '999')"
+            )
+        journal_mode_before = connection.execute("PRAGMA journal_mode").fetchone()[0]
+    database_before = path.read_bytes()
+
+    with pytest.raises(RuntimeError, match="newer than supported"):
+        SQLiteRuntimeStore(path)
+
+    with closing(sqlite3.connect(path)) as connection:
+        version = connection.execute(
+            "SELECT value FROM runtime_meta WHERE key = 'schema_version'"
+        ).fetchone()[0]
+        journal_mode_after = connection.execute("PRAGMA journal_mode").fetchone()[0]
+    assert version == "999"
+    assert journal_mode_before == journal_mode_after == "delete"
+    assert path.read_bytes() == database_before
+
+
+def test_runtime_store_refuses_unsupported_legacy_schema_without_mutation(tmp_path):
+    path = tmp_path / "schema-three.sqlite3"
+    with closing(sqlite3.connect(path)) as connection:
+        with connection:
+            connection.execute(
+                "CREATE TABLE runtime_meta(key TEXT PRIMARY KEY, value TEXT NOT NULL)"
+            )
+            connection.execute(
+                "INSERT INTO runtime_meta(key, value) VALUES('schema_version', '3')"
+            )
+    database_before = path.read_bytes()
+
+    with pytest.raises(RuntimeError, match="schema 3 is not supported"):
+        SQLiteRuntimeStore(path)
+
+    assert path.read_bytes() == database_before
+
+
+def test_runtime_store_refuses_existing_schema_table_without_version(tmp_path):
+    path = tmp_path / "missing-version.sqlite3"
+    with closing(sqlite3.connect(path)) as connection:
+        with connection:
+            connection.execute(
+                "CREATE TABLE runtime_meta(key TEXT PRIMARY KEY, value TEXT NOT NULL)"
+            )
+
+    with pytest.raises(RuntimeError, match="no schema_version"):
+        SQLiteRuntimeStore(path)
+
+    with closing(sqlite3.connect(path)) as connection:
+        tables = {
+            row[0]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'"
+            )
+        }
+    assert tables == {"runtime_meta"}
 
 
 def test_sqlite_profiles_are_durable_across_store_instances(tmp_path):
@@ -239,15 +329,24 @@ def test_initial_settlement_enqueue_failure_uses_retryable_durable_fallback(monk
     monkeypatch.setattr(store, "enqueue_mission_settlement", lambda *_args: (_ for _ in ()).throw(RuntimeError("locked")))
     assert store.enqueue_mission_settlement_durable("match", "player", progress) == "fallback"
     assert store.mission_settlement_fallback_path.exists()
+    assert store.mission_settlement_fallback_count() == 1
 
     restarted = SQLiteRuntimeStore(path)
     assert restarted.restore_mission_settlement_fallback() == 1
+    assert restarted.mission_settlement_fallback_count() == 0
     received = []
     restarted.process_mission_settlements(
         lambda match_id, player_id, snapshot: received.append((match_id, player_id, snapshot))
     )
     assert received == [("match", "player", progress)]
     assert not restarted.mission_settlement_fallback_path.exists()
+
+
+def test_empty_settlement_fallback_file_fails_closed(tmp_path):
+    store = SQLiteRuntimeStore(tmp_path / "runtime.sqlite3")
+    store.mission_settlement_fallback_path.touch()
+
+    assert store.mission_settlement_fallback_count() == 1
 
 
 def test_concurrent_settlement_workers_claim_before_invoking_handler(tmp_path):
@@ -588,6 +687,28 @@ def test_record_analytics_event_is_idempotent_on_event_key(tmp_path):
     assert store.analytics_summary()["match_finished"]["total"] == 1
 
 
+def test_analytics_event_key_existence_distinguishes_durable_rows(tmp_path):
+    store = SQLiteRuntimeStore(tmp_path / "analytics-key-existence.sqlite3")
+    keys = ["match_finished:exists", "match_player_result:exists:p1"]
+
+    assert store.analytics_event_keys_exist(keys) is False
+    store.record_analytics_event(
+        "match_finished",
+        {"result_type": "WIN"},
+        match_id="exists",
+        event_key=keys[0],
+    )
+    assert store.analytics_event_keys_exist(keys) is False
+    store.record_analytics_event(
+        "match_player_result",
+        {"outcome": "win"},
+        match_id="exists",
+        player_id="p1",
+        event_key=keys[1],
+    )
+    assert store.analytics_event_keys_exist(keys) is True
+
+
 def test_record_analytics_event_idempotency_survives_a_new_store_instance(tmp_path):
     path = tmp_path / "runtime.sqlite3"
     SQLiteRuntimeStore(path).record_analytics_event(
@@ -689,6 +810,42 @@ def test_flush_outbox_retries_and_clears_on_success(tmp_path, monkeypatch):
     flushed = store.flush_outbox()
 
     assert flushed == 1
+    assert store.outbox_size() == 0
+
+
+def test_outbox_size_includes_batch_currently_being_flushed(tmp_path, monkeypatch):
+    store = SQLiteRuntimeStore(tmp_path / "outbox-inflight.sqlite3")
+    insert_row = store._insert_analytics_row
+    monkeypatch.setattr(
+        store,
+        "_insert_analytics_row",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("queue first")),
+    )
+    store.record_analytics_event(
+        "match_finished",
+        {"result_type": "WIN"},
+        match_id="inflight",
+        event_key="match_finished:inflight",
+    )
+    started = threading.Event()
+    release = threading.Event()
+
+    def blocking_insert(*args, **kwargs):
+        started.set()
+        assert release.wait(timeout=5)
+        return insert_row(*args, **kwargs)
+
+    monkeypatch.setattr(store, "_insert_analytics_row", blocking_insert)
+    worker = threading.Thread(target=store.flush_outbox)
+    worker.start()
+    try:
+        assert started.wait(timeout=5)
+        assert store.outbox_size() == 1
+    finally:
+        release.set()
+        worker.join(timeout=5)
+
+    assert not worker.is_alive()
     assert store.outbox_size() == 0
     assert store.analytics_summary()["match_finished"]["total"] == 1
 

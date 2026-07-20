@@ -784,6 +784,31 @@ Never deliver `.venv`, caches, bytecode, logs, nested Git metadata, or arbitrary
 
 # 13. Current work ordering
 
+## Repository and roadmap state (2026-07-20)
+
+- PR #58, `Complete the art-first Season 3 mobile game flow`, is merged.
+- PR #59, `Fix Panda Drumming Beat's misleading flavor text`, is merged.
+- PR #60, `Close audit correctness, mobile interaction, and QA gaps`, is
+  merged. Merged `main` passed 606 tests with 1 skipped before the separate
+  release-readiness work began.
+- The release-readiness rehearsal is a focused infrastructure/operations
+  follow-up. Its exact local runtime source is commit
+  `83de0cfef48574886d1f1ce69e8a1ddef321fab5`; it does not change combat,
+  roster, progression, or Phaser presentation. It is not part of `main` until
+  its separate PR is reviewed and merged.
+- The Story Tutorial trio's deterministic advantage remains investigated but
+  unresolved. Inspect CPU action/target valuation with larger evidence and
+  structured human play before changing any kit number.
+- Release readiness still requires external environment rehearsals and human
+  sign-off: registry-pulled immutable images, real HTTPS/WSS ingress, populated
+  durable-data restore, production ACL/DACL, prior deployed-digest rollback,
+  capacity/SLO testing, accessibility/device review, privacy/replay policy,
+  legal/IP approval, and incident/moderation/support ownership.
+- Roster expansion beyond the locked 19 First Creation starters remains gated
+  until engine, PvP, balance, and release readiness are signed off.
+- Final monetization/commercial strategy, the number of launch mission unlocks,
+  and whether Draft remains beside Classic Arena are still user decisions.
+
 Unless the user explicitly changes priority, use this order:
 
 1. Keep temporal/targeting/status semantics correct and tested.

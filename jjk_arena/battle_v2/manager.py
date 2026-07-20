@@ -834,10 +834,9 @@ class BattleV2Manager:
         self.capture_replays = capture_replays
         self.timer_policy = timer_policy or BattleTimerPolicy()
         self.clock = clock
-        # Optional hook invoked exactly once, at the authoritative terminal
-        # state transition in `_finish_match` — not from any broadcast path.
-        # Lets callers (e.g. web/app.py) record match-finished analytics at
-        # the true source of truth instead of a viewer-serialization side effect.
+        # Optional hook queued at the authoritative terminal transition and
+        # published only after the enclosing mutation commits, never from a
+        # broadcast path. Callers may use it for durable analytics/settlement.
         self.on_match_finished: Callable[[str], None] | None = None
         # `_finish_match` queues its room id here instead of firing
         # `on_match_finished` immediately whenever it runs inside a

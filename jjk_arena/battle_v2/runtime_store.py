@@ -8,11 +8,13 @@ import sqlite3
 import threading
 import time
 import uuid
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterator
 
 
 SCHEMA_VERSION = 6
+SUPPORTED_EXISTING_SCHEMA_VERSIONS = frozenset({4, 5, 6})
 
 # Retention policy for analytics_events: rows older than this are pruned by
 # prune_old_analytics_events(), called from web/app.py's existing periodic
@@ -74,22 +76,71 @@ class SQLiteRuntimeStore:
         self.path = Path(path) if path is not None else runtime_database_path()
         self.clock = clock
         self._outbox: list[dict[str, Any]] = []
+        self._outbox_inflight = 0
+        self._outbox_lock = threading.Lock()
         self.outbox_dropped_total = 0
         self.mission_settlement_dead_lettered_total = 0
         self.mission_settlement_claimed_total = 0
         self._initialize()
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self, *, enable_wal: bool = True) -> Iterator[sqlite3.Connection]:
+        """Yield one transactional connection and always release its handle.
+
+        ``sqlite3.Connection.__exit__`` commits or rolls back, but it does not
+        close the connection.  Explicit closure matters for long-lived workers
+        and is required before a Windows backup/restore rehearsal can replace
+        or remove a database file deterministically.
+        """
+
         self.path.parent.mkdir(parents=True, exist_ok=True)
         connection = sqlite3.connect(self.path, timeout=5.0)
-        connection.row_factory = sqlite3.Row
-        connection.execute("PRAGMA busy_timeout = 5000")
-        connection.execute("PRAGMA foreign_keys = ON")
-        connection.execute("PRAGMA journal_mode = WAL")
-        return connection
+        try:
+            connection.row_factory = sqlite3.Row
+            connection.execute("PRAGMA busy_timeout = 5000")
+            connection.execute("PRAGMA foreign_keys = ON")
+            if enable_wal:
+                connection.execute("PRAGMA journal_mode = WAL")
+            with connection:
+                yield connection
+        finally:
+            connection.close()
 
     def _initialize(self) -> None:
-        with self._connect() as connection:
+        # Inspect an existing database before changing its persistent journal
+        # mode. A future or malformed schema must be rejected without even the
+        # otherwise-safe WAL pragma mutating the file we are refusing to open.
+        with self._connect(enable_wal=False) as connection:
+            table_names = {
+                str(row["name"])
+                for row in connection.execute(
+                    "SELECT name FROM sqlite_master WHERE type = 'table'"
+                )
+            }
+            if "runtime_meta" in table_names:
+                existing_version = connection.execute(
+                    "SELECT value FROM runtime_meta WHERE key = 'schema_version'"
+                ).fetchone()
+                if existing_version is None:
+                    raise RuntimeError("runtime database has no schema_version")
+                try:
+                    parsed_version = int(existing_version["value"])
+                except (TypeError, ValueError) as exc:
+                    raise RuntimeError("runtime database schema_version is invalid") from exc
+                if parsed_version > SCHEMA_VERSION:
+                    raise RuntimeError(
+                        f"runtime database schema {parsed_version} is newer than supported "
+                        f"schema {SCHEMA_VERSION}"
+                    )
+                if parsed_version not in SUPPORTED_EXISTING_SCHEMA_VERSIONS:
+                    raise RuntimeError(
+                        f"runtime database schema {parsed_version} is not supported; "
+                        "supported existing schemas are 4, 5, and 6"
+                    )
+            elif table_names:
+                raise RuntimeError("runtime database has tables but no runtime_meta schema")
+
+            connection.execute("PRAGMA journal_mode = WAL")
             connection.executescript(
                 """
                 CREATE TABLE IF NOT EXISTS runtime_meta (
@@ -392,6 +443,19 @@ class SQLiteRuntimeStore:
                 fallback.unlink(missing_ok=True)
                 _fsync_parent_directory(fallback)
         return restored
+
+    def mission_settlement_fallback_count(self) -> int:
+        """Count durable sidecar rows still awaiting SQLite restoration."""
+
+        fallback = self.mission_settlement_fallback_path
+        with _fallback_lock:
+            if not fallback.exists():
+                return 0
+            # Count malformed/blank rows too: restore retains them, so treating
+            # them as zero would make a planned stop falsely appear complete.
+            # An existing zero-byte file can be left by a crash between the
+            # durable create and append, and must likewise fail closed.
+            return max(1, len(fallback.read_text(encoding="utf-8").splitlines()))
 
     def process_mission_settlements(
         self,
@@ -882,6 +946,21 @@ class SQLiteRuntimeStore:
             self._enqueue_outbox(event_type, payload, match_id=match_id, player_id=player_id, event_key=event_key)
             return False
 
+    def analytics_event_keys_exist(self, event_keys: list[str] | tuple[str, ...]) -> bool:
+        """Return whether every stable analytics key is durable in SQLite."""
+
+        keys = tuple(dict.fromkeys(str(key) for key in event_keys if str(key)))
+        if not keys:
+            return True
+        placeholders = ", ".join("?" for _key in keys)
+        with self._connect() as connection:
+            row = connection.execute(
+                f"SELECT COUNT(DISTINCT event_key) AS n FROM analytics_events "
+                f"WHERE event_key IN ({placeholders})",
+                keys,
+            ).fetchone()
+        return int(row["n"] or 0) == len(keys)
+
     def _enqueue_outbox(
         self,
         event_type: str,
@@ -891,19 +970,21 @@ class SQLiteRuntimeStore:
         player_id: str | None,
         event_key: str | None,
     ) -> None:
-        if len(self._outbox) >= self.MAX_OUTBOX_SIZE:
-            self._outbox.pop(0)
-            self.outbox_dropped_total += 1
-        self._outbox.append({
-            "event_type": event_type,
-            "payload": payload,
-            "match_id": match_id,
-            "player_id": player_id,
-            "event_key": event_key,
-        })
+        with self._outbox_lock:
+            if len(self._outbox) >= self.MAX_OUTBOX_SIZE:
+                self._outbox.pop(0)
+                self.outbox_dropped_total += 1
+            self._outbox.append({
+                "event_type": event_type,
+                "payload": payload,
+                "match_id": match_id,
+                "player_id": player_id,
+                "event_key": event_key,
+            })
 
     def outbox_size(self) -> int:
-        return len(self._outbox)
+        with self._outbox_lock:
+            return len(self._outbox) + self._outbox_inflight
 
     def flush_outbox(self) -> int:
         """Retry every queued event once; return how many were written.
@@ -912,23 +993,29 @@ class SQLiteRuntimeStore:
         flush. Safe to call frequently -- an empty outbox is a no-op.
         """
 
-        if not self._outbox:
-            return 0
-        pending = self._outbox
-        self._outbox = []
+        with self._outbox_lock:
+            if not self._outbox:
+                return 0
+            pending = self._outbox
+            self._outbox = []
+            self._outbox_inflight += len(pending)
         flushed = 0
-        for entry in pending:
-            try:
-                self._insert_analytics_row(
-                    entry["event_type"], entry["payload"],
-                    match_id=entry["match_id"], player_id=entry["player_id"], event_key=entry["event_key"],
-                )
-                flushed += 1
-            except Exception:
-                self._enqueue_outbox(
-                    entry["event_type"], entry["payload"],
-                    match_id=entry["match_id"], player_id=entry["player_id"], event_key=entry["event_key"],
-                )
+        try:
+            for entry in pending:
+                try:
+                    self._insert_analytics_row(
+                        entry["event_type"], entry["payload"],
+                        match_id=entry["match_id"], player_id=entry["player_id"], event_key=entry["event_key"],
+                    )
+                    flushed += 1
+                except Exception:
+                    self._enqueue_outbox(
+                        entry["event_type"], entry["payload"],
+                        match_id=entry["match_id"], player_id=entry["player_id"], event_key=entry["event_key"],
+                    )
+        finally:
+            with self._outbox_lock:
+                self._outbox_inflight -= len(pending)
         return flushed
 
     def analytics_summary(self, *, since: float | None = None) -> dict[str, Any]:
@@ -1017,4 +1104,5 @@ class SQLiteRuntimeStore:
                 "SELECT value FROM runtime_meta WHERE key = 'schema_version'"
             ).fetchone()
             connection.execute("SELECT 1").fetchone()
-        return {"ok": version is not None, "schema_version": int(version["value"]) if version else None}
+        schema_version = int(version["value"]) if version else None
+        return {"ok": schema_version == SCHEMA_VERSION, "schema_version": schema_version}

@@ -53,14 +53,16 @@ class PhaseTimerScheduler:
         self._heap: list[tuple[float, int, str]] = []
         self._stopped = False
         self._worker_started = False
+        self._callback_errors_total = 0
         self._worker_stopped_evt = Event()
         self._worker_stopped_evt.set()
-        # The room whose expire()/on_expired() callback is currently running,
-        # if any. Only one worker exists, so at most one room fires at a
-        # time, but this is exposed per-room (not just a bool) so the
-        # safe-stop drain gate and any future multi-worker scheduler can
-        # aggregate consistently with the manager's per-room command
-        # in-flight accounting.
+        # The room whose expire()/on_expired()/re-arm sequence is currently
+        # running, if any. Only one worker exists, so at most one room fires
+        # at a time, but this is exposed per-room (not just a bool) so the
+        # safe-stop drain gate, `cancel_if_idle`, and any future
+        # multi-worker scheduler can aggregate consistently with the
+        # manager's per-room command in-flight accounting -- an unrelated
+        # room's callback must never block this room's cleanup.
         self._firing_room_id: str | None = None
 
     def arm(self, room_id: str) -> None:
@@ -91,7 +93,7 @@ class PhaseTimerScheduler:
             return len(self._deadlines)
 
     def in_flight_count_for_room(self, room_id: str) -> int:
-        """1 if this room's expire/on_expired callback is running right now, else 0."""
+        """1 if this room's expire/on_expired/re-arm sequence is running right now, else 0."""
 
         with self._condition:
             return 1 if self._firing_room_id == room_id else 0
@@ -101,6 +103,26 @@ class PhaseTimerScheduler:
 
         with self._condition:
             return 1 if self._firing_room_id is not None else 0
+
+    def cancel_if_idle(self, room_id: str) -> bool:
+        """Cancel a room's deadline only when its own callback isn't running.
+
+        Deliberately checks this room specifically, not a global in-flight
+        flag: an unrelated room's callback firing must never block this
+        room's cleanup.
+        """
+
+        with self._condition:
+            if self._firing_room_id == room_id:
+                return False
+            self._deadlines.pop(room_id, None)
+            self._condition.notify_all()
+            return True
+
+    @property
+    def callback_errors_total(self) -> int:
+        with self._condition:
+            return self._callback_errors_total
 
     def shutdown(self, *, timeout: float | None = 5.0) -> None:
         """Stop the single worker deterministically and wait for it to exit.
@@ -153,21 +175,36 @@ class PhaseTimerScheduler:
                 # manager/socket state and may themselves call arm()/cancel(),
                 # which would otherwise re-enter this same condition's lock.
                 if fired_room_id is not None:
+                    # Held for the whole expire -> on_expired -> re-arm
+                    # sequence, not just the callback itself, so a
+                    # `cancel_if_idle`/in-flight check for this exact room
+                    # can't observe a gap where the old deadline is gone but
+                    # the re-armed one hasn't landed yet.
                     with self._condition:
                         self._firing_room_id = fired_room_id
                     try:
-                        if self.expire(fired_room_id):
-                            self.on_expired(fired_room_id)
-                    except Exception:
-                        # A single bad callback must not permanently kill the
-                        # one shared worker for every other room; surface it
-                        # (no logging framework in this codebase) and keep going.
-                        import traceback
-                        traceback.print_exc()
+                        try:
+                            if self.expire(fired_room_id):
+                                self.on_expired(fired_room_id)
+                        except Exception:
+                            # A single bad callback must not permanently kill the
+                            # one shared worker for every other room; surface it
+                            # (no logging framework in this codebase) and keep going.
+                            import traceback
+                            with self._condition:
+                                self._callback_errors_total += 1
+                            traceback.print_exc()
+                        try:
+                            self.arm(fired_room_id)
+                        except Exception:
+                            import traceback
+                            with self._condition:
+                                self._callback_errors_total += 1
+                            traceback.print_exc()
                     finally:
                         with self._condition:
                             self._firing_room_id = None
-                    self.arm(fired_room_id)
+                            self._condition.notify_all()
         finally:
             with self._condition:
                 self._worker_started = False

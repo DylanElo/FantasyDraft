@@ -12,6 +12,9 @@ env/
 .codex/
 .venv/
 data/
+*.sqlite3
+*.sqlite3-*
+*.mission-settlement-fallback.jsonl
 *.log
 
 # Local model system files and logs

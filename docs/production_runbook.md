@@ -21,6 +21,18 @@ scaling is not supported until room authority, timers, sessions, and idempotency
 receipts move together into an external coordinator. A SocketIO message queue
 alone would not make authoritative battle state multi-process safe.
 
+`Dockerfile` pins its base image by digest (not just the mutable `3.11-slim`
+tag) and installs `requirements.txt` under `constraints.txt`, which locks
+every resolved (including transitive) package version so the image is
+reproducible instead of picking up whatever is newest-compatible on build
+day. Regenerate `constraints.txt` deliberately in a clean virtualenv (see the
+header comment in that file); re-resolve and re-validate the base-image
+digest the same way, with `docker buildx imagetools inspect python:3.11-slim`,
+rather than letting either drift silently. The container `HEALTHCHECK`
+resolves the listening port the same way `gunicorn.conf.py` binds it --
+`PORT`, then `JJK_PORT`, then `5000` -- so a deploy that only sets `JJK_PORT`
+still gets probed on the port the app actually listens on.
+
 ## Required Production Configuration
 
 Start from `.env.example`. At minimum:
@@ -146,6 +158,11 @@ ignored developer `data/jjk_arena.sqlite3` as rehearsal input.
 - `POST /ops/drain` with JSON `{"draining": true}` or
   `{"draining": false}`: protected by the same bearer token and hidden as 404
   from missing or incorrect credentials.
+- `GET /ops/safe_stop`: the automated drain gate documented in "Safe-Stop
+  Drain Gate" below; same token gate. It evaluates the dropped-analytics and
+  in-flight conditions from that section only -- it is not a replacement for
+  the full manual `/ops/runtime` checklist further down (finished-room
+  retention, mission settlement backlog, `accepting_new_matches`, etc.).
 
 For drain decisions, `active_rooms` remains the backward-compatible total of
 all retained room objects, while `live_rooms` excludes terminal rooms and
@@ -291,6 +308,41 @@ logs, acceptance artifacts, or an unprotected curl configuration. If an
 operator uses a curl config for `/ops/drain`, keep that file outside the
 repository with operator-only permissions or ACL/DACL.
 
+## Safe-Stop Drain Gate
+
+Because Battle v2 room state, timers, resume sessions, and idempotency
+receipts all live in the one authoritative worker, stopping or replacing it
+is not always safe the instant traffic is shifted away. `GET /ops/safe_stop`
+(`jjk_arena/battle_v2/safe_stop.py:evaluate_safe_stop`) returns an explicit
+go/no-go instead of leaving that judgment to "traffic looks quiet":
+
+```json
+{"safe_to_stop": true, "blockers": [], "warnings": []}
+```
+
+HTTP 200 means `blockers` is empty; HTTP 503 means at least one blocker is
+still open. The gate checks three independent conditions:
+
+- **`analytics_outbox_dropped_total` must be exactly zero.** The analytics
+  outbox is in-memory only; a nonzero count means events were *already*
+  silently discarded, and stopping now would make that loss permanent. This
+  always blocks.
+- **`mission_settlements.dead_letter` is never a blocker by itself.**
+  Dead-lettered rows are durable in SQLite and explicitly
+  operator-redrivable (`SQLiteRuntimeStore.redrive_mission_settlement`), so
+  stopping the process does not lose them. A nonzero count is still always
+  surfaced as an explicit `warnings` entry -- it must never be silently
+  passed over -- but it does not, by itself, prevent a stop.
+- **In-flight command handlers and scheduler callbacks must sum to exactly
+  zero across every room.** `BattleV2Manager.in_flight_command_total()` and
+  `PhaseTimerScheduler.in_flight_total()` aggregate per-room counters
+  (`in_flight_commands_for_room` / `in_flight_count_for_room`) so that
+  normal cleanup of one idle/finished room is never blocked by unrelated
+  in-flight work in a different active match; only the whole-process
+  stop decision needs the aggregate. A nonzero aggregate blocks, because
+  stopping mid-command would abandon a partially applied transaction
+  instead of letting it finish and commit.
+
 ## Deploy And Rollback
 
 Battle rooms, resume-token hashes, timers, and command receipts are process
@@ -357,18 +409,25 @@ topology.
    `/ops/runtime` until every condition under **Health And Operations** is
    satisfied. Do not cut over with a live room, waiting lobby, retry room,
    timer, transient settlement, or analytics outbox entry.
-6. Stop the old worker gracefully. Gunicorn's `graceful_timeout` is 30 seconds,
+6. Also require `GET /ops/safe_stop` HTTP 200 (`safe_to_stop: true`) before
+   stopping the old worker. It automates the dropped-analytics and in-flight
+   conditions from **Safe-Stop Drain Gate** above as one check; investigate
+   and resolve any `blockers` first, and acknowledge/redrive any `warnings`
+   (e.g. dead-lettered settlements) as a follow-up, since they do not block
+   the stop. It is narrower than the full `/ops/runtime` snapshot polled in
+   the previous step -- both must be clean before proceeding.
+7. Stop the old worker gracefully. Gunicorn's `graceful_timeout` is 30 seconds,
    so the container/orchestrator termination grace must be **longer than 30
    seconds** before any forced kill. Record the elapsed drain/stop time and
    clean exit result. Create and verify the database-plus-sidecar backup only
    after the sole authority has stopped.
-7. Keep public routing closed, then start the exact candidate digest against
+8. Keep public routing closed, then start the exact candidate digest against
    the live durable volume. There must never be two authorities accepting match
    traffic. Because the in-memory drain flag starts in accepting mode in a new
    process, enable drain on the new candidate before exposing it, require
    readiness and the exact zero snapshot again, then send protected
    `{"draining": false}` and atomically reopen traffic.
-8. Watch command errors, phase timeouts, rate limits, settlement state, outbox
+9. Watch command errors, phase timeouts, rate limits, settlement state, outbox
    size, mission snapshot retries, and live-room counts.
 
 A drained restart must preserve profiles, opted-in replays, analytics, and

@@ -540,7 +540,15 @@ def test_ops_runtime_keeps_terminal_persistence_pending_until_callback_returns(m
     assert completed.get_json()["terminal_persistence_pending_rooms"] == 0
 
 
-def test_ops_runtime_counts_command_handler_through_result_work(monkeypatch):
+def test_ops_runtime_and_cleanup_reflect_in_flight_command_for_that_room_only(monkeypatch):
+    """`battle_command_handlers_inflight` and the cleanup guard are per-room.
+
+    Tracked directly on `BattleV2Manager` (`in_flight_commands_for_room` /
+    `in_flight_command_total`), scoped to the command's own execution, not a
+    single global flag -- so a command in flight for one room must block
+    only that room's cleanup, never an unrelated idle/finished room's.
+    """
+
     monkeypatch.setenv("JJK_OPS_TOKEN", "secret-token")
     room_id = "cleanup-command-result-inflight"
     web_app.battle_v2_manager.start_classic_match(
@@ -550,15 +558,21 @@ def test_ops_runtime_counts_command_handler_through_result_work(monkeypatch):
             {"id": "p2", "name": "P2", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
         ],
     )
+    state = web_app.battle_v2_manager.get_state(room_id)
     started = threading.Event()
     release = threading.Event()
+    original_end_turn = web_app.battle_v2_manager.end_turn
 
-    @web_app.track_battle_command_handler
-    def blocked_result_work():
+    def blocking_end_turn(*args, **kwargs):
         started.set()
         assert release.wait(timeout=5)
+        return original_end_turn(*args, **kwargs)
 
-    worker = threading.Thread(target=blocked_result_work)
+    monkeypatch.setattr(web_app.battle_v2_manager, "end_turn", blocking_end_turn)
+    worker = threading.Thread(
+        target=web_app.battle_v2_manager.execute_player_command,
+        args=(room_id, state.turn_player_id, "end_turn", state.state_revision, "inflight-nonce", {}),
+    )
     worker.start()
     try:
         assert started.wait(timeout=5)
@@ -569,6 +583,21 @@ def test_ops_runtime_counts_command_handler_through_result_work(monkeypatch):
         assert response.get_json()["battle_command_handlers_inflight"] == 1
         assert web_app.remove_battle_v2_room(room_id) is False
         assert room_id in web_app.battle_v2_manager.rooms
+
+        unrelated_room = "cleanup-command-inflight-unrelated"
+        web_app.battle_v2_manager.start_classic_match(
+            unrelated_room,
+            [
+                {"id": "p1", "name": "P1", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
+                {"id": "p2", "name": "P2", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+            ],
+        )
+        unrelated_state = web_app.battle_v2_manager.get_state(unrelated_room)
+        unrelated_state.phase = BattlePhase.FINISHED
+        unrelated_state.result_type = "WIN"
+        unrelated_state.winner_id = "p1"
+        web_app.analytics_recorded_matches.add(unrelated_room)
+        assert web_app.remove_battle_v2_room(unrelated_room) is True
     finally:
         release.set()
         worker.join(timeout=5)
@@ -579,7 +608,6 @@ def test_ops_runtime_counts_command_handler_through_result_work(monkeypatch):
         headers={"Authorization": "Bearer secret-token"},
     )
     assert completed.get_json()["battle_command_handlers_inflight"] == 0
-    assert web_app.remove_battle_v2_room(room_id) is True
 
 
 def test_terminal_persistence_requires_every_first_creation_snapshot():
@@ -760,6 +788,80 @@ def test_terminal_analytics_marker_requires_every_durable_event_key(monkeypatch)
 
     assert room_id not in web_app.analytics_recorded_matches
     assert web_app.terminal_persistence_pending(room_id) is True
+
+
+def test_ops_safe_stop_is_hidden_without_configured_bearer(monkeypatch):
+    monkeypatch.delenv("JJK_OPS_TOKEN", raising=False)
+    client = web_app.app.test_client()
+    assert client.get("/ops/safe_stop").status_code == 404
+
+    monkeypatch.setenv("JJK_OPS_TOKEN", "secret-token")
+    assert client.get("/ops/safe_stop").status_code == 404
+    response = client.get("/ops/safe_stop", headers={"Authorization": "Bearer secret-token"})
+    assert response.status_code == 200
+    assert set(response.get_json()) == {"safe_to_stop", "blockers", "warnings"}
+
+
+def test_ops_safe_stop_is_ready_with_clean_counters(monkeypatch):
+    monkeypatch.setenv("JJK_OPS_TOKEN", "secret-token")
+    monkeypatch.setattr(web_app.runtime_store, "outbox_dropped_total", 0)
+    monkeypatch.setattr(
+        web_app.runtime_store, "mission_settlement_counts", lambda: {"settled": 3}
+    )
+    client = web_app.app.test_client()
+
+    response = client.get("/ops/safe_stop", headers={"Authorization": "Bearer secret-token"})
+
+    assert response.status_code == 200
+    assert response.get_json() == {"safe_to_stop": True, "blockers": [], "warnings": []}
+
+
+def test_ops_safe_stop_rejects_when_analytics_were_dropped(monkeypatch):
+    monkeypatch.setenv("JJK_OPS_TOKEN", "secret-token")
+    monkeypatch.setattr(web_app.runtime_store, "outbox_dropped_total", 1)
+    monkeypatch.setattr(web_app.runtime_store, "mission_settlement_counts", lambda: {})
+    client = web_app.app.test_client()
+
+    response = client.get("/ops/safe_stop", headers={"Authorization": "Bearer secret-token"})
+
+    assert response.status_code == 503
+    payload = response.get_json()
+    assert payload["safe_to_stop"] is False
+    assert any("analytics_outbox_dropped_total" in blocker for blocker in payload["blockers"])
+
+
+def test_ops_safe_stop_warns_but_stays_ready_for_dead_lettered_settlements(monkeypatch):
+    monkeypatch.setenv("JJK_OPS_TOKEN", "secret-token")
+    monkeypatch.setattr(web_app.runtime_store, "outbox_dropped_total", 0)
+    monkeypatch.setattr(
+        web_app.runtime_store, "mission_settlement_counts", lambda: {"dead_letter": 1}
+    )
+    client = web_app.app.test_client()
+
+    response = client.get("/ops/safe_stop", headers={"Authorization": "Bearer secret-token"})
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["safe_to_stop"] is True
+    assert payload["blockers"] == []
+    assert any("dead_letter" in warning for warning in payload["warnings"])
+
+
+def test_ops_safe_stop_rejects_while_a_command_is_in_flight(monkeypatch):
+    monkeypatch.setenv("JJK_OPS_TOKEN", "secret-token")
+    monkeypatch.setattr(web_app.runtime_store, "outbox_dropped_total", 0)
+    monkeypatch.setattr(web_app.runtime_store, "mission_settlement_counts", lambda: {})
+    web_app.battle_v2_manager._in_flight_commands["some-room"] += 1
+    client = web_app.app.test_client()
+    try:
+        response = client.get("/ops/safe_stop", headers={"Authorization": "Bearer secret-token"})
+    finally:
+        web_app.battle_v2_manager._in_flight_commands.pop("some-room", None)
+
+    assert response.status_code == 503
+    payload = response.get_json()
+    assert payload["safe_to_stop"] is False
+    assert any("in flight" in blocker for blocker in payload["blockers"])
 
 
 def test_ops_runtime_analytics_reflects_a_finished_cpu_match(monkeypatch):

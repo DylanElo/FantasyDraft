@@ -53,10 +53,17 @@ class PhaseTimerScheduler:
         self._heap: list[tuple[float, int, str]] = []
         self._stopped = False
         self._worker_started = False
-        self._callbacks_inflight = 0
         self._callback_errors_total = 0
         self._worker_stopped_evt = Event()
         self._worker_stopped_evt.set()
+        # The room whose expire()/on_expired()/re-arm sequence is currently
+        # running, if any. Only one worker exists, so at most one room fires
+        # at a time, but this is exposed per-room (not just a bool) so the
+        # safe-stop drain gate, `cancel_if_idle`, and any future
+        # multi-worker scheduler can aggregate consistently with the
+        # manager's per-room command in-flight accounting -- an unrelated
+        # room's callback must never block this room's cleanup.
+        self._firing_room_id: str | None = None
 
     def arm(self, room_id: str) -> None:
         deadline = self.get_deadline(room_id)
@@ -79,27 +86,38 @@ class PhaseTimerScheduler:
             self._deadlines.pop(room_id, None)
             self._condition.notify_all()
 
-    def cancel_if_idle(self, room_id: str) -> bool:
-        """Cancel a room only when no deadline callback can still publish."""
-
-        with self._condition:
-            if self._callbacks_inflight:
-                return False
-            self._deadlines.pop(room_id, None)
-            self._condition.notify_all()
-            return True
-
     def active_task_count(self) -> int:
         """Number of rooms with a live scheduled deadline right now."""
 
         with self._condition:
             return len(self._deadlines)
 
-    def callbacks_inflight_count(self) -> int:
-        """Number of deadline callbacks or re-arm operations still running."""
+    def in_flight_count_for_room(self, room_id: str) -> int:
+        """1 if this room's expire/on_expired/re-arm sequence is running right now, else 0."""
 
         with self._condition:
-            return self._callbacks_inflight
+            return 1 if self._firing_room_id == room_id else 0
+
+    def in_flight_total(self) -> int:
+        """Aggregate in-flight scheduler callbacks, for the safe-stop gate."""
+
+        with self._condition:
+            return 1 if self._firing_room_id is not None else 0
+
+    def cancel_if_idle(self, room_id: str) -> bool:
+        """Cancel a room's deadline only when its own callback isn't running.
+
+        Deliberately checks this room specifically, not a global in-flight
+        flag: an unrelated room's callback firing must never block this
+        room's cleanup.
+        """
+
+        with self._condition:
+            if self._firing_room_id == room_id:
+                return False
+            self._deadlines.pop(room_id, None)
+            self._condition.notify_all()
+            return True
 
     @property
     def callback_errors_total(self) -> int:
@@ -153,32 +171,39 @@ class PhaseTimerScheduler:
                     heapq.heappop(self._heap)
                     self._deadlines.pop(room_id, None)
                     fired_room_id = room_id
-                    self._callbacks_inflight += 1
                 # Run callbacks outside the lock: expire()/on_expired() touch
                 # manager/socket state and may themselves call arm()/cancel(),
                 # which would otherwise re-enter this same condition's lock.
                 if fired_room_id is not None:
+                    # Held for the whole expire -> on_expired -> re-arm
+                    # sequence, not just the callback itself, so a
+                    # `cancel_if_idle`/in-flight check for this exact room
+                    # can't observe a gap where the old deadline is gone but
+                    # the re-armed one hasn't landed yet.
+                    with self._condition:
+                        self._firing_room_id = fired_room_id
                     try:
-                        if self.expire(fired_room_id):
-                            self.on_expired(fired_room_id)
-                    except Exception:
-                        # A single bad callback must not permanently kill the
-                        # one shared worker for every other room; surface it
-                        # (no logging framework in this codebase) and keep going.
-                        import traceback
-                        with self._condition:
-                            self._callback_errors_total += 1
-                        traceback.print_exc()
-                    try:
-                        self.arm(fired_room_id)
-                    except Exception:
-                        import traceback
-                        with self._condition:
-                            self._callback_errors_total += 1
-                        traceback.print_exc()
+                        try:
+                            if self.expire(fired_room_id):
+                                self.on_expired(fired_room_id)
+                        except Exception:
+                            # A single bad callback must not permanently kill the
+                            # one shared worker for every other room; surface it
+                            # (no logging framework in this codebase) and keep going.
+                            import traceback
+                            with self._condition:
+                                self._callback_errors_total += 1
+                            traceback.print_exc()
+                        try:
+                            self.arm(fired_room_id)
+                        except Exception:
+                            import traceback
+                            with self._condition:
+                                self._callback_errors_total += 1
+                            traceback.print_exc()
                     finally:
                         with self._condition:
-                            self._callbacks_inflight -= 1
+                            self._firing_room_id = None
                             self._condition.notify_all()
         finally:
             with self._condition:

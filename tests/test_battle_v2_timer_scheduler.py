@@ -70,11 +70,13 @@ def test_scheduler_reports_callback_inflight_after_deadline_is_removed(blocked_s
     try:
         assert started.wait(timeout=5)
         assert scheduler.active_task_count() == 0
-        assert scheduler.callbacks_inflight_count() == 1
+        assert scheduler.in_flight_count_for_room("room") == 1
+        assert scheduler.in_flight_total() == 1
     finally:
         release.set()
 
-    assert _wait_until(lambda: scheduler.callbacks_inflight_count() == 0)
+    assert _wait_until(lambda: scheduler.in_flight_total() == 0)
+    assert scheduler.in_flight_count_for_room("room") == 0
     assert scheduler.callback_errors_total == 0
     scheduler.shutdown()
 
@@ -106,11 +108,18 @@ def test_rearm_failure_is_counted_and_does_not_kill_shared_worker():
 
     assert _wait_until(lambda: expired == ["bad-room", "next-room"])
     assert scheduler.callback_errors_total == 1
-    assert _wait_until(lambda: scheduler.callbacks_inflight_count() == 0)
+    assert _wait_until(lambda: scheduler.in_flight_total() == 0)
     scheduler.shutdown()
 
 
-def test_cleanup_cancel_defers_while_a_scheduler_callback_can_publish():
+def test_cancel_if_idle_defers_only_the_firing_room_not_an_unrelated_one():
+    """`cancel_if_idle` checks this room specifically, not a global flag.
+
+    An unrelated room's callback firing must never defer cleanup of a
+    different, genuinely idle room -- that's the exact anti-pattern a
+    single global in-flight counter would introduce.
+    """
+
     deadlines = {
         "firing-room": time.monotonic(),
         "cleanup-room": time.monotonic() + 5.0,
@@ -130,14 +139,18 @@ def test_cleanup_cancel_defers_while_a_scheduler_callback_can_publish():
     scheduler.arm("cleanup-room")
     try:
         assert callback_started.wait(timeout=5)
-        assert scheduler.cancel_if_idle("cleanup-room") is False
-        assert scheduler.active_task_count() == 1
+        # The unrelated, genuinely idle room is never blocked...
+        assert scheduler.cancel_if_idle("cleanup-room") is True
+        assert scheduler.in_flight_count_for_room("cleanup-room") == 0
+        # ...but the room whose own callback is running is deferred.
+        assert scheduler.cancel_if_idle("firing-room") is False
+        assert scheduler.in_flight_count_for_room("firing-room") == 1
+        assert scheduler.in_flight_total() == 1
     finally:
         release_callback.set()
 
-    assert _wait_until(lambda: scheduler.callbacks_inflight_count() == 0)
-    assert scheduler.cancel_if_idle("cleanup-room") is True
-    assert scheduler.active_task_count() == 0
+    assert _wait_until(lambda: scheduler.in_flight_total() == 0)
+    assert scheduler.cancel_if_idle("firing-room") is True
     scheduler.shutdown()
 
 

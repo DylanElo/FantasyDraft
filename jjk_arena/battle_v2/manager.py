@@ -823,6 +823,13 @@ class BattleV2Manager:
         self.room_first_creation_progress: dict[str, dict[str, dict[str, Any]]] = {}
         self.command_receipts: dict[str, dict[str, OrderedDict[str, str]]] = {}
         self.room_locks: dict[str, RLock] = {}
+        # Per-room in-flight command handler accounting for the safe-stop
+        # drain gate. `_in_flight_lock` only ever guards this small counter
+        # dict -- it is never held across a command's own room lock or any
+        # gameplay mutation, so querying it can never block on unrelated
+        # room traffic.
+        self._in_flight_commands: Counter[str] = Counter()
+        self._in_flight_lock = RLock()
         self.room_replays: dict[str, dict[str, Any]] = {}
         self.capture_replays = capture_replays
         self.timer_policy = timer_policy or BattleTimerPolicy()
@@ -831,45 +838,56 @@ class BattleV2Manager:
         # published only after the enclosing mutation commits, never from a
         # broadcast path. Callers may use it for durable analytics/settlement.
         self.on_match_finished: Callable[[str], None] | None = None
-        self._finished_callback_context = local()
-
-    @staticmethod
-    def _invoke_finished_callback(callback: Callable[[str], None], room_id: str) -> None:
-        try:
-            callback(room_id)
-        except Exception:
-            pass
-
-    def _dispatch_finished_callback(self, room_id: str) -> None:
-        callback = self.on_match_finished
-        if callback is None:
-            return
-        pending = getattr(self._finished_callback_context, "pending", None)
-        if pending is not None:
-            pending.append((callback, room_id))
-            return
-        self._invoke_finished_callback(callback, room_id)
+        # `_finish_match` queues its room id here instead of firing
+        # `on_match_finished` immediately whenever it runs inside a
+        # `_defer_finished_callbacks()` block (a command transaction, or a
+        # background expiry pass such as `expire_disconnects`/
+        # `_expire_phase_if_needed`, both of which keep mutating state after
+        # a finish before returning). The callback only publishes once the
+        # outermost such block returns without raising; an exception
+        # anywhere inside discards the queue instead of firing a callback
+        # for a finish that never cleanly committed.
+        #
+        # Thread-local, not a plain instance attribute: different rooms are
+        # only serialized by their own per-room `room_locks` entry, so two
+        # rooms can finish concurrently on different threads. A shared
+        # instance attribute here would let one room's queue clobber
+        # another's; `threading.local` gives each thread its own queue.
+        self._finished_callback_state = local()
 
     @contextmanager
     def _defer_finished_callbacks(self):
-        """Publish terminal hooks only after the enclosing mutation commits."""
+        """Queue `on_match_finished` calls until this block returns cleanly.
 
-        previous_pending = getattr(self._finished_callback_context, "pending", None)
-        owns_pending = previous_pending is None
-        pending = [] if owns_pending else previous_pending
-        self._finished_callback_context.pending = pending
-        succeeded = False
+        Nestable and thread-local: an inner call (e.g. `expire_phase_if_needed`
+        invoked from inside a command transaction) reuses the outer thread's
+        queue instead of publishing early. Only the outermost block on a given
+        thread actually publishes, and only when every nested block --
+        including the outermost one -- completed without raising.
+        """
+
+        outer_pending = getattr(self._finished_callback_state, "pending", None)
+        owns_queue = outer_pending is None
+        pending = [] if owns_queue else outer_pending
+        self._finished_callback_state.pending = pending
+        completed = False
         try:
             yield
-            succeeded = True
+            completed = True
         finally:
-            if previous_pending is None:
-                del self._finished_callback_context.pending
-            else:
-                self._finished_callback_context.pending = previous_pending
-            if succeeded and owns_pending:
-                for callback, room_id in pending:
-                    self._invoke_finished_callback(callback, room_id)
+            if owns_queue:
+                del self._finished_callback_state.pending
+            if owns_queue and completed:
+                for room_id in pending:
+                    self._publish_match_finished(room_id)
+
+    def _publish_match_finished(self, room_id: str) -> None:
+        if self.on_match_finished is None:
+            return
+        try:
+            self.on_match_finished(room_id)
+        except Exception:
+            pass
 
     def start_classic_match(
         self,
@@ -1005,15 +1023,49 @@ class BattleV2Manager:
     ) -> bool:
         """Execute one versioned command atomically; return True for a safe retry."""
 
-        with self.room_locks.setdefault(room_id, RLock()):
-            return self._execute_player_command(
-                room_id,
-                player_id,
-                command,
-                state_revision,
-                client_action_nonce,
-                payload,
-            )
+        self._enter_in_flight_command(room_id)
+        try:
+            with self.room_locks.setdefault(room_id, RLock()):
+                return self._execute_player_command(
+                    room_id,
+                    player_id,
+                    command,
+                    state_revision,
+                    client_action_nonce,
+                    payload,
+                )
+        finally:
+            self._exit_in_flight_command(room_id)
+
+    def _enter_in_flight_command(self, room_id: str) -> None:
+        with self._in_flight_lock:
+            self._in_flight_commands[room_id] += 1
+
+    def _exit_in_flight_command(self, room_id: str) -> None:
+        with self._in_flight_lock:
+            remaining = self._in_flight_commands[room_id] - 1
+            if remaining <= 0:
+                self._in_flight_commands.pop(room_id, None)
+            else:
+                self._in_flight_commands[room_id] = remaining
+
+    def in_flight_commands_for_room(self, room_id: str) -> int:
+        """Command handlers currently executing for exactly this room.
+
+        Deliberately per-room: normal cleanup of one idle/finished room must
+        never be blocked by unrelated in-flight work in a different active
+        match. Only the whole-process safe-stop gate needs the aggregate
+        (see `in_flight_command_total`).
+        """
+
+        with self._in_flight_lock:
+            return self._in_flight_commands.get(room_id, 0)
+
+    def in_flight_command_total(self) -> int:
+        """Aggregate in-flight command handlers across every room, for the safe-stop gate."""
+
+        with self._in_flight_lock:
+            return sum(self._in_flight_commands.values())
 
     def _execute_player_command(
         self,
@@ -1061,12 +1113,24 @@ class BattleV2Manager:
 
         state_snapshot = deepcopy(state)
         progress_snapshot = deepcopy(self.room_first_creation_progress.get(room_id))
-        replay_existed = room_id in self.room_replays
-        replay_snapshot = deepcopy(self.room_replays.get(room_id))
         rng = self.rngs.get(room_id)
         rng_snapshot = rng.getstate() if rng is not None else None
-        with self._defer_finished_callbacks():
-            try:
+        replay_snapshot = (
+            deepcopy(self.room_replays[room_id])
+            if self.capture_replays and room_id in self.room_replays
+            else None
+        )
+        receipts_snapshot = OrderedDict(player_receipts)
+        # `state_revision`, the replay transcript, and the nonce receipt are
+        # part of the same rollbackable command transaction as the gameplay
+        # mutation itself: any failure below -- including a failure while
+        # computing the authoritative hash, appending to the replay
+        # transcript, or recording the receipt -- must restore state,
+        # first-creation progress, RNG, replay, and receipts exactly as if
+        # the command never ran, and must not leave a queued terminal
+        # callback behind (see `_defer_finished_callbacks`).
+        try:
+            with self._defer_finished_callbacks():
                 if command == "submit_plan":
                     self.submit_plan(room_id, player_id, list(payload.get("actions", [])))
                 elif command == "update_queue":
@@ -1096,47 +1160,72 @@ class BattleV2Manager:
                     self.take_cpu_turn(room_id, player_id)
                 else:
                     raise BattleV2Error(f"unknown battle command: {command}")
-            except Exception as exc:
-                self.rooms[room_id] = state_snapshot
-                if progress_snapshot is None:
-                    self.room_first_creation_progress.pop(room_id, None)
-                else:
-                    self.room_first_creation_progress[room_id] = progress_snapshot
-                if replay_existed:
-                    self.room_replays[room_id] = replay_snapshot
-                else:
-                    self.room_replays.pop(room_id, None)
-                if rng is not None and rng_snapshot is not None:
-                    rng.setstate(rng_snapshot)
-                if isinstance(exc, BattleV2Error):
-                    raise
-                if isinstance(exc, (IndexError, KeyError, TypeError, ValueError)):
-                    raise BattleV2Error("invalid command payload") from exc
-                raise
 
-            self.rooms[room_id].state_revision += 1
-            if self.capture_replays and room_id in self.room_replays:
-                from .replay import authoritative_state_hash
-                state_hash = authoritative_state_hash(self.rooms[room_id])
-                self.room_replays[room_id]["commands"].append({
-                    "player_id": player_id,
-                    "command": command,
-                    "state_revision": state_revision,
-                    "client_action_nonce": nonce,
-                    "payload": deepcopy(payload),
-                    "expected_state_hash": state_hash,
-                })
-                self.room_replays[room_id]["events"].append({
-                    "type": "command", "logical_time": self.rooms[room_id].logical_time,
-                    "player_id": player_id, "command": command, "state_revision": state_revision,
-                    "client_action_nonce": nonce, "payload": deepcopy(payload), "expected_state_hash": state_hash,
-                })
-                self.room_replays[room_id]["final_state_hash"] = state_hash
-            player_receipts[nonce] = fingerprint
-            player_receipts.move_to_end(nonce)
-            while len(player_receipts) > 128:
-                player_receipts.popitem(last=False)
-            return False
+                self.rooms[room_id].state_revision += 1
+                if self.capture_replays and room_id in self.room_replays:
+                    state_hash = self._compute_authoritative_state_hash(self.rooms[room_id])
+                    self._append_replay_transcript(
+                        room_id, player_id, command, state_revision, nonce, payload, state_hash
+                    )
+                self._record_command_receipt(player_receipts, nonce, fingerprint)
+        except Exception as exc:
+            self.rooms[room_id] = state_snapshot
+            if progress_snapshot is None:
+                self.room_first_creation_progress.pop(room_id, None)
+            else:
+                self.room_first_creation_progress[room_id] = progress_snapshot
+            if rng is not None and rng_snapshot is not None:
+                rng.setstate(rng_snapshot)
+            if replay_snapshot is not None:
+                self.room_replays[room_id] = replay_snapshot
+            player_receipts.clear()
+            player_receipts.update(receipts_snapshot)
+            if isinstance(exc, BattleV2Error):
+                raise
+            if isinstance(exc, (IndexError, KeyError, TypeError, ValueError)):
+                raise BattleV2Error("invalid command payload") from exc
+            raise
+        return False
+
+    @staticmethod
+    def _compute_authoritative_state_hash(state: BattleState) -> str:
+        from .replay import authoritative_state_hash
+        return authoritative_state_hash(state)
+
+    def _append_replay_transcript(
+        self,
+        room_id: str,
+        player_id: str,
+        command: str,
+        state_revision: int,
+        nonce: str,
+        payload: dict[str, Any],
+        state_hash: str,
+    ) -> None:
+        replay = self.room_replays[room_id]
+        replay["commands"].append({
+            "player_id": player_id,
+            "command": command,
+            "state_revision": state_revision,
+            "client_action_nonce": nonce,
+            "payload": deepcopy(payload),
+            "expected_state_hash": state_hash,
+        })
+        replay["events"].append({
+            "type": "command", "logical_time": self.rooms[room_id].logical_time,
+            "player_id": player_id, "command": command, "state_revision": state_revision,
+            "client_action_nonce": nonce, "payload": deepcopy(payload), "expected_state_hash": state_hash,
+        })
+        replay["final_state_hash"] = state_hash
+
+    @staticmethod
+    def _record_command_receipt(
+        player_receipts: "OrderedDict[str, str]", nonce: str, fingerprint: str
+    ) -> None:
+        player_receipts[nonce] = fingerprint
+        player_receipts.move_to_end(nonce)
+        while len(player_receipts) > 128:
+            player_receipts.popitem(last=False)
 
     def _record_lifecycle(self, room_id: str, event_type: str, payload: dict[str, Any]) -> None:
         if self.capture_replays and room_id in self.room_replays:
@@ -1171,7 +1260,18 @@ class BattleV2Manager:
             {"winner_id": winner_id, "result_type": result_type, "reason": reason},
         ))
         if state.room_id is not None:
-            self._dispatch_finished_callback(state.room_id)
+            pending = getattr(self._finished_callback_state, "pending", None)
+            if pending is not None:
+                # A `_defer_finished_callbacks()` block is open (a command
+                # transaction, or a background expiry pass): queue the room
+                # id and let that block's own success path publish it only
+                # once it returns without raising. If it instead raises --
+                # a rollback, or a later mutation inside the same expiry
+                # pass failing -- the queued id is discarded and this hook
+                # never fires for a finish that never cleanly completed.
+                pending.append(state.room_id)
+            else:
+                self._publish_match_finished(state.room_id)
 
     def _finish_by_tiebreak(self, state: BattleState, reason: str) -> None:
         scores = {}
@@ -1226,6 +1326,9 @@ class BattleV2Manager:
 
     def expire_disconnects(self, room_id: str) -> bool:
         with self.room_locks.setdefault(room_id, RLock()):
+            # `_finish_match` below can be followed by further mutation
+            # (`_record_lifecycle`); deferring keeps the terminal callback
+            # from firing before this whole pass finishes cleanly.
             with self._defer_finished_callbacks():
                 state = self.get_state(room_id)
                 if state.phase == BattlePhase.FINISHED:
@@ -1728,7 +1831,18 @@ class BattleV2Manager:
         return self.serialize_for_player(room_id, player_id)
 
     def expire_phase_if_needed(self, room_id: str) -> bool:
-        """Apply the authoritative timeout transition once a deadline passes."""
+        """Apply the authoritative timeout transition once a deadline passes.
+
+        `_expire_phase_if_needed` can call `_finish_match` partway through
+        and then keep mutating state (event log, turn completion, progress,
+        next-turn energy, re-arming the phase timer) with no rollback of its
+        own. Deferring here means a later failure in that same pass simply
+        drops the terminal callback instead of firing it for a finish that
+        never cleanly completed. When this call nests inside an
+        already-open `_defer_finished_callbacks()` block (e.g. invoked from
+        inside `_execute_player_command`'s own transaction), it reuses that
+        outer queue instead of publishing early.
+        """
 
         with self.room_locks.setdefault(room_id, RLock()):
             with self._defer_finished_callbacks():

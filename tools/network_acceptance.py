@@ -907,6 +907,31 @@ def run_http_load(
     }
 
 
+def run_safe_stop_gate_flow(base_url: str) -> dict[str, Any]:
+    """Confirm the safe-stop drain gate reports ready once the server is idle.
+
+    Runs last, after every other scenario's matches have finished and
+    disconnected, so this is a real end-to-end check that
+    `/ops/safe_stop` (docs/production_runbook.md, "Safe-Stop Drain Gate")
+    actually reaches `safe_to_stop: true` -- not just that the pure decision
+    function is correct in isolation.
+    """
+
+    headers = {"Authorization": f"Bearer {NETWORK_ACCEPTANCE_OPS_TOKEN}"}
+    deadline = time.monotonic() + DEFAULT_EVENT_TIMEOUT
+    last_payload: dict[str, Any] | None = None
+    while time.monotonic() < deadline:
+        response = requests.get(f"{base_url}/ops/safe_stop", headers=headers, timeout=DEFAULT_EVENT_TIMEOUT)
+        if response.status_code == 200:
+            last_payload = response.json()
+            if last_payload.get("safe_to_stop") is True and not last_payload.get("blockers"):
+                return {"status_code": response.status_code, **last_payload}
+        else:
+            last_payload = {"status_code": response.status_code, **response.json()}
+        time.sleep(0.1)
+    raise AcceptanceError(f"/ops/safe_stop never reached safe_to_stop=true: {last_payload!r}")
+
+
 def reserve_local_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
         listener.bind(("127.0.0.1", 0))
@@ -1074,7 +1099,7 @@ def run_network_acceptance(
                     start_new_session=os.name != "nt",
                 )
                 wait_until_ready(base_url, process)
-                return run_acceptance_against(
+                report = run_acceptance_against(
                     base_url,
                     planning_seconds=planning_seconds,
                     queue_review_seconds=queue_review_seconds,
@@ -1082,6 +1107,14 @@ def run_network_acceptance(
                     drain_at_end=True,
                     require_drained=True,
                 )
+                # Run last: every scenario's matches, and the drain-at-end
+                # activation above, have already completed, so this proves
+                # the safe-stop gate reaches a real go decision once the
+                # server is genuinely idle -- via a different endpoint than
+                # the raw /ops/runtime field checks `run_acceptance_against`
+                # already performed.
+                report["safe_stop"] = run_safe_stop_gate_flow(base_url)
+                return report
             except Exception as exc:  # Preserve the server log before TemporaryDirectory cleanup.
                 caught = exc
             finally:

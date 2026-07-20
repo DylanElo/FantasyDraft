@@ -9,7 +9,6 @@ import sys
 import time
 import uuid
 from collections import defaultdict, deque
-from functools import wraps
 from threading import RLock
 from urllib.parse import urlsplit
 
@@ -30,6 +29,7 @@ from jjk_arena.battle_v2.first_creation_profile import (
 from jjk_arena.battle_v2.manager import BattleV2Error, BattleV2Manager, battle_v2_enabled, skill_catalog
 from jjk_arena.battle_v2.starter_roster import FIRST_CREATION_PRESETS, first_creation_payload
 from jjk_arena.battle_v2.sessions import BattleSessionRegistry
+from jjk_arena.battle_v2.safe_stop import evaluate_safe_stop
 from jjk_arena.battle_v2.timer_scheduler import PhaseTimerScheduler
 from jjk_arena.battle_v2.runtime_store import SQLiteRuntimeStore
 
@@ -137,7 +137,6 @@ mission_match_finished_at: dict[str, float] = {}
 operational_counters = defaultdict(int)
 last_runtime_prune_at = 0.0
 accepting_new_matches = True
-battle_command_handlers_inflight = 0
 CPU_V2_PLAYER_ID = "__cpu_v2__"
 
 
@@ -481,7 +480,10 @@ def runtime_status():
         waiting_lobbies = len(v2_pvp_lobbies)
         snapshot_retry_rooms = len(mission_snapshot_retry_rooms)
         accepting_matches = accepting_new_matches
-        command_handlers_inflight = battle_command_handlers_inflight
+    # Per-room aggregates: never a single global in-flight flag, so an
+    # unrelated busy room can never make this snapshot (or the safe-stop
+    # gate) look busier than it actually is for a specific room.
+    command_handlers_inflight = battle_v2_manager.in_flight_command_total()
     # Fallback restoration publishes into SQLite before removing the sidecar;
     # settlement publication writes analytics before marking a row settled.
     # Preserve that order while reading so concurrent maintenance cannot appear
@@ -495,7 +497,7 @@ def runtime_status():
             "live_rooms": live_rooms,
             "finished_rooms": finished_rooms,
             "scheduler_tasks": battle_v2_timer_scheduler.active_task_count(),
-            "scheduler_callbacks_inflight": battle_v2_timer_scheduler.callbacks_inflight_count(),
+            "scheduler_callbacks_inflight": battle_v2_timer_scheduler.in_flight_total(),
             "scheduler_callback_errors_total": battle_v2_timer_scheduler.callback_errors_total,
             "waiting_lobbies": waiting_lobbies,
             "battle_command_handlers_inflight": command_handlers_inflight,
@@ -514,6 +516,25 @@ def runtime_status():
             "mission_settlement_claimed_total": runtime_store.mission_settlement_claimed_total,
         }
     )
+
+
+@app.route("/ops/safe_stop")
+def safe_stop():
+    """Go/no-go for stopping the one authoritative worker (see production_runbook.md).
+
+    Hidden the same way as `/ops/runtime`: this reports whether it is safe to
+    drain, never room/player data, but still requires the ops token so an
+    unauthenticated caller cannot use it to fingerprint operational state.
+    """
+
+    _require_ops_token()
+    decision = evaluate_safe_stop(
+        analytics_outbox_dropped_total=runtime_store.outbox_dropped_total,
+        mission_settlement_counts=runtime_store.mission_settlement_counts(),
+        in_flight_commands=battle_v2_manager.in_flight_command_total(),
+        in_flight_scheduler_callbacks=battle_v2_timer_scheduler.in_flight_total(),
+    )
+    return jsonify(decision.as_dict()), 200 if decision.ready else 503
 
 
 def clean_room_id(value) -> str:
@@ -939,23 +960,6 @@ def execute_v2_player_command(
     return replayed
 
 
-def track_battle_command_handler(handler):
-    """Keep planned stop conservative through terminal result emission."""
-
-    @wraps(handler)
-    def tracked(*args, **kwargs):
-        global battle_command_handlers_inflight
-        with lifecycle_lock:
-            battle_command_handlers_inflight += 1
-        try:
-            return handler(*args, **kwargs)
-        finally:
-            with lifecycle_lock:
-                battle_command_handlers_inflight -= 1
-
-    return tracked
-
-
 def active_v2_context(data=None, *, require_membership: bool = True):
     if not battle_v2_enabled():
         emit("battle_v2_error", {"message": "Battle v2 is disabled. Set JJK_BATTLE_SYSTEM=v2."})
@@ -1219,9 +1223,11 @@ def remove_battle_v2_room(room_id: str) -> bool:
     # (lifecycle -> room) so cleanup cannot erase part of that configuration
     # midway through the handoff.
     with lifecycle_lock:
-        # Command handlers retain this count through their terminal result
-        # emission. Defer pruning until the client-visible handoff is done.
-        if battle_command_handlers_inflight:
+        # Per-room, not a global flag: an unrelated room's in-flight command
+        # must never defer this room's cleanup. Scoped to command execution
+        # itself (see `BattleV2Manager.in_flight_commands_for_room`), not the
+        # client-visible broadcast that follows it in the socket handler.
+        if battle_v2_manager.in_flight_commands_for_room(room_id):
             return False
         lock = battle_v2_manager.room_locks.get(room_id)
         if lock is None:
@@ -1565,23 +1571,33 @@ def on_battle_v2_resume(data=None):
     if state is None or player_id not in state.players or player_id == CPU_V2_PLAYER_ID:
         emit("battle_v2_resume_rejected", {"message": "Battle session could not be resumed."})
         return
-    # Consume and rotate the credential before changing connection state or
-    # admitting this socket to either viewer-private room. A separate
-    # verify-then-rotate sequence lets two concurrent replays both pass the
-    # read-only verification; the loser could then remain subscribed to the
-    # private room and receive the winner's newly rotated token.
-    grant = battle_v2_sessions.rotate(room_id, player_id, token)
-    if grant is None:
+    # Reserve the credential before attempting the authoritative reconnect,
+    # but do not rotate it yet. Reserving blocks a second concurrent replay
+    # from also passing verification (atomic protection against concurrent
+    # resume), while leaving the token itself untouched until the reconnect
+    # is proven to succeed. A premature resume -- the original socket is
+    # still connected, so `reconnect_player` rejects it -- or any other
+    # failure aborts the reservation instead of rotating, so the current
+    # token remains valid for a later, real resume.
+    if not battle_v2_sessions.reserve(room_id, player_id, token):
         emit("battle_v2_resume_rejected", {"message": "Battle session could not be resumed."})
         return
     try:
         battle_v2_manager.reconnect_player(room_id, player_id)
         battle_v2_manager.serialize_for_player(room_id, player_id)
-        join_room(match_room(room_id))
-        join_room(player_room(player_id))
     except (BattleV2Error, KeyError, RuntimeError):
+        battle_v2_sessions.abort(room_id, player_id)
         emit("battle_v2_resume_rejected", {"message": "Battle session could not be resumed."})
         return
+    # Only commit (rotate) the credential once reconnect and serialization
+    # are both proven to succeed, then admit this socket to the private
+    # rooms as the sole holder of the new token.
+    grant = battle_v2_sessions.commit(room_id, player_id, token)
+    if grant is None:
+        emit("battle_v2_resume_rejected", {"message": "Battle session could not be resumed."})
+        return
+    join_room(match_room(room_id))
+    join_room(player_room(player_id))
     with lifecycle_lock:
         active_match_by_player[player_id] = room_id
         waiting_code_by_player.pop(player_id, None)
@@ -1698,7 +1714,6 @@ def on_battle_v2_rematch(data=None):
 
 
 @socketio.on("battle_v2_submit_plan")
-@track_battle_command_handler
 def on_battle_v2_submit_plan(data=None):
     if not allow_event("battle_v2_submit_plan", limit=45, window_seconds=5):
         return
@@ -1721,7 +1736,6 @@ def on_battle_v2_submit_plan(data=None):
 
 
 @socketio.on("battle_v2_update_queue")
-@track_battle_command_handler
 def on_battle_v2_update_queue(data=None):
     if not allow_event("battle_v2_update_queue", limit=45, window_seconds=5):
         return
@@ -1747,7 +1761,6 @@ def on_battle_v2_update_queue(data=None):
 
 
 @socketio.on("battle_v2_confirm_queue")
-@track_battle_command_handler
 def on_battle_v2_confirm_queue(data=None):
     if not allow_event("battle_v2_confirm_queue", limit=45, window_seconds=5):
         return
@@ -1766,7 +1779,6 @@ def on_battle_v2_confirm_queue(data=None):
 
 
 @socketio.on("battle_v2_cancel_queue")
-@track_battle_command_handler
 def on_battle_v2_cancel_queue(data=None):
     if not allow_event("battle_v2_cancel_queue", limit=45, window_seconds=5):
         return
@@ -1783,7 +1795,6 @@ def on_battle_v2_cancel_queue(data=None):
 
 
 @socketio.on("battle_v2_convert_energy")
-@track_battle_command_handler
 def on_battle_v2_convert_energy(data=None):
     if not allow_event("battle_v2_convert_energy", limit=20, window_seconds=5):
         return
@@ -1809,7 +1820,6 @@ def on_battle_v2_convert_energy(data=None):
 
 
 @socketio.on("battle_v2_end_turn")
-@track_battle_command_handler
 def on_battle_v2_end_turn(data=None):
     if not allow_event("battle_v2_end_turn", limit=45, window_seconds=5):
         return
@@ -1828,7 +1838,6 @@ def on_battle_v2_end_turn(data=None):
 
 
 @socketio.on("battle_v2_surrender")
-@track_battle_command_handler
 def on_battle_v2_surrender(data=None):
     if not allow_event("battle_v2_surrender"):
         return

@@ -2913,3 +2913,62 @@ Pushed state:
 
 - `main` was pushed to `origin/main` via the PR #60 merge; no other branches
   remain on the remote.
+
+## 2026-07-20 - Release-readiness operations and exact-image rehearsal
+
+**Scope and locked invariants.** This focused infrastructure pass does not add
+characters, alter any kit/combat number, add progression, or change Phaser
+presentation. Battle v2 remains the only gameplay authority; the process-local
+runtime remains one Gunicorn `gthread` worker; hidden information remains
+viewer-private; First Creation remains the locked 19 starters. The work covers
+production configuration, health/drain observability, terminal durable handoff,
+backup/restore, real-network acceptance, and failure/recovery evidence.
+
+**Implementation.** `gunicorn.conf.py` now fails closed on unsupported effective
+topology. Production readiness verifies strong distinct secrets, explicit HTTPS
+origins, schema/storage health, and the single-authority configuration.
+Protected operations expose aggregate state and gate new admission during
+drain. SQLite tooling backs up, verifies, and collision-safely restores schema
+4/5/6 databases plus the settlement sidecar and publishes a completion marker
+last. The external acceptance harness drives real WebSocket CPU/PvP/resume and
+timeout flows plus a bounded HTTP correctness ramp.
+
+An independent concurrency audit caught and closed terminal stop-safety races
+before the final image was cut. Match-finished work now publishes after command
+commit and rolls replay state back with authoritative state. Derived persistence
+markers keep analytics, First Creation snapshots, and opted-in replay archival
+observable and retryable. Scheduler callbacks, command result work, analytics
+flush batches, and sidecar fallback rows are counted while in flight. Cleanup
+serializes with rematch metadata/result delivery, and even a corrupt or
+zero-byte fallback sidecar fails closed.
+
+**Final automated evidence.** Runtime source commit
+`83de0cfef48574886d1f1ce69e8a1ddef321fab5` passed full pytest normally and in
+reverse file order with **673 passed, 2 skipped** in both. Compileall and diff
+checks passed; zero JavaScript files changed. Fresh-process 1,000-match soaks
+passed with zero softlocks/final rooms: seed 1 in 85.12 seconds at 83,546,112
+bytes RSS and seed 2 in 70.19 seconds at 82,112,512 bytes RSS; both shut the
+scheduler worker down to zero.
+
+**Exact candidate and recovery evidence.** Local Linux/amd64 image
+`jjk-arena:release-readiness-83de0cf` has revision label `83de0cf...` and local
+digest `sha256:77319d5b10568d91d30429cf4a4a44ca4dc5be564c66a190cfa700045aa14d36`.
+Production network acceptance passed CPU/PvP/token flows, both observed
+60-second timeouts, 1,000 requests at concurrency 32 with zero errors, and every
+modern drain gate at zero. The 73,728-byte schema-6 backup passed integrity
+verification with SHA-256 `9290c84c...`; its restore ran another CPU flow,
+extended match analytics 4 to 5, and drained cleanly. Unsafe launch overrides
+failed, placeholder/debug configuration returned readiness 503 while debug
+routes stayed hidden, and crash/restart proved the documented loss of
+process-local battle/timer/resume state with durable SQLite survival.
+
+**Boundaries and delivery state.** The `origin/main` source image at `05a6069`
+read the candidate schema-6 restore and ran the CPU/analytics flow, but has no
+`/ops/drain` or candidate-era stop counters; this is compatibility evidence,
+not immutable or operational rollback readiness. Registry pull, HTTPS/WSS and
+browser/device validation, populated-data/sidecar restore, production ACL/DACL,
+prior deployed-digest rollback, capacity/SLO, accessibility/human balance,
+privacy, legal/IP, and staffed operations remain open. Sanitized hashes and the
+full boundary are in `docs/release_candidate_rehearsal_2026-07-20.md`. Work is
+on `codex/release-readiness-rehearsal`; at the time of this record the final
+documentation commit, push, and draft PR were still pending.

@@ -2871,6 +2871,7 @@ both stayed below the 419,430,400-byte ceiling and shut the scheduler worker
 down to zero. The focused final interaction/accessibility set passed 43 tests,
 the final simulation/report set passed 16, all 16 changed JavaScript files
 passed `node --check`, `python -m compileall -q jjk_arena web/app.py` passed,
-and `git diff --check` passed. Delivery is awaiting the final commit, push, and
-draft pull request against `main`; this paragraph will be updated with their
-identifiers after publication.
+and `git diff --check` passed. Implementation commit `ff9c25c` was pushed on
+`codex/audit-mobile-ui-closure`; mergeable draft PR
+[#60](https://github.com/DylanElo/FantasyDraft/pull/60) is open against `main`.
+GitHub's `quality` check was in progress when this delivery record was written.

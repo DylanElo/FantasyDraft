@@ -822,6 +822,13 @@ class BattleV2Manager:
         self.room_first_creation_progress: dict[str, dict[str, dict[str, Any]]] = {}
         self.command_receipts: dict[str, dict[str, OrderedDict[str, str]]] = {}
         self.room_locks: dict[str, RLock] = {}
+        # Per-room in-flight command handler accounting for the safe-stop
+        # drain gate. `_in_flight_lock` only ever guards this small counter
+        # dict -- it is never held across a command's own room lock or any
+        # gameplay mutation, so querying it can never block on unrelated
+        # room traffic.
+        self._in_flight_commands: Counter[str] = Counter()
+        self._in_flight_lock = RLock()
         self.room_replays: dict[str, dict[str, Any]] = {}
         self.capture_replays = capture_replays
         self.timer_policy = timer_policy or BattleTimerPolicy()
@@ -831,6 +838,15 @@ class BattleV2Manager:
         # Lets callers (e.g. web/app.py) record match-finished analytics at
         # the true source of truth instead of a viewer-serialization side effect.
         self.on_match_finished: Callable[[str], None] | None = None
+        # While a command transaction is in flight, `_finish_match` queues the
+        # room id here instead of firing `on_match_finished` immediately. The
+        # queued callbacks are only published after state_revision, the replay
+        # transcript, and the nonce receipt have all committed successfully;
+        # a rollback discards them so a terminal hook never runs for a finish
+        # that was undone. `None` means no transaction is in flight, so
+        # `_finish_match` fires the hook immediately (background paths such as
+        # disconnect-budget expiry are not wrapped in a command transaction).
+        self._deferred_match_finished: list[str] | None = None
 
     def start_classic_match(
         self,
@@ -966,15 +982,49 @@ class BattleV2Manager:
     ) -> bool:
         """Execute one versioned command atomically; return True for a safe retry."""
 
-        with self.room_locks.setdefault(room_id, RLock()):
-            return self._execute_player_command(
-                room_id,
-                player_id,
-                command,
-                state_revision,
-                client_action_nonce,
-                payload,
-            )
+        self._enter_in_flight_command(room_id)
+        try:
+            with self.room_locks.setdefault(room_id, RLock()):
+                return self._execute_player_command(
+                    room_id,
+                    player_id,
+                    command,
+                    state_revision,
+                    client_action_nonce,
+                    payload,
+                )
+        finally:
+            self._exit_in_flight_command(room_id)
+
+    def _enter_in_flight_command(self, room_id: str) -> None:
+        with self._in_flight_lock:
+            self._in_flight_commands[room_id] += 1
+
+    def _exit_in_flight_command(self, room_id: str) -> None:
+        with self._in_flight_lock:
+            remaining = self._in_flight_commands[room_id] - 1
+            if remaining <= 0:
+                self._in_flight_commands.pop(room_id, None)
+            else:
+                self._in_flight_commands[room_id] = remaining
+
+    def in_flight_commands_for_room(self, room_id: str) -> int:
+        """Command handlers currently executing for exactly this room.
+
+        Deliberately per-room: normal cleanup of one idle/finished room must
+        never be blocked by unrelated in-flight work in a different active
+        match. Only the whole-process safe-stop gate needs the aggregate
+        (see `in_flight_command_total`).
+        """
+
+        with self._in_flight_lock:
+            return self._in_flight_commands.get(room_id, 0)
+
+    def in_flight_command_total(self) -> int:
+        """Aggregate in-flight command handlers across every room, for the safe-stop gate."""
+
+        with self._in_flight_lock:
+            return sum(self._in_flight_commands.values())
 
     def _execute_player_command(
         self,
@@ -1024,6 +1074,23 @@ class BattleV2Manager:
         progress_snapshot = deepcopy(self.room_first_creation_progress.get(room_id))
         rng = self.rngs.get(room_id)
         rng_snapshot = rng.getstate() if rng is not None else None
+        replay_snapshot = (
+            deepcopy(self.room_replays[room_id])
+            if self.capture_replays and room_id in self.room_replays
+            else None
+        )
+        receipts_snapshot = OrderedDict(player_receipts)
+        # `state_revision`, the replay transcript, and the nonce receipt are
+        # part of the same rollbackable command transaction as the gameplay
+        # mutation itself: any failure below -- including a failure while
+        # computing the authoritative hash, appending to the replay
+        # transcript, or recording the receipt -- must restore state,
+        # first-creation progress, RNG, replay, and receipts exactly as if
+        # the command never ran, and must not leave a queued terminal
+        # callback behind.
+        previous_deferred = self._deferred_match_finished
+        deferred_finished: list[str] = []
+        self._deferred_match_finished = deferred_finished
         try:
             if command == "submit_plan":
                 self.submit_plan(room_id, player_id, list(payload.get("actions", [])))
@@ -1054,6 +1121,14 @@ class BattleV2Manager:
                 self.take_cpu_turn(room_id, player_id)
             else:
                 raise BattleV2Error(f"unknown battle command: {command}")
+
+            self.rooms[room_id].state_revision += 1
+            if self.capture_replays and room_id in self.room_replays:
+                state_hash = self._compute_authoritative_state_hash(self.rooms[room_id])
+                self._append_replay_transcript(
+                    room_id, player_id, command, state_revision, nonce, payload, state_hash
+                )
+            self._record_command_receipt(player_receipts, nonce, fingerprint)
         except Exception as exc:
             self.rooms[room_id] = state_snapshot
             if progress_snapshot is None:
@@ -1062,35 +1137,68 @@ class BattleV2Manager:
                 self.room_first_creation_progress[room_id] = progress_snapshot
             if rng is not None and rng_snapshot is not None:
                 rng.setstate(rng_snapshot)
+            if replay_snapshot is not None:
+                self.room_replays[room_id] = replay_snapshot
+            player_receipts.clear()
+            player_receipts.update(receipts_snapshot)
+            self._deferred_match_finished = previous_deferred
             if isinstance(exc, BattleV2Error):
                 raise
             if isinstance(exc, (IndexError, KeyError, TypeError, ValueError)):
                 raise BattleV2Error("invalid command payload") from exc
             raise
+        else:
+            self._deferred_match_finished = previous_deferred
+            # The transaction fully committed: state_revision, replay, and
+            # the receipt are all durable. Only now is it safe to publish
+            # any terminal callback this command's finish queued.
+            for finished_room_id in deferred_finished:
+                if self.on_match_finished is not None:
+                    try:
+                        self.on_match_finished(finished_room_id)
+                    except Exception:
+                        pass
+        return False
 
-        self.rooms[room_id].state_revision += 1
-        if self.capture_replays and room_id in self.room_replays:
-            from .replay import authoritative_state_hash
-            state_hash = authoritative_state_hash(self.rooms[room_id])
-            self.room_replays[room_id]["commands"].append({
-                "player_id": player_id,
-                "command": command,
-                "state_revision": state_revision,
-                "client_action_nonce": nonce,
-                "payload": deepcopy(payload),
-                "expected_state_hash": state_hash,
-            })
-            self.room_replays[room_id]["events"].append({
-                "type": "command", "logical_time": self.rooms[room_id].logical_time,
-                "player_id": player_id, "command": command, "state_revision": state_revision,
-                "client_action_nonce": nonce, "payload": deepcopy(payload), "expected_state_hash": state_hash,
-            })
-            self.room_replays[room_id]["final_state_hash"] = state_hash
+    @staticmethod
+    def _compute_authoritative_state_hash(state: BattleState) -> str:
+        from .replay import authoritative_state_hash
+        return authoritative_state_hash(state)
+
+    def _append_replay_transcript(
+        self,
+        room_id: str,
+        player_id: str,
+        command: str,
+        state_revision: int,
+        nonce: str,
+        payload: dict[str, Any],
+        state_hash: str,
+    ) -> None:
+        replay = self.room_replays[room_id]
+        replay["commands"].append({
+            "player_id": player_id,
+            "command": command,
+            "state_revision": state_revision,
+            "client_action_nonce": nonce,
+            "payload": deepcopy(payload),
+            "expected_state_hash": state_hash,
+        })
+        replay["events"].append({
+            "type": "command", "logical_time": self.rooms[room_id].logical_time,
+            "player_id": player_id, "command": command, "state_revision": state_revision,
+            "client_action_nonce": nonce, "payload": deepcopy(payload), "expected_state_hash": state_hash,
+        })
+        replay["final_state_hash"] = state_hash
+
+    @staticmethod
+    def _record_command_receipt(
+        player_receipts: "OrderedDict[str, str]", nonce: str, fingerprint: str
+    ) -> None:
         player_receipts[nonce] = fingerprint
         player_receipts.move_to_end(nonce)
         while len(player_receipts) > 128:
             player_receipts.popitem(last=False)
-        return False
 
     def _record_lifecycle(self, room_id: str, event_type: str, payload: dict[str, Any]) -> None:
         if self.capture_replays and room_id in self.room_replays:
@@ -1124,11 +1232,19 @@ class BattleV2Manager:
             state.turn_number,
             {"winner_id": winner_id, "result_type": result_type, "reason": reason},
         ))
-        if self.on_match_finished is not None and state.room_id is not None:
-            try:
-                self.on_match_finished(state.room_id)
-            except Exception:
-                pass
+        if state.room_id is not None:
+            if self._deferred_match_finished is not None:
+                # A command transaction is still open: queue the room id and
+                # let the transaction's own success path publish it only
+                # after state_revision/replay/receipt all commit. If the
+                # transaction instead rolls back, the queued id is discarded
+                # and this hook never fires for the undone finish.
+                self._deferred_match_finished.append(state.room_id)
+            elif self.on_match_finished is not None:
+                try:
+                    self.on_match_finished(state.room_id)
+                except Exception:
+                    pass
 
     def _finish_by_tiebreak(self, state: BattleState, reason: str) -> None:
         scores = {}

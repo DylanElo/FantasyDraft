@@ -28,6 +28,7 @@ from jjk_arena.battle_v2.first_creation_profile import (
 from jjk_arena.battle_v2.manager import BattleV2Error, BattleV2Manager, battle_v2_enabled, skill_catalog
 from jjk_arena.battle_v2.starter_roster import FIRST_CREATION_PRESETS, first_creation_payload
 from jjk_arena.battle_v2.sessions import BattleSessionRegistry
+from jjk_arena.battle_v2.safe_stop import evaluate_safe_stop
 from jjk_arena.battle_v2.timer_scheduler import PhaseTimerScheduler
 from jjk_arena.battle_v2.runtime_store import SQLiteRuntimeStore
 
@@ -308,6 +309,28 @@ def runtime_status():
             "mission_settlement_claimed_total": runtime_store.mission_settlement_claimed_total,
         }
     )
+
+
+@app.route("/ops/safe_stop")
+def safe_stop():
+    """Go/no-go for stopping the one authoritative worker (see production_runbook.md).
+
+    Hidden the same way as `/ops/runtime`: this reports whether it is safe to
+    drain, never room/player data, but still requires the ops token so an
+    unauthenticated caller cannot use it to fingerprint operational state.
+    """
+
+    token = os.getenv("JJK_OPS_TOKEN", "")
+    supplied = request.headers.get("Authorization", "")
+    if not token or not secrets.compare_digest(supplied, f"Bearer {token}"):
+        abort(404)
+    decision = evaluate_safe_stop(
+        analytics_outbox_dropped_total=runtime_store.outbox_dropped_total,
+        mission_settlement_counts=runtime_store.mission_settlement_counts(),
+        in_flight_commands=battle_v2_manager.in_flight_command_total(),
+        in_flight_scheduler_callbacks=battle_v2_timer_scheduler.in_flight_total(),
+    )
+    return jsonify(decision.as_dict()), 200 if decision.ready else 503
 
 
 def clean_room_id(value) -> str:
@@ -1263,23 +1286,33 @@ def on_battle_v2_resume(data=None):
     if state is None or player_id not in state.players or player_id == CPU_V2_PLAYER_ID:
         emit("battle_v2_resume_rejected", {"message": "Battle session could not be resumed."})
         return
-    # Consume and rotate the credential before changing connection state or
-    # admitting this socket to either viewer-private room. A separate
-    # verify-then-rotate sequence lets two concurrent replays both pass the
-    # read-only verification; the loser could then remain subscribed to the
-    # private room and receive the winner's newly rotated token.
-    grant = battle_v2_sessions.rotate(room_id, player_id, token)
-    if grant is None:
+    # Reserve the credential before attempting the authoritative reconnect,
+    # but do not rotate it yet. Reserving blocks a second concurrent replay
+    # from also passing verification (atomic protection against concurrent
+    # resume), while leaving the token itself untouched until the reconnect
+    # is proven to succeed. A premature resume -- the original socket is
+    # still connected, so `reconnect_player` rejects it -- or any other
+    # failure aborts the reservation instead of rotating, so the current
+    # token remains valid for a later, real resume.
+    if not battle_v2_sessions.reserve(room_id, player_id, token):
         emit("battle_v2_resume_rejected", {"message": "Battle session could not be resumed."})
         return
     try:
         battle_v2_manager.reconnect_player(room_id, player_id)
         battle_v2_manager.serialize_for_player(room_id, player_id)
-        join_room(match_room(room_id))
-        join_room(player_room(player_id))
     except (BattleV2Error, KeyError, RuntimeError):
+        battle_v2_sessions.abort(room_id, player_id)
         emit("battle_v2_resume_rejected", {"message": "Battle session could not be resumed."})
         return
+    # Only commit (rotate) the credential once reconnect and serialization
+    # are both proven to succeed, then admit this socket to the private
+    # rooms as the sole holder of the new token.
+    grant = battle_v2_sessions.commit(room_id, player_id, token)
+    if grant is None:
+        emit("battle_v2_resume_rejected", {"message": "Battle session could not be resumed."})
+        return
+    join_room(match_room(room_id))
+    join_room(player_room(player_id))
     with lifecycle_lock:
         active_match_by_player[player_id] = room_id
         waiting_code_by_player.pop(player_id, None)

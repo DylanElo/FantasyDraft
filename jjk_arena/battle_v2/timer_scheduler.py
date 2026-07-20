@@ -55,6 +55,13 @@ class PhaseTimerScheduler:
         self._worker_started = False
         self._worker_stopped_evt = Event()
         self._worker_stopped_evt.set()
+        # The room whose expire()/on_expired() callback is currently running,
+        # if any. Only one worker exists, so at most one room fires at a
+        # time, but this is exposed per-room (not just a bool) so the
+        # safe-stop drain gate and any future multi-worker scheduler can
+        # aggregate consistently with the manager's per-room command
+        # in-flight accounting.
+        self._firing_room_id: str | None = None
 
     def arm(self, room_id: str) -> None:
         deadline = self.get_deadline(room_id)
@@ -82,6 +89,18 @@ class PhaseTimerScheduler:
 
         with self._condition:
             return len(self._deadlines)
+
+    def in_flight_count_for_room(self, room_id: str) -> int:
+        """1 if this room's expire/on_expired callback is running right now, else 0."""
+
+        with self._condition:
+            return 1 if self._firing_room_id == room_id else 0
+
+    def in_flight_total(self) -> int:
+        """Aggregate in-flight scheduler callbacks, for the safe-stop gate."""
+
+        with self._condition:
+            return 1 if self._firing_room_id is not None else 0
 
     def shutdown(self, *, timeout: float | None = 5.0) -> None:
         """Stop the single worker deterministically and wait for it to exit.
@@ -134,6 +153,8 @@ class PhaseTimerScheduler:
                 # manager/socket state and may themselves call arm()/cancel(),
                 # which would otherwise re-enter this same condition's lock.
                 if fired_room_id is not None:
+                    with self._condition:
+                        self._firing_room_id = fired_room_id
                     try:
                         if self.expire(fired_room_id):
                             self.on_expired(fired_room_id)
@@ -143,6 +164,9 @@ class PhaseTimerScheduler:
                         # (no logging framework in this codebase) and keep going.
                         import traceback
                         traceback.print_exc()
+                    finally:
+                        with self._condition:
+                            self._firing_room_id = None
                     self.arm(fired_room_id)
         finally:
             with self._condition:

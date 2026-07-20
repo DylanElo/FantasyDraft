@@ -31,7 +31,7 @@ Run at least one safe-area/browser-chrome-resize pass for every size. The releas
 
 | ID | Screen/state | What must be visible |
 | --- | --- | --- |
-| `01-home` | Home landing | Character-led hero, active trio identity, Quick Match, feature tiles, labeled bottom navigation, editable player/room affordances |
+| `01-home` | Home landing | Fixed promotional key art labeled apart from the active-trio profile state, Quick Match, feature tiles, labeled bottom navigation, editable player/room affordances |
 | `02-first-creation` | First Creation browser | Three readable trio slots, active filter, large featured fighter, full name/role/state, pager, Add/Remove state, and `Review Matchup` |
 | `03-first-creation-filter` | Kyoto or Special filter | Correct filtered count/order with no loss of the canonical 19-character roster |
 | `04-character-study` | Full Character Study | Hero profile plus a primary skill and a replacement-skill page showing art, slot identity, cost, cooldown, targeting, classes, and readable description |
@@ -128,12 +128,12 @@ Also run `node --check` for every changed Phaser JavaScript file and `git diff -
 
 ## Browser evidence
 
-The maintained runtime cache version is `38`. Evidence is current only when it
+The maintained runtime cache version is `42`. Evidence is current only when it
 matches that cache version and its exact source commit. Each release capture
 set must record browser/version, origin, viewport and canvas dimensions,
 fixture/interaction path, console warning/error count, and screenshot SHA-256.
 The older v27/v28 Season 3 packs are historical evidence and do not satisfy the
-v38 release gate. See `docs/phaser_asset_delivery_contract.md` for the exact
+v42 release gate. See `docs/phaser_asset_delivery_contract.md` for the exact
 version and evidence policy.
 
 Store intentional release captures under a documented QA path such as:

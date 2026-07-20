@@ -20,6 +20,18 @@
       <section id="jjk-dom-ui" aria-label="Accessible game controls">
         <h1 id="jjk-scene-heading" class="jjk-sr-only" tabindex="-1">Loading JJK Arena</h1>
         <nav id="jjk-action-mirror" aria-labelledby="jjk-scene-heading"></nav>
+        <section id="jjk-combat-state" class="jjk-sr-only" aria-label="Viewer-safe combat status" aria-hidden="true">
+          <h2>Combat status</h2>
+          <p id="jjk-combat-phase"></p>
+          <p id="jjk-combat-connection"></p>
+          <p id="jjk-combat-energy"></p>
+          <h3>Allied fighters</h3>
+          <ul id="jjk-combat-allies"></ul>
+          <h3>Enemy fighters</h3>
+          <ul id="jjk-combat-enemies"></ul>
+          <h3>Your queue, left to right</h3>
+          <ol id="jjk-combat-queue"></ol>
+        </section>
         <p id="jjk-scene-live" class="jjk-sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
 
         <section id="jjk-identity-dialog" class="jjk-identity-overlay" role="dialog" aria-modal="true" aria-labelledby="jjk-identity-title" aria-describedby="jjk-identity-hint jjk-identity-error" aria-hidden="true" hidden>

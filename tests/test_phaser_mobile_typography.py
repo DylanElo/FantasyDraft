@@ -34,12 +34,12 @@ def test_critical_combat_and_queue_state_stays_at_readable_mobile_sizes() -> Non
     creation = _source(SCENE_PATHS[0])
 
     for marker in (
-        "safeText(state.phase || 'PLANNING')",
-        "urgent ? 'HURRY' : 'TIME'",
+        "interactionStage.label.toUpperCase()",
+        "urgent ? 'HURRY' : interactionStage.timerLabel",
         "stateLabel, {",
         "fighterName, {",
         "hpLabel, {",
-        "state.reason, {",
+        "statusLine, {",
         "this.store.targetLabel(skill).toUpperCase()",
         "`1 / CHOOSE SACRIFICE",
         "ENERGY_NAMES[color].toUpperCase()",
@@ -69,13 +69,15 @@ def test_character_study_tactical_identity_wraps_inside_small_phone_cards() -> N
     _assert_nearby_size(creation, marker, 12)
 
 
-def test_disabled_skill_reason_keeps_four_readable_lines_on_narrow_cards() -> None:
+def test_disabled_skill_reason_keeps_four_readable_lines_on_two_column_cards() -> None:
     combat = _source(SCENE_PATHS[1])
-    marker = "if (state.disabled) {"
+    marker = "const statusLine = state.disabled"
     reason = combat[combat.index(marker) : combat.index(marker) + 700]
 
-    assert "fillRect(x + 2, reasonY, w - 4, 61)" in reason
-    assert "reasonNode.setMaxLines(4);" in reason
+    assert "state.reason" in reason
+    assert "fontSize: '12px'" in reason
+    assert "lineSpacing: state.disabled ? -4 : -2" in combat
+    assert "reasonNode.setMaxLines(state.disabled ? 4 : 3);" in combat
     _assert_nearby_size(combat, "const reasonNode = this.text", 12)
 
 

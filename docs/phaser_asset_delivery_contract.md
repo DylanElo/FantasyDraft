@@ -11,10 +11,11 @@ locked Season 3 tokens and component roles:
 - `postMatch` retains Result/Records components.
 
 The older `culling-current-ui.js`, `season-three-ui.js`, and
-`season3-master-ui.js` entrypoints remain compatibility modules for approved
-scene compositions. `season3-tokens.js` exposes their canonical palette and
-semantics; the Flow and Post Match variants also share clipped geometry there.
-The asymmetric Current panel remains an explicit facade variant. New fourth
+`season3-master-ui.js` modules remain internal compatibility variants behind
+that facade for approved scene compositions; scenes do not import them
+directly. `season3-tokens.js` exposes their canonical palette and semantics;
+the Flow and Post Match variants also share clipped geometry there. The
+asymmetric Current panel remains an explicit facade variant. New fourth
 variants must not be added beside the facade. This is an infrastructure
 consolidation, not permission to collapse distinct screens or recolor
 deprecated layouts.
@@ -56,11 +57,11 @@ console never imply copyright, trademark, likeness, or commercial clearance.
 
 ## Runtime and QA version policy
 
-The maintained Phaser cache version is exactly `38`. A QA evidence set is
+The maintained Phaser cache version is exactly `42`. A QA evidence set is
 current only when its adjacent manifest or README records all of:
 
 - exact source commit;
-- cache version `38` from the HTML shell through the ES-module graph;
+- cache version `42` from the HTML shell through the ES-module graph;
 - browser name and version;
 - page origin;
 - viewport and Phaser canvas dimensions;
@@ -71,6 +72,6 @@ current only when its adjacent manifest or README records all of:
 Evidence captured from another cache version or source commit remains useful
 historical evidence but cannot satisfy the current release gate. The checked-in
 v27 and v28 Season 3 structural packs therefore remain historical; a complete
-v38 390x844 and 430x932 set is still required before visual-release approval.
+v42 390x844 and 430x932 set is still required before visual-release approval.
 The cache chain must be changed atomically in the template, shell loader, and
 every maintained module import. Mixed-version graphs fail preflight.

@@ -16,7 +16,10 @@ def test_combat_scene_is_a_battlefield_composition_not_the_old_dashboard():
     assert "const cardW = (contentW - gap * 2) / 3;" in source
     assert "(team || []).slice(0, 3).forEach" in source
     assert "const identityW = clamp(Math.round(frame.width * 0.245), 86, 106);" in source
-    assert "const skillW = (skillRight - skillX - skillGap * 3) / 4;" in source
+    assert "const skillColumns = 2;" in source
+    assert "const skillRows = 2;" in source
+    assert "const skillW = (contentW - skillGap) / skillColumns;" in source
+    assert "const skillCardH = (skillH - skillGap) / skillRows;" in source
     assert "this.store.skillsFor(selected).slice(0, 4)" in source
     assert "renderFighterLane(foe && foe.team, 'enemy'" in source
     assert "renderFighterLane(me && me.team, 'mine'" in source
@@ -24,15 +27,15 @@ def test_combat_scene_is_a_battlefield_composition_not_the_old_dashboard():
     assert "renderIdentityStrip(frame, layout, selected)" in source
     assert "renderBottomActions(frame, layout)" in source
     assert "REVIEW ${this.store.actions.length}/3" in source
-    assert "identityArtH = layout.identityH + layout.skillH" in source
+    assert "identityArtH = layout.identityH" in source
     assert "context: 'hero'" in source
     assert "'SELECTED FIGHTER'" in source
     assert "'ORDER / WILD / CONFIRM'" in source
 
     # Regression guards for removed dashboard/dock traces. Fighter art and the
     # open targeting lane carry hierarchy without lane-header prompt panels.
-    assert "index % 2" not in source
-    assert "Math.floor(index / 2)" not in source
+    assert "index % layout.skillColumns" in source
+    assert "Math.floor(index / layout.skillColumns)" in source
     assert "CLEAR QUEUE" not in source
     assert "gridY" not in source
     assert "'ENEMY TEAM'" not in source
@@ -83,13 +86,15 @@ def test_combat_skill_hand_uses_the_shipping_season_three_art():
     assert "skill.description || this.store.effectLine(skill)" in source
     assert "const classTag = (skill.classes || [])" not in source
     assert "const compactSummary = this.store.effectLine(skill)" not in source
-    assert "if (state.disabled)" in source
+    assert "const statusLine = state.disabled" in source
     assert "state.reason" in source
-    assert "TAP AGAIN / INFO" in source
+    assert "SELECTED / TAP AGAIN FOR INFO" in source
     assert "this.renderIntegratedSkillArtwork(skill" in source
     assert "layer.skillVisualFor(skill" in source
     assert "'planning-card'" in source
     assert "`QUEUED Q${state.queuedIndex + 1}`" in source
+    assert "lineSpacing: state.disabled ? -4 : -2" in source
+    assert "reasonNode.setMaxLines(state.disabled ? 4 : 3)" in source
     assert "if (selected || state.disabled) this.store.openSkillDetail(skill.id);" in source
 
 
@@ -127,7 +132,12 @@ console.log(JSON.stringify({{ frame, layout }}));
     skills_bottom = layout["skillY"] + layout["skillH"]
     review_bottom = layout["reviewY"] + layout["reviewH"]
     cards_right = layout["contentX"] + layout["cardW"] * 3 + layout["gap"] * 2
-    skills_right = layout["skillX"] + layout["skillW"] * 4 + layout["skillGap"] * 3
+    skills_right = layout["skillX"] + layout["skillW"] * layout["skillColumns"] + layout["skillGap"]
+    skill_rows_bottom = (
+        layout["skillY"]
+        + layout["skillCardH"] * layout["skillRows"]
+        + layout["skillGap"]
+    )
 
     assert frame["top"] + layout["topH"] < layout["enemyY"]
     assert enemy_bottom < layout["allyY"]
@@ -138,17 +148,40 @@ console.log(JSON.stringify({{ frame, layout }}));
     assert skills_bottom < layout["reviewY"]
     assert review_bottom <= frame["bottom"]
 
-    # The six fighters and four illustrated techniques are presentation cards,
-    # not token-sized legacy dashboard controls.
+    # The six fighters and all four techniques remain presentation cards. The
+    # command deck is a readable 2x2 grid rather than four narrow columns.
     assert layout["cardW"] >= 107
     assert layout["cardH"] >= 118
-    assert layout["skillW"] >= 64
+    assert layout["skillColumns"] == 2
+    assert layout["skillRows"] == 2
+    assert layout["skillW"] >= 164
+    assert layout["skillCardH"] >= 75
     assert layout["skillH"] >= 158
     assert 86 <= layout["identityW"] <= 106
     assert layout["identityH"] >= 48
     assert layout["reviewH"] >= 44
     assert cards_right <= frame["width"] - 10 + 0.01
-    assert skills_right <= frame["width"] - 8 + 0.01
+    assert skills_right <= layout["contentX"] + layout["contentW"] + 0.01
+    assert skill_rows_bottom == pytest.approx(skills_bottom)
+
+    technique_rects = []
+    for index in range(4):
+        column = index % layout["skillColumns"]
+        row = index // layout["skillColumns"]
+        technique_rects.append(
+            {
+                "x": layout["skillX"] + column * (layout["skillW"] + layout["skillGap"]),
+                "y": layout["skillY"] + row * (layout["skillCardH"] + layout["skillGap"]),
+                "w": layout["skillW"],
+                "h": layout["skillCardH"],
+            }
+        )
+    assert len({(rect["x"], rect["y"]) for rect in technique_rects}) == 4
+    assert all(rect["w"] >= 164 and rect["h"] >= 75 for rect in technique_rects)
+    assert all(rect["x"] >= layout["contentX"] for rect in technique_rects)
+    assert all(rect["x"] + rect["w"] <= layout["contentX"] + layout["contentW"] + 0.01 for rect in technique_rects)
+    assert all(rect["y"] >= layout["skillY"] for rect in technique_rects)
+    assert all(rect["y"] + rect["h"] <= skills_bottom + 0.01 for rect in technique_rects)
 
 
 def test_combat_layout_survives_large_safe_area_insets():
@@ -181,4 +214,6 @@ console.log(JSON.stringify(cases));
         assert layout["allyY"] + layout["cardH"] < layout["identityY"]
         assert layout["identityY"] + layout["identityH"] == layout["skillY"]
         assert layout["skillY"] + layout["skillH"] < layout["reviewY"]
+        assert layout["skillW"] >= 164
+        assert layout["skillCardH"] >= 75
         assert layout["reviewY"] + layout["reviewH"] <= frame["bottom"]

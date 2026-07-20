@@ -1,15 +1,17 @@
 import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=42';
 import { safeText, shortText } from '../core/text.js?v=42';
-import {
-  S3_COLORS,
-  drawS3Button,
-  drawS3Panel,
-  drawS3Progress,
-  drawS3World,
+import { Season3UI } from '../ui/season3-ui.js?v=42';
+import { BaseScene } from './base-scene.js?v=42';
+
+const {
+  colors: S3_COLORS,
+  button: drawS3Button,
+  panel: drawS3Panel,
+  progress: drawS3Progress,
+  world: drawS3World,
   outcomeVisual,
   recordsModel,
-} from '../ui/season3-master-ui.js?v=42';
-import { BaseScene } from './base-scene.js?v=42';
+} = Season3UI.postMatch;
 
 const STORM_WORLD_KEY = 'culling-current-campus';
 
@@ -94,7 +96,7 @@ export class RecordsScene extends BaseScene {
       drawS3Button(this, region.x + region.w - 46, region.y + 7, 44, 44, 'HOME', () => this.store.changeScene('LobbyScene'), {
         variant: 'primary',
         accent: S3_COLORS.vermilion,
-        fontSize: '9px',
+        fontSize: `${TYPE_SCALE.micro}px`,
         mono: true,
       });
     }
@@ -129,7 +131,7 @@ export class RecordsScene extends BaseScene {
         ? `MOST DEPLOYED TRIO // ${model.total} RECORDED MATCH${model.total === 1 ? '' : 'ES'}`
         : 'CURRENT TRIO // BATTLE HISTORY STARTS AFTER YOUR FIRST MATCH', {
         color: '#EEF7FF',
-        fontSize: '9px',
+        fontSize: `${TYPE_SCALE.micro}px`,
         fontStyle: '900',
         stroke: '#101828',
         strokeThickness: 3,
@@ -196,17 +198,17 @@ export class RecordsScene extends BaseScene {
       const progressX = region.x + Math.min(184, region.w * 0.55);
       this.mono(progressX, region.y + 7, model.fastestWin ? `FASTEST WIN // ${model.fastestWin}T` : 'FASTEST WIN // --', {
         color: S3_COLORS.text,
-        fontSize: '9px',
+        fontSize: `${TYPE_SCALE.micro}px`,
         fontStyle: '900',
       });
       this.mono(progressX, region.y + 25, `BIGGEST HIT // ${model.biggestHit}`, {
         color: '#9A211A',
-        fontSize: '9px',
+        fontSize: `${TYPE_SCALE.micro}px`,
         fontStyle: '900',
       });
       this.mono(progressX, region.y + 43, `TOTAL DAMAGE // ${model.totalDamage}`, {
         color: S3_COLORS.mutedText,
-        fontSize: '9px',
+        fontSize: `${TYPE_SCALE.micro}px`,
         fontStyle: '800',
       });
       drawS3Progress(this, region.x + 12, region.y + region.h - 10, Math.max(72, progressX - region.x - 24), 6, winRate, { fill: S3_COLORS.cyan });
@@ -260,7 +262,7 @@ export class RecordsScene extends BaseScene {
         });
         this.mono(region.x + 12, y + 34, `${localRecordDate(record.at)} // ${Number(record.turns || 0)} TURNS // ${Number(record.damage || 0)} DMG`, {
           color: S3_COLORS.mutedText,
-          fontSize: '9px',
+          fontSize: `${TYPE_SCALE.micro}px`,
           fontStyle: '800',
         });
         this.text(region.x + 12, y + 51, shortText(record.winner || 'Recorded match', 26), {
@@ -272,7 +274,7 @@ export class RecordsScene extends BaseScene {
         if (impact && region.rowH >= 88) {
           this.mono(region.x + 12, y + region.rowH - 21, `IMPACT // ${shortText(safeText(impact.message), 25)} // ${Number(impact.amount || 0)}`, {
             color: '#9A211A',
-            fontSize: '9px',
+            fontSize: `${TYPE_SCALE.micro}px`,
             fontStyle: '900',
           });
         }

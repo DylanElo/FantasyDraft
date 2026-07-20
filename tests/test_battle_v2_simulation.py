@@ -226,6 +226,28 @@ def test_batch_outcomes_account_for_every_game():
     assert sum(result["outcomes"].values()) == 4
     assert len(result["matches"]) == 4
     assert result["average_turns"] > 0
+    assert result["energy_conversion"]["events"] >= 0
+
+
+def test_parallel_compact_batch_is_deterministic_without_per_match_payloads():
+    sequential = run_simulation_batch(
+        TEAM_A, TEAM_B, games=2, seed_start=24, max_turns=40,
+        workers=1, compact=True,
+    )
+    parallel = run_simulation_batch(
+        TEAM_A, TEAM_B, games=2, seed_start=24, max_turns=40,
+        workers=2, compact=True,
+    )
+
+    assert "matches" not in sequential
+    assert "matches" not in parallel
+    assert sequential["compact"] is True
+    assert parallel["workers"] == 2
+    for key in (
+        "outcomes", "average_turns", "min_turns", "max_turns_executed",
+        "energy_conversion",
+    ):
+        assert parallel[key] == sequential[key]
 
 
 def test_simulation_cli_emits_json():
@@ -239,6 +261,8 @@ def test_simulation_cli_emits_json():
             "--games", "2",
             "--seed", "30",
             "--max-turns", "80",
+            "--workers", "1",
+            "--compact",
         ],
         check=False,
         capture_output=True,
@@ -246,4 +270,7 @@ def test_simulation_cli_emits_json():
     )
 
     assert completed.returncode == 0, completed.stderr
-    assert json.loads(completed.stdout)["games"] == 2
+    payload = json.loads(completed.stdout)
+    assert payload["games"] == 2
+    assert payload["compact"] is True
+    assert "matches" not in payload

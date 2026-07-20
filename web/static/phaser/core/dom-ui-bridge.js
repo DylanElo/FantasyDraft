@@ -37,6 +37,9 @@ function stableHash(value) {
 
 export function sceneHeadingFor(sceneKey, options = {}) {
   if (safeString(options.heading)) return safeString(options.heading);
+  if (sceneKey === 'CombatScene' && safeString(options.interactionHeading)) {
+    return safeString(options.interactionHeading);
+  }
   if (sceneKey === 'CombatScene' && options.queueReviewOpen) return 'Queue Review';
   if (sceneKey === 'CombatScene' && options.resolving) return 'Resolution Playback';
   return SCENE_HEADINGS[sceneKey] || 'JJK Arena';
@@ -92,6 +95,81 @@ export function buildAccessibleActions(sceneKey, actions, bounds = {}) {
     });
 }
 
+function boundedNumber(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.max(0, number) : fallback;
+}
+
+function normalizeFighterSummary(fighter, fallbackSide, index) {
+  if (!fighter || typeof fighter !== 'object') return null;
+  const statuses = (Array.isArray(fighter.statuses) ? fighter.statuses : [])
+    .slice(0, 12)
+    .map((status) => {
+      if (!status || typeof status !== 'object') return null;
+      const durationNumber = status.duration === null || status.duration === undefined
+        ? Number.NaN
+        : Number(status.duration);
+      return {
+        name: safeString(status.name, 'Visible status'),
+        duration: Number.isFinite(durationNumber) && durationNumber >= 0 ? durationNumber : null,
+        clock: safeString(status.clock, 'round'),
+        visibility: ['visible', 'revealed', 'owner-visible hidden'].includes(status.visibility)
+          ? status.visibility
+          : 'visible',
+      };
+    })
+    .filter(Boolean);
+  const hp = boundedNumber(fighter.hp);
+  return {
+    side: fighter.side === 'enemy' ? 'enemy' : fallbackSide,
+    slot: Math.max(1, Math.round(boundedNumber(fighter.slot, index + 1))),
+    name: safeString(fighter.name, `Fighter ${index + 1}`),
+    hp,
+    maxHp: Math.max(hp, boundedNumber(fighter.maxHp, 100)),
+    alive: Boolean(fighter.alive),
+    statuses,
+  };
+}
+
+export function buildCombatAccessibilityState(snapshot) {
+  if (!snapshot || typeof snapshot !== 'object') return null;
+  const seconds = snapshot.authoritativePhaseSecondsRemaining === null
+    || snapshot.authoritativePhaseSecondsRemaining === undefined
+    ? Number.NaN
+    : Number(snapshot.authoritativePhaseSecondsRemaining);
+  const normalizeTeam = (fighters, side) => (Array.isArray(fighters) ? fighters : [])
+    .slice(0, 3)
+    .map((fighter, index) => normalizeFighterSummary(fighter, side, index))
+    .filter(Boolean);
+  return {
+    interactionStage: safeString(snapshot.interactionStage, 'planning'),
+    interactionStageLabel: safeString(snapshot.interactionStageLabel, 'Planning'),
+    interactionHeading: safeString(snapshot.interactionHeading, 'Combat Planning'),
+    interactionDescription: safeString(snapshot.interactionDescription),
+    interactionTimerLabel: safeString(snapshot.interactionTimerLabel, 'TURN TIME'),
+    authoritativePhaseSecondsRemaining: Number.isFinite(seconds) ? Math.max(0, Math.ceil(seconds)) : null,
+    connection: {
+      key: safeString(snapshot.connection && snapshot.connection.key, 'connected'),
+      label: safeString(snapshot.connection && snapshot.connection.label, 'Connected to the arena.'),
+    },
+    energy: (Array.isArray(snapshot.energy) ? snapshot.energy : []).slice(0, 4).map((item) => ({
+      label: safeString(item && item.label, '?'),
+      name: safeString(item && item.name, 'Energy'),
+      count: Math.round(boundedNumber(item && item.count)),
+    })),
+    allies: normalizeTeam(snapshot.allies, 'ally'),
+    enemies: normalizeTeam(snapshot.enemies, 'enemy'),
+    queue: (Array.isArray(snapshot.queue) ? snapshot.queue : []).slice(0, 3).map((action, index) => ({
+      order: Math.max(1, Math.round(boundedNumber(action && action.order, index + 1))),
+      caster: safeString(action && action.caster, `Fighter ${index + 1}`),
+      skill: safeString(action && action.skill, 'Technique'),
+      target: safeString(action && action.target, 'Automatic target'),
+      cost: (Array.isArray(action && action.cost) ? action.cost : []).slice(0, 8).map((value) => safeString(value)).filter(Boolean),
+      wildcardPays: (Array.isArray(action && action.wildcardPays) ? action.wildcardPays : []).slice(0, 8).map((value) => safeString(value)).filter(Boolean),
+    })),
+  };
+}
+
 function nextMicrotask(documentRef, callback) {
   const view = documentRef && documentRef.defaultView;
   if (view && typeof view.queueMicrotask === 'function') {
@@ -111,6 +189,13 @@ export class DomUiBridge {
     this.headingNode = this.byId('jjk-scene-heading');
     this.actionRoot = this.byId('jjk-action-mirror');
     this.sceneLive = this.byId('jjk-scene-live');
+    this.combatRoot = this.byId('jjk-combat-state');
+    this.combatPhase = this.byId('jjk-combat-phase');
+    this.combatConnection = this.byId('jjk-combat-connection');
+    this.combatEnergy = this.byId('jjk-combat-energy');
+    this.combatAllies = this.byId('jjk-combat-allies');
+    this.combatEnemies = this.byId('jjk-combat-enemies');
+    this.combatQueue = this.byId('jjk-combat-queue');
     this.toastLive = this.byId('toast');
     this.dialog = this.byId('jjk-identity-dialog');
     this.dialogTitle = this.byId('jjk-identity-title');
@@ -127,6 +212,7 @@ export class DomUiBridge {
     this.currentHeading = '';
     this.currentActionCount = 0;
     this.lastToast = '';
+    this.combatState = null;
     this.pendingSnapshot = null;
     this.reconcileQueued = false;
     this.identityRequest = null;
@@ -168,6 +254,11 @@ export class DomUiBridge {
     }
     this.actionNodes.clear();
     this.currentActions.clear();
+    this.combatState = null;
+  }
+
+  setCombatState(snapshot) {
+    this.combatState = buildCombatAccessibilityState(snapshot);
   }
 
   queueSceneActions(snapshot) {
@@ -189,8 +280,10 @@ export class DomUiBridge {
 
   reconcileScene(snapshot) {
     const sceneKey = safeString(snapshot.sceneKey);
+    const combatState = sceneKey === 'CombatScene' ? this.combatState : null;
     const heading = sceneHeadingFor(sceneKey, {
       heading: snapshot.heading,
+      interactionHeading: combatState && combatState.interactionHeading,
       queueReviewOpen: Boolean(snapshot.queueReviewOpen),
       resolving: Boolean(snapshot.resolving),
     });
@@ -205,6 +298,7 @@ export class DomUiBridge {
     this.currentActionCount = actions.length;
     if (this.headingNode) this.headingNode.textContent = heading;
     this.reconcileActions(actions);
+    this.renderCombatState(combatState);
     this.updateToast(snapshot.toast);
     if (sceneChanged || actionCountChanged) {
       this.announceScene(`${heading}. ${actions.length} available action${actions.length === 1 ? '' : 's'}.`);
@@ -267,6 +361,73 @@ export class DomUiBridge {
       this.actionRoot.appendChild(entry.button);
       this.actionRoot.appendChild(entry.reason);
     });
+  }
+
+  replaceTextList(root, items) {
+    if (!root || !this.document || !this.document.createElement) return;
+    if (typeof root.replaceChildren === 'function') root.replaceChildren();
+    else if (Array.isArray(root.children)) {
+      root.children.slice().forEach((child) => {
+        if (child && child.remove) child.remove();
+      });
+      root.children = [];
+    } else {
+      root.textContent = '';
+    }
+    items.forEach((text) => {
+      const item = this.document.createElement('li');
+      item.textContent = text;
+      root.appendChild(item);
+    });
+  }
+
+  fighterSummaryText(fighter) {
+    const life = fighter.alive ? `${fighter.hp} of ${fighter.maxHp} HP` : `down, ${fighter.hp} of ${fighter.maxHp} HP`;
+    const statuses = fighter.statuses.map((status) => {
+      const visibility = status.visibility === 'visible' ? '' : `${status.visibility}, `;
+      const duration = status.duration === null
+        ? ''
+        : `, ${status.duration} ${status.clock}${status.duration === 1 ? '' : 's'}`;
+      return `${visibility}${status.name}${duration}`;
+    });
+    return `${fighter.side === 'enemy' ? 'Enemy' : 'Ally'} ${fighter.slot}, ${fighter.name}: ${life}. ${statuses.length ? `Statuses: ${statuses.join('; ')}.` : 'No visible statuses.'}`;
+  }
+
+  renderCombatState(combatState) {
+    if (this.combatRoot) {
+      this.combatRoot.setAttribute('aria-hidden', combatState ? 'false' : 'true');
+    }
+    if (!combatState) {
+      if (this.combatPhase) this.combatPhase.textContent = '';
+      if (this.combatConnection) this.combatConnection.textContent = '';
+      if (this.combatEnergy) this.combatEnergy.textContent = '';
+      this.replaceTextList(this.combatAllies, []);
+      this.replaceTextList(this.combatEnemies, []);
+      this.replaceTextList(this.combatQueue, []);
+      return;
+    }
+    const seconds = combatState.authoritativePhaseSecondsRemaining;
+    const timer = seconds === null
+      ? ''
+      : ` ${combatState.interactionTimerLabel}: ${seconds} second${seconds === 1 ? '' : 's'} remaining.`;
+    if (this.combatPhase) {
+      this.combatPhase.textContent = `${combatState.interactionStageLabel}. ${combatState.interactionDescription}${timer}`.trim();
+    }
+    if (this.combatConnection) this.combatConnection.textContent = combatState.connection.label;
+    if (this.combatEnergy) {
+      const energy = combatState.energy.map((item) => `${item.label} ${item.name}: ${item.count}`).join('; ');
+      this.combatEnergy.textContent = energy ? `Available energy. ${energy}.` : 'Available energy is not yet known.';
+    }
+    this.replaceTextList(this.combatAllies, combatState.allies.map((fighter) => this.fighterSummaryText(fighter)));
+    this.replaceTextList(this.combatEnemies, combatState.enemies.map((fighter) => this.fighterSummaryText(fighter)));
+    const queueItems = combatState.queue.length
+      ? combatState.queue.map((action) => {
+        const cost = action.cost.length ? action.cost.join(', ') : 'free';
+        const wild = action.wildcardPays.length ? ` Wild paid with ${action.wildcardPays.join(', ')}.` : '';
+        return `Order ${action.order}: ${action.caster} uses ${action.skill}. Target: ${action.target}. Cost: ${cost}.${wild}`;
+      })
+      : ['No actions queued.'];
+    this.replaceTextList(this.combatQueue, queueItems);
   }
 
   activateAction(id, event) {

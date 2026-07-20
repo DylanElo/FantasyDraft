@@ -1,9 +1,11 @@
 import { CULLING_COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=42';
 import { safeText, shortText } from '../core/text.js?v=42';
-import { drawCurrentWorld } from '../ui/culling-current-ui.js?v=42';
+import { Season3UI } from '../ui/season3-ui.js?v=42';
 import { BaseScene } from './base-scene.js?v=42';
 
 const HOME_WORLD_KEY = 'culling-current-home-hero';
+const HOME_PROMOTIONAL_HERO_LABEL = 'PROMOTIONAL KEY ART';
+const { world: drawCurrentWorld } = Season3UI.current;
 
 function clippedSlab(x, y, w, h, cut = 12) {
   const safeCut = Math.max(0, Math.min(cut, w / 5, h / 3));
@@ -123,7 +125,7 @@ export class LobbyScene extends BaseScene {
         fontStyle: '900',
         color: CULLING_COLORS.inverseText,
       }).setMaxLines(1);
-      this.mono(nameX, region.y + 32, `${this.store.playerTeam.length}/3 ACTIVE`, {
+      this.mono(nameX, region.y + 32, `ACTIVE TRIO ${this.store.playerTeam.length}/3`, {
         fontSize: '12px',
         fontStyle: '700',
         color: CULLING_COLORS.cyan,
@@ -167,6 +169,25 @@ export class LobbyScene extends BaseScene {
       this.registerHitTarget(roomX - 2, region.y + 2, roomW, region.h - 4, `Edit room code ${this.store.roomId}`, () => this.editIdentity('room'), {
         accessibilityId: 'identity-room',
       });
+    }
+
+    renderPromotionalHeroLabel(region) {
+      const w = 164;
+      const x = region.x + region.w - w - 8;
+      const y = region.y + 34;
+      this.drawClippedSurface(x, y, w, 26, {
+        fill: CULLING_COLORS.ivory,
+        alpha: 0.84,
+        stroke: CULLING_COLORS.cobalt,
+        strokeAlpha: 0.48,
+        shadowAlpha: 0.08,
+        cut: 6,
+      });
+      this.mono(x + w / 2, y + 7, HOME_PROMOTIONAL_HERO_LABEL, {
+        fontSize: `${TYPE_SCALE.micro}px`,
+        fontStyle: '900',
+        color: CULLING_COLORS.cobaltText,
+      }).setOrigin(0.5, 0);
     }
 
     renderEditorialTitle(region) {
@@ -414,6 +435,7 @@ export class LobbyScene extends BaseScene {
       });
       this.renderEditorialTitle(layout.title);
       this.renderProfileStrip(layout.profile);
+      this.renderPromotionalHeroLabel(layout.hero);
       this.renderBattleSlab(layout.battle);
       this.renderFeatureTiles(layout.features);
       this.renderBottomNav(layout.nav);

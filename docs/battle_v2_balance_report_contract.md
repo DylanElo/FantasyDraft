@@ -19,22 +19,34 @@ none is counted as a decided win.
 - first-seat win rate among decided games;
 - per-character appearances, wins, descriptive win rate, and Wilson 95% interval.
 - energy-transmutation event totals, game/side usage rates, and descriptive
-  win correlation for decided side-games that did or did not transmute.
+  win correlation for decided side-games that did or did not transmute;
+- deterministic trio-by-trio matchup matrix cells with wins, losses,
+  winnerless outcomes, decided win rate, Wilson interval, average turns, and
+  team-specific transmutation usage;
+- transmutation target-color counts, source-pip mix, mixed-source event count,
+  average event turn, and per-trio usage/win summaries.
 
-Schema 3 JSON retains the complete aggregate structure. Each report and
+Schema 4 JSON retains the complete aggregate structure. Each report and
 matchup exposes an `energy_conversion` summary with event and usage counts plus
-a nested `win_correlation` block. The correlation compares wins among decided
+a nested `win_correlation` block. `trio_matchup_matrix` supplies a symmetric
+row-team/column-opponent view without recomputing results. The correlation compares wins among decided
 side-games with at least one authoritative conversion against decided
 side-games without one; winnerless results contribute to usage but not to the
-win-rate denominators. CSV emits one row per matchup with separate `draws`,
+win-rate denominators. Conversion correlations remain descriptive rather than
+causal. CSV emits one row per matchup with separate `draws`,
 `no_contests`, and `turn_caps` columns plus flattened conversion usage and
-correlation columns for spreadsheet/notebook use.
+correlation columns, target/source JSON fields, and each trio's event/usage
+totals for spreadsheet/notebook use.
 
 ```bash
 python -m jjk_arena.battle_v2.balance_report \
   --presets story_tutorial,tokyo_second_years,kyoto_pressure \
-  --games-per-orientation 10 --seed 1 --max-turns 200
+  --games-per-orientation 10 --seed 1 --max-turns 200 --workers 0
 ```
+
+`--workers 0` uses up to four processes automatically. Results are reduced in
+the original deterministic seed order, so changing the worker count changes
+throughput, not report content.
 
 ## Interpretation limits
 
@@ -48,14 +60,16 @@ length, team costs, and the current board state.
 
 ## Performance budget
 
-The single-process 56-game matrix (all eight presets, every unordered matchup,
-both seat orientations, one game per orientation) has a 240-second local
-diagnostic budget. This is a profiling gate, not a normal pytest wall-clock
-assertion because shared CI runner load is not deterministic.
+The automatic-worker 112-game matrix (all eight presets, every unordered
+matchup, both seat orientations, two games per orientation) has a 240-second
+local diagnostic budget. This is a profiling gate, not a normal pytest
+wall-clock assertion because shared CI runner load is not deterministic.
 
-On the 2026-07-19 Windows reference run at schema 3 / rules version
-`battle-v2-2026-07-accounting-cpu-transmute-6`, seeds beginning at 1 and a
-200-turn cap completed all 56 games in 132.481 seconds with zero turn caps and
-141 authoritative conversion events. A regression above 240 seconds should be
-profiled before scaling batches; the dominant known cost remains full-state
-copying during candidate queue validation.
+On the 2026-07-20 Windows reference run at schema 4 / rules version
+`battle-v2-2026-07-accounting-cpu-transmute-6`, seeds 2001-2112 and a 200-turn
+cap completed all 112 games with four workers in 138.822 seconds, zero turn
+caps, and 246 authoritative conversion events. A regression above 240 seconds
+should be profiled before scaling batches; the dominant known cost remains
+full-state copying during candidate queue validation. The earlier schema-3
+single-process 56-game reference was 132.481 seconds, so the parallel path
+roughly doubled observed throughput in this workload.

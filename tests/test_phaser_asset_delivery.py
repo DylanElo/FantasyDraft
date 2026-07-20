@@ -136,7 +136,11 @@ console.log(JSON.stringify({
   roles: Object.keys(facade.Season3UI),
   currentWorldCompatible: facade.Season3UI.current.world === current.drawCurrentWorld,
   flowPanelCompatible: facade.Season3UI.flow.panel === flow.drawS3Panel,
+  flowColorsCompatible: facade.Season3UI.flow.colors === flow.S3_COLORS,
+  flowBootLayoutCompatible: facade.Season3UI.flow.bootLayout === flow.bootS3Layout,
   postButtonCompatible: facade.Season3UI.postMatch.button === post.drawS3Button,
+  postColorsCompatible: facade.Season3UI.postMatch.colors === post.S3_COLORS,
+  postResultModelCompatible: facade.Season3UI.postMatch.resultModel === post.resultModel,
   colors: facade.S3_TOKENS.semantic,
   flowBone: flow.S3_COLORS.bone,
   postBone: post.S3_COLORS.bone,
@@ -149,7 +153,11 @@ console.log(JSON.stringify({
     assert probe["roles"] == ["tokens", "current", "flow", "postMatch"]
     assert probe["currentWorldCompatible"] is True
     assert probe["flowPanelCompatible"] is True
+    assert probe["flowColorsCompatible"] is True
+    assert probe["flowBootLayoutCompatible"] is True
     assert probe["postButtonCompatible"] is True
+    assert probe["postColorsCompatible"] is True
+    assert probe["postResultModelCompatible"] is True
     assert probe["colors"] == {
         "selected": 0xD8BF68,
         "legalTarget": 0x35DDE8,
@@ -158,6 +166,17 @@ console.log(JSON.stringify({
         "domain": 0x7C3AED,
     }
     assert probe["flowBone"] == probe["postBone"] == 0xF2E8D5
+
+
+def test_scenes_only_import_the_canonical_season_three_facade():
+    ui_import_pattern = re.compile(r"from\s+['\"](\.\./ui/[^'\"]+)['\"]")
+    offenders = []
+    for path in (ROOT / "web" / "static" / "phaser" / "scenes").rglob("*.js"):
+        source = path.read_text(encoding="utf-8")
+        for specifier in ui_import_pattern.findall(source):
+            if specifier != "../ui/season3-ui.js?v=42":
+                offenders.append((path.name, specifier))
+    assert offenders == []
 
 
 def test_asset_clearance_manifest_never_equates_generation_with_clearance():
@@ -197,12 +216,12 @@ def test_runtime_texture_budget_matches_checkout_and_stays_under_startup_caps():
     assert maximum["decoded_rgba8_bytes"] <= budget["startup_policy"]["decoded_rgba8_budget_bytes"]
 
 
-def test_runtime_cache_chain_and_delivery_manifest_agree_on_v41():
+def test_runtime_cache_chain_and_delivery_manifest_agree_on_v42():
     budget = json.loads((ASSET_ROOT / "runtime-texture-budget.json").read_text(encoding="utf-8"))
     shell = (ROOT / "web" / "static" / "phaser-shell.js").read_text(encoding="utf-8")
     template = (ROOT / "web" / "templates" / "index.html").read_text(encoding="utf-8")
-    assert budget["runtime_cache_version"] == "41"
-    assert "const SHELL_VERSION = '41';" in shell
+    assert budget["runtime_cache_version"] == "42"
+    assert "const SHELL_VERSION = '42';" in shell
     assert "phaser-shell.js') }}?v=42" in template
     assert "phaser-design-tokens.js') }}?v=42" in template
 

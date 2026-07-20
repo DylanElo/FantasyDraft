@@ -1,15 +1,17 @@
 import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=42';
 import { titleize } from '../core/text.js?v=42';
-import {
-  S3_COLORS,
-  drawS3Button,
-  drawS3Header,
-  drawS3Panel,
-  drawS3Portrait,
-  drawS3Progress,
-  drawS3World,
-} from '../ui/season-three-ui.js?v=42';
+import { Season3UI } from '../ui/season3-ui.js?v=42';
 import { BaseScene } from './base-scene.js?v=42';
+
+const {
+  colors: S3_COLORS,
+  button: drawS3Button,
+  header: drawS3Header,
+  panel: drawS3Panel,
+  portrait: drawS3Portrait,
+  progress: drawS3Progress,
+  world: drawS3World,
+} = Season3UI.flow;
 
 const MISSION_WORLD_KEY = 'culling-current-map';
 const ROUTE_X = Object.freeze([0.22, 0.69, 0.31, 0.72, 0.25, 0.67, 0.48]);
@@ -108,12 +110,12 @@ export class MissionMapScene extends BaseScene {
         g.fillRect(labelX, labelY, 4, 42);
         this.mono(labelX + 8, labelY + 4, status.label, {
           color: S3_COLORS.redText,
-          fontSize: '9px',
+          fontSize: `${TYPE_SCALE.micro}px`,
           fontStyle: '900',
         });
         this.text(labelX + 8, labelY + 16, mission.title || mission.id, {
           color: S3_COLORS.inkText,
-          fontSize: '9px',
+          fontSize: `${TYPE_SCALE.micro}px`,
           fontStyle: selected ? '900' : '700',
           lineSpacing: -1,
           wordWrap: { width: labelW - 12 },
@@ -134,7 +136,7 @@ export class MissionMapScene extends BaseScene {
         g.strokePath();
         this.mono(sealX, sealY - 5, 'LATER INCIDENTS // SEALED', {
           color: '#FFF4ED',
-          fontSize: '9px',
+          fontSize: `${TYPE_SCALE.micro}px`,
           fontStyle: '900',
           stroke: '#101828',
           strokeThickness: 3,
@@ -183,12 +185,12 @@ export class MissionMapScene extends BaseScene {
       const objectives = (mission.objectives || []).slice();
       this.mono(region.x + 13, region.y + 87, `${objectives.length} OBJECTIVES // ${titleize((mission.unlocks || [])[0] || 'profile progress').toUpperCase()}`, {
         color: '#9A211A',
-        fontSize: '9px',
+        fontSize: `${TYPE_SCALE.micro}px`,
         fontStyle: '900',
       });
       this.mono(region.x + 13, region.y + 107, 'RECOMMENDED TRIO', {
         color: S3_COLORS.inkText,
-        fontSize: '9px',
+        fontSize: `${TYPE_SCALE.micro}px`,
         fontStyle: '900',
       });
       const portraitY = region.y + region.h - 48;
@@ -219,7 +221,7 @@ export class MissionMapScene extends BaseScene {
       drawS3Button(this, frame.x + frame.width - 110, frame.top + 9, 44, 44, 'TEAM', () => this.store.openFirstCreation(), {
         variant: 'bone',
         accent: S3_COLORS.gold,
-        fontSize: '9px',
+        fontSize: `${TYPE_SCALE.micro}px`,
         mono: true,
       });
 

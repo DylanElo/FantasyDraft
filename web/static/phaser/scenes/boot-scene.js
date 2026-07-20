@@ -13,15 +13,17 @@ import {
   environmentAssetFor,
   registerEnvironmentTextureAttempt,
 } from '../core/asset-registry.js?v=42';
-import {
-  S3_COLORS,
-  bootS3Layout,
-  drawS3Chip,
-  drawS3Panel,
-  drawS3Progress,
-  drawS3World,
-} from '../ui/season-three-ui.js?v=42';
+import { Season3UI } from '../ui/season3-ui.js?v=42';
 import { BaseScene } from './base-scene.js?v=42';
+
+const {
+  colors: S3_COLORS,
+  bootLayout: bootS3Layout,
+  chip: drawS3Chip,
+  panel: drawS3Panel,
+  progress: drawS3Progress,
+  world: drawS3World,
+} = Season3UI.flow;
 
 export class BootScene extends BaseScene {
     constructor() {

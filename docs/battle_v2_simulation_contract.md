@@ -50,11 +50,23 @@ It is diagnostic evidence, not live telemetry storage.
 python -m jjk_arena.battle_v2.simulation \
   --team-a yuji_itadori,megumi_fushiguro,nobara_kugisaki \
   --team-b maki_zenin,panda,mai_zenin \
-  --games 100 --seed 1 --max-turns 200
+  --games 100 --seed 1 --max-turns 200 --workers 0 --compact
 ```
 
 The same teams, seed range, rules version, and turn cap must produce identical
-JSON results. The simulation loop terminates on `result_type`, not
+JSON results. `--workers 0` automatically uses at most four processes, while
+an explicit positive value fixes the worker count. Process completion order
+never changes seed/result order. `--compact` omits per-match payloads and emits
+only aggregate outcome, turn-range, and energy-transmutation diagnostics and
+reduces completed matches as a stream instead of retaining per-match summaries;
+the default remains the complete per-match evidence payload for compatibility.
+
+Compact conversion diagnostics include event and usage rates, target-color and
+source-pip counts, mixed-source exchanges, and average conversion turn. They
+are derived only from the same privacy-safe authoritative conversion event
+projection used by complete summaries.
+
+The simulation loop terminates on `result_type`, not
 `winner_id`, so winnerless `DRAW` and `NO_CONTEST` states exit cleanly. A
 `TURN_CAP` is reported explicitly rather than silently inventing a draw or
 winner policy. Balance-report consumers classify all three winnerless terminal

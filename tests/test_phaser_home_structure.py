@@ -17,6 +17,9 @@ def test_home_is_a_hero_landing_screen_instead_of_the_old_dashboard():
     assert "this.renderHeroComposition(layout.hero);" not in source
     assert "renderHeroTrio" not in source
     assert "YOUR ACTIVE TRIO" not in source
+    assert "PROMOTIONAL KEY ART" in source
+    assert "ACTIVE TRIO ${this.store.playerTeam.length}/3" in source
+    assert "renderPromotionalHeroLabel(layout.hero)" in source
     assert "drawCurrentModeCard" not in source
 
 

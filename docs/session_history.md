@@ -2794,3 +2794,83 @@ physical vibration feel still require a short real-phone pass. Superseded local
 QA captures were moved recoverably to the user temp directory; the user's
 existing untracked concept and QA artwork remains untouched. This pass is local
 on `codex/audit-mobile-ui-closure`; no remote push or pull request was created.
+
+## 2026-07-20 - Audit mobile-interaction, accessibility, and observability closure
+
+**Scope and locked invariants.** This pass addresses the supplied
+`FantasyDraft14_latest_audit.md` without adding characters, changing any kit or
+combat number, introducing progression tiers, or performing another visual
+redesign. The authoritative engine phases and timeout policy are unchanged;
+Phaser still submits intent and renders viewer-specific state. First Creation
+remains exactly 19 characters / 78 shipping skills, all four original skill
+slots remain available, and invisible enemy information remains private. The
+approved Home decision is fixed promotional key art, with the player profile
+separately and explicitly labeled `ACTIVE TRIO`.
+
+**Interaction and mobile closure.** The client now derives three explicit
+player-facing stages over the unchanged server phase: Planning before the
+first saved action, Orders Open while additional fighter actions can still be
+added, and Queue Review only while the order/Wild/confirm sheet is visibly
+open. HUD, timer captions, accessibility state, reconnect snapshots, and debug
+analytics use that vocabulary while retaining a separately named
+`authoritativePhase`. A resumed authoritative `queue_review` snapshot returns
+to Orders Open with its local queue intact. Transport loss locks commands and
+holds the last confirmed displayed timer; resume-in-flight is labeled as
+restoring, and rejection clears stale local battle state without sending a
+surrender. Battlefield prompts now distinguish reconnect, server validation,
+opponent turn, and confirmed-wait states.
+
+Combat uses a two-column by two-row technique deck at 360px. Every card keeps
+its name, adjusted cost, and readable disabled reason on the face; long status
+reasons use compact rule-family copy on the card while their complete reason
+remains in the accessible label and detail path. `season3-ui.js` is the only
+scene-facing public UI import and delegates to the existing current/flow/
+post-match helpers without changing their output. Remaining meaningful 9px
+labels in Records, Mission Map, BaseScene, and the long Result fallback now use
+the 10px Micro floor. The DOM mirror adds viewer-safe fighter HP/status lists,
+T/J/S/B energy, interaction phase/timer/connection state, and the local queue
+with target routes and Wild payment; it never reads enemy pending actions,
+private status fields, or event history. Runtime cache metadata and coordinated
+imports remain `v42`.
+
+**Balance observability, not balance adjustment.** Headless batches can run in
+up to four worker processes, preserve deterministic seed/result order, and
+stream compact reductions without retaining per-match payloads. Report schema
+4 adds symmetric trio matchup matrices plus conversion target, source-pip,
+mixed-source, usage, timing, and descriptive win-correlation metrics; the
+gameplay rules/replay version is unchanged. The Story Tutorial investigation
+did not reproduce the audit's exact 18/20 window but confirmed the same signal:
+16-4 over seeds 1-20, 86-14 over seeds 1001-1100, and 23-5 across the seven
+other named trios in a 112-match matrix. With no turn caps or no-contests, the
+evidence points to a broader deterministic CPU/team-heuristic matchup effect,
+so no kit number was changed. Full commands and limitations are recorded in
+`docs/story_tutorial_balance_investigation.md`.
+
+**Artifact resolution and live QA.** The approved Culling Current concept pack
+(`README`, prompts, two screen concepts, and the direction board) is now
+intentional non-runtime design history under
+`artifacts/ui-redesign/concepts/culling-current/`. The superseded/rejected
+`artifacts/ui-redesign/s3-style/qa/` tree and the two undocumented
+`s3-structure-v2/qa/home-390x844-*` probes were moved to the Windows Recycle Bin
+and remain recoverable. No unresolved QA/concept path remains.
+
+The in-app browser verified Home at 390x844; Planning, all four techniques,
+Orders Open, Queue Review, HP/status/energy/queue accessibility summaries, and
+a real offline/reconnect cycle at 360x800, 390x844, and 430x932. At 360px all
+four cards remained simultaneously accessible and readable. During the forced
+network interruption, controls locked and the displayed phase timer stayed at
+45 seconds across the offline interval; a fresh viewer-specific state restored
+input after reconnect. Browser diagnostics had no warnings or errors.
+
+**Verification and delivery state.** Full pytest passed normally with **606
+passed, 1 skipped** in 127.03 seconds and with test files in reverse order with
+**606 passed, 1 skipped** in 131.25 seconds. Independent 1,000-match lifecycle
+soaks passed with zero softlocks and zero final rooms: seed 1 in 111.90 seconds
+at 85,254,144-byte RSS and seed 2 in 112.01 seconds at 80,920,576-byte RSS;
+both stayed below the 419,430,400-byte ceiling and shut the scheduler worker
+down to zero. The focused final interaction/accessibility set passed 43 tests,
+the final simulation/report set passed 16, all 16 changed JavaScript files
+passed `node --check`, `python -m compileall -q jjk_arena web/app.py` passed,
+and `git diff --check` passed. Delivery is awaiting the final commit, push, and
+draft pull request against `main`; this paragraph will be updated with their
+identifiers after publication.

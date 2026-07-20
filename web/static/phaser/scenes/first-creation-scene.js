@@ -2,16 +2,18 @@ import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=42';
 import { firstCreationRoster } from '../core/roster.js?v=42';
 import { skillVisualFor } from '../core/skill-visual-registry.js?v=42';
 import { clamp, safeText, titleize } from '../core/text.js?v=42';
-import {
-  S3_COLORS,
-  drawS3Button,
-  drawS3Cost,
-  drawS3Header,
-  drawS3Pager,
-  drawS3Panel,
-  drawS3World,
-} from '../ui/season-three-ui.js?v=42';
+import { Season3UI } from '../ui/season3-ui.js?v=42';
 import { BaseScene } from './base-scene.js?v=42';
+
+const {
+  colors: S3_COLORS,
+  button: drawS3Button,
+  cost: drawS3Cost,
+  header: drawS3Header,
+  pager: drawS3Pager,
+  panel: drawS3Panel,
+  world: drawS3World,
+} = Season3UI.flow;
 
 const FIRST_CREATION_WORLD_KEY = 'culling-current-campus';
 

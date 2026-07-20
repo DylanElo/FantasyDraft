@@ -1,6 +1,11 @@
 import { CORE_ENERGY, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, ENERGY_NAMES, TOKEN_TYPE } from '../core/runtime-config.js?v=42';
 import { CombatPlaybackScene } from '../fx/combat-playback-scene.js?v=42';
-import { drawCurrentButton, drawCurrentPanel } from '../ui/culling-current-ui.js?v=42';
+import { Season3UI } from '../ui/season3-ui.js?v=42';
+
+const {
+  button: drawCurrentButton,
+  panel: drawCurrentPanel,
+} = Season3UI.current;
 
 const SKILL_ART_BY_ENERGY = {
   green: 's3-skill-body',
@@ -472,7 +477,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         this.presentationLayerCall('interactionCue', { cue: 'press', context: 'queue-review-close' });
         this.store.closeQueueReview();
       }, {
-        accessibilityLabel: 'Return to combat planning',
+        accessibilityLabel: 'Return to Orders Open and add or revise fighter actions',
         accessibilityId: 'queue-review-back',
         fill: CULLING_COLORS.ivory,
         stroke: CULLING_COLORS.charcoal,
@@ -494,11 +499,11 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         display: false,
         cut: 8,
       });
-      drawCurrentButton(this, confirmX, layout.footerY, confirmW, layout.footerH, this.store.queueSubmitting ? 'RESOLVING' : 'CONFIRM QUEUE', () => {
+      drawCurrentButton(this, confirmX, layout.footerY, confirmW, layout.footerH, this.store.queueSubmitting ? 'CONFIRMING' : 'CONFIRM QUEUE', () => {
         this.presentationLayerCall('interactionCue', { cue: 'queue-confirm', valid: queueFit.ok });
         this.store.confirmQueue();
       }, {
-        accessibilityLabel: this.store.queueSubmitting ? 'Queue confirmation is resolving' : 'Confirm queue',
+        accessibilityLabel: this.store.queueSubmitting ? 'Queue is being validated by the server' : 'Confirm queue',
         accessibilityId: 'queue-review-confirm',
         disabledReason: this.store.queueSubmitting
           ? 'Queue confirmation is already being submitted.'

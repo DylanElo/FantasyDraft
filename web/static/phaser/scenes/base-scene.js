@@ -315,7 +315,7 @@ export class BaseScene extends Phaser.Scene {
       const controlRight = sheetX + sheetW - 16;
       const rowLabel = (y, title, detail) => {
         this.mono(labelX, y + 8, title, { color: CULLING_COLORS.cobaltText, fontSize: '11px', fontStyle: '900' }).setDepth(191);
-        if (detail) this.mono(labelX, y + 25, detail, { color: CULLING_COLORS.mutedText, fontSize: '9px', fontStyle: '700' }).setDepth(191);
+        if (detail) this.mono(labelX, y + 25, detail, { color: CULLING_COLORS.mutedText, fontSize: `${TYPE_SCALE.micro}px`, fontStyle: '700' }).setDepth(191);
       };
 
       const soundY = sheetY + 68;

@@ -174,6 +174,144 @@ console.log(JSON.stringify({
     assert probe["describedBy"].endswith("-reason")
 
 
+def test_combat_dom_mirror_exposes_viewer_safe_tactical_state_in_queue_order():
+    probe = _run_node(
+        r"""
+const { DomUiBridge, buildCombatAccessibilityState } = await import('./web/static/phaser/core/dom-ui-bridge.js');
+
+class FakeNode {
+  constructor(documentRef, id = '') {
+    this.documentRef = documentRef;
+    this.attributes = new Map();
+    this.children = [];
+    this.listeners = new Map();
+    this.dataset = {};
+    this.textContent = '';
+    this.hidden = false;
+    this.isConnected = true;
+    this._id = '';
+    if (id) this.id = id;
+  }
+  set id(value) { this._id = value; if (value) this.documentRef.nodes.set(value, this); }
+  get id() { return this._id; }
+  addEventListener(type, callback) { this.listeners.set(type, callback); }
+  removeEventListener(type) { this.listeners.delete(type); }
+  setAttribute(name, value) { this.attributes.set(name, String(value)); }
+  removeAttribute(name) { this.attributes.delete(name); }
+  appendChild(child) { this.children.push(child); child.isConnected = true; return child; }
+  replaceChildren() { this.children = []; }
+  remove() { this.isConnected = false; }
+  focus() { this.documentRef.activeElement = this; }
+}
+
+class FakeDocument {
+  constructor() {
+    this.nodes = new Map();
+    this.body = new FakeNode(this, 'body');
+    this.documentElement = new FakeNode(this, 'html');
+    this.activeElement = this.body;
+    this.defaultView = { queueMicrotask: (callback) => callback() };
+    [
+      'jjk-scene-heading', 'jjk-action-mirror', 'jjk-scene-live', 'toast',
+      'jjk-combat-state', 'jjk-combat-phase', 'jjk-combat-connection',
+      'jjk-combat-energy', 'jjk-combat-allies', 'jjk-combat-enemies',
+      'jjk-combat-queue',
+    ].forEach((id) => new FakeNode(this, id));
+  }
+  getElementById(id) { return this.nodes.get(id) || null; }
+  createElement() { return new FakeNode(this); }
+  addEventListener() {}
+  removeEventListener() {}
+}
+
+const fighter = (side, slot, name, hp, statuses = []) => ({
+  side, slot, name, hp, maxHp: 100, alive: hp > 0, statuses,
+});
+const raw = {
+  interactionStage: 'orders_open',
+  interactionStageLabel: 'Orders Open',
+  interactionHeading: 'Combat Orders Open',
+  interactionDescription: 'Add another fighter action or open Queue Review.',
+  interactionTimerLabel: 'ORDER TIME',
+  authoritativePhase: 'queue_review',
+  authoritativePhaseSecondsRemaining: 27.2,
+  connection: { key: 'paused_for_reconnect', label: 'Battle paused for reconnect; 44 seconds remain.' },
+  energy: [
+    { label: 'T', name: 'Taijutsu', count: 2 },
+    { label: 'J', name: 'Jujutsu', count: 1 },
+    { label: 'S', name: 'Strategic', count: 3 },
+    { label: 'B', name: 'Bloodline', count: 0 },
+  ],
+  allies: [
+    fighter('ally', 1, 'Yuji Itadori', 82, [{ name: 'Momentum', duration: 1, clock: 'source turn', visibility: 'visible' }]),
+    fighter('ally', 2, 'Megumi Fushiguro', 0),
+    fighter('ally', 3, 'Nobara Kugisaki', 65),
+  ],
+  enemies: [
+    fighter('enemy', 1, 'Yuta Okkotsu (JJK 0)', 90, [{ name: 'Rika Protects', duration: 2, clock: 'target turn', visibility: 'revealed' }]),
+    fighter('enemy', 2, 'Maki Zenin', 70),
+    fighter('enemy', 3, 'Toge Inumaki', 55),
+  ],
+  queue: [
+    { order: 1, caster: 'Nobara Kugisaki', skill: 'Nail Barrage', target: 'Enemy 2, Maki Zenin', cost: ['S'], wildcardPays: [] },
+    { order: 2, caster: 'Yuji Itadori', skill: 'Divergent Fist', target: 'Enemy 1, Yuta Okkotsu (JJK 0)', cost: ['T', 'X'], wildcardPays: ['J'] },
+  ],
+  // These fields model data that must never be copied into the whitelisted
+  // mirror even if a caller accidentally carries adjacent private objects.
+  opponentQueue: [{ skill: 'PRIVATE ENEMY ACTION' }],
+  privateEnemyStatuses: [{ name: 'UNREVEALED ENEMY TRAP' }],
+};
+const normalized = buildCombatAccessibilityState(raw);
+const documentRef = new FakeDocument();
+const bridge = new DomUiBridge(documentRef);
+bridge.setCombatState(raw);
+bridge.reconcileScene({ sceneKey: 'CombatScene', bounds: { width: 360, height: 800 }, actions: [] });
+const nodeText = (id) => documentRef.getElementById(id).textContent;
+const listText = (id) => documentRef.getElementById(id).children.map((node) => node.textContent);
+const rendered = [
+  nodeText('jjk-scene-heading'), nodeText('jjk-combat-phase'),
+  nodeText('jjk-combat-connection'), nodeText('jjk-combat-energy'),
+  ...listText('jjk-combat-allies'), ...listText('jjk-combat-enemies'),
+  ...listText('jjk-combat-queue'),
+].join(' | ');
+console.log(JSON.stringify({
+  heading: nodeText('jjk-scene-heading'),
+  phase: nodeText('jjk-combat-phase'),
+  connection: nodeText('jjk-combat-connection'),
+  energy: nodeText('jjk-combat-energy'),
+  allies: listText('jjk-combat-allies'),
+  enemies: listText('jjk-combat-enemies'),
+  queue: listText('jjk-combat-queue'),
+  ariaHidden: documentRef.getElementById('jjk-combat-state').attributes.get('aria-hidden'),
+  leaksRawPhase: rendered.includes('queue_review'),
+  leaksPrivateAction: rendered.includes('PRIVATE ENEMY ACTION') || JSON.stringify(normalized).includes('PRIVATE ENEMY ACTION'),
+  leaksPrivateStatus: rendered.includes('UNREVEALED ENEMY TRAP') || JSON.stringify(normalized).includes('UNREVEALED ENEMY TRAP'),
+}));
+"""
+    )
+
+    assert probe["heading"] == "Combat Orders Open"
+    assert probe["phase"] == (
+        "Orders Open. Add another fighter action or open Queue Review. "
+        "ORDER TIME: 28 seconds remaining."
+    )
+    assert probe["connection"] == "Battle paused for reconnect; 44 seconds remain."
+    assert probe["energy"] == "Available energy. T Taijutsu: 2; J Jujutsu: 1; S Strategic: 3; B Bloodline: 0."
+    assert len(probe["allies"]) == 3
+    assert "82 of 100 HP" in probe["allies"][0]
+    assert "Momentum, 1 source turn" in probe["allies"][0]
+    assert "down, 0 of 100 HP" in probe["allies"][1]
+    assert len(probe["enemies"]) == 3
+    assert "revealed, Rika Protects, 2 target turns" in probe["enemies"][0]
+    assert probe["queue"][0].startswith("Order 1: Nobara Kugisaki uses Nail Barrage")
+    assert probe["queue"][1].startswith("Order 2: Yuji Itadori uses Divergent Fist")
+    assert "Wild paid with J" in probe["queue"][1]
+    assert probe["ariaHidden"] == "false"
+    assert probe["leaksRawPhase"] is False
+    assert probe["leaksPrivateAction"] is False
+    assert probe["leaksPrivateStatus"] is False
+
+
 def test_identity_dialog_saves_cancels_validates_and_restores_focus():
     probe = _run_node(
         r"""
@@ -299,6 +437,16 @@ def test_identity_editor_is_native_focus_managed_and_mobile_sized():
     assert 'id="jjk-identity-input"' in html
     assert 'type="text"' in html
     assert 'role="status" aria-live="polite"' in html
+    for combat_id in (
+        "jjk-combat-state",
+        "jjk-combat-phase",
+        "jjk-combat-connection",
+        "jjk-combat-energy",
+        "jjk-combat-allies",
+        "jjk-combat-enemies",
+        "jjk-combat-queue",
+    ):
+        assert f'id="{combat_id}"' in html
     assert "event.key === 'Escape'" in bridge
     assert "button.type = 'button'" in bridge
     assert "button.addEventListener('click'" in bridge

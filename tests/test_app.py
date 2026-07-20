@@ -97,7 +97,7 @@ def test_battle_v2_public_surface_uses_production_copy(monkeypatch):
     design_tokens_js = Path(web_app.app.static_folder, "phaser-design-tokens.js").read_text(encoding="utf-8")
 
     assert "import(`./phaser/index.js?v=${SHELL_VERSION}`)" in shell_js
-    assert "const SHELL_VERSION = '41';" in shell_js
+    assert "const SHELL_VERSION = '42';" in shell_js
     assert "import './legacy-shell.js?v=42';" in phaser_entry_js
     assert "from './store/game-store.js?v=42';" in runtime_js
     assert "from './network/socket-client.js?v=42';" in runtime_js

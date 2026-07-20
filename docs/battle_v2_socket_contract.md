@@ -351,6 +351,35 @@ disconnects (not just on the next unrelated action), so the connected
 opponent's client learns about it immediately rather than only on the next
 state change.
 
+#### Authoritative phase versus mobile interaction stage
+
+`phase` and `phase_seconds_remaining` remain the authoritative engine/timer
+contract. The Phaser client presents a separate, derived interaction stage so
+the server's early `QUEUE_REVIEW` transition is not exposed while the player
+is still composing additional fighter actions:
+
+- **Planning**: no fighter order has been saved yet; choose the first fighter,
+  technique, and required targets.
+- **Orders Open**: at least one order is saved and the battlefield command deck
+  remains open; add/revise other fighters or explicitly open Queue Review.
+- **Queue Review**: the review deck is visibly open; set left-to-right order,
+  assign Wild payments, and confirm.
+
+The HUD, timer caption, DOM accessibility mirror, and client notification
+snapshot all use this interaction-stage vocabulary. Diagnostic/analytics
+consumers receive both the derived `interactionStage` and separately named
+`authoritativePhase`; they must not treat either as an alias for the other.
+The countdown value always remains the server-provided authoritative phase
+timer. A resumed `QUEUE_REVIEW` snapshot with pending actions returns to
+**Orders Open** because the server serializes the queue but not whether that
+viewer's local review sheet was open; no action or Wild assignment is lost.
+On transport loss, the client locks every battle command and holds the last
+confirmed countdown value until a fresh viewer-specific snapshot arrives; it
+does not predict the server's pause or expiry. While the resume request is in
+flight, HUD, DOM mirror, and diagnostics report `resuming`/restoring rather
+than connected. A rejected resume discards the stale cached battle locally
+without emitting surrender, clears the expired token, and returns to Home.
+
 ### `battle_v2_error`
 
 Returned when the feature flag is disabled, the session is missing, validation

@@ -2969,6 +2969,7 @@ not immutable or operational rollback readiness. Registry pull, HTTPS/WSS and
 browser/device validation, populated-data/sidecar restore, production ACL/DACL,
 prior deployed-digest rollback, capacity/SLO, accessibility/human balance,
 privacy, legal/IP, and staffed operations remain open. Sanitized hashes and the
-full boundary are in `docs/release_candidate_rehearsal_2026-07-20.md`. Work is
-on `codex/release-readiness-rehearsal`; at the time of this record the final
-documentation commit, push, and draft PR were still pending.
+full boundary is in `docs/release_candidate_rehearsal_2026-07-20.md`. Evidence
+commit `ae93bd7` and branch `codex/release-readiness-rehearsal` were pushed;
+draft PR [#61](https://github.com/DylanElo/FantasyDraft/pull/61) is open against
+`main`.

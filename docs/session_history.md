@@ -2875,3 +2875,41 @@ and `git diff --check` passed. Implementation commit `ff9c25c` was pushed on
 `codex/audit-mobile-ui-closure`; mergeable draft PR
 [#60](https://github.com/DylanElo/FantasyDraft/pull/60) is open against `main`.
 GitHub's `quality` check was in progress when this delivery record was written.
+
+## 2026-07-20 - PR #60 merge and branch cleanup
+
+Source: user-directed session ("where are we", then merge and clean up).
+
+What changed:
+
+- Confirmed PR #60's `quality` CI check had finished green, marked the draft
+  PR ready for review, and merged it into `main` with a merge commit
+  (`8048cd9`).
+- Fast-forwarded local `main` and the session branch
+  (`claude/where-are-we-62cd86`) to `origin/main`.
+- Deleted the now-superseded branches: `codex/audit-mobile-ui-closure`
+  (local and remote) and the local-only, unpushed
+  `codex/audit-correctness-closure`, which was an earlier subset of the same
+  closure work.
+
+Verification:
+
+- `python -m pytest -q` run against the merged `main` -> `606 passed, 1
+  skipped` in 120.37s, matching the counts claimed in the PR body.
+
+Caution / next work:
+
+- The `.claude/worktrees/hungry-kapitsa-3a5188` worktree directory has no
+  checked-out files of its own; `git rev-parse --show-toplevel` from inside
+  it resolves to the primary repo path
+  (`C:\Users\dylan\OneDrive\Documents\New project\FantasyDraft`), and that is
+  where commands actually need to run. Long-running commands (like the full
+  pytest suite) exceed the default 120s tool timeout and should be expected
+  to fall back to the background-task path.
+- Repo now has a single branch, `main`, matching the pattern from the
+  2026-07-19 branch closure pass.
+
+Pushed state:
+
+- `main` was pushed to `origin/main` via the PR #60 merge; no other branches
+  remain on the remote.

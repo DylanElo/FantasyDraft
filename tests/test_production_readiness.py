@@ -5,11 +5,98 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from web import app as web_app
 from jjk_arena.battle_v2.models import BattlePhase
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+_REAL_GUNICORN_CONFIG_PROBE = r"""
+import json
+import os
+import sys
+import types
+
+# Gunicorn is POSIX-only, but its configuration resolver is still testable on
+# Windows with import-time platform shims. Production launches use unmodified
+# Gunicorn; these shims exist only inside this short-lived test subprocess.
+if os.name == "nt":
+    for name in ("geteuid", "getegid", "getuid", "getgid"):
+        if not hasattr(os, name):
+            setattr(os, name, lambda: 0)
+    for module_name in ("fcntl", "grp", "pwd"):
+        sys.modules.setdefault(module_name, types.ModuleType(module_name))
+    arbiter_module = types.ModuleType("gunicorn.arbiter")
+    arbiter_module.Arbiter = object
+    sys.modules["gunicorn.arbiter"] = arbiter_module
+
+from gunicorn.app.wsgiapp import WSGIApplication
+
+application = WSGIApplication("gunicorn-config-probe")
+for key, value in application.cfg.env.items():
+    os.environ[key] = value
+application.cfg.on_starting(types.SimpleNamespace(cfg=application.cfg))
+print(json.dumps({
+    "workers": application.cfg.workers,
+    "worker_class": application.cfg.worker_class_str,
+    "threads": application.cfg.threads,
+}))
+"""
+
+
+def gunicorn_environment(**overrides: str | None) -> dict[str, str]:
+    environment = {
+        **os.environ,
+        "JJK_PRODUCTION": "1",
+        "JJK_SOCKETIO_ASYNC_MODE": "threading",
+        "JJK_WEB_THREADS": "8",
+        "JJK_WEB_WORKERS": "1",
+    }
+    environment.pop("GUNICORN_CMD_ARGS", None)
+    for key, value in overrides.items():
+        if value is None:
+            environment.pop(key, None)
+        else:
+            environment[key] = value
+    return environment
+
+
+def run_real_gunicorn_config(
+    *arguments: str,
+    gunicorn_cmd_args: str | None = None,
+) -> subprocess.CompletedProcess[str]:
+    environment = gunicorn_environment()
+    if gunicorn_cmd_args is not None:
+        environment["GUNICORN_CMD_ARGS"] = gunicorn_cmd_args
+    return subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            _REAL_GUNICORN_CONFIG_PROBE,
+            "-c",
+            "gunicorn.conf.py",
+            "web.app:app",
+            *arguments,
+        ],
+        cwd=ROOT,
+        env=environment,
+        text=True,
+        capture_output=True,
+    )
+
+
+def configure_valid_production(monkeypatch):
+    monkeypatch.setattr(web_app, "PRODUCTION_MODE", True)
+    monkeypatch.setattr(web_app, "DEBUG_MODE", False)
+    monkeypatch.setattr(web_app, "configured_secret", "s" * 32)
+    monkeypatch.setattr(web_app, "configured_cors_origins", "https://candidate.test")
+    monkeypatch.setattr(web_app, "CORS_ORIGINS", ["https://candidate.test"])
+    monkeypatch.setattr(web_app, "WEB_WORKERS", 1)
+    monkeypatch.setattr(web_app, "SOCKETIO_ASYNC_MODE", "threading")
+    monkeypatch.setenv("JJK_OPS_TOKEN", "o" * 32)
+    monkeypatch.setenv("JJK_DATABASE_PATH", str(web_app.runtime_store.path))
 
 
 def test_health_and_readiness_expose_no_room_or_player_data():
@@ -34,6 +121,57 @@ def test_readiness_fails_closed_for_ephemeral_production_secret(monkeypatch):
 
     assert response.status_code == 503
     assert "FLASK_SECRET_KEY" in " ".join(response.get_json()["issues"])
+
+
+def test_valid_production_configuration_has_no_readiness_issues(monkeypatch):
+    configure_valid_production(monkeypatch)
+
+    assert web_app.production_readiness_issues() == []
+
+
+def test_production_readiness_rejects_missing_or_shared_ops_token(monkeypatch):
+    configure_valid_production(monkeypatch)
+    monkeypatch.delenv("JJK_OPS_TOKEN")
+    assert "JJK_OPS_TOKEN must be configured in production" in web_app.production_readiness_issues()
+
+    monkeypatch.setenv("JJK_OPS_TOKEN", "s" * 32)
+    assert "JJK_OPS_TOKEN must be distinct from FLASK_SECRET_KEY" in web_app.production_readiness_issues()
+
+
+def test_production_readiness_rejects_short_ops_token(monkeypatch):
+    configure_valid_production(monkeypatch)
+    monkeypatch.setenv("JJK_OPS_TOKEN", "too-short")
+
+    assert (
+        "JJK_OPS_TOKEN must contain at least 32 characters in production"
+        in web_app.production_readiness_issues()
+    )
+
+
+def test_production_readiness_rejects_example_placeholders(monkeypatch):
+    configure_valid_production(monkeypatch)
+    monkeypatch.setattr(web_app, "configured_secret", web_app.EXAMPLE_SECRET)
+    monkeypatch.setenv("JJK_OPS_TOKEN", web_app.EXAMPLE_OPS_TOKEN)
+    monkeypatch.setattr(web_app, "configured_cors_origins", web_app.EXAMPLE_CORS_ORIGIN)
+    monkeypatch.setattr(web_app, "CORS_ORIGINS", [web_app.EXAMPLE_CORS_ORIGIN])
+
+    issues = web_app.production_readiness_issues()
+
+    assert "FLASK_SECRET_KEY must not use the .env.example placeholder" in issues
+    assert "JJK_OPS_TOKEN must not use the .env.example placeholder" in issues
+    assert "JJK_CORS_ORIGINS must not use the .env.example origin" in issues
+
+
+def test_production_readiness_rejects_debug_and_wrong_socket_mode(monkeypatch):
+    configure_valid_production(monkeypatch)
+    monkeypatch.setattr(web_app, "DEBUG_MODE", True)
+    monkeypatch.setattr(web_app, "SOCKETIO_ASYNC_MODE", "eventlet")
+
+    issues = web_app.production_readiness_issues()
+
+    assert "JJK_DEBUG must remain disabled in production" in issues
+    assert "JJK_SOCKETIO_ASYNC_MODE must remain threading in production" in issues
+    assert web_app.app.test_client().get("/debug-state").status_code == 404
 
 
 def test_local_socket_cors_defaults_follow_the_configured_bind_port():
@@ -129,6 +267,45 @@ def test_production_readiness_still_requires_explicit_https_cors(monkeypatch):
     assert "JJK_CORS_ORIGINS must contain only explicit HTTPS origins in production" in issues
 
 
+@pytest.mark.parametrize(
+    "origin",
+    [
+        "https://",
+        "https://arena.example/path",
+        "https://arena.example/",
+        "https://user:password@arena.example",
+        "https://arena.example?query=yes",
+        "https://arena.example#fragment",
+        "https://*.arena.example",
+        "https://arena.example:",
+        "https://arena.example:99999",
+    ],
+)
+def test_production_readiness_rejects_urls_that_are_not_exact_origins(monkeypatch, origin):
+    configure_valid_production(monkeypatch)
+    monkeypatch.setattr(web_app, "configured_cors_origins", origin)
+    monkeypatch.setattr(web_app, "CORS_ORIGINS", [origin])
+
+    assert (
+        "JJK_CORS_ORIGINS must contain only explicit HTTPS origins in production"
+        in web_app.production_readiness_issues()
+    )
+
+
+def test_readyz_healthchecks_storage_once_and_reports_runtime_mode(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        web_app.runtime_store,
+        "healthcheck",
+        lambda: calls.append(True) or {"ok": True, "schema_version": 6},
+    )
+
+    payload = web_app.app.test_client().get("/readyz").get_json()
+
+    assert calls == [True]
+    assert payload["mode"] == "development"
+
+
 def test_ops_runtime_is_hidden_without_configured_bearer(monkeypatch):
     monkeypatch.delenv("JJK_OPS_TOKEN", raising=False)
     client = web_app.app.test_client()
@@ -139,7 +316,9 @@ def test_ops_runtime_is_hidden_without_configured_bearer(monkeypatch):
     response = client.get("/ops/runtime", headers={"Authorization": "Bearer secret-token"})
     assert response.status_code == 200
     assert set(response.get_json()) == {
-        "active_rooms", "waiting_lobbies", "rate_limit_keys", "counters", "analytics",
+        "active_rooms", "live_rooms", "finished_rooms", "scheduler_tasks", "waiting_lobbies",
+        "accepting_new_matches", "mission_snapshot_retry_rooms",
+        "rate_limit_keys", "counters", "analytics",
         "analytics_outbox_size", "analytics_outbox_dropped_total",
         "mission_settlements", "mission_settlement_dead_lettered_total",
         "mission_settlement_claimed_total",
@@ -148,6 +327,136 @@ def test_ops_runtime_is_hidden_without_configured_bearer(monkeypatch):
     # Aggregate counts only: no raw queued-event payloads are ever exposed.
     assert isinstance(response.get_json()["analytics_outbox_size"], int)
     assert isinstance(response.get_json()["analytics_outbox_dropped_total"], int)
+
+
+def test_ops_drain_cancels_waiting_lobbies_and_rejects_new_cpu_or_pvp_matches(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    monkeypatch.setenv("JJK_OPS_TOKEN", "o" * 32)
+    http_client = web_app.app.test_client()
+    with http_client.session_transaction() as session_data:
+        session_data["player_id"] = "drain-waiter"
+    socket_client = web_app.socketio.test_client(
+        web_app.app,
+        flask_test_client=http_client,
+    )
+    socket_client.emit(
+        "battle_v2_join_pvp",
+        {"room_id": "drain-lobby", "player_name": "Waiter"},
+    )
+    socket_client.get_received()
+
+    unauthorized = http_client.post("/ops/drain", json={"draining": True})
+    drained = http_client.post(
+        "/ops/drain",
+        json={"draining": True},
+        headers={"Authorization": f"Bearer {'o' * 32}"},
+    )
+    cancellation = socket_client.get_received()
+
+    assert unauthorized.status_code == 404
+    assert drained.status_code == 200
+    assert drained.get_json()["accepting_new_matches"] is False
+    assert drained.get_json()["cancelled_lobbies"] == 1
+    assert any(
+        message["name"] == "battle_v2_lobby"
+        and message["args"][0]["status"] == "cancelled"
+        for message in cancellation
+    )
+    assert web_app.v2_pvp_lobbies == {}
+    assert web_app.waiting_code_by_player == {}
+
+    socket_client.emit("battle_v2_start_classic", {"room_id": "drained-cpu"})
+    cpu_rejection = socket_client.get_received()
+    socket_client.emit("battle_v2_join_pvp", {"room_id": "drained-pvp"})
+    pvp_rejection = socket_client.get_received()
+    assert any(
+        message["name"] == "battle_v2_error"
+        and "maintenance" in message["args"][0]["message"]
+        for message in cpu_rejection
+    )
+    assert any(
+        message["name"] == "battle_v2_error"
+        and "maintenance" in message["args"][0]["message"]
+        for message in pvp_rejection
+    )
+    assert web_app.battle_v2_manager.rooms == {}
+
+
+def test_ops_drain_rejects_new_rematches_but_allows_release(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    monkeypatch.setenv("JJK_OPS_TOKEN", "o" * 32)
+    http_client = web_app.app.test_client()
+    with http_client.session_transaction() as session_data:
+        session_data["player_id"] = "drain-rematch-player"
+    socket_client = web_app.socketio.test_client(
+        web_app.app,
+        flask_test_client=http_client,
+    )
+    socket_client.emit("battle_v2_start_classic", {"room_id": "drain-rematch"})
+    update = next(
+        message["args"][0]
+        for message in reversed(socket_client.get_received())
+        if message["name"] == "battle_v2_update"
+    )
+    socket_client.emit(
+        "battle_v2_surrender",
+        {
+            "state_revision": update["state_revision"],
+            "client_action_nonce": "drain-rematch-surrender",
+        },
+    )
+    finished_update = next(
+        message["args"][0]
+        for message in reversed(socket_client.get_received())
+        if message["name"] == "battle_v2_update"
+    )
+    http_client.post(
+        "/ops/drain",
+        json={"draining": True},
+        headers={"Authorization": f"Bearer {'o' * 32}"},
+    )
+
+    socket_client.emit(
+        "battle_v2_rematch",
+        {
+            "old_match_id": finished_update["match_id"],
+            "state_revision": finished_update["state_revision"],
+            "client_action_nonce": "drained-rematch-attempt",
+        },
+    )
+    rejection = socket_client.get_received()
+    assert any(
+        message["name"] == "battle_v2_error"
+        and "maintenance" in message["args"][0]["message"]
+        for message in rejection
+    )
+
+    released = http_client.post(
+        "/ops/drain",
+        json={"draining": False},
+        headers={"Authorization": f"Bearer {'o' * 32}"},
+    )
+    assert released.status_code == 200
+    assert released.get_json()["accepting_new_matches"] is True
+
+
+def test_ops_runtime_separates_live_and_retained_finished_rooms(monkeypatch):
+    monkeypatch.setenv("JJK_OPS_TOKEN", "secret-token")
+    web_app.battle_v2_manager.rooms["live-room"] = SimpleNamespace(phase=BattlePhase.PLANNING)
+    web_app.battle_v2_manager.rooms["finished-room"] = SimpleNamespace(phase=BattlePhase.FINISHED)
+    web_app.mission_snapshot_retry_rooms.add("finished-room")
+
+    response = web_app.app.test_client().get(
+        "/ops/runtime",
+        headers={"Authorization": "Bearer secret-token"},
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()["active_rooms"] == 2
+    assert response.get_json()["live_rooms"] == 1
+    assert response.get_json()["finished_rooms"] == 1
+    assert isinstance(response.get_json()["scheduler_tasks"], int)
+    assert response.get_json()["mission_snapshot_retry_rooms"] == 1
 
 
 def test_ops_runtime_analytics_reflects_a_finished_cpu_match(monkeypatch):
@@ -449,7 +758,7 @@ def test_finished_replay_is_archived_once_when_capture_is_opted_in(monkeypatch):
 
 
 def test_gunicorn_topology_fails_closed_above_one_worker():
-    env = {**os.environ, "JJK_WEB_WORKERS": "2"}
+    env = gunicorn_environment(JJK_WEB_WORKERS="2")
     result = subprocess.run(
         [sys.executable, "-c", "import runpy; runpy.run_path('gunicorn.conf.py')"],
         cwd=ROOT,
@@ -459,6 +768,96 @@ def test_gunicorn_topology_fails_closed_above_one_worker():
     )
     assert result.returncode != 0
     assert "must be 1" in result.stderr
+
+
+def test_gunicorn_launch_requires_explicit_production_mode():
+    for configured_value in (None, "0", "production"):
+        result = subprocess.run(
+            [sys.executable, "-c", "import runpy; runpy.run_path('gunicorn.conf.py')"],
+            cwd=ROOT,
+            env=gunicorn_environment(JJK_PRODUCTION=configured_value),
+            text=True,
+            capture_output=True,
+        )
+
+        assert result.returncode != 0
+        assert "JJK_PRODUCTION must be explicitly true" in result.stderr
+
+
+def test_gunicorn_topology_accepts_exactly_one_threaded_worker():
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import json, runpy; config=runpy.run_path('gunicorn.conf.py'); "
+                "print(json.dumps({key: config[key] for key in "
+                "('workers', 'worker_class', 'threads')}))"
+            ),
+        ],
+        cwd=ROOT,
+        env=gunicorn_environment(),
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+
+    assert json.loads(result.stdout) == {
+        "workers": 1,
+        "worker_class": "gthread",
+        "threads": 8,
+    }
+
+
+def test_gunicorn_topology_rejects_non_threading_socket_mode():
+    result = subprocess.run(
+        [sys.executable, "-c", "import runpy; runpy.run_path('gunicorn.conf.py')"],
+        cwd=ROOT,
+        env=gunicorn_environment(JJK_SOCKETIO_ASYNC_MODE="eventlet"),
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode != 0
+    assert "must be threading" in result.stderr
+
+
+def test_real_gunicorn_resolution_accepts_supported_effective_topology():
+    result = run_real_gunicorn_config()
+
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) == {
+        "workers": 1,
+        "worker_class": "gthread",
+        "threads": 8,
+    }
+
+
+def test_real_gunicorn_resolution_rejects_cli_worker_override():
+    result = run_real_gunicorn_config("--workers", "2")
+
+    assert result.returncode != 0
+    assert "Unsupported effective Gunicorn topology" in result.stderr
+    assert "workers must be 1 (got 2)" in result.stderr
+
+
+def test_real_gunicorn_resolution_rejects_environment_argument_overrides():
+    result = run_real_gunicorn_config(
+        gunicorn_cmd_args="--worker-class sync --threads 1"
+    )
+
+    assert result.returncode != 0
+    assert "worker class must resolve to gthread" in result.stderr
+    assert "threads must be at least 2 (got 1)" in result.stderr
+
+
+def test_real_gunicorn_resolution_rejects_late_production_mode_override():
+    result = run_real_gunicorn_config(
+        gunicorn_cmd_args="--env JJK_PRODUCTION=0"
+    )
+
+    assert result.returncode != 0
+    assert "JJK_PRODUCTION must be explicitly true" in result.stderr
 
 
 def test_production_launch_surfaces_use_guarded_gunicorn_config():

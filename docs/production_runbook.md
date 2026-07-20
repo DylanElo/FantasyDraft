@@ -34,7 +34,10 @@ Start from `.env.example`. At minimum:
 - configure a distinct `JJK_OPS_TOKEN` for protected runtime counters.
 
 Readiness returns HTTP 503 for an ephemeral production secret, unsafe worker
-count, missing CORS allowlist, or unavailable SQLite schema.
+count, non-threading Socket.IO mode, missing/distinctness failure for the ops
+token, enabled production debug mode, missing CORS allowlist, or unavailable
+SQLite schema. Literal `.env.example` secret/token/origin placeholders are
+also rejected; the checked-in template is not a deployable configuration.
 
 ## Persistence
 
@@ -91,14 +94,48 @@ notice/consent and retention policy because replay documents contain player
 identifiers, names, teams, and command history. `JJK_REPLAY_RETENTION_DAYS`
 controls automatic expiry.
 
-Back up the database with a SQLite-aware snapshot or the online backup API.
-That API does **not** include the settlement sidecar: quiesce/stop the single
-worker and separately copy any
-`*.mission-settlement-fallback.jsonl` file from the durable volume, preserving
-its restrictive permissions. Restore the database and sidecar together into a
-separate environment before every public release. The sidecar contains player
-identifiers and mission progress, so apply the same access, retention, and
-incident controls as the profile database.
+Back up the database with the repository's SQLite-aware bundle tool. It uses
+`sqlite3.Connection.backup()`, verifies `PRAGMA integrity_check`, accepts the
+supported source schemas 4, 5, and 6, records privacy-safe aggregate row counts
+and SHA-256 hashes, and separately preserves the settlement sidecar with
+restrictive permissions:
+
+```bash
+# First stop/quiesce the only authoritative worker. Source must already exist;
+# output must not exist.
+python -m tools.runtime_backup backup \
+  --database /durable/jjk_arena.sqlite3 \
+  --output /backups/release-YYYYMMDD \
+  --quiesced
+
+python -m tools.runtime_backup verify \
+  --backup /backups/release-YYYYMMDD
+
+# Restore only into a new, separate candidate path. Existing destinations are
+# deliberately refused.
+python -m tools.runtime_backup restore \
+  --backup /backups/release-YYYYMMDD \
+  --database /candidate-data/jjk_arena.sqlite3
+```
+
+The SQLite backup API does **not** include the settlement sidecar. The tool
+therefore requires the single worker to be quiesced and bundles any
+`*.mission-settlement-fallback.jsonl` file separately. Restore the database
+and sidecar together into an isolated environment before every public release.
+Restore publishes `<database>-restore-complete.json` last, after the database
+and optional sidecar have been installed and verified. A candidate must not
+start from a restored path unless that completion marker is present; never
+hand-create or copy a marker independently of its restored bundle. A schema-4
+or schema-5 restore is migrated additively to schema 6 by the candidate, and
+`/readyz` must report schema 6 before acceptance begins.
+
+On POSIX, keep the bundle directory operator-only (`0700`) and its database,
+manifest, sidecar, and completion marker private (`0600`). On Windows, `chmod`
+does not establish a restrictive DACL: the backup and restore parent
+directories must have an operator-only ACL/DACL before running the tool. The
+sidecar contains player identifiers and mission progress, so apply the same
+access, retention, and incident controls as the profile database. Never use the
+ignored developer `data/jjk_arena.sqlite3` as rehearsal input.
 
 ## Health And Operations
 
@@ -106,6 +143,40 @@ incident controls as the profile database.
 - `GET /readyz`: secret/topology/storage readiness.
 - `GET /ops/runtime`: aggregate counters only; hidden as 404 unless the exact
   bearer token from `JJK_OPS_TOKEN` is supplied.
+- `POST /ops/drain` with JSON `{"draining": true}` or
+  `{"draining": false}`: protected by the same bearer token and hidden as 404
+  from missing or incorrect credentials.
+
+For drain decisions, `active_rooms` remains the backward-compatible total of
+all retained room objects, while `live_rooms` excludes terminal rooms and
+`finished_rooms` counts retained terminal rooms. `scheduler_tasks` is the
+number of rooms with an armed authoritative wakeup.
+
+Enabling drain atomically sets `accepting_new_matches=false`, rejects new CPU
+starts and PvP joins, rejects rematches that would create a new room, and
+cancels and notifies every waiting lobby. Active-match commands and authenticated
+resume/reconnect remain available so existing matches can finish. The drain
+request also makes one bounded attempt to reconstruct missing terminal mission
+snapshots, flush mission settlements, and flush the analytics outbox. Repeat
+the protected `{"draining": true}` request after repairing a transient storage
+failure if another bounded pass is needed. `GET /readyz` continues to describe
+configuration and storage readiness while drained; use
+`accepting_new_matches` from `/ops/runtime` as the drain authority.
+
+A safe planned stop requires one post-drain `/ops/runtime` response with all of
+the following conditions:
+
+- `accepting_new_matches=false`;
+- `live_rooms=0`, `waiting_lobbies=0`, and `scheduler_tasks=0`;
+- `mission_snapshot_retry_rooms=0`;
+- `analytics_outbox_size=0`;
+- mission settlement counts `pending=0`, `processing=0`, and
+  `failed_retryable=0`.
+
+Finished rooms may remain in memory until the process stops. A durable
+`dead_letter` settlement is not in-memory drain work, but it still requires an
+operator incident decision before release; do not silently treat it as a
+successful player credit.
 
 Operational counters include starts, commands, replayed commands, command
 errors, rate limits, phase timeouts, archives, and lifecycle pruning. They are
@@ -190,24 +261,119 @@ security headers. Production cookies are Secure, HttpOnly, and SameSite=Lax.
 HTTP request bodies are capped. Socket payloads retain the existing event rate
 limits and server-side sanitization/validation.
 
-Terminate TLS before the app and forward WebSocket upgrades. Never expose the
-debug reset/state routes; they remain 404 unless `JJK_DEBUG=1`.
+Terminate TLS before the app and forward WebSocket upgrades. The load balancer
+must set HSTS because this application does not blindly trust forwarded-proto
+headers. Never expose the debug reset/state routes: they remain 404 in
+production even if `JJK_DEBUG=1`, and that misconfiguration makes readiness
+fail. Inject `JJK_OPS_TOKEN` through the deployment platform's protected secret
+environment and never place its value in command arguments, shell history,
+logs, acceptance artifacts, or an unprotected curl configuration. If an
+operator uses a curl config for `/ops/drain`, keep that file outside the
+repository with operator-only permissions or ACL/DACL.
 
 ## Deploy And Rollback
 
-1. Back up the SQLite volume.
-2. Build the container and start one candidate instance.
-3. Require `/readyz` HTTP 200.
-4. Run one CPU match and one two-browser private-room smoke test.
-5. Verify reconnect, queue confirmation, authoritative timer expiry, and Result.
-6. Shift traffic to the candidate.
-7. Watch command errors, phase timeouts, rate limits, and room counts.
+Battle rooms, resume-token hashes, timers, and command receipts are process
+memory. A worker restart cannot preserve an active match. One worker means one
+global authority, not one worker in each overlapping old/candidate instance.
+Do not use Gunicorn HUP/graceful worker reload or a rolling deploy for this
+topology.
 
-Rollback uses the prior image against a restored or schema-compatible database
-snapshot. Runtime schema 6 is additive from deployed schema 4 and intermediate
-schema 5, but an older image must still be tested against a restored copy
-before rollback; also restore any pending settlement sidecar alongside the
-database.
+1. Build from a clean, recorded commit/tree and record the immutable candidate
+   image digest. Also record the exact previously deployed image digest needed
+   for rollback.
+2. Restore the latest production backup into an **isolated** candidate volume;
+   never point the candidate and live authority at the same database/sidecar.
+   Require the restore-completion marker and the platform-specific private
+   permissions described under **Persistence**.
+3. Start one candidate instance and require `/healthz` and `/readyz` HTTP 200.
+   Confirm `mode=production`, `topology=single-authority-worker`, an empty
+   `issues` list, healthy storage, and schema 6.
+4. Run the production-shaped contract against that instance. Inject
+   `JJK_OPS_TOKEN` into the acceptance process from the protected environment;
+   the tool deliberately has no token command-line option. Pass exactly one
+   Origin, not the comma-separated `JJK_CORS_ORIGINS` allowlist:
+
+   ```bash
+   python -m tools.network_acceptance \
+     --base-url http://127.0.0.1:5000 \
+     --socket-origin "https://candidate.example.com" \
+     --planning-seconds 60 \
+     --queue-review-seconds 60 \
+     --load-requests 1000 \
+     --load-concurrency 32
+   ```
+
+   External mode validates the production/schema/topology/readiness contract,
+   drives CPU and two-client PvP server flows, checks token rotation/replay
+   rejection and Planning/Queue Review expiry, verifies protected/debug
+   surfaces, enables drain, and fails unless every safe-stop counter is exactly
+   zero. The optional 1,000-request health/readiness ramp is endpoint
+   correctness evidence, not a capacity certification.
+
+   With the loopback `http://` base URL shown above, Socket.IO uses direct
+   `ws://` through Gunicorn and merely injects the supplied HTTPS Origin. That
+   does **not** test TLS termination, `wss://`, load-balancer upgrades,
+   Secure-cookie handoff, or browser Origin behavior. Repeat the contract
+   separately against the actual `https://` candidate ingress with its exact
+   HTTPS Origin, and retain real-browser QA as a separate launch gate.
+5. Enable drain on the live authority with authenticated
+   `POST /ops/drain` and `{"draining": true}`. Use the deployment platform's
+   secret-aware HTTP client or a protected curl config containing the
+   Authorization header; do not expand the bearer token onto the command line:
+
+   ```bash
+   curl --fail --silent --show-error \
+     --config /run/secrets/jjk-ops-curl.conf \
+     --header 'Content-Type: application/json' \
+     --request POST \
+     --data '{"draining":true}' \
+     https://live.example.com/ops/drain
+   ```
+
+   Verify the response reports `accepting_new_matches=false` and successful
+   bounded maintenance. Existing matches may continue and reconnect while new
+   CPU starts, PvP joins, and newly created rematches are rejected. Poll
+   `/ops/runtime` until every condition under **Health And Operations** is
+   satisfied. Do not cut over with a live room, waiting lobby, retry room,
+   timer, transient settlement, or analytics outbox entry.
+6. Stop the old worker gracefully. Gunicorn's `graceful_timeout` is 30 seconds,
+   so the container/orchestrator termination grace must be **longer than 30
+   seconds** before any forced kill. Record the elapsed drain/stop time and
+   clean exit result. Create and verify the database-plus-sidecar backup only
+   after the sole authority has stopped.
+7. Keep public routing closed, then start the exact candidate digest against
+   the live durable volume. There must never be two authorities accepting match
+   traffic. Because the in-memory drain flag starts in accepting mode in a new
+   process, enable drain on the new candidate before exposing it, require
+   readiness and the exact zero snapshot again, then send protected
+   `{"draining": false}` and atomically reopen traffic.
+8. Watch command errors, phase timeouts, rate limits, settlement state, outbox
+   size, mission snapshot retries, and live-room counts.
+
+A drained restart must preserve profiles, opted-in replays, analytics, and
+settlement rows. An unexpected process/container crash preserves committed
+SQLite/sidecar data but abandons active matches and invalidates their resume
+tokens; treat that as a match interruption and incident until room authority is
+externalized.
+
+Rollback requires the exact previously deployed image digest recorded before
+cutover. Before release, run that immutable image against a separately restored
+copy of the candidate-migrated database and measure recovery time. A source
+rebuild from a commit or floating dependency ranges is only compatibility
+evidence, not a completed rollback rehearsal.
+
+For an actual rollback, drain the candidate to the same exact zero gates, stop
+it, and create a verified candidate-era database-plus-sidecar backup before
+changing storage. Prefer starting the prior digest against the proven
+schema-compatible candidate-era database so post-cutover writes are retained.
+If compatibility forces restoration of the pre-deploy bundle, that operation
+discards durable writes made after cutover: quantify the loss window, obtain
+explicit RPO/data-loss approval, restore the database and sidecar to a **new**
+path or volume, require its completion marker, and switch storage atomically.
+Retain the candidate-era volume and backup for reconciliation; never overwrite
+or delete them as part of rollback. Record both achieved RTO and RPO rather
+than treating image startup alone as rollback closure.
 
 ## External Launch Gates
 

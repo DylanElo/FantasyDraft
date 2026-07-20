@@ -8,11 +8,13 @@ import sqlite3
 import threading
 import time
 import uuid
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterator
 
 
 SCHEMA_VERSION = 6
+SUPPORTED_EXISTING_SCHEMA_VERSIONS = frozenset({4, 5, 6})
 
 # Retention policy for analytics_events: rows older than this are pruned by
 # prune_old_analytics_events(), called from web/app.py's existing periodic
@@ -79,17 +81,64 @@ class SQLiteRuntimeStore:
         self.mission_settlement_claimed_total = 0
         self._initialize()
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self, *, enable_wal: bool = True) -> Iterator[sqlite3.Connection]:
+        """Yield one transactional connection and always release its handle.
+
+        ``sqlite3.Connection.__exit__`` commits or rolls back, but it does not
+        close the connection.  Explicit closure matters for long-lived workers
+        and is required before a Windows backup/restore rehearsal can replace
+        or remove a database file deterministically.
+        """
+
         self.path.parent.mkdir(parents=True, exist_ok=True)
         connection = sqlite3.connect(self.path, timeout=5.0)
-        connection.row_factory = sqlite3.Row
-        connection.execute("PRAGMA busy_timeout = 5000")
-        connection.execute("PRAGMA foreign_keys = ON")
-        connection.execute("PRAGMA journal_mode = WAL")
-        return connection
+        try:
+            connection.row_factory = sqlite3.Row
+            connection.execute("PRAGMA busy_timeout = 5000")
+            connection.execute("PRAGMA foreign_keys = ON")
+            if enable_wal:
+                connection.execute("PRAGMA journal_mode = WAL")
+            with connection:
+                yield connection
+        finally:
+            connection.close()
 
     def _initialize(self) -> None:
-        with self._connect() as connection:
+        # Inspect an existing database before changing its persistent journal
+        # mode. A future or malformed schema must be rejected without even the
+        # otherwise-safe WAL pragma mutating the file we are refusing to open.
+        with self._connect(enable_wal=False) as connection:
+            table_names = {
+                str(row["name"])
+                for row in connection.execute(
+                    "SELECT name FROM sqlite_master WHERE type = 'table'"
+                )
+            }
+            if "runtime_meta" in table_names:
+                existing_version = connection.execute(
+                    "SELECT value FROM runtime_meta WHERE key = 'schema_version'"
+                ).fetchone()
+                if existing_version is None:
+                    raise RuntimeError("runtime database has no schema_version")
+                try:
+                    parsed_version = int(existing_version["value"])
+                except (TypeError, ValueError) as exc:
+                    raise RuntimeError("runtime database schema_version is invalid") from exc
+                if parsed_version > SCHEMA_VERSION:
+                    raise RuntimeError(
+                        f"runtime database schema {parsed_version} is newer than supported "
+                        f"schema {SCHEMA_VERSION}"
+                    )
+                if parsed_version not in SUPPORTED_EXISTING_SCHEMA_VERSIONS:
+                    raise RuntimeError(
+                        f"runtime database schema {parsed_version} is not supported; "
+                        "supported existing schemas are 4, 5, and 6"
+                    )
+            elif table_names:
+                raise RuntimeError("runtime database has tables but no runtime_meta schema")
+
+            connection.execute("PRAGMA journal_mode = WAL")
             connection.executescript(
                 """
                 CREATE TABLE IF NOT EXISTS runtime_meta (
@@ -1017,4 +1066,5 @@ class SQLiteRuntimeStore:
                 "SELECT value FROM runtime_meta WHERE key = 'schema_version'"
             ).fetchone()
             connection.execute("SELECT 1").fetchone()
-        return {"ok": version is not None, "schema_version": int(version["value"]) if version else None}
+        schema_version = int(version["value"]) if version else None
+        return {"ok": schema_version == SCHEMA_VERSION, "schema_version": schema_version}

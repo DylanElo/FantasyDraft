@@ -50,6 +50,7 @@ def reset_battle_v2_runtime_state():
     )
 
     def _reset():
+        web_app.accepting_new_matches = True
         manager = web_app.battle_v2_manager
         rooms = getattr(manager, "rooms", None)
         if isinstance(rooms, dict):
@@ -74,6 +75,10 @@ def reset_battle_v2_runtime_state():
         web_app.lobby_last_activity.clear()
         web_app.archived_replays.clear()
         web_app.analytics_recorded_matches.clear()
+        web_app.missions_settled_players.clear()
+        web_app.missions_snapshotted_players.clear()
+        web_app.mission_snapshot_retry_rooms.clear()
+        web_app.mission_match_finished_at.clear()
 
     _reset()
     yield

@@ -6,11 +6,12 @@ import random
 import secrets
 from collections import Counter
 from collections import OrderedDict
+from contextlib import contextmanager
 from itertools import permutations, product
 from copy import deepcopy
 from dataclasses import dataclass
 import json
-from threading import RLock
+from threading import RLock, local
 from typing import Any, Callable
 
 from .damage_accounting import enemy_hp_damage_attribution
@@ -838,15 +839,56 @@ class BattleV2Manager:
         # Lets callers (e.g. web/app.py) record match-finished analytics at
         # the true source of truth instead of a viewer-serialization side effect.
         self.on_match_finished: Callable[[str], None] | None = None
-        # While a command transaction is in flight, `_finish_match` queues the
-        # room id here instead of firing `on_match_finished` immediately. The
-        # queued callbacks are only published after state_revision, the replay
-        # transcript, and the nonce receipt have all committed successfully;
-        # a rollback discards them so a terminal hook never runs for a finish
-        # that was undone. `None` means no transaction is in flight, so
-        # `_finish_match` fires the hook immediately (background paths such as
-        # disconnect-budget expiry are not wrapped in a command transaction).
-        self._deferred_match_finished: list[str] | None = None
+        # `_finish_match` queues its room id here instead of firing
+        # `on_match_finished` immediately whenever it runs inside a
+        # `_defer_finished_callbacks()` block (a command transaction, or a
+        # background expiry pass such as `expire_disconnects`/
+        # `_expire_phase_if_needed`, both of which keep mutating state after
+        # a finish before returning). The callback only publishes once the
+        # outermost such block returns without raising; an exception
+        # anywhere inside discards the queue instead of firing a callback
+        # for a finish that never cleanly committed.
+        #
+        # Thread-local, not a plain instance attribute: different rooms are
+        # only serialized by their own per-room `room_locks` entry, so two
+        # rooms can finish concurrently on different threads. A shared
+        # instance attribute here would let one room's queue clobber
+        # another's; `threading.local` gives each thread its own queue.
+        self._finished_callback_state = local()
+
+    @contextmanager
+    def _defer_finished_callbacks(self):
+        """Queue `on_match_finished` calls until this block returns cleanly.
+
+        Nestable and thread-local: an inner call (e.g. `expire_phase_if_needed`
+        invoked from inside a command transaction) reuses the outer thread's
+        queue instead of publishing early. Only the outermost block on a given
+        thread actually publishes, and only when every nested block --
+        including the outermost one -- completed without raising.
+        """
+
+        outer_pending = getattr(self._finished_callback_state, "pending", None)
+        owns_queue = outer_pending is None
+        pending = [] if owns_queue else outer_pending
+        self._finished_callback_state.pending = pending
+        completed = False
+        try:
+            yield
+            completed = True
+        finally:
+            if owns_queue:
+                del self._finished_callback_state.pending
+            if owns_queue and completed:
+                for room_id in pending:
+                    self._publish_match_finished(room_id)
+
+    def _publish_match_finished(self, room_id: str) -> None:
+        if self.on_match_finished is None:
+            return
+        try:
+            self.on_match_finished(room_id)
+        except Exception:
+            pass
 
     def start_classic_match(
         self,
@@ -1087,48 +1129,46 @@ class BattleV2Manager:
         # transcript, or recording the receipt -- must restore state,
         # first-creation progress, RNG, replay, and receipts exactly as if
         # the command never ran, and must not leave a queued terminal
-        # callback behind.
-        previous_deferred = self._deferred_match_finished
-        deferred_finished: list[str] = []
-        self._deferred_match_finished = deferred_finished
+        # callback behind (see `_defer_finished_callbacks`).
         try:
-            if command == "submit_plan":
-                self.submit_plan(room_id, player_id, list(payload.get("actions", [])))
-            elif command == "update_queue":
-                self.update_queue(
-                    room_id,
-                    player_id,
-                    list(payload.get("queue_order", [])),
-                    dict(payload.get("wildcard_pays", {})),
-                )
-            elif command == "confirm_queue":
-                self.confirm_queue(room_id, player_id)
-            elif command == "cancel_queue":
-                self.cancel_queue(room_id, player_id)
-            elif command == "convert_energy":
-                raw_sources = payload.get("sources", [])
-                self.convert_energy(
-                    room_id,
-                    player_id,
-                    list(raw_sources) if isinstance(raw_sources, (list, tuple)) else [],
-                    str(payload.get("target", "")),
-                )
-            elif command == "end_turn":
-                self.end_turn(room_id, player_id)
-            elif command == "surrender":
-                self.surrender(room_id, player_id)
-            elif command == "cpu_turn":
-                self.take_cpu_turn(room_id, player_id)
-            else:
-                raise BattleV2Error(f"unknown battle command: {command}")
+            with self._defer_finished_callbacks():
+                if command == "submit_plan":
+                    self.submit_plan(room_id, player_id, list(payload.get("actions", [])))
+                elif command == "update_queue":
+                    self.update_queue(
+                        room_id,
+                        player_id,
+                        list(payload.get("queue_order", [])),
+                        dict(payload.get("wildcard_pays", {})),
+                    )
+                elif command == "confirm_queue":
+                    self.confirm_queue(room_id, player_id)
+                elif command == "cancel_queue":
+                    self.cancel_queue(room_id, player_id)
+                elif command == "convert_energy":
+                    raw_sources = payload.get("sources", [])
+                    self.convert_energy(
+                        room_id,
+                        player_id,
+                        list(raw_sources) if isinstance(raw_sources, (list, tuple)) else [],
+                        str(payload.get("target", "")),
+                    )
+                elif command == "end_turn":
+                    self.end_turn(room_id, player_id)
+                elif command == "surrender":
+                    self.surrender(room_id, player_id)
+                elif command == "cpu_turn":
+                    self.take_cpu_turn(room_id, player_id)
+                else:
+                    raise BattleV2Error(f"unknown battle command: {command}")
 
-            self.rooms[room_id].state_revision += 1
-            if self.capture_replays and room_id in self.room_replays:
-                state_hash = self._compute_authoritative_state_hash(self.rooms[room_id])
-                self._append_replay_transcript(
-                    room_id, player_id, command, state_revision, nonce, payload, state_hash
-                )
-            self._record_command_receipt(player_receipts, nonce, fingerprint)
+                self.rooms[room_id].state_revision += 1
+                if self.capture_replays and room_id in self.room_replays:
+                    state_hash = self._compute_authoritative_state_hash(self.rooms[room_id])
+                    self._append_replay_transcript(
+                        room_id, player_id, command, state_revision, nonce, payload, state_hash
+                    )
+                self._record_command_receipt(player_receipts, nonce, fingerprint)
         except Exception as exc:
             self.rooms[room_id] = state_snapshot
             if progress_snapshot is None:
@@ -1141,23 +1181,11 @@ class BattleV2Manager:
                 self.room_replays[room_id] = replay_snapshot
             player_receipts.clear()
             player_receipts.update(receipts_snapshot)
-            self._deferred_match_finished = previous_deferred
             if isinstance(exc, BattleV2Error):
                 raise
             if isinstance(exc, (IndexError, KeyError, TypeError, ValueError)):
                 raise BattleV2Error("invalid command payload") from exc
             raise
-        else:
-            self._deferred_match_finished = previous_deferred
-            # The transaction fully committed: state_revision, replay, and
-            # the receipt are all durable. Only now is it safe to publish
-            # any terminal callback this command's finish queued.
-            for finished_room_id in deferred_finished:
-                if self.on_match_finished is not None:
-                    try:
-                        self.on_match_finished(finished_room_id)
-                    except Exception:
-                        pass
         return False
 
     @staticmethod
@@ -1233,18 +1261,18 @@ class BattleV2Manager:
             {"winner_id": winner_id, "result_type": result_type, "reason": reason},
         ))
         if state.room_id is not None:
-            if self._deferred_match_finished is not None:
-                # A command transaction is still open: queue the room id and
-                # let the transaction's own success path publish it only
-                # after state_revision/replay/receipt all commit. If the
-                # transaction instead rolls back, the queued id is discarded
-                # and this hook never fires for the undone finish.
-                self._deferred_match_finished.append(state.room_id)
-            elif self.on_match_finished is not None:
-                try:
-                    self.on_match_finished(state.room_id)
-                except Exception:
-                    pass
+            pending = getattr(self._finished_callback_state, "pending", None)
+            if pending is not None:
+                # A `_defer_finished_callbacks()` block is open (a command
+                # transaction, or a background expiry pass): queue the room
+                # id and let that block's own success path publish it only
+                # once it returns without raising. If it instead raises --
+                # a rollback, or a later mutation inside the same expiry
+                # pass failing -- the queued id is discarded and this hook
+                # never fires for a finish that never cleanly completed.
+                pending.append(state.room_id)
+            else:
+                self._publish_match_finished(state.room_id)
 
     def _finish_by_tiebreak(self, state: BattleState, reason: str) -> None:
         scores = {}
@@ -1299,23 +1327,27 @@ class BattleV2Manager:
 
     def expire_disconnects(self, room_id: str) -> bool:
         with self.room_locks.setdefault(room_id, RLock()):
-            state = self.get_state(room_id)
-            if state.phase == BattlePhase.FINISHED:
-                return False
-            now = self.clock()
-            expired = [player_id for player_id, deadline in state.disconnect_deadlines.items() if now >= deadline]
-            if not expired:
-                return False
-            for player_id in expired:
-                started = state.disconnected_at.get(player_id, now)
-                state.disconnect_seconds_used[player_id] = min(180, state.disconnect_seconds_used.get(player_id, 0) + max(0, int(now - started)))
-            connected = [player_id for player_id in state.players if player_id not in expired and player_id not in state.disconnected_at]
-            if connected:
-                self._finish_match(state, "FORFEIT", connected[0], "disconnect_budget" if any(state.disconnect_seconds_used.get(pid, 0) >= 180 for pid in expired) else "disconnect", event_type="forfeit")
-            elif len(expired) == len(state.players):
-                self._finish_match(state, "NO_CONTEST", None, "disconnect", event_type="no_contest")
-            self._record_lifecycle(room_id, "expire_disconnects", {})
-            return True
+            # `_finish_match` below can be followed by further mutation
+            # (`_record_lifecycle`); deferring keeps the terminal callback
+            # from firing before this whole pass finishes cleanly.
+            with self._defer_finished_callbacks():
+                state = self.get_state(room_id)
+                if state.phase == BattlePhase.FINISHED:
+                    return False
+                now = self.clock()
+                expired = [player_id for player_id, deadline in state.disconnect_deadlines.items() if now >= deadline]
+                if not expired:
+                    return False
+                for player_id in expired:
+                    started = state.disconnected_at.get(player_id, now)
+                    state.disconnect_seconds_used[player_id] = min(180, state.disconnect_seconds_used.get(player_id, 0) + max(0, int(now - started)))
+                connected = [player_id for player_id in state.players if player_id not in expired and player_id not in state.disconnected_at]
+                if connected:
+                    self._finish_match(state, "FORFEIT", connected[0], "disconnect_budget" if any(state.disconnect_seconds_used.get(pid, 0) >= 180 for pid in expired) else "disconnect", event_type="forfeit")
+                elif len(expired) == len(state.players):
+                    self._finish_match(state, "NO_CONTEST", None, "disconnect", event_type="no_contest")
+                self._record_lifecycle(room_id, "expire_disconnects", {})
+                return True
 
     def _disconnect_grace_seconds_remaining(self, state: BattleState) -> float | None:
         if not state.disconnect_deadlines:
@@ -1800,10 +1832,22 @@ class BattleV2Manager:
         return self.serialize_for_player(room_id, player_id)
 
     def expire_phase_if_needed(self, room_id: str) -> bool:
-        """Apply the authoritative timeout transition once a deadline passes."""
+        """Apply the authoritative timeout transition once a deadline passes.
+
+        `_expire_phase_if_needed` can call `_finish_match` partway through
+        and then keep mutating state (event log, turn completion, progress,
+        next-turn energy, re-arming the phase timer) with no rollback of its
+        own. Deferring here means a later failure in that same pass simply
+        drops the terminal callback instead of firing it for a finish that
+        never cleanly completed. When this call nests inside an
+        already-open `_defer_finished_callbacks()` block (e.g. invoked from
+        inside `_execute_player_command`'s own transaction), it reuses that
+        outer queue instead of publishing early.
+        """
 
         with self.room_locks.setdefault(room_id, RLock()):
-            return self._expire_phase_if_needed(room_id)
+            with self._defer_finished_callbacks():
+                return self._expire_phase_if_needed(room_id)
 
     def _expire_phase_if_needed(self, room_id: str) -> bool:
         """Locked implementation for authoritative timeout transitions."""

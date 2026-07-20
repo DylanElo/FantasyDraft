@@ -9,8 +9,11 @@ terminal (`on_match_finished`) callback escape before the whole transaction
 commits.
 """
 
+import threading
+
 import pytest
 
+import jjk_arena.battle_v2.manager as manager_module
 from jjk_arena.battle_v2.manager import BattleV2Manager
 
 
@@ -102,3 +105,108 @@ def test_terminal_callback_does_not_fire_when_commit_fails_after_finish(monkeypa
     )
     assert finished_rooms == [room_id]
     assert manager.get_state(room_id).phase.value == "finished"
+
+
+def test_deferred_finish_callbacks_do_not_leak_across_concurrent_rooms(monkeypatch):
+    """`_deferred_match_finished`-style state must be thread-local, not a shared attribute.
+
+    Different rooms are only serialized by their own per-room `room_locks`
+    entry, so two rooms can have their command transactions in flight on
+    different threads at the same moment. A plain shared instance attribute
+    tracking "the current transaction's pending terminal callbacks" would
+    let one room's in-progress queue be clobbered by another room's queue
+    setup/teardown running concurrently on a different thread.
+    """
+
+    manager = BattleV2Manager(rng_seed=1, clock=lambda: 0.0)
+    manager.start_classic_match("room-a", players())
+    manager.start_classic_match("room-b", players())
+
+    finished_rooms: list[str] = []
+    finished_lock = threading.Lock()
+
+    def record(room_id):
+        with finished_lock:
+            finished_rooms.append(room_id)
+
+    manager.on_match_finished = record
+
+    entered_a = threading.Event()
+    release_a = threading.Event()
+    original_record_receipt = manager._record_command_receipt
+
+    def blocking_record_receipt(player_receipts, nonce, fingerprint):
+        if nonce == "surrender-a":
+            entered_a.set()
+            assert release_a.wait(timeout=2.0)
+        return original_record_receipt(player_receipts, nonce, fingerprint)
+
+    monkeypatch.setattr(manager, "_record_command_receipt", blocking_record_receipt)
+
+    state_a = manager.get_state("room-a")
+    player_a = state_a.turn_player_id
+    revision_a = state_a.state_revision
+
+    thread_a = threading.Thread(
+        target=lambda: manager.execute_player_command(
+            "room-a", player_a, "surrender", revision_a, "surrender-a", {}
+        )
+    )
+    thread_a.start()
+    assert entered_a.wait(timeout=2.0)
+
+    # room-a's transaction is now parked mid-commit, inside its own open
+    # `_defer_finished_callbacks()` block, with its finish already queued
+    # but not yet published. room-b's surrender must complete and publish
+    # independently on this (the main) thread without waiting for or being
+    # corrupted by room-a's still-open queue.
+    state_b = manager.get_state("room-b")
+    player_b = state_b.turn_player_id
+    manager.execute_player_command("room-b", player_b, "surrender", state_b.state_revision, "surrender-b", {})
+
+    assert finished_rooms == ["room-b"]
+    assert manager.get_state("room-b").phase.value == "finished"
+
+    release_a.set()
+    thread_a.join(timeout=2.0)
+    assert not thread_a.is_alive()
+
+    assert finished_rooms == ["room-b", "room-a"]
+    assert manager.get_state("room-a").phase.value == "finished"
+
+
+def test_expire_phase_if_needed_does_not_publish_when_a_later_step_raises(monkeypatch):
+    """`_expire_phase_if_needed` has no state rollback of its own: `check_winner`
+    can call `_finish_match`, and several more mutations (turn completion,
+    progress refresh, next-turn energy, re-arming the phase timer) still run
+    afterward. If one of those later steps raises, the terminal callback must
+    not have already escaped for a finish that never cleanly completed.
+    """
+
+    manager = BattleV2Manager(rng_seed=1, clock=lambda: 0.0)
+    manager.start_classic_match("room-a", players())
+    state = manager.get_state("room-a")
+
+    finished_rooms: list[str] = []
+    manager.on_match_finished = finished_rooms.append
+
+    monkeypatch.setattr(manager_module, "phase_timer_expired", lambda _state, _clock: True)
+
+    def fake_check_winner(inner_state):
+        manager._finish_match(inner_state, "WIN", next(iter(inner_state.players)), "test-injected")
+
+    monkeypatch.setattr(manager_module, "check_winner", fake_check_winner)
+
+    def exploding_complete_player_turn(*_args, **_kwargs):
+        raise RuntimeError("injected failure after finish")
+
+    monkeypatch.setattr(manager, "_complete_player_turn", exploding_complete_player_turn)
+
+    with pytest.raises(RuntimeError):
+        manager.expire_phase_if_needed("room-a")
+
+    assert finished_rooms == []
+    # This layer has no state rollback of its own -- the phase transition
+    # itself is not undone -- but the terminal callback must still never
+    # have fired for a pass that did not complete cleanly.
+    assert state.phase.value == "finished"

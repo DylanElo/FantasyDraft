@@ -416,14 +416,14 @@ def test_concurrent_resume_replay_admits_only_atomic_rotation_winner(monkeypatch
     first = socket_client_with_player("first-replay-session")
     second = socket_client_with_player("second-replay-session")
     contenders = (first, second)
-    rotate_barrier = Barrier(len(contenders))
-    original_rotate = web_app.battle_v2_sessions.rotate
+    reserve_barrier = Barrier(len(contenders))
+    original_reserve = web_app.battle_v2_sessions.reserve
 
-    def synchronized_rotate(room_id, player_id, token):
-        rotate_barrier.wait(timeout=2)
-        return original_rotate(room_id, player_id, token)
+    def synchronized_reserve(room_id, player_id, token):
+        reserve_barrier.wait(timeout=2)
+        return original_reserve(room_id, player_id, token)
 
-    monkeypatch.setattr(web_app.battle_v2_sessions, "rotate", synchronized_rotate)
+    monkeypatch.setattr(web_app.battle_v2_sessions, "reserve", synchronized_reserve)
     failures = []
 
     def attempt_resume(client):
@@ -451,6 +451,35 @@ def test_concurrent_resume_replay_admits_only_atomic_rotation_winner(monkeypatch
     assert losers[0] == {
         "battle_v2_resume_rejected": {"message": "Battle session could not be resumed."},
     }
+
+
+def test_premature_resume_does_not_burn_token_for_a_later_real_resume(monkeypatch):
+    monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
+    original = socket_client_with_player("original")
+    original.emit("battle_v2_start_classic", {"room_id": "resume-premature"})
+    grant = received_payloads(original)["battle_v2_session"]
+
+    # The original socket never disconnected, so this resume attempt is
+    # premature: `reconnect_player` must reject it. That rejection must abort
+    # the reservation instead of rotating the credential.
+    premature = socket_client_with_player("premature-session")
+    premature.emit("battle_v2_resume", grant)
+    premature_reply = received_payloads(premature)
+    assert premature_reply == {
+        "battle_v2_resume_rejected": {"message": "Battle session could not be resumed."},
+    }
+
+    # A real disconnect now makes the original socket eligible for resume.
+    original.disconnect()
+
+    real_resume = socket_client_with_player("real-resume-session")
+    real_resume.emit("battle_v2_resume", grant)
+    resumed = received_payloads(real_resume)
+
+    # The original, still-unburned token is accepted and rotated exactly once.
+    assert "battle_v2_resume_rejected" not in resumed
+    assert resumed["battle_v2_session"]["resume_token"] != grant["resume_token"]
+    assert "battle_v2_update" in resumed
 
 
 def test_battle_v2_socket_retry_does_not_repeat_energy_conversion(monkeypatch):

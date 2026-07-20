@@ -47,6 +47,7 @@ def reset_battle_v2_runtime_state():
         "command_receipts",
         "room_locks",
         "room_replays",
+        "_in_flight_commands",
     )
 
     def _reset():

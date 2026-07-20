@@ -24,3 +24,44 @@ def test_removing_room_revokes_all_resume_tokens():
     registry.remove_room("room")
 
     assert registry.resume("room", "p1", issued.token) is None
+
+
+def test_aborted_reservation_does_not_burn_the_token():
+    registry = BattleSessionRegistry()
+    issued = registry.issue("room", "p1")
+
+    assert registry.reserve("room", "p1", issued.token) is True
+    registry.abort("room", "p1")
+
+    # The token is untouched: it still verifies and can be reserved again.
+    assert registry.verify("room", "p1", issued.token) is True
+    assert registry.reserve("room", "p1", issued.token) is True
+    committed = registry.commit("room", "p1", issued.token)
+
+    assert committed is not None
+    assert committed.token != issued.token
+    assert registry.verify("room", "p1", issued.token) is False
+
+
+def test_reserve_blocks_a_concurrent_replay_before_commit():
+    registry = BattleSessionRegistry()
+    issued = registry.issue("room", "p1")
+
+    assert registry.reserve("room", "p1", issued.token) is True
+    # A second concurrent attempt with the same still-valid token is refused
+    # while the first reservation is outstanding, without mutating anything.
+    assert registry.reserve("room", "p1", issued.token) is False
+    assert registry.verify("room", "p1", issued.token) is True
+
+    committed = registry.commit("room", "p1", issued.token)
+    assert committed is not None
+    assert committed.token != issued.token
+
+
+def test_commit_requires_a_matching_reservation():
+    registry = BattleSessionRegistry()
+    issued = registry.issue("room", "p1")
+
+    # Committing without first reserving must not rotate the token.
+    assert registry.commit("room", "p1", issued.token) is None
+    assert registry.verify("room", "p1", issued.token) is True

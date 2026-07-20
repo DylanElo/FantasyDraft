@@ -21,6 +21,18 @@ scaling is not supported until room authority, timers, sessions, and idempotency
 receipts move together into an external coordinator. A SocketIO message queue
 alone would not make authoritative battle state multi-process safe.
 
+`Dockerfile` pins its base image by digest (not just the mutable `3.11-slim`
+tag) and installs `requirements.txt` under `constraints.txt`, which locks
+every resolved (including transitive) package version so the image is
+reproducible instead of picking up whatever is newest-compatible on build
+day. Regenerate `constraints.txt` deliberately in a clean virtualenv (see the
+header comment in that file); re-resolve and re-validate the base-image
+digest the same way, with `docker buildx imagetools inspect python:3.11-slim`,
+rather than letting either drift silently. The container `HEALTHCHECK`
+resolves the listening port the same way `gunicorn.conf.py` binds it --
+`PORT`, then `JJK_PORT`, then `5000` -- so a deploy that only sets `JJK_PORT`
+still gets probed on the port the app actually listens on.
+
 ## Required Production Configuration
 
 Start from `.env.example`. At minimum:
@@ -106,6 +118,7 @@ incident controls as the profile database.
 - `GET /readyz`: secret/topology/storage readiness.
 - `GET /ops/runtime`: aggregate counters only; hidden as 404 unless the exact
   bearer token from `JJK_OPS_TOKEN` is supplied.
+- `GET /ops/safe_stop`: the drain-gate go/no-go below; same token gate.
 
 Operational counters include starts, commands, replayed commands, command
 errors, rate limits, phase timeouts, archives, and lifecycle pruning. They are
@@ -193,6 +206,41 @@ limits and server-side sanitization/validation.
 Terminate TLS before the app and forward WebSocket upgrades. Never expose the
 debug reset/state routes; they remain 404 unless `JJK_DEBUG=1`.
 
+## Safe-Stop Drain Gate
+
+Because Battle v2 room state, timers, resume sessions, and idempotency
+receipts all live in the one authoritative worker, stopping or replacing it
+is not always safe the instant traffic is shifted away. `GET /ops/safe_stop`
+(`jjk_arena/battle_v2/safe_stop.py:evaluate_safe_stop`) returns an explicit
+go/no-go instead of leaving that judgment to "traffic looks quiet":
+
+```json
+{"safe_to_stop": true, "blockers": [], "warnings": []}
+```
+
+HTTP 200 means `blockers` is empty; HTTP 503 means at least one blocker is
+still open. The gate checks three independent conditions:
+
+- **`analytics_outbox_dropped_total` must be exactly zero.** The analytics
+  outbox is in-memory only; a nonzero count means events were *already*
+  silently discarded, and stopping now would make that loss permanent. This
+  always blocks.
+- **`mission_settlements.dead_letter` is never a blocker by itself.**
+  Dead-lettered rows are durable in SQLite and explicitly
+  operator-redrivable (`SQLiteRuntimeStore.redrive_mission_settlement`), so
+  stopping the process does not lose them. A nonzero count is still always
+  surfaced as an explicit `warnings` entry -- it must never be silently
+  passed over -- but it does not, by itself, prevent a stop.
+- **In-flight command handlers and scheduler callbacks must sum to exactly
+  zero across every room.** `BattleV2Manager.in_flight_command_total()` and
+  `PhaseTimerScheduler.in_flight_total()` aggregate per-room counters
+  (`in_flight_commands_for_room` / `in_flight_count_for_room`) so that
+  normal cleanup of one idle/finished room is never blocked by unrelated
+  in-flight work in a different active match; only the whole-process
+  stop decision needs the aggregate. A nonzero aggregate blocks, because
+  stopping mid-command would abandon a partially applied transaction
+  instead of letting it finish and commit.
+
 ## Deploy And Rollback
 
 1. Back up the SQLite volume.
@@ -202,6 +250,10 @@ debug reset/state routes; they remain 404 unless `JJK_DEBUG=1`.
 5. Verify reconnect, queue confirmation, authoritative timer expiry, and Result.
 6. Shift traffic to the candidate.
 7. Watch command errors, phase timeouts, rate limits, and room counts.
+8. Before stopping the outgoing instance, require `/ops/safe_stop` HTTP 200
+   (`safe_to_stop: true`). Investigate and resolve any `blockers` first;
+   acknowledge/redrive any `warnings` (e.g. dead-lettered settlements) as a
+   follow-up, since they do not block the stop.
 
 Rollback uses the prior image against a restored or schema-compatible database
 snapshot. Runtime schema 6 is additive from deployed schema 4 and intermediate

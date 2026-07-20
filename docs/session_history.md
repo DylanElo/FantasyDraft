@@ -2913,3 +2913,125 @@ Pushed state:
 
 - `main` was pushed to `origin/main` via the PR #60 merge; no other branches
   remain on the remote.
+
+## 2026-07-20 - Reconnect/command transaction atomicity, safe-stop drain gate, and Docker/runtime consistency
+
+Source: user-directed correctness/reliability pass (explicit scope: no kit,
+combat number, progression tier, Phaser layout, art, audio, or balance
+change).
+
+**Reconnect credential transaction.** `on_battle_v2_resume`
+(`web/app.py`) previously rotated the resume token via
+`BattleSessionRegistry.rotate` *before* attempting
+`reconnect_player`/`serialize_for_player`; a premature resume (the original
+socket was still connected, so `reconnect_player` raises) or any other
+reconnect failure burned the token anyway, permanently losing the player's
+only way back in. `sessions.py` now splits rotation into
+`reserve`/`commit`/`abort`: `reserve` atomically claims the sole in-flight
+attempt for a room/player without mutating the token (blocking a second
+concurrent replay), the authoritative reconnect is attempted, and only a
+fully successful reconnect calls `commit` to rotate; any failure calls
+`abort`, leaving the original token valid. Added
+`test_premature_resume_does_not_burn_token_for_a_later_real_resume`
+(`tests/test_battle_v2_socket.py`) covering premature resume -> real
+disconnect -> successful resume with the original token, plus direct
+registry unit tests in `tests/test_battle_v2_sessions.py`. The existing
+concurrent-replay regression was retargeted to synchronize on `reserve`
+(the new atomic gate) instead of the old `rotate`.
+
+**Complete command atomicity.** `BattleV2Manager._execute_player_command`
+(`jjk_arena/battle_v2/manager.py`) bumped `state_revision`, computed the
+authoritative replay hash, appended the replay transcript, and recorded the
+nonce receipt *after* the try/except that rolled back state/progress/RNG on
+a gameplay failure -- a failure in any of those post-processing steps was
+unhandled, left state mutated with no receipt (breaking retry idempotency)
+and an incomplete replay transcript, and could leave a terminal
+(`on_match_finished`) callback already fired for a finish that then got
+silently abandoned. The whole sequence -- gameplay mutation, revision bump,
+hash, replay append, receipt -- is now one rollbackable transaction:
+snapshots now also cover the replay document and receipts dict, and
+`_finish_match` queues its terminal-callback room id
+(`self._deferred_match_finished`) instead of firing immediately while a
+transaction is open; the callback only publishes after the whole
+transaction commits, and a rollback discards the queued callback entirely.
+Extracted `_compute_authoritative_state_hash`, `_append_replay_transcript`,
+and `_record_command_receipt` as injectable seams and added
+`tests/test_battle_v2_command_transaction.py` with parametrized injected
+failures in each of the three seams (state/replay/receipt roll back
+together, receipt absence lets an identical retry re-run instead of
+short-circuiting) plus a dedicated test proving the terminal callback never
+fires when the commit that would have finished the match fails, and does
+fire exactly once once it succeeds.
+
+**Exact drain gate and per-room in-flight accounting.** No safe-stop/drain
+concept existed yet. Added `jjk_arena/battle_v2/safe_stop.py`
+(`evaluate_safe_stop`, pure decision logic): `analytics_outbox_dropped_total
+> 0` always blocks (the in-memory outbox already lost events permanently);
+`mission_settlements.dead_letter > 0` is always surfaced as an explicit
+warning but never blocks by itself (rows are durable/SQLite and
+operator-redrivable per the runbook); any in-flight command handler or
+scheduler callback, aggregated across every room, must be exactly zero.
+Added genuinely new per-room in-flight tracking rather than a single global
+counter, so unrelated active matches can never block cleanup of one
+idle/finished room: `BattleV2Manager._in_flight_commands` (a
+room-id-keyed `Counter` guarded by its own lock, never the room's business
+lock) with `in_flight_commands_for_room`/`in_flight_command_total`, and
+`PhaseTimerScheduler._firing_room_id` with
+`in_flight_count_for_room`/`in_flight_total`. Wired a new
+`GET /ops/safe_stop` endpoint (same bearer-token gate as `/ops/runtime`,
+200 when ready / 503 otherwise). `docs/production_runbook.md` gained a
+"Safe-Stop Drain Gate" section and a Deploy-and-Rollback step requiring it
+before stopping the outgoing instance; `docs/release_readiness_checklist.md`
+gained matching checklist items; `tools/network_acceptance.py` gained
+`run_safe_stop_gate_flow`, run last (after every scenario's matches have
+finished/disconnected) against the real isolated server. Added
+`tests/test_battle_v2_safe_stop.py` (pure-gate policy cases, per-room
+command in-flight isolation including a raised-command counter-clears
+case, and a real-thread scheduler in-flight test) plus HTTP-level
+`/ops/safe_stop` tests in `tests/test_production_readiness.py`.
+
+**Docker/runtime consistency.** The `HEALTHCHECK` resolved only `PORT` and
+fell straight through to a hardcoded `5000`, never checking `JJK_PORT` --
+inconsistent with `gunicorn.conf.py`'s own `PORT` -> `JJK_PORT` -> `5000`
+bind resolution, so a deploy setting only `JJK_PORT` would have gunicorn
+correctly listening on that port while the healthcheck probed the wrong one
+(verified live: built the image, ran it with only `JJK_PORT=5050` set, and
+confirmed the exact healthcheck command reaches the app on 5050). Fixed to
+mirror the same three-step resolution. Pinned the base image by digest
+(`python:3.11-slim@sha256:db3ff2e1800a8581e2c48a27c3995339d47bdf046da21c7627accd3d51053a93`,
+resolved live via `docker buildx imagetools inspect python:3.11-slim` on
+2026-07-20, `3.11.15-slim-trixie`) instead of the mutable tag. Added
+`constraints.txt` (resolved via a clean virtualenv install + `pip freeze`)
+and switched the Dockerfile to `pip install -c constraints.txt -r
+requirements.txt` for a reproducible build; `docker build` against the pinned
+digest and constraints file was verified to succeed locally.
+
+**Verification actually run.** Targeted set (`test_battle_v2_runtime_store`,
+`test_battle_v2_safe_stop`, `test_battle_v2_command_transaction`,
+`test_battle_v2_sessions`, `test_production_readiness`,
+`test_battle_v2_socket`) -> **117 passed**. Full `python -m pytest -q` ->
+**627 passed, 1 skipped** in 121.74s normal order and **627 passed, 1
+skipped** in 120.37s with test files in reverse order. Two independent
+1,000-match lifecycle soaks: seed 1 -> 0 softlocks, 0 final rooms,
+84,754,432-byte RSS in 97.48s; seed 2 -> 0 softlocks, 0 final rooms,
+82,513,920-byte RSS in 80.12s; both well under the 419,430,400-byte
+ceiling and both shut the scheduler worker down to zero.
+`python -m tools.network_acceptance` (real Socket.IO/WebSocket transport
+against an isolated server subprocess) passed end-to-end, including the new
+`run_safe_stop_gate_flow` reaching `safe_to_stop: true` after every other
+scenario finished. `python -m compileall -q jjk_arena web/app.py tools` and
+`git diff --check` both passed. A live Docker build/run smoke (not part of
+the automated suite) confirmed the pinned-digest build succeeds and the
+healthcheck reaches `/readyz` on a `JJK_PORT`-only configuration.
+
+Caution / next work:
+
+- This pass is uncommitted on the working branch
+  (`claude/local-files-sync-check-e12ba0`); no commit or push has been made
+  yet. The SQLite backup/restore rehearsal item in
+  `docs/release_readiness_checklist.md` remains a manual/external step, as
+  documented -- it was not re-run here.
+
+Pushed state:
+
+- Not pushed; changes are local/uncommitted in this worktree.

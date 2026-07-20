@@ -150,6 +150,80 @@ def test_ops_runtime_is_hidden_without_configured_bearer(monkeypatch):
     assert isinstance(response.get_json()["analytics_outbox_dropped_total"], int)
 
 
+def test_ops_safe_stop_is_hidden_without_configured_bearer(monkeypatch):
+    monkeypatch.delenv("JJK_OPS_TOKEN", raising=False)
+    client = web_app.app.test_client()
+    assert client.get("/ops/safe_stop").status_code == 404
+
+    monkeypatch.setenv("JJK_OPS_TOKEN", "secret-token")
+    assert client.get("/ops/safe_stop").status_code == 404
+    response = client.get("/ops/safe_stop", headers={"Authorization": "Bearer secret-token"})
+    assert response.status_code == 200
+    assert set(response.get_json()) == {"safe_to_stop", "blockers", "warnings"}
+
+
+def test_ops_safe_stop_is_ready_with_clean_counters(monkeypatch):
+    monkeypatch.setenv("JJK_OPS_TOKEN", "secret-token")
+    monkeypatch.setattr(web_app.runtime_store, "outbox_dropped_total", 0)
+    monkeypatch.setattr(
+        web_app.runtime_store, "mission_settlement_counts", lambda: {"settled": 3}
+    )
+    client = web_app.app.test_client()
+
+    response = client.get("/ops/safe_stop", headers={"Authorization": "Bearer secret-token"})
+
+    assert response.status_code == 200
+    assert response.get_json() == {"safe_to_stop": True, "blockers": [], "warnings": []}
+
+
+def test_ops_safe_stop_rejects_when_analytics_were_dropped(monkeypatch):
+    monkeypatch.setenv("JJK_OPS_TOKEN", "secret-token")
+    monkeypatch.setattr(web_app.runtime_store, "outbox_dropped_total", 1)
+    monkeypatch.setattr(web_app.runtime_store, "mission_settlement_counts", lambda: {})
+    client = web_app.app.test_client()
+
+    response = client.get("/ops/safe_stop", headers={"Authorization": "Bearer secret-token"})
+
+    assert response.status_code == 503
+    payload = response.get_json()
+    assert payload["safe_to_stop"] is False
+    assert any("analytics_outbox_dropped_total" in blocker for blocker in payload["blockers"])
+
+
+def test_ops_safe_stop_warns_but_stays_ready_for_dead_lettered_settlements(monkeypatch):
+    monkeypatch.setenv("JJK_OPS_TOKEN", "secret-token")
+    monkeypatch.setattr(web_app.runtime_store, "outbox_dropped_total", 0)
+    monkeypatch.setattr(
+        web_app.runtime_store, "mission_settlement_counts", lambda: {"dead_letter": 1}
+    )
+    client = web_app.app.test_client()
+
+    response = client.get("/ops/safe_stop", headers={"Authorization": "Bearer secret-token"})
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["safe_to_stop"] is True
+    assert payload["blockers"] == []
+    assert any("dead_letter" in warning for warning in payload["warnings"])
+
+
+def test_ops_safe_stop_rejects_while_a_command_is_in_flight(monkeypatch):
+    monkeypatch.setenv("JJK_OPS_TOKEN", "secret-token")
+    monkeypatch.setattr(web_app.runtime_store, "outbox_dropped_total", 0)
+    monkeypatch.setattr(web_app.runtime_store, "mission_settlement_counts", lambda: {})
+    web_app.battle_v2_manager._in_flight_commands["some-room"] += 1
+    client = web_app.app.test_client()
+    try:
+        response = client.get("/ops/safe_stop", headers={"Authorization": "Bearer secret-token"})
+    finally:
+        web_app.battle_v2_manager._in_flight_commands.pop("some-room", None)
+
+    assert response.status_code == 503
+    payload = response.get_json()
+    assert payload["safe_to_stop"] is False
+    assert any("in flight" in blocker for blocker in payload["blockers"])
+
+
 def test_ops_runtime_analytics_reflects_a_finished_cpu_match(monkeypatch):
     monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
     monkeypatch.setenv("JJK_OPS_TOKEN", "secret-token")

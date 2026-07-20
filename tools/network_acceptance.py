@@ -663,8 +663,13 @@ def _assert_runtime_drained(ops_payload: dict[str, Any]) -> None:
         "live_rooms",
         "waiting_lobbies",
         "scheduler_tasks",
+        "scheduler_callbacks_inflight",
+        "scheduler_callback_errors_total",
+        "battle_command_handlers_inflight",
         "analytics_outbox_size",
         "mission_snapshot_retry_rooms",
+        "terminal_persistence_pending_rooms",
+        "mission_settlement_fallback_pending",
     )
     nonzero = {
         key: ops_payload.get(key)
@@ -749,10 +754,15 @@ def run_http_contract(
                 "analytics_outbox_size",
                 "finished_rooms",
                 "live_rooms",
+                "battle_command_handlers_inflight",
                 "mission_settlements",
+                "mission_settlement_fallback_pending",
                 "mission_settlement_dead_lettered_total",
                 "mission_snapshot_retry_rooms",
+                "terminal_persistence_pending_rooms",
                 "scheduler_tasks",
+                "scheduler_callbacks_inflight",
+                "scheduler_callback_errors_total",
                 "waiting_lobbies",
             ):
                 if key not in ops_payload:
@@ -775,14 +785,29 @@ def run_http_contract(
                 "live_rooms": ops_payload.get("live_rooms"),
                 "finished_rooms": ops_payload.get("finished_rooms"),
                 "scheduler_tasks": ops_payload.get("scheduler_tasks"),
+                "scheduler_callbacks_inflight": ops_payload.get(
+                    "scheduler_callbacks_inflight"
+                ),
+                "scheduler_callback_errors_total": ops_payload.get(
+                    "scheduler_callback_errors_total"
+                ),
                 "waiting_lobbies": ops_payload.get("waiting_lobbies"),
+                "battle_command_handlers_inflight": ops_payload.get(
+                    "battle_command_handlers_inflight"
+                ),
                 "accepting_new_matches": ops_payload.get("accepting_new_matches"),
                 "analytics_outbox_size": ops_payload.get("analytics_outbox_size"),
                 "analytics_outbox_dropped_total": ops_payload.get(
                     "analytics_outbox_dropped_total"
                 ),
                 "mission_snapshot_retry_rooms": ops_payload.get("mission_snapshot_retry_rooms"),
+                "terminal_persistence_pending_rooms": ops_payload.get(
+                    "terminal_persistence_pending_rooms"
+                ),
                 "mission_settlements": ops_payload.get("mission_settlements"),
+                "mission_settlement_fallback_pending": ops_payload.get(
+                    "mission_settlement_fallback_pending"
+                ),
                 "mission_settlement_dead_lettered_total": ops_payload.get(
                     "mission_settlement_dead_lettered_total"
                 ),

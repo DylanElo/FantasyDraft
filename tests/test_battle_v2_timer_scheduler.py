@@ -45,6 +45,102 @@ def test_scheduler_fires_expire_once_deadline_elapses():
     scheduler.shutdown()
 
 
+@pytest.mark.parametrize("blocked_stage", ["expire", "on_expired"])
+def test_scheduler_reports_callback_inflight_after_deadline_is_removed(blocked_stage):
+    deadlines = {"room": time.monotonic()}
+    started = threading.Event()
+    release = threading.Event()
+
+    def block():
+        started.set()
+        assert release.wait(timeout=5)
+
+    def expire(room_id):
+        if blocked_stage == "expire":
+            block()
+        deadlines[room_id] = None
+        return True
+
+    def on_expired(_room_id):
+        if blocked_stage == "on_expired":
+            block()
+
+    scheduler = _real_scheduler(deadlines.get, expire, on_expired)
+    scheduler.arm("room")
+    try:
+        assert started.wait(timeout=5)
+        assert scheduler.active_task_count() == 0
+        assert scheduler.callbacks_inflight_count() == 1
+    finally:
+        release.set()
+
+    assert _wait_until(lambda: scheduler.callbacks_inflight_count() == 0)
+    assert scheduler.callback_errors_total == 0
+    scheduler.shutdown()
+
+
+def test_rearm_failure_is_counted_and_does_not_kill_shared_worker():
+    deadlines = {
+        "bad-room": time.monotonic(),
+        "next-room": time.monotonic() + 0.05,
+    }
+    fail_bad_rearm = {"value": False}
+    expired = []
+
+    def get_deadline(room_id):
+        if room_id == "bad-room" and fail_bad_rearm["value"]:
+            raise RuntimeError("injected re-arm failure")
+        return deadlines.get(room_id)
+
+    def expire(room_id):
+        expired.append(room_id)
+        if room_id == "bad-room":
+            fail_bad_rearm["value"] = True
+        else:
+            deadlines[room_id] = None
+        return True
+
+    scheduler = _real_scheduler(get_deadline, expire, lambda _room_id: None)
+    scheduler.arm("bad-room")
+    scheduler.arm("next-room")
+
+    assert _wait_until(lambda: expired == ["bad-room", "next-room"])
+    assert scheduler.callback_errors_total == 1
+    assert _wait_until(lambda: scheduler.callbacks_inflight_count() == 0)
+    scheduler.shutdown()
+
+
+def test_cleanup_cancel_defers_while_a_scheduler_callback_can_publish():
+    deadlines = {
+        "firing-room": time.monotonic(),
+        "cleanup-room": time.monotonic() + 5.0,
+    }
+    callback_started = threading.Event()
+    release_callback = threading.Event()
+
+    def expire(room_id):
+        if room_id == "firing-room":
+            callback_started.set()
+            assert release_callback.wait(timeout=5)
+            deadlines[room_id] = None
+        return True
+
+    scheduler = _real_scheduler(deadlines.get, expire, lambda _room_id: None)
+    scheduler.arm("firing-room")
+    scheduler.arm("cleanup-room")
+    try:
+        assert callback_started.wait(timeout=5)
+        assert scheduler.cancel_if_idle("cleanup-room") is False
+        assert scheduler.active_task_count() == 1
+    finally:
+        release_callback.set()
+
+    assert _wait_until(lambda: scheduler.callbacks_inflight_count() == 0)
+    assert scheduler.cancel_if_idle("cleanup-room") is True
+    assert scheduler.active_task_count() == 0
+    scheduler.shutdown()
+
+
 def test_rearming_with_a_new_deadline_only_fires_once_for_the_latest_deadline():
     deadlines = {"room": time.monotonic() + 10.0}
     expired = []

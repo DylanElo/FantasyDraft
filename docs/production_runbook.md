@@ -151,6 +151,18 @@ For drain decisions, `active_rooms` remains the backward-compatible total of
 all retained room objects, while `live_rooms` excludes terminal rooms and
 `finished_rooms` counts retained terminal rooms. `scheduler_tasks` is the
 number of rooms with an armed authoritative wakeup.
+`terminal_persistence_pending_rooms` counts retained terminal rooms whose
+analytics, First Creation mission snapshot, or opted-in replay has not reached
+its durable handoff marker. It remains nonzero before, during, and after a
+failed terminal callback, including the post-command replay-finalization
+window.
+`battle_command_handlers_inflight` remains nonzero through authoritative
+command execution and result emission. `scheduler_callbacks_inflight` remains
+nonzero after a deadline leaves the schedule while its expire, result, and
+re-arm callbacks are still running. `scheduler_callback_errors_total` is a
+process-lifetime incident signal; investigate any increase before release.
+`mission_settlement_fallback_pending` counts durable sidecar records not yet
+restored into the SQLite settlement outbox; malformed retained lines also count.
 
 Enabling drain atomically sets `accepting_new_matches=false`, rejects new CPU
 starts and PvP joins, rejects rematches that would create a new room, and
@@ -167,11 +179,19 @@ A safe planned stop requires one post-drain `/ops/runtime` response with all of
 the following conditions:
 
 - `accepting_new_matches=false`;
-- `live_rooms=0`, `waiting_lobbies=0`, and `scheduler_tasks=0`;
+- `live_rooms=0`, `waiting_lobbies=0`, `scheduler_tasks=0`,
+  `scheduler_callbacks_inflight=0`, and
+  `battle_command_handlers_inflight=0`;
+- `terminal_persistence_pending_rooms=0`;
 - `mission_snapshot_retry_rooms=0`;
+- `mission_settlement_fallback_pending=0`;
 - `analytics_outbox_size=0`;
 - mission settlement counts `pending=0`, `processing=0`, and
   `failed_retryable=0`.
+
+The clean-candidate acceptance rehearsal additionally requires the cumulative
+`scheduler_callback_errors_total=0`. A nonzero historical value in a running
+deployment is an incident to investigate, not unfinished drain work by itself.
 
 Finished rooms may remain in memory until the process stops. A durable
 `dead_letter` settlement is not in-memory drain work, but it still requires an

@@ -53,6 +53,8 @@ class PhaseTimerScheduler:
         self._heap: list[tuple[float, int, str]] = []
         self._stopped = False
         self._worker_started = False
+        self._callbacks_inflight = 0
+        self._callback_errors_total = 0
         self._worker_stopped_evt = Event()
         self._worker_stopped_evt.set()
 
@@ -77,11 +79,32 @@ class PhaseTimerScheduler:
             self._deadlines.pop(room_id, None)
             self._condition.notify_all()
 
+    def cancel_if_idle(self, room_id: str) -> bool:
+        """Cancel a room only when no deadline callback can still publish."""
+
+        with self._condition:
+            if self._callbacks_inflight:
+                return False
+            self._deadlines.pop(room_id, None)
+            self._condition.notify_all()
+            return True
+
     def active_task_count(self) -> int:
         """Number of rooms with a live scheduled deadline right now."""
 
         with self._condition:
             return len(self._deadlines)
+
+    def callbacks_inflight_count(self) -> int:
+        """Number of deadline callbacks or re-arm operations still running."""
+
+        with self._condition:
+            return self._callbacks_inflight
+
+    @property
+    def callback_errors_total(self) -> int:
+        with self._condition:
+            return self._callback_errors_total
 
     def shutdown(self, *, timeout: float | None = 5.0) -> None:
         """Stop the single worker deterministically and wait for it to exit.
@@ -130,6 +153,7 @@ class PhaseTimerScheduler:
                     heapq.heappop(self._heap)
                     self._deadlines.pop(room_id, None)
                     fired_room_id = room_id
+                    self._callbacks_inflight += 1
                 # Run callbacks outside the lock: expire()/on_expired() touch
                 # manager/socket state and may themselves call arm()/cancel(),
                 # which would otherwise re-enter this same condition's lock.
@@ -142,8 +166,20 @@ class PhaseTimerScheduler:
                         # one shared worker for every other room; surface it
                         # (no logging framework in this codebase) and keep going.
                         import traceback
+                        with self._condition:
+                            self._callback_errors_total += 1
                         traceback.print_exc()
-                    self.arm(fired_room_id)
+                    try:
+                        self.arm(fired_room_id)
+                    except Exception:
+                        import traceback
+                        with self._condition:
+                            self._callback_errors_total += 1
+                        traceback.print_exc()
+                    finally:
+                        with self._condition:
+                            self._callbacks_inflight -= 1
+                            self._condition.notify_all()
         finally:
             with self._condition:
                 self._worker_started = False

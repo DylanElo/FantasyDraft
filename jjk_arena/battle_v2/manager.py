@@ -6,11 +6,12 @@ import random
 import secrets
 from collections import Counter
 from collections import OrderedDict
+from contextlib import contextmanager
 from itertools import permutations, product
 from copy import deepcopy
 from dataclasses import dataclass
 import json
-from threading import RLock
+from threading import RLock, local
 from typing import Any, Callable
 
 from .damage_accounting import enemy_hp_damage_attribution
@@ -826,11 +827,49 @@ class BattleV2Manager:
         self.capture_replays = capture_replays
         self.timer_policy = timer_policy or BattleTimerPolicy()
         self.clock = clock
-        # Optional hook invoked exactly once, at the authoritative terminal
-        # state transition in `_finish_match` — not from any broadcast path.
-        # Lets callers (e.g. web/app.py) record match-finished analytics at
-        # the true source of truth instead of a viewer-serialization side effect.
+        # Optional hook queued at the authoritative terminal transition and
+        # published only after the enclosing mutation commits, never from a
+        # broadcast path. Callers may use it for durable analytics/settlement.
         self.on_match_finished: Callable[[str], None] | None = None
+        self._finished_callback_context = local()
+
+    @staticmethod
+    def _invoke_finished_callback(callback: Callable[[str], None], room_id: str) -> None:
+        try:
+            callback(room_id)
+        except Exception:
+            pass
+
+    def _dispatch_finished_callback(self, room_id: str) -> None:
+        callback = self.on_match_finished
+        if callback is None:
+            return
+        pending = getattr(self._finished_callback_context, "pending", None)
+        if pending is not None:
+            pending.append((callback, room_id))
+            return
+        self._invoke_finished_callback(callback, room_id)
+
+    @contextmanager
+    def _defer_finished_callbacks(self):
+        """Publish terminal hooks only after the enclosing mutation commits."""
+
+        previous_pending = getattr(self._finished_callback_context, "pending", None)
+        owns_pending = previous_pending is None
+        pending = [] if owns_pending else previous_pending
+        self._finished_callback_context.pending = pending
+        succeeded = False
+        try:
+            yield
+            succeeded = True
+        finally:
+            if previous_pending is None:
+                del self._finished_callback_context.pending
+            else:
+                self._finished_callback_context.pending = previous_pending
+            if succeeded and owns_pending:
+                for callback, room_id in pending:
+                    self._invoke_finished_callback(callback, room_id)
 
     def start_classic_match(
         self,
@@ -1022,75 +1061,82 @@ class BattleV2Manager:
 
         state_snapshot = deepcopy(state)
         progress_snapshot = deepcopy(self.room_first_creation_progress.get(room_id))
+        replay_existed = room_id in self.room_replays
+        replay_snapshot = deepcopy(self.room_replays.get(room_id))
         rng = self.rngs.get(room_id)
         rng_snapshot = rng.getstate() if rng is not None else None
-        try:
-            if command == "submit_plan":
-                self.submit_plan(room_id, player_id, list(payload.get("actions", [])))
-            elif command == "update_queue":
-                self.update_queue(
-                    room_id,
-                    player_id,
-                    list(payload.get("queue_order", [])),
-                    dict(payload.get("wildcard_pays", {})),
-                )
-            elif command == "confirm_queue":
-                self.confirm_queue(room_id, player_id)
-            elif command == "cancel_queue":
-                self.cancel_queue(room_id, player_id)
-            elif command == "convert_energy":
-                raw_sources = payload.get("sources", [])
-                self.convert_energy(
-                    room_id,
-                    player_id,
-                    list(raw_sources) if isinstance(raw_sources, (list, tuple)) else [],
-                    str(payload.get("target", "")),
-                )
-            elif command == "end_turn":
-                self.end_turn(room_id, player_id)
-            elif command == "surrender":
-                self.surrender(room_id, player_id)
-            elif command == "cpu_turn":
-                self.take_cpu_turn(room_id, player_id)
-            else:
-                raise BattleV2Error(f"unknown battle command: {command}")
-        except Exception as exc:
-            self.rooms[room_id] = state_snapshot
-            if progress_snapshot is None:
-                self.room_first_creation_progress.pop(room_id, None)
-            else:
-                self.room_first_creation_progress[room_id] = progress_snapshot
-            if rng is not None and rng_snapshot is not None:
-                rng.setstate(rng_snapshot)
-            if isinstance(exc, BattleV2Error):
+        with self._defer_finished_callbacks():
+            try:
+                if command == "submit_plan":
+                    self.submit_plan(room_id, player_id, list(payload.get("actions", [])))
+                elif command == "update_queue":
+                    self.update_queue(
+                        room_id,
+                        player_id,
+                        list(payload.get("queue_order", [])),
+                        dict(payload.get("wildcard_pays", {})),
+                    )
+                elif command == "confirm_queue":
+                    self.confirm_queue(room_id, player_id)
+                elif command == "cancel_queue":
+                    self.cancel_queue(room_id, player_id)
+                elif command == "convert_energy":
+                    raw_sources = payload.get("sources", [])
+                    self.convert_energy(
+                        room_id,
+                        player_id,
+                        list(raw_sources) if isinstance(raw_sources, (list, tuple)) else [],
+                        str(payload.get("target", "")),
+                    )
+                elif command == "end_turn":
+                    self.end_turn(room_id, player_id)
+                elif command == "surrender":
+                    self.surrender(room_id, player_id)
+                elif command == "cpu_turn":
+                    self.take_cpu_turn(room_id, player_id)
+                else:
+                    raise BattleV2Error(f"unknown battle command: {command}")
+            except Exception as exc:
+                self.rooms[room_id] = state_snapshot
+                if progress_snapshot is None:
+                    self.room_first_creation_progress.pop(room_id, None)
+                else:
+                    self.room_first_creation_progress[room_id] = progress_snapshot
+                if replay_existed:
+                    self.room_replays[room_id] = replay_snapshot
+                else:
+                    self.room_replays.pop(room_id, None)
+                if rng is not None and rng_snapshot is not None:
+                    rng.setstate(rng_snapshot)
+                if isinstance(exc, BattleV2Error):
+                    raise
+                if isinstance(exc, (IndexError, KeyError, TypeError, ValueError)):
+                    raise BattleV2Error("invalid command payload") from exc
                 raise
-            if isinstance(exc, (IndexError, KeyError, TypeError, ValueError)):
-                raise BattleV2Error("invalid command payload") from exc
-            raise
 
-        self.rooms[room_id].state_revision += 1
-        if self.capture_replays and room_id in self.room_replays:
-            from .replay import authoritative_state_hash
-            state_hash = authoritative_state_hash(self.rooms[room_id])
-            self.room_replays[room_id]["commands"].append({
-                "player_id": player_id,
-                "command": command,
-                "state_revision": state_revision,
-                "client_action_nonce": nonce,
-                "payload": deepcopy(payload),
-                "expected_state_hash": state_hash,
-            })
-            self.room_replays[room_id]["events"].append({
-                "type": "command", "logical_time": self.rooms[room_id].logical_time,
-                "player_id": player_id, "command": command, "state_revision": state_revision,
-                "client_action_nonce": nonce, "payload": deepcopy(payload), "expected_state_hash": state_hash,
-            })
-            self.room_replays[room_id]["final_state_hash"] = state_hash
-        player_receipts[nonce] = fingerprint
-        player_receipts.move_to_end(nonce)
-        while len(player_receipts) > 128:
-            player_receipts.popitem(last=False)
-        return False
+            self.rooms[room_id].state_revision += 1
+            if self.capture_replays and room_id in self.room_replays:
+                from .replay import authoritative_state_hash
+                state_hash = authoritative_state_hash(self.rooms[room_id])
+                self.room_replays[room_id]["commands"].append({
+                    "player_id": player_id,
+                    "command": command,
+                    "state_revision": state_revision,
+                    "client_action_nonce": nonce,
+                    "payload": deepcopy(payload),
+                    "expected_state_hash": state_hash,
+                })
+                self.room_replays[room_id]["events"].append({
+                    "type": "command", "logical_time": self.rooms[room_id].logical_time,
+                    "player_id": player_id, "command": command, "state_revision": state_revision,
+                    "client_action_nonce": nonce, "payload": deepcopy(payload), "expected_state_hash": state_hash,
+                })
+                self.room_replays[room_id]["final_state_hash"] = state_hash
+            player_receipts[nonce] = fingerprint
+            player_receipts.move_to_end(nonce)
+            while len(player_receipts) > 128:
+                player_receipts.popitem(last=False)
+            return False
 
     def _record_lifecycle(self, room_id: str, event_type: str, payload: dict[str, Any]) -> None:
         if self.capture_replays and room_id in self.room_replays:
@@ -1124,11 +1170,8 @@ class BattleV2Manager:
             state.turn_number,
             {"winner_id": winner_id, "result_type": result_type, "reason": reason},
         ))
-        if self.on_match_finished is not None and state.room_id is not None:
-            try:
-                self.on_match_finished(state.room_id)
-            except Exception:
-                pass
+        if state.room_id is not None:
+            self._dispatch_finished_callback(state.room_id)
 
     def _finish_by_tiebreak(self, state: BattleState, reason: str) -> None:
         scores = {}
@@ -1183,23 +1226,24 @@ class BattleV2Manager:
 
     def expire_disconnects(self, room_id: str) -> bool:
         with self.room_locks.setdefault(room_id, RLock()):
-            state = self.get_state(room_id)
-            if state.phase == BattlePhase.FINISHED:
-                return False
-            now = self.clock()
-            expired = [player_id for player_id, deadline in state.disconnect_deadlines.items() if now >= deadline]
-            if not expired:
-                return False
-            for player_id in expired:
-                started = state.disconnected_at.get(player_id, now)
-                state.disconnect_seconds_used[player_id] = min(180, state.disconnect_seconds_used.get(player_id, 0) + max(0, int(now - started)))
-            connected = [player_id for player_id in state.players if player_id not in expired and player_id not in state.disconnected_at]
-            if connected:
-                self._finish_match(state, "FORFEIT", connected[0], "disconnect_budget" if any(state.disconnect_seconds_used.get(pid, 0) >= 180 for pid in expired) else "disconnect", event_type="forfeit")
-            elif len(expired) == len(state.players):
-                self._finish_match(state, "NO_CONTEST", None, "disconnect", event_type="no_contest")
-            self._record_lifecycle(room_id, "expire_disconnects", {})
-            return True
+            with self._defer_finished_callbacks():
+                state = self.get_state(room_id)
+                if state.phase == BattlePhase.FINISHED:
+                    return False
+                now = self.clock()
+                expired = [player_id for player_id, deadline in state.disconnect_deadlines.items() if now >= deadline]
+                if not expired:
+                    return False
+                for player_id in expired:
+                    started = state.disconnected_at.get(player_id, now)
+                    state.disconnect_seconds_used[player_id] = min(180, state.disconnect_seconds_used.get(player_id, 0) + max(0, int(now - started)))
+                connected = [player_id for player_id in state.players if player_id not in expired and player_id not in state.disconnected_at]
+                if connected:
+                    self._finish_match(state, "FORFEIT", connected[0], "disconnect_budget" if any(state.disconnect_seconds_used.get(pid, 0) >= 180 for pid in expired) else "disconnect", event_type="forfeit")
+                elif len(expired) == len(state.players):
+                    self._finish_match(state, "NO_CONTEST", None, "disconnect", event_type="no_contest")
+                self._record_lifecycle(room_id, "expire_disconnects", {})
+                return True
 
     def _disconnect_grace_seconds_remaining(self, state: BattleState) -> float | None:
         if not state.disconnect_deadlines:
@@ -1687,7 +1731,8 @@ class BattleV2Manager:
         """Apply the authoritative timeout transition once a deadline passes."""
 
         with self.room_locks.setdefault(room_id, RLock()):
-            return self._expire_phase_if_needed(room_id)
+            with self._defer_finished_callbacks():
+                return self._expire_phase_if_needed(room_id)
 
     def _expire_phase_if_needed(self, room_id: str) -> bool:
         """Locked implementation for authoritative timeout transitions."""

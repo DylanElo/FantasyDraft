@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import pytest
 
 from jjk_arena.battle_v2.models import EnergyType, SkillClass, StatusEffect
@@ -24,6 +26,97 @@ def start_manager():
     manager = BattleV2Manager(rng_seed=1)
     state = manager.start_classic_match("room", [player_one(), player_two()])
     return manager, state
+
+
+def test_terminal_callback_waits_for_successful_command_commit(monkeypatch):
+    manager, _ = start_manager()
+    callback_rooms = []
+    manager.on_match_finished = callback_rooms.append
+    serialize_for_player = manager.serialize_for_player
+
+    def fail_after_terminal_transition(*_args, **_kwargs):
+        raise RuntimeError("injected post-finish serialization failure")
+
+    monkeypatch.setattr(manager, "serialize_for_player", fail_after_terminal_transition)
+    with pytest.raises(RuntimeError, match="post-finish serialization failure"):
+        manager.execute_player_command("room", "p1", "surrender", 0, "finish-once", {})
+
+    assert callback_rooms == []
+    assert manager.get_state("room").phase.value == "planning"
+
+    monkeypatch.setattr(manager, "serialize_for_player", serialize_for_player)
+    manager.execute_player_command("room", "p1", "surrender", 0, "finish-once", {})
+
+    assert callback_rooms == ["room"]
+    assert manager.get_state("room").phase.value == "finished"
+
+
+def test_failed_command_rolls_back_timeout_replay_side_effects():
+    manager = BattleV2Manager(rng_seed=1, capture_replays=True)
+    manager.start_classic_match("room", [player_one(), player_two()])
+    state = manager.get_state("room")
+    state.phase_deadline = 10.0
+    state.timeout_consecutive["p1"] = 2
+    clock_reads = iter((9.0, 11.0))
+    manager.clock = lambda: next(clock_reads, 11.0)
+    callback_rooms = []
+    manager.on_match_finished = callback_rooms.append
+    replay_before = deepcopy(manager.room_replays["room"])
+
+    with pytest.raises(BattleV2Error, match="battle already finished"):
+        manager.execute_player_command(
+            "room",
+            "p1",
+            "submit_plan",
+            0,
+            "deadline-race",
+            {"actions": []},
+        )
+
+    restored = manager.get_state("room")
+    assert restored.phase.value == "planning"
+    assert restored.state_revision == 0
+    assert restored.result_type is None
+    assert callback_rooms == []
+    assert manager.room_replays["room"] == replay_before
+
+
+def test_phase_timeout_callback_runs_after_revision_and_progress_finalize():
+    manager, _ = start_manager()
+    state = manager.get_state("room")
+    manager.clock = lambda: 100.0
+    state.phase_deadline = 1.0
+    state.timeout_consecutive["p1"] = 2
+    observed = []
+    manager.on_match_finished = lambda room_id: observed.append(
+        (room_id, state.state_revision, state.player_turns_completed)
+    )
+
+    assert manager.expire_phase_if_needed("room") is True
+
+    assert observed == [("room", 1, 1)]
+    assert state.phase.value == "finished"
+
+
+def test_disconnect_expiry_callback_runs_after_lifecycle_record(monkeypatch):
+    now = {"value": 0.0}
+    manager = BattleV2Manager(rng_seed=1, clock=lambda: now["value"])
+    manager.start_classic_match("room", [player_one(), player_two()])
+    manager.disconnect_player("room", "p1")
+    now["value"] = 100.0
+    order = []
+    record_lifecycle = manager._record_lifecycle
+
+    def tracked_lifecycle(room_id, event_type, payload):
+        if event_type == "expire_disconnects":
+            order.append("lifecycle")
+        record_lifecycle(room_id, event_type, payload)
+
+    monkeypatch.setattr(manager, "_record_lifecycle", tracked_lifecycle)
+    manager.on_match_finished = lambda _room_id: order.append("callback")
+
+    assert manager.expire_disconnects("room") is True
+    assert order == ["lifecycle", "callback"]
 
 
 def give_all_energy(manager):

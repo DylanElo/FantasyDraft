@@ -2,6 +2,7 @@ import json
 import os
 import subprocess
 import sys
+import threading
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -316,17 +317,49 @@ def test_ops_runtime_is_hidden_without_configured_bearer(monkeypatch):
     response = client.get("/ops/runtime", headers={"Authorization": "Bearer secret-token"})
     assert response.status_code == 200
     assert set(response.get_json()) == {
-        "active_rooms", "live_rooms", "finished_rooms", "scheduler_tasks", "waiting_lobbies",
+        "active_rooms", "live_rooms", "finished_rooms", "scheduler_tasks",
+        "scheduler_callbacks_inflight", "scheduler_callback_errors_total", "waiting_lobbies",
+        "battle_command_handlers_inflight",
         "accepting_new_matches", "mission_snapshot_retry_rooms",
+        "terminal_persistence_pending_rooms",
         "rate_limit_keys", "counters", "analytics",
         "analytics_outbox_size", "analytics_outbox_dropped_total",
-        "mission_settlements", "mission_settlement_dead_lettered_total",
+        "mission_settlements", "mission_settlement_fallback_pending",
+        "mission_settlement_dead_lettered_total",
         "mission_settlement_claimed_total",
     }
     assert set(response.get_json()["analytics"]) == {"match_finished", "missions_completed"}
     # Aggregate counts only: no raw queued-event payloads are ever exposed.
     assert isinstance(response.get_json()["analytics_outbox_size"], int)
     assert isinstance(response.get_json()["analytics_outbox_dropped_total"], int)
+
+
+def test_ops_runtime_reads_settlements_before_analytics_outbox(monkeypatch):
+    monkeypatch.setenv("JJK_OPS_TOKEN", "secret-token")
+    reads = []
+    monkeypatch.setattr(
+        web_app.runtime_store,
+        "mission_settlement_fallback_count",
+        lambda: reads.append("fallback") or 0,
+    )
+    monkeypatch.setattr(
+        web_app.runtime_store,
+        "mission_settlement_counts",
+        lambda: reads.append("settlements") or {},
+    )
+    monkeypatch.setattr(
+        web_app.runtime_store,
+        "outbox_size",
+        lambda: reads.append("outbox") or 0,
+    )
+
+    response = web_app.app.test_client().get(
+        "/ops/runtime",
+        headers={"Authorization": "Bearer secret-token"},
+    )
+
+    assert response.status_code == 200
+    assert reads == ["fallback", "settlements", "outbox"]
 
 
 def test_ops_drain_cancels_waiting_lobbies_and_rejects_new_cpu_or_pvp_matches(monkeypatch):
@@ -457,6 +490,276 @@ def test_ops_runtime_separates_live_and_retained_finished_rooms(monkeypatch):
     assert response.get_json()["finished_rooms"] == 1
     assert isinstance(response.get_json()["scheduler_tasks"], int)
     assert response.get_json()["mission_snapshot_retry_rooms"] == 1
+    assert response.get_json()["terminal_persistence_pending_rooms"] == 1
+
+
+def test_ops_runtime_keeps_terminal_persistence_pending_until_callback_returns(monkeypatch):
+    monkeypatch.setenv("JJK_OPS_TOKEN", "secret-token")
+    room_id = "ops-terminal-persistence"
+    web_app.battle_v2_manager.start_classic_match(
+        room_id,
+        [
+            {"id": "p1", "name": "P1", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
+            {"id": "p2", "name": "P2", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+        ],
+    )
+    callback_started = threading.Event()
+    release_callback = threading.Event()
+    original_callback = web_app.battle_v2_manager.on_match_finished
+
+    def blocking_callback(finished_room_id):
+        callback_started.set()
+        assert release_callback.wait(timeout=5)
+        original_callback(finished_room_id)
+
+    monkeypatch.setattr(web_app.battle_v2_manager, "on_match_finished", blocking_callback)
+    worker = threading.Thread(
+        target=web_app.battle_v2_manager.surrender,
+        args=(room_id, "p1"),
+    )
+    worker.start()
+    try:
+        assert callback_started.wait(timeout=5)
+        response = web_app.app.test_client().get(
+            "/ops/runtime",
+            headers={"Authorization": "Bearer secret-token"},
+        )
+
+        assert response.status_code == 200
+        assert response.get_json()["live_rooms"] == 0
+        assert response.get_json()["terminal_persistence_pending_rooms"] == 1
+    finally:
+        release_callback.set()
+        worker.join(timeout=5)
+
+    assert not worker.is_alive()
+    completed = web_app.app.test_client().get(
+        "/ops/runtime",
+        headers={"Authorization": "Bearer secret-token"},
+    )
+    assert completed.get_json()["terminal_persistence_pending_rooms"] == 0
+
+
+def test_ops_runtime_counts_command_handler_through_result_work(monkeypatch):
+    monkeypatch.setenv("JJK_OPS_TOKEN", "secret-token")
+    room_id = "cleanup-command-result-inflight"
+    web_app.battle_v2_manager.start_classic_match(
+        room_id,
+        [
+            {"id": "p1", "name": "P1", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
+            {"id": "p2", "name": "P2", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+        ],
+    )
+    started = threading.Event()
+    release = threading.Event()
+
+    @web_app.track_battle_command_handler
+    def blocked_result_work():
+        started.set()
+        assert release.wait(timeout=5)
+
+    worker = threading.Thread(target=blocked_result_work)
+    worker.start()
+    try:
+        assert started.wait(timeout=5)
+        response = web_app.app.test_client().get(
+            "/ops/runtime",
+            headers={"Authorization": "Bearer secret-token"},
+        )
+        assert response.get_json()["battle_command_handlers_inflight"] == 1
+        assert web_app.remove_battle_v2_room(room_id) is False
+        assert room_id in web_app.battle_v2_manager.rooms
+    finally:
+        release.set()
+        worker.join(timeout=5)
+
+    assert not worker.is_alive()
+    completed = web_app.app.test_client().get(
+        "/ops/runtime",
+        headers={"Authorization": "Bearer secret-token"},
+    )
+    assert completed.get_json()["battle_command_handlers_inflight"] == 0
+    assert web_app.remove_battle_v2_room(room_id) is True
+
+
+def test_terminal_persistence_requires_every_first_creation_snapshot():
+    room_id = "ops-terminal-first-creation"
+    web_app.battle_v2_manager.start_first_creation_match(
+        room_id,
+        [
+            {"id": "p1", "name": "P1", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
+            {"id": "p2", "name": "P2", "team": ["maki_zenin", "toge_inumaki", "panda"]},
+        ],
+    )
+    state = web_app.battle_v2_manager.get_state(room_id)
+    state.phase = BattlePhase.FINISHED
+    state.result_type = "WIN"
+    state.winner_id = "p1"
+    web_app.analytics_recorded_matches.add(room_id)
+
+    assert web_app.terminal_persistence_pending(room_id) is True
+    web_app.missions_snapshotted_players[room_id].add("p1")
+    assert web_app.terminal_persistence_pending(room_id) is True
+    web_app.missions_snapshotted_players[room_id].add("p2")
+    assert web_app.terminal_persistence_pending(room_id) is False
+
+
+def test_terminal_persistence_requires_opted_in_replay_archive(monkeypatch):
+    room_id = "ops-terminal-replay"
+    web_app.battle_v2_manager.start_classic_match(
+        room_id,
+        [
+            {"id": "p1", "name": "P1", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
+            {"id": "p2", "name": "P2", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+        ],
+    )
+    state = web_app.battle_v2_manager.get_state(room_id)
+    state.phase = BattlePhase.FINISHED
+    state.result_type = "WIN"
+    state.winner_id = "p1"
+    web_app.analytics_recorded_matches.add(room_id)
+    monkeypatch.setattr(web_app, "CAPTURE_REPLAYS", True)
+
+    assert web_app.terminal_persistence_pending(room_id) is True
+    web_app.archived_replays.add(room_id)
+    assert web_app.terminal_persistence_pending(room_id) is False
+
+
+def test_terminal_cleanup_retries_failed_analytics_before_removing_room(monkeypatch):
+    room_id = "cleanup-terminal-analytics"
+    web_app.battle_v2_manager.start_classic_match(
+        room_id,
+        [
+            {"id": "p1", "name": "P1", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
+            {"id": "p2", "name": "P2", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+        ],
+    )
+    state = web_app.battle_v2_manager.get_state(room_id)
+    state.phase = BattlePhase.FINISHED
+    state.result_type = "WIN"
+    state.winner_id = "p1"
+    record_event = web_app.runtime_store.record_analytics_event
+    monkeypatch.setattr(
+        web_app.runtime_store,
+        "record_analytics_event",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("storage unavailable")),
+    )
+
+    assert web_app.remove_battle_v2_room(room_id) is False
+    assert room_id in web_app.battle_v2_manager.rooms
+    monkeypatch.setattr(web_app.runtime_store, "record_analytics_event", record_event)
+    assert web_app.remove_battle_v2_room(room_id) is True
+    assert room_id not in web_app.battle_v2_manager.rooms
+
+
+def test_cleanup_rechecks_terminal_persistence_after_waiting_for_room_lock(monkeypatch):
+    room_id = "cleanup-raced-terminal"
+    web_app.battle_v2_manager.start_classic_match(
+        room_id,
+        [
+            {"id": "p1", "name": "P1", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
+            {"id": "p2", "name": "P2", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+        ],
+    )
+    monkeypatch.setattr(web_app.runtime_store, "record_analytics_event", lambda *_args, **_kwargs: False)
+    monkeypatch.setattr(web_app.runtime_store, "analytics_event_keys_exist", lambda _keys: False)
+    room_lock = web_app.battle_v2_manager.room_locks[room_id]
+    cleanup_started = threading.Event()
+    cleanup_result = []
+
+    room_lock.acquire()
+    try:
+        def cleanup():
+            cleanup_started.set()
+            cleanup_result.append(web_app.remove_battle_v2_room(room_id))
+
+        worker = threading.Thread(target=cleanup)
+        worker.start()
+        assert cleanup_started.wait(timeout=5)
+        # Give the cleanup thread time to reach the held room lock while the
+        # room is still live, then finish it under that same lock.
+        threading.Event().wait(0.05)
+        web_app.battle_v2_manager.surrender(room_id, "p1")
+    finally:
+        room_lock.release()
+    worker.join(timeout=5)
+
+    assert not worker.is_alive()
+    assert cleanup_result == [False]
+    assert room_id in web_app.battle_v2_manager.rooms
+    assert web_app.terminal_persistence_pending(room_id) is True
+
+
+def test_cleanup_cannot_erase_rematch_metadata_during_lifecycle_snapshot():
+    room_id = "cleanup-rematch-metadata"
+    players = [
+        {"id": "p1", "name": "P1", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
+        {"id": web_app.CPU_V2_PLAYER_ID, "name": "CPU", "team": ["maki_zenin", "toge_inumaki", "panda"]},
+    ]
+    web_app.battle_v2_manager.start_first_creation_match(
+        room_id,
+        players,
+        difficulty="hard",
+    )
+    state = web_app.battle_v2_manager.get_state(room_id)
+    state.phase = BattlePhase.FINISHED
+    state.result_type = "WIN"
+    state.winner_id = "p1"
+    web_app.match_players[room_id] = players
+    web_app.match_roster_mode[room_id] = "first_creation"
+    web_app.analytics_recorded_matches.add(room_id)
+    web_app.missions_snapshotted_players[room_id].add("p1")
+    cleanup_started = threading.Event()
+    cleanup_result = []
+
+    web_app.lifecycle_lock.acquire()
+    try:
+        def cleanup():
+            cleanup_started.set()
+            cleanup_result.append(web_app.remove_battle_v2_room(room_id))
+
+        worker = threading.Thread(target=cleanup)
+        worker.start()
+        assert cleanup_started.wait(timeout=5)
+        threading.Event().wait(0.05)
+
+        # These are the values rematch snapshots while holding lifecycle_lock.
+        captured_players = [dict(entry) for entry in web_app.match_players[room_id]]
+        captured_mode = web_app.match_roster_mode[room_id]
+        captured_difficulty = web_app.battle_v2_manager.room_cpu_difficulty[room_id]
+        assert worker.is_alive()
+    finally:
+        web_app.lifecycle_lock.release()
+    worker.join(timeout=5)
+
+    assert not worker.is_alive()
+    assert cleanup_result == [True]
+    assert captured_players == players
+    assert captured_mode == "first_creation"
+    assert captured_difficulty == "hard"
+    assert room_id not in web_app.battle_v2_manager.rooms
+
+
+def test_terminal_analytics_marker_requires_every_durable_event_key(monkeypatch):
+    room_id = "terminal-analytics-durable-keys"
+    web_app.battle_v2_manager.start_classic_match(
+        room_id,
+        [
+            {"id": "p1", "name": "P1", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
+            {"id": "p2", "name": "P2", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+        ],
+    )
+    state = web_app.battle_v2_manager.get_state(room_id)
+    state.phase = BattlePhase.FINISHED
+    state.result_type = "WIN"
+    state.winner_id = "p1"
+    monkeypatch.setattr(web_app.runtime_store, "record_analytics_event", lambda *_args, **_kwargs: False)
+    monkeypatch.setattr(web_app.runtime_store, "analytics_event_keys_exist", lambda _keys: False)
+
+    web_app.record_match_finished_analytics(room_id)
+
+    assert room_id not in web_app.analytics_recorded_matches
+    assert web_app.terminal_persistence_pending(room_id) is True
 
 
 def test_ops_runtime_analytics_reflects_a_finished_cpu_match(monkeypatch):
@@ -483,7 +786,18 @@ def test_ops_runtime_analytics_reflects_a_finished_cpu_match(monkeypatch):
 def test_stale_runtime_prunes_finished_rooms_lobbies_and_rate_limits(monkeypatch):
     room_id = "production-prune-room"
     lobby_id = "production-prune-lobby"
-    web_app.battle_v2_manager.rooms[room_id] = SimpleNamespace(winner_id="p1")
+    web_app.battle_v2_manager.start_classic_match(
+        room_id,
+        [
+            {"id": "p1", "name": "P1", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
+            {"id": "p2", "name": "P2", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+        ],
+    )
+    state = web_app.battle_v2_manager.get_state(room_id)
+    state.phase = BattlePhase.FINISHED
+    state.result_type = "WIN"
+    state.winner_id = "p1"
+    web_app.analytics_recorded_matches.add(room_id)
     web_app.room_last_activity[room_id] = 0.0
     web_app.v2_pvp_lobbies[lobby_id] = [{"id": "p1"}]
     web_app.lobby_last_activity[lobby_id] = 0.0

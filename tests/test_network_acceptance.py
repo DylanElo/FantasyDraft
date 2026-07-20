@@ -1,4 +1,11 @@
-from tools.network_acceptance import SocketProbe, run_network_acceptance
+import pytest
+
+from tools.network_acceptance import (
+    AcceptanceError,
+    SocketProbe,
+    _assert_runtime_drained,
+    run_network_acceptance,
+)
 
 
 def test_explicit_candidate_origin_suppresses_the_websocket_clients_default_origin():
@@ -11,6 +18,66 @@ def test_explicit_candidate_origin_suppresses_the_websocket_clients_default_orig
     assert probe.socket.eio.websocket_extra_options["suppress_origin"] is True
     assert probe.socket_origin == "https://candidate.test"
     probe.disconnect()
+
+
+def test_safe_stop_rejects_terminal_persistence_still_pending():
+    payload = {
+        "accepting_new_matches": False,
+        "live_rooms": 0,
+        "waiting_lobbies": 0,
+        "scheduler_tasks": 0,
+        "scheduler_callbacks_inflight": 0,
+        "scheduler_callback_errors_total": 0,
+        "battle_command_handlers_inflight": 0,
+        "analytics_outbox_size": 0,
+        "mission_snapshot_retry_rooms": 0,
+        "terminal_persistence_pending_rooms": 1,
+        "mission_settlement_fallback_pending": 0,
+        "mission_settlements": {},
+    }
+
+    with pytest.raises(AcceptanceError, match="terminal_persistence_pending_rooms"):
+        _assert_runtime_drained(payload)
+
+
+def test_safe_stop_rejects_scheduler_callback_errors():
+    payload = {
+        "accepting_new_matches": False,
+        "live_rooms": 0,
+        "waiting_lobbies": 0,
+        "scheduler_tasks": 0,
+        "scheduler_callbacks_inflight": 0,
+        "scheduler_callback_errors_total": 1,
+        "battle_command_handlers_inflight": 0,
+        "analytics_outbox_size": 0,
+        "mission_snapshot_retry_rooms": 0,
+        "terminal_persistence_pending_rooms": 0,
+        "mission_settlement_fallback_pending": 0,
+        "mission_settlements": {},
+    }
+
+    with pytest.raises(AcceptanceError, match="scheduler_callback_errors_total"):
+        _assert_runtime_drained(payload)
+
+
+def test_safe_stop_rejects_pending_settlement_fallback_rows():
+    payload = {
+        "accepting_new_matches": False,
+        "live_rooms": 0,
+        "waiting_lobbies": 0,
+        "scheduler_tasks": 0,
+        "scheduler_callbacks_inflight": 0,
+        "scheduler_callback_errors_total": 0,
+        "battle_command_handlers_inflight": 0,
+        "analytics_outbox_size": 0,
+        "mission_snapshot_retry_rooms": 0,
+        "terminal_persistence_pending_rooms": 0,
+        "mission_settlement_fallback_pending": 1,
+        "mission_settlements": {},
+    }
+
+    with pytest.raises(AcceptanceError, match="mission_settlement_fallback_pending"):
+        _assert_runtime_drained(payload)
 
 
 def test_real_network_cpu_pvp_resume_and_timeout_acceptance():
@@ -49,4 +116,8 @@ def test_real_network_cpu_pvp_resume_and_timeout_acceptance():
     assert report["http_after"]["ops_snapshot"]["accepting_new_matches"] is False
     assert report["http_after"]["ops_snapshot"]["live_rooms"] == 0
     assert report["http_after"]["ops_snapshot"]["scheduler_tasks"] == 0
+    assert report["http_after"]["ops_snapshot"]["scheduler_callbacks_inflight"] == 0
+    assert report["http_after"]["ops_snapshot"]["battle_command_handlers_inflight"] == 0
     assert report["http_after"]["ops_snapshot"]["mission_snapshot_retry_rooms"] == 0
+    assert report["http_after"]["ops_snapshot"]["terminal_persistence_pending_rooms"] == 0
+    assert report["http_after"]["ops_snapshot"]["mission_settlement_fallback_pending"] == 0

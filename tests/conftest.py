@@ -51,6 +51,7 @@ def reset_battle_v2_runtime_state():
 
     def _reset():
         web_app.accepting_new_matches = True
+        web_app.battle_command_handlers_inflight = 0
         manager = web_app.battle_v2_manager
         rooms = getattr(manager, "rooms", None)
         if isinstance(rooms, dict):

@@ -9,6 +9,7 @@ import sys
 import time
 import uuid
 from collections import defaultdict, deque
+from functools import wraps
 from threading import RLock
 from urllib.parse import urlsplit
 
@@ -136,6 +137,7 @@ mission_match_finished_at: dict[str, float] = {}
 operational_counters = defaultdict(int)
 last_runtime_prune_at = 0.0
 accepting_new_matches = True
+battle_command_handlers_inflight = 0
 CPU_V2_PLAYER_ID = "__cpu_v2__"
 
 
@@ -363,10 +365,28 @@ def _drain_storage_maintenance() -> dict:
 
     results = {
         "mission_snapshots_reconstructed": 0,
+        "terminal_persistence_completed": 0,
         "mission_settlements_flushed": 0,
         "analytics_outbox_flushed": 0,
         "ok": True,
     }
+    terminal_room_ids = [
+        room_id
+        for room_id, state in list(battle_v2_manager.rooms.items())
+        if getattr(getattr(state, "phase", None), "value", None) == "finished"
+        and terminal_persistence_pending(room_id, state=state)
+    ][:50]
+    for room_id in terminal_room_ids:
+        was_pending = terminal_persistence_pending(room_id)
+        try:
+            completed = ensure_terminal_persistence(room_id)
+        except Exception:
+            completed = False
+        if completed and was_pending:
+            results["terminal_persistence_completed"] += 1
+        elif not completed:
+            results["ok"] = False
+            operational_counters["drain_storage_errors"] += 1
     try:
         results["mission_snapshots_reconstructed"] = reconstruct_terminal_mission_snapshots(
             limit=max(50, len(mission_snapshot_retry_rooms)),
@@ -445,33 +465,51 @@ def runtime_status():
         # Materialize room objects once. Cleanup can finish on another socket
         # thread, so repeated dictionary iteration/lookups could otherwise
         # raise or mix counts from two lifecycle instants.
-        room_states = list(battle_v2_manager.rooms.values())
-        active_rooms = len(room_states)
+        room_items = list(battle_v2_manager.rooms.items())
+        active_rooms = len(room_items)
         live_rooms = sum(
             1
-            for state in room_states
+            for _room_id, state in room_items
             if getattr(getattr(state, "phase", None), "value", None) != "finished"
         )
         finished_rooms = active_rooms - live_rooms
+        terminal_persistence_pending_rooms = sum(
+            1
+            for room_id, state in room_items
+            if terminal_persistence_pending(room_id, state=state)
+        )
         waiting_lobbies = len(v2_pvp_lobbies)
         snapshot_retry_rooms = len(mission_snapshot_retry_rooms)
         accepting_matches = accepting_new_matches
+        command_handlers_inflight = battle_command_handlers_inflight
+    # Fallback restoration publishes into SQLite before removing the sidecar;
+    # settlement publication writes analytics before marking a row settled.
+    # Preserve that order while reading so concurrent maintenance cannot appear
+    # absent from every side of this aggregate stop-safety snapshot.
+    mission_settlement_fallback_pending = runtime_store.mission_settlement_fallback_count()
+    mission_settlement_snapshot = runtime_store.mission_settlement_counts()
+    analytics_outbox_size = runtime_store.outbox_size()
     return jsonify(
         {
             "active_rooms": active_rooms,
             "live_rooms": live_rooms,
             "finished_rooms": finished_rooms,
             "scheduler_tasks": battle_v2_timer_scheduler.active_task_count(),
+            "scheduler_callbacks_inflight": battle_v2_timer_scheduler.callbacks_inflight_count(),
+            "scheduler_callback_errors_total": battle_v2_timer_scheduler.callback_errors_total,
             "waiting_lobbies": waiting_lobbies,
+            "battle_command_handlers_inflight": command_handlers_inflight,
             "accepting_new_matches": accepting_matches,
             "mission_snapshot_retry_rooms": snapshot_retry_rooms,
+            "terminal_persistence_pending_rooms": terminal_persistence_pending_rooms,
             "rate_limit_keys": len(rate_limits),
             "counters": dict(operational_counters),
             "analytics": runtime_store.analytics_summary(),
             # Aggregate counts only -- never the queued events themselves.
-            "analytics_outbox_size": runtime_store.outbox_size(),
+            "analytics_outbox_size": analytics_outbox_size,
             "analytics_outbox_dropped_total": runtime_store.outbox_dropped_total,
-            "mission_settlements": runtime_store.mission_settlement_counts(),
+            "mission_settlements": mission_settlement_snapshot,
+            "mission_settlement_fallback_pending": mission_settlement_fallback_pending,
             "mission_settlement_dead_lettered_total": runtime_store.mission_settlement_dead_lettered_total,
             "mission_settlement_claimed_total": runtime_store.mission_settlement_claimed_total,
         }
@@ -588,6 +626,7 @@ def record_match_finished_analytics(room_id: str) -> None:
     if state is None or state.phase.value != "finished":
         return
     vs_cpu = CPU_V2_PLAYER_ID in state.players
+    expected_event_keys = [f"match_finished:{room_id}"]
     try:
         runtime_store.record_analytics_event(
             "match_finished",
@@ -604,13 +643,17 @@ def record_match_finished_analytics(room_id: str) -> None:
         for player_id in state.players:
             if player_id == CPU_V2_PLAYER_ID:
                 continue
+            event_key = f"match_player_result:{room_id}:{player_id}"
+            expected_event_keys.append(event_key)
             runtime_store.record_analytics_event(
                 "match_player_result",
                 {"outcome": _player_outcome(state, player_id)},
                 match_id=room_id,
                 player_id=player_id,
-                event_key=f"match_player_result:{room_id}:{player_id}",
+                event_key=event_key,
             )
+        if not runtime_store.analytics_event_keys_exist(expected_event_keys):
+            return
     except Exception:
         operational_counters["analytics_write_errors"] += 1
         return
@@ -620,6 +663,31 @@ def record_match_finished_analytics(room_id: str) -> None:
 missions_settled_players: dict[str, set[str]] = defaultdict(set)
 missions_snapshotted_players: dict[str, set[str]] = defaultdict(set)
 mission_snapshot_retry_rooms: set[str] = set()
+
+
+def terminal_persistence_pending(room_id: str, *, state=None) -> bool:
+    """Return whether a terminal room still needs durable handoff work."""
+
+    state = state if state is not None else battle_v2_manager.rooms.get(room_id)
+    if state is None or getattr(getattr(state, "phase", None), "value", None) != "finished":
+        return False
+    if room_id not in analytics_recorded_matches:
+        return True
+    roster_mode = battle_v2_manager.room_roster_modes.get(room_id)
+    if roster_mode not in {"classic", "first_creation"}:
+        return True
+    if roster_mode == "first_creation":
+        players = getattr(state, "players", None)
+        if not isinstance(players, dict):
+            return True
+        human_players = {
+            player_id for player_id in players if player_id != CPU_V2_PLAYER_ID
+        }
+        if not human_players.issubset(missions_snapshotted_players.get(room_id, set())):
+            return True
+    if CAPTURE_REPLAYS and room_id not in archived_replays:
+        return True
+    return False
 
 
 def flush_mission_settlements(
@@ -871,6 +939,23 @@ def execute_v2_player_command(
     return replayed
 
 
+def track_battle_command_handler(handler):
+    """Keep planned stop conservative through terminal result emission."""
+
+    @wraps(handler)
+    def tracked(*args, **kwargs):
+        global battle_command_handlers_inflight
+        with lifecycle_lock:
+            battle_command_handlers_inflight += 1
+        try:
+            return handler(*args, **kwargs)
+        finally:
+            with lifecycle_lock:
+                battle_command_handlers_inflight -= 1
+
+    return tracked
+
+
 def active_v2_context(data=None, *, require_membership: bool = True):
     if not battle_v2_enabled():
         emit("battle_v2_error", {"message": "Battle v2 is disabled. Set JJK_BATTLE_SYSTEM=v2."})
@@ -912,11 +997,9 @@ def emit_battle_v2_update(room_id: str, viewer_id: str | None = None):
     state = battle_v2_manager.get_state(room_id)
     room_last_activity[room_id] = time.monotonic()
     if state.phase.value == "finished":
-        # Match-finished analytics are recorded by battle_v2_manager.on_match_finished
-        # at the authoritative _finish_match transition. This finished-state
-        # path only reconstructs a snapshot when both initial durable writes
-        # failed; durable keys and atomic merges keep repeated broadcasts
-        # idempotent rather than making broadcast the primary settlement hook.
+        # Analytics and initial mission handoff belong to the authoritative
+        # terminal callback, not to a viewer broadcast. This path only retries
+        # an already-marked snapshot gap and archives the postcommit replay.
         reconstruct_terminal_mission_snapshots(room_id=room_id, limit=1)
         try:
             flush_mission_settlements()
@@ -1031,6 +1114,35 @@ def ensure_terminal_mission_snapshots(room_id: str) -> bool:
     return True
 
 
+def ensure_terminal_persistence(room_id: str) -> bool:
+    """Retry every room-bound durable handoff before cleanup or planned stop."""
+
+    state = battle_v2_manager.rooms.get(room_id)
+    if state is None or getattr(getattr(state, "phase", None), "value", None) != "finished":
+        return True
+    lock = battle_v2_manager.room_locks.get(room_id)
+    if lock is None:
+        return False
+    with lock:
+        state = battle_v2_manager.rooms.get(room_id)
+        if state is None or getattr(getattr(state, "phase", None), "value", None) != "finished":
+            return True
+        try:
+            record_match_finished_analytics(room_id)
+        except Exception:
+            operational_counters["analytics_write_errors"] += 1
+        try:
+            ensure_terminal_mission_snapshots(room_id)
+        except Exception:
+            mission_snapshot_retry_rooms.add(room_id)
+            operational_counters["mission_settlement_snapshot_failures"] += 1
+        try:
+            archive_finished_replay(room_id)
+        except Exception:
+            operational_counters["replay_archive_errors"] += 1
+        return not terminal_persistence_pending(room_id, state=state)
+
+
 def reconstruct_terminal_mission_snapshots(
     *,
     room_id: str | None = None,
@@ -1064,13 +1176,7 @@ def reconstruct_terminal_mission_snapshots(
 
 
 def remove_battle_v2_room(room_id: str) -> bool:
-    """Cancel timer work and remove room-owned authoritative runtime state."""
-
-    if not ensure_terminal_mission_snapshots(room_id):
-        return False
-
-    battle_v2_timer_scheduler.cancel(room_id)
-    lock = battle_v2_manager.room_locks.get(room_id)
+    """Cancel timer work and atomically remove room-owned runtime state."""
 
     def remove_state() -> None:
         for player_id, active_match_id in list(active_match_by_player.items()):
@@ -1108,12 +1214,36 @@ def remove_battle_v2_room(room_id: str) -> bool:
             if new_match == room_id:
                 rematch_by_old_match.pop(old_match_id, None)
 
-    if lock is None:
-        remove_state()
-    else:
-        with lock:
+    # Rematch creation holds lifecycle_lock while it snapshots the old match's
+    # players, roster mode, and CPU difficulty. Use the same lock order
+    # (lifecycle -> room) so cleanup cannot erase part of that configuration
+    # midway through the handoff.
+    with lifecycle_lock:
+        # Command handlers retain this count through their terminal result
+        # emission. Defer pruning until the client-visible handoff is done.
+        if battle_command_handlers_inflight:
+            return False
+        lock = battle_v2_manager.room_locks.get(room_id)
+        if lock is None:
+            if not ensure_terminal_persistence(room_id):
+                return False
+            if not battle_v2_timer_scheduler.cancel_if_idle(room_id):
+                return False
             remove_state()
-        battle_v2_manager.room_locks.pop(room_id, None)
+        else:
+            with lock:
+                # The room may have become terminal while cleanup waited for an
+                # active command. Recheck the durable handoff under the same lock
+                # before deleting any room-owned retry markers or replay state.
+                if not ensure_terminal_persistence(room_id):
+                    return False
+                # This check and deadline cancellation are atomic with respect
+                # to the scheduler worker. Its in-flight count spans expiry,
+                # result broadcast, and re-arm work.
+                if not battle_v2_timer_scheduler.cancel_if_idle(room_id):
+                    return False
+                remove_state()
+            battle_v2_manager.room_locks.pop(room_id, None)
     return True
 
 
@@ -1568,6 +1698,7 @@ def on_battle_v2_rematch(data=None):
 
 
 @socketio.on("battle_v2_submit_plan")
+@track_battle_command_handler
 def on_battle_v2_submit_plan(data=None):
     if not allow_event("battle_v2_submit_plan", limit=45, window_seconds=5):
         return
@@ -1590,6 +1721,7 @@ def on_battle_v2_submit_plan(data=None):
 
 
 @socketio.on("battle_v2_update_queue")
+@track_battle_command_handler
 def on_battle_v2_update_queue(data=None):
     if not allow_event("battle_v2_update_queue", limit=45, window_seconds=5):
         return
@@ -1615,6 +1747,7 @@ def on_battle_v2_update_queue(data=None):
 
 
 @socketio.on("battle_v2_confirm_queue")
+@track_battle_command_handler
 def on_battle_v2_confirm_queue(data=None):
     if not allow_event("battle_v2_confirm_queue", limit=45, window_seconds=5):
         return
@@ -1633,6 +1766,7 @@ def on_battle_v2_confirm_queue(data=None):
 
 
 @socketio.on("battle_v2_cancel_queue")
+@track_battle_command_handler
 def on_battle_v2_cancel_queue(data=None):
     if not allow_event("battle_v2_cancel_queue", limit=45, window_seconds=5):
         return
@@ -1649,6 +1783,7 @@ def on_battle_v2_cancel_queue(data=None):
 
 
 @socketio.on("battle_v2_convert_energy")
+@track_battle_command_handler
 def on_battle_v2_convert_energy(data=None):
     if not allow_event("battle_v2_convert_energy", limit=20, window_seconds=5):
         return
@@ -1674,6 +1809,7 @@ def on_battle_v2_convert_energy(data=None):
 
 
 @socketio.on("battle_v2_end_turn")
+@track_battle_command_handler
 def on_battle_v2_end_turn(data=None):
     if not allow_event("battle_v2_end_turn", limit=45, window_seconds=5):
         return
@@ -1692,6 +1828,7 @@ def on_battle_v2_end_turn(data=None):
 
 
 @socketio.on("battle_v2_surrender")
+@track_battle_command_handler
 def on_battle_v2_surrender(data=None):
     if not allow_event("battle_v2_surrender"):
         return

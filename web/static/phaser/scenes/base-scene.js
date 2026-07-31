@@ -116,6 +116,7 @@ export class BaseScene extends Phaser.Scene {
           if (button.onLongPress) {
             const startX = pointer.x;
             const startY = pointer.y;
+            const downTime = this.time.now;
             let resolved = false;
 
             const upHandler = () => {
@@ -123,7 +124,7 @@ export class BaseScene extends Phaser.Scene {
               resolved = true;
               this.time.removeEvent(timer);
               const dist = Phaser.Math.Distance.Between(startX, startY, pointer.x, pointer.y);
-              if (pointer.upTime - pointer.downTime < 400 && dist < 15) {
+              if (this.time.now - downTime < 400 && dist < 15) {
                  this.activateHitTarget(button, pointer, false);
               }
               this.input.off('pointerup', upHandler);
@@ -173,12 +174,10 @@ export class BaseScene extends Phaser.Scene {
       } else {
         playCue();
       }
-      if (!button.disabled) {
-        if (isLongPress && typeof button.onLongPress === 'function') {
-          button.onLongPress();
-        } else {
-          button.onClick();
-        }
+      if (isLongPress && typeof button.onLongPress === 'function') {
+        button.onLongPress();
+      } else if (!button.disabled) {
+        button.onClick();
       }
       if (this.scene.isActive(this.keyName)) this.render();
       this.time.delayedCall(180, () => {

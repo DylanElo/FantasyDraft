@@ -757,13 +757,6 @@ export class CombatScene extends CombatQueueReviewScene {
       },
       disabled: false,
     });
-    if (activeStatuses.length && !selectedSkill && side === 'mine') {
-      this.registerHitTarget(
-        x + w / 2,
-        y,
-        w / 2,
-        h,
-        `Inspect ${fighterName} statuses`,
         () => store.inspectFighter(side, slot),
         { cue: 'reveal' },
       );

@@ -1,10 +1,10 @@
-import { focalCoverCrop, portraitEntryFor, starterPortraitEntries } from '../core/portrait-registry.js?v=42';
-import { COLORS, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=42';
-import { initials, safeText } from '../core/text.js?v=42';
-import { LayoutService } from '../core/layout-service.js?v=42';
-import { costColors } from '../core/roster.js?v=42';
-import { SKILL_ACTION_ATLASES, createPresentationLayer } from '../core/presentation-layer.js?v=42';
-import { Season3UI } from '../ui/season3-ui.js?v=42';
+import { focalCoverCrop, portraitEntryFor, starterPortraitEntries } from '../core/portrait-registry.js?v=43';
+import { COLORS, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=43';
+import { initials, safeText } from '../core/text.js?v=43';
+import { LayoutService } from '../core/layout-service.js?v=43';
+import { costColors } from '../core/roster.js?v=43';
+import { SKILL_ACTION_ATLASES, createPresentationLayer } from '../core/presentation-layer.js?v=43';
+import { Season3UI } from '../ui/season3-ui.js?v=43';
 
 const { energyPip: drawEnergyPip } = Season3UI.current;
 
@@ -112,13 +112,42 @@ export class BaseScene extends Phaser.Scene {
           Promise.resolve().then(() => {
             if (ACTIVE_POINTER_DISPATCH === dispatchToken) ACTIVE_POINTER_DISPATCH = null;
           });
-          this.activateHitTarget(button, pointer);
+
+          if (button.onLongPress) {
+            const startX = pointer.x;
+            const startY = pointer.y;
+            let resolved = false;
+
+            const upHandler = () => {
+              if (resolved) return;
+              resolved = true;
+              this.time.removeEvent(timer);
+              if (pointer.upTime - pointer.downTime < 400) {
+                 this.activateHitTarget(button, pointer, false);
+              }
+              pointer.manager.off('pointerup', upHandler);
+            };
+
+            const timer = this.time.delayedCall(400, () => {
+              if (resolved) return;
+              const dist = Phaser.Math.Distance.Between(startX, startY, pointer.x, pointer.y);
+              if (dist < 15) {
+                resolved = true;
+                pointer.manager.off('pointerup', upHandler);
+                this.activateHitTarget(button, pointer, true);
+              }
+            });
+
+            pointer.manager.on('pointerup', upHandler);
+          } else {
+            this.activateHitTarget(button, pointer, false);
+          }
           return;
         }
       }
     }
 
-    activateHitTarget(button, pointer = null) {
+    activateHitTarget(button, pointer = null, isLongPress = false) {
       if (!button || !this.scene) return;
       // Pointer dispatch originates from Phaser's active scene and must be
       // allowed to complete even when the callback immediately transitions
@@ -143,7 +172,13 @@ export class BaseScene extends Phaser.Scene {
       } else {
         playCue();
       }
-      if (!button.disabled) button.onClick();
+      if (!button.disabled) {
+        if (isLongPress && typeof button.onLongPress === 'function') {
+          button.onLongPress();
+        } else {
+          button.onClick();
+        }
+      }
       if (this.scene.isActive(this.keyName)) this.render();
       this.time.delayedCall(180, () => {
         if (this.scene.isActive(this.keyName)) this.render();
@@ -435,6 +470,7 @@ export class BaseScene extends Phaser.Scene {
         h: hitH,
         label,
         onClick,
+        onLongPress: opts.onLongPress || null,
         disabled: !!opts.disabled,
         disabledReason: opts.disabled
           ? (opts.disabledReason || opts.reason || 'Unavailable in the current state.')
@@ -479,43 +515,6 @@ export class BaseScene extends Phaser.Scene {
       return 'square';
     }
 
-    drawPortraitFallback(characterOrId, x, y, w, h, options) {
-      const opts = options || {};
-      const id = typeof characterOrId === 'string'
-        ? characterOrId
-        : (characterOrId && (characterOrId.id || characterOrId.character_id));
-      const name = typeof characterOrId === 'string'
-        ? safeText(this.store.character(characterOrId).name, characterOrId)
-        : safeText(characterOrId && characterOrId.name, id);
-      const tone = opts.tone || this.store.assets.toneFor(id || name);
-      const alpha = opts.dead ? 0.42 : (opts.alpha === undefined ? 0.98 : opts.alpha);
-      const cx = x + w / 2;
-      const cy = y + h / 2;
-      const circle = opts.shape === 'circle';
-
-      this.graphics.fillStyle(CULLING_COLORS.ivory, alpha);
-      if (circle) this.graphics.fillCircle(cx, cy, Math.min(w, h) / 2);
-      else this.graphics.fillRect(x, y, w, h);
-      this.graphics.fillStyle(CULLING_COLORS.sky, opts.dead ? 0.12 : 0.46);
-      if (circle) this.graphics.fillCircle(cx, cy - h * 0.08, Math.min(w, h) * 0.34);
-      else this.graphics.fillTriangle(x, y, x + w, y, x, y + h);
-      this.graphics.fillStyle(tone, opts.dead ? 0.08 : 0.2);
-      this.graphics.fillCircle(cx, cy, Math.max(8, Math.min(w, h) * 0.28));
-      if (!circle) {
-        this.graphics.lineStyle(1, tone, opts.dead ? 0.18 : 0.52);
-        this.graphics.beginPath();
-        this.graphics.moveTo(x + 6, y + h - 7);
-        this.graphics.lineTo(x + w - 6, y + 7);
-        this.graphics.strokePath();
-      }
-      this.text(cx, cy - Math.max(7, Math.min(w, h) * 0.14), initials(name), {
-        fontFamily: TOKEN_TYPE.display || TOKEN_TYPE.ui || 'Inter, Arial, sans-serif',
-        fontSize: `${Math.max(14, Math.round(Math.min(w, h) * 0.3))}px`,
-        fontStyle: '900',
-        color: opts.dead ? CULLING_COLORS.mutedText : CULLING_COLORS.text,
-      }).setOrigin(0.5, 0);
-      return null;
-    }
 
     portraitArtwork(characterOrId, x, y, w, h, options) {
       const opts = options || {};
@@ -524,9 +523,6 @@ export class BaseScene extends Phaser.Scene {
         : (characterOrId && (characterOrId.id || characterOrId.character_id));
       const context = opts.context || this.portraitContextFor(w, h);
       const key = opts.textureKey || this.store.portraitKey(id);
-      if (!this.textures.exists(key)) {
-        return this.drawPortraitFallback(characterOrId, x, y, w, h, { ...opts, context });
-      }
       const focal = opts.focal || this.store.portraitFocal(id, context);
       return this.coverImage(key, x, y, w, h, {
         focal,

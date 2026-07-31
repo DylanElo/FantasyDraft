@@ -1846,14 +1846,6 @@ export class CombatScene extends CombatQueueReviewScene {
       }).setMaxLines(1);
     });
 
-    drawCurrentButton(this, x + 16, buttonY, w - 32, 44, 'CLOSE LOG', () => this.store.toggleCombatLog(false), {
-      fill: CULLING_COLORS.cobalt,
-      stroke: CULLING_COLORS.charcoal,
-      color: CULLING_COLORS.inverseText,
-      fontSize: '14px',
-      display: false,
-      radius: 12,
-    });
   }
 
   renderTransmuteSheet(frame) {

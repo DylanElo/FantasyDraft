@@ -122,10 +122,11 @@ export class BaseScene extends Phaser.Scene {
               if (resolved) return;
               resolved = true;
               this.time.removeEvent(timer);
-              if (pointer.upTime - pointer.downTime < 400) {
+              const dist = Phaser.Math.Distance.Between(startX, startY, pointer.x, pointer.y);
+              if (pointer.upTime - pointer.downTime < 400 && dist < 15) {
                  this.activateHitTarget(button, pointer, false);
               }
-              pointer.manager.off('pointerup', upHandler);
+              this.input.off('pointerup', upHandler);
             };
 
             const timer = this.time.delayedCall(400, () => {
@@ -133,12 +134,12 @@ export class BaseScene extends Phaser.Scene {
               const dist = Phaser.Math.Distance.Between(startX, startY, pointer.x, pointer.y);
               if (dist < 15) {
                 resolved = true;
-                pointer.manager.off('pointerup', upHandler);
+                this.input.off('pointerup', upHandler);
                 this.activateHitTarget(button, pointer, true);
               }
             });
 
-            pointer.manager.on('pointerup', upHandler);
+            this.input.on('pointerup', upHandler);
           } else {
             this.activateHitTarget(button, pointer, false);
           }

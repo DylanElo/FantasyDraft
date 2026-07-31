@@ -8,6 +8,7 @@ import {
   TOKEN_TYPE,
 } from '../core/runtime-config.js?v=42';
 import { clamp, initials, safeText, shortText, titleize } from '../core/text.js?v=42';
+import { SKILL_ART_BY_ENERGY } from '../core/asset-registry.js?v=42';
 import { eventTone } from '../fx/event-metrics.js?v=42';
 import { Season3UI } from '../ui/season3-ui.js?v=42';
 import { CombatQueueReviewScene } from './combat-queue-review-scene.js?v=42';
@@ -940,12 +941,7 @@ export class CombatScene extends CombatQueueReviewScene {
       g.strokePath();
       return;
     }
-    const textureKey = {
-      green: 's3-skill-body',
-      blue: 's3-skill-technique',
-      white: 's3-skill-focus',
-      red: 's3-skill-curse',
-    }[semanticCost] || 's3-skill-focus';
+    const textureKey = SKILL_ART_BY_ENERGY[semanticCost] || 's3-skill-focus';
     if (this.textures.exists(textureKey)) {
       this.coverImage(textureKey, x, y, w, h, {
         focal: { x: 0.5, y: 0.43 },

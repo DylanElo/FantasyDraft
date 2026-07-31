@@ -1,25 +1,14 @@
 import json
-import subprocess
 from pathlib import Path
+
+from conftest import run_node
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def _run_node(script: str) -> dict:
-    result = subprocess.run(
-        ["node", "--experimental-default-type=module", "-"],
-        input=script,
-        text=True,
-        capture_output=True,
-        cwd=ROOT,
-        check=True,
-    )
-    return json.loads(result.stdout)
-
-
 def test_interaction_sfx_is_gesture_gated_mutable_and_graceful_without_audio():
-    probe = _run_node(
+    probe = run_node(
         r"""
 const { InteractionSfx, INTERACTION_SFX_CUES } = await import('./web/static/phaser/core/interaction-sfx.js');
 let contextsCreated = 0;
@@ -127,7 +116,7 @@ console.log(JSON.stringify({
 
 
 def test_sfx_palette_is_filtered_peak_bounded_and_uses_a_master_dynamics_bus():
-    probe = _run_node(
+    probe = run_node(
         r"""
 const {
   InteractionSfx,
@@ -222,7 +211,7 @@ console.log(JSON.stringify({
 
 
 def test_gesture_gate_only_unlocks_after_a_registered_user_event():
-    probe = _run_node(
+    probe = run_node(
         r"""
 const { InteractionSfx } = await import('./web/static/phaser/core/interaction-sfx.js');
 let contextsCreated = 0;
@@ -255,7 +244,7 @@ console.log(JSON.stringify({ before, after }));
 
 
 def test_trusted_gesture_resumes_an_interrupted_mobile_audio_context():
-    probe = _run_node(
+    probe = run_node(
         r"""
 const { InteractionSfx } = await import('./web/static/phaser/core/interaction-sfx.js');
 let resumes = 0;
@@ -274,7 +263,7 @@ console.log(JSON.stringify({ resumes, unlocked, state: context.state }));
 
 
 def test_motion_service_exposes_rule_clarifying_cues_and_respects_reduced_motion():
-    probe = _run_node(
+    probe = run_node(
         r"""
 const motionModule = await import('./web/static/phaser/fx/motion-vfx.js');
 const methods = Object.getOwnPropertyNames(motionModule.MotionVfx.prototype).filter((name) => name !== 'constructor');
@@ -342,7 +331,7 @@ console.log(JSON.stringify({
 
 
 def test_motion_service_drops_stopped_infinite_tweens_from_its_registry():
-    probe = _run_node(
+    probe = run_node(
         r"""
 const { MotionVfx } = await import('./web/static/phaser/fx/motion-vfx.js');
 const handlers = new Map();
@@ -368,7 +357,7 @@ console.log(JSON.stringify({ before, after }));
 
 
 def test_presentation_layer_routes_distinct_combat_and_result_audio_cues():
-    probe = _run_node(
+    probe = run_node(
         r"""
 const { createPresentationLayer } = await import('./web/static/phaser/core/presentation-layer.js');
 const played = [];
@@ -409,7 +398,7 @@ def test_combat_playback_uses_semantic_skill_heal_status_reveal_and_impact_cues(
 
 
 def test_presentation_barrel_exports_registry_rendering_motion_audio_and_preload_api():
-    probe = _run_node(
+    probe = run_node(
         r"""
 const presentation = await import('./web/static/phaser/core/presentation-layer.js');
 const loaded = [];

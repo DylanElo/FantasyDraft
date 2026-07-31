@@ -1,26 +1,15 @@
 import json
 import re
-import subprocess
 from pathlib import Path
+
+from conftest import run_node
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def _run_node(script: str) -> dict:
-    result = subprocess.run(
-        ["node", "--experimental-default-type=module", "-"],
-        input=script,
-        text=True,
-        capture_output=True,
-        cwd=ROOT,
-        check=True,
-    )
-    return json.loads(result.stdout)
-
-
 def test_presentation_settings_persist_and_resolve_system_motion():
-    probe = _run_node(
+    probe = run_node(
         r"""
 const {
   PRESENTATION_SETTINGS_STORAGE_KEY,
@@ -85,7 +74,7 @@ console.log(JSON.stringify({
 
 
 def test_audio_context_and_mixer_survive_scene_transitions_with_safe_haptics():
-    probe = _run_node(
+    probe = run_node(
         r"""
 const { createPresentationLayer } = await import('./web/static/phaser/core/presentation-layer.js');
 let contextsCreated = 0;
@@ -184,7 +173,7 @@ console.log(JSON.stringify({
 
 
 def test_base_scene_stages_portraits_and_all_unique_skill_atlases_after_boot():
-    probe = _run_node(
+    probe = run_node(
         r"""
 globalThis.Phaser = { Scene: class {} };
 const { BaseScene } = await import('./web/static/phaser/scenes/base-scene.js');
@@ -242,7 +231,7 @@ console.log(JSON.stringify({
 
 
 def test_destination_scene_rejects_the_pointer_event_that_started_it():
-    probe = _run_node(
+    probe = run_node(
         r"""
 globalThis.Phaser = { Scene: class {} };
 globalThis.window = { dispatchEvent() {} };
@@ -283,7 +272,7 @@ console.log(JSON.stringify({ afterTransitionTap, afterFreshTap: { destinationAct
 
 
 def test_scene_asset_staging_deduplicates_game_wide_in_flight_textures():
-    probe = _run_node(
+    probe = run_node(
         r"""
 globalThis.Phaser = { Scene: class {} };
 const { BaseScene } = await import('./web/static/phaser/scenes/base-scene.js');

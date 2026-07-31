@@ -1,23 +1,12 @@
 import json
 import re
-import subprocess
 from pathlib import Path
+
+from conftest import run_node
 
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSET_ROOT = ROOT / "web" / "static" / "assets"
-
-
-def _run_node(script: str) -> dict:
-    result = subprocess.run(
-        ["node", "--experimental-default-type=module", "-"],
-        input=script,
-        text=True,
-        capture_output=True,
-        cwd=ROOT,
-        check=True,
-    )
-    return json.loads(result.stdout)
 
 
 def test_boot_queues_only_splash_home_and_startup_portraits():
@@ -33,7 +22,7 @@ def test_boot_queues_only_splash_home_and_startup_portraits():
 
 
 def test_environment_registry_and_scene_staging_are_deterministic():
-    probe = _run_node(
+    probe = run_node(
         r"""
 globalThis.JJK_MOBILE_TOKENS = {};
 globalThis.JJK_BOOTSTRAP = {};
@@ -122,7 +111,7 @@ console.log(JSON.stringify({
 
 
 def test_season_three_facade_keeps_compatibility_variants_and_shared_tokens():
-    probe = _run_node(
+    probe = run_node(
         r"""
 globalThis.JJK_MOBILE_TOKENS = {};
 globalThis.JJK_BOOTSTRAP = {};

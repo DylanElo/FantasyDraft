@@ -7,6 +7,7 @@ from collections import Counter
 from concurrent.futures import ProcessPoolExecutor
 import json
 import os
+from threading import RLock
 from typing import Any, Iterable, Iterator
 
 from .damage_accounting import enemy_hp_damage_attribution
@@ -218,7 +219,14 @@ def run_headless_match(
 
     state = manager.get_state(room_id)
     if state.result_type is None:
-        manager._finish_match(state, "TURN_CAP", None, "simulation_turn_cap")
+        # ponytail: route through the same lock + deferred-callback idiom every
+        # other _finish_match call site uses (see manager.py's
+        # expire_phase_if_needed), instead of calling the private method bare.
+        # Harmless today since this loop is single-threaded, but keeps this the
+        # one call site that doesn't have to be remembered/fixed later.
+        with manager.room_locks.setdefault(room_id, RLock()):
+            with manager._defer_finished_callbacks():
+                manager._finish_match(state, "TURN_CAP", None, "simulation_turn_cap")
     damage_received = Counter()
     healing_received = Counter()
     energy_conversion_events: dict[str, list[dict[str, Any]]] = {

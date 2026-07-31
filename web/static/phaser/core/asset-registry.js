@@ -7,6 +7,15 @@ import {
 import { COLORS, CULLING_COLORS } from './runtime-config.js?v=42';
 import { safeText } from './text.js?v=42';
 
+// ponytail: was duplicated verbatim (under two different local names) in
+// combat-scene.js and combat-queue-review-scene.js.
+export const SKILL_ART_BY_ENERGY = Object.freeze({
+  green: 's3-skill-body',
+  blue: 's3-skill-technique',
+  white: 's3-skill-focus',
+  red: 's3-skill-curse',
+});
+
 function environmentAsset(key, file, width, height, scenes) {
   return Object.freeze({
     key,

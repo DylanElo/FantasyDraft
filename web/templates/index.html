@@ -55,7 +55,7 @@
   </main>
 
   <script>
-    const PLAYER_SESSION_ID = "{{ player_id }}";
+    const PLAYER_SESSION_ID = {{ player_id | tojson }};
     const BATTLE_V2_ENABLED = {{ 'true' if battle_v2_enabled else 'false' }};
     const BATTLE_V2_STARTER_ROSTER = {{ battle_v2_catalog | tojson }};
     const FIRST_CREATION = {{ first_creation | tojson }};

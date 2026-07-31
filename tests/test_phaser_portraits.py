@@ -1,7 +1,8 @@
 import json
 import math
-import subprocess
 from pathlib import Path
+
+from conftest import run_node
 
 from jjk_arena.battle_v2.starter_roster import (
     FIRST_CREATION_CHARACTER_IDS,
@@ -11,18 +12,6 @@ from jjk_arena.battle_v2.starter_roster import (
 
 ROOT = Path(__file__).resolve().parents[1]
 PORTRAIT_DIR = ROOT / "web" / "static" / "assets" / "portraits" / "culling-current"
-
-
-def _run_node(script: str) -> dict:
-    result = subprocess.run(
-        ["node", "--experimental-default-type=module", "-"],
-        input=script,
-        text=True,
-        capture_output=True,
-        cwd=ROOT,
-        check=True,
-    )
-    return json.loads(result.stdout)
 
 
 def _webp_dimensions(path: Path) -> tuple[int, int]:
@@ -43,7 +32,7 @@ def _webp_dimensions(path: Path) -> tuple[int, int]:
 
 
 def _registry_probe() -> dict:
-    return _run_node(
+    return run_node(
         r"""
 const registry = await import('./web/static/phaser/core/portrait-registry.js');
 const entries = registry.starterPortraitEntries();
@@ -111,7 +100,7 @@ def test_registry_detects_missing_extra_and_variant_name_drift():
 
 
 def test_focal_cover_crop_preserves_target_aspect_and_clamps_focal_edges():
-    probe = _run_node(
+    probe = run_node(
         r"""
 const { focalCoverCrop } = await import('./web/static/phaser/core/portrait-registry.js');
 const targets = {
@@ -270,7 +259,7 @@ console.log(JSON.stringify({ calls, resultIsImage: result === image, missing, no
 
 
 def test_portrait_load_failures_are_deduplicated_and_debuggable():
-    probe = _run_node(
+    probe = run_node(
         r"""
 globalThis.window = {};
 const errors = [];

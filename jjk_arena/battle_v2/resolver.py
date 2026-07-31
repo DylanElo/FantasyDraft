@@ -809,4 +809,19 @@ def check_winner(state: BattleState) -> list[BattleEvent]:
         )
         state.event_log.append(event)
         return [event]
+    if len(alive_players) == 0 and living_by_player:
+        # ponytail: simultaneous double-KO (e.g. AoE/retaliation kills both sides in
+        # the same resolution) previously left phase=PLANNING with no winner set,
+        # stalling the match until the 12-turn no-progress tiebreak. Declare it a
+        # draw immediately instead.
+        state.winner_id = None
+        state.phase = BattlePhase.FINISHED
+        event = BattleEvent(
+            type="battle_finished",
+            message="double knockout, draw",
+            turn_number=state.turn_number,
+            payload={"winner_id": None},
+        )
+        state.event_log.append(event)
+        return [event]
     return []

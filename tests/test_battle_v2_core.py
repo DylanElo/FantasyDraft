@@ -20,7 +20,7 @@ from jjk_arena.battle_v2.models import (
     StatusEffect,
     TargetRule,
 )
-from jjk_arena.battle_v2.resolver import ResolverError, confirm_queue, finish_turn, resolve_queue, validate_action, validate_queue
+from jjk_arena.battle_v2.resolver import ResolverError, check_winner, confirm_queue, finish_turn, resolve_queue, validate_action, validate_queue
 from jjk_arena.battle_v2.serialization import serialize_event
 
 
@@ -1158,6 +1158,26 @@ def test_source_turn_status_duration_only_ticks_on_source_turn():
 
     assert target.hp == 95
     assert target.statuses[0].duration == 1
+
+
+def test_check_winner_declares_draw_on_simultaneous_double_ko():
+    # ponytail: regression test for the bug where a simultaneous double-KO
+    # (both sides' active characters dead at once) left phase=PLANNING with
+    # no winner set, stalling the match until a 12-turn no-progress tiebreak.
+    state = make_state()
+    for character in state.players["p1"].team:
+        character.hp = 0
+        character.alive = False
+    for character in state.players["p2"].team:
+        character.hp = 0
+        character.alive = False
+
+    events = check_winner(state)
+
+    assert state.phase == BattlePhase.FINISHED
+    assert state.winner_id is None
+    assert len(events) == 1
+    assert events[0].type == "battle_finished"
 
 
 def test_target_turn_status_duration_only_ticks_on_target_turn():

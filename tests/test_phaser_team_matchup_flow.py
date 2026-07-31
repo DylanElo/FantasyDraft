@@ -1,25 +1,14 @@
 import json
-import subprocess
 from pathlib import Path
+
+from conftest import run_node
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def _run_node(script: str) -> dict:
-    result = subprocess.run(
-        ["node", "--experimental-default-type=module", "-"],
-        input=script,
-        text=True,
-        capture_output=True,
-        cwd=ROOT,
-        check=True,
-    )
-    return json.loads(result.stdout)
-
-
 def test_fresh_cpu_and_pvp_matches_review_matchup_before_authoritative_combat():
-    probe = _run_node(
+    probe = run_node(
         r"""
 globalThis.JJK_BOOTSTRAP = { battleV2Enabled: true, firstCreation: { roster: {} } };
 globalThis.JJK_MOBILE_TOKENS = {};
@@ -234,7 +223,7 @@ def test_private_matchup_never_renders_the_local_cpu_roster_as_the_opponent():
 
 
 def test_matchup_launch_timeout_and_transport_errors_are_bounded_and_retryable():
-    probe = _run_node(
+    probe = run_node(
         r"""
 globalThis.JJK_BOOTSTRAP = { battleV2Enabled: true, firstCreation: { roster: {} } };
 globalThis.JJK_MOBILE_TOKENS = {};
@@ -394,7 +383,7 @@ console.log(JSON.stringify({
 
 
 def test_socket_client_reports_live_connectivity_and_binds_terminal_reconnect_failure():
-    probe = _run_node(
+    probe = run_node(
         r"""
 const socketEvents = [];
 const managerEvents = [];
@@ -425,7 +414,7 @@ console.log(JSON.stringify({ socketEvents, managerEvents, before, after }));
 
 
 def test_retired_match_updates_cannot_hijack_a_fresh_match_launch():
-    probe = _run_node(
+    probe = run_node(
         r"""
 globalThis.JJK_BOOTSTRAP = { battleV2Enabled: true, firstCreation: { roster: {} } };
 globalThis.JJK_MOBILE_TOKENS = {};

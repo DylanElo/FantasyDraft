@@ -1394,7 +1394,7 @@ def index():
     )
 
 
-@app.route("/new-session")
+@app.route("/new-session", methods=["POST"])
 def new_session():
     session.clear()
     return redirect("/")
@@ -1585,7 +1585,14 @@ def on_battle_v2_resume(data=None):
     try:
         battle_v2_manager.reconnect_player(room_id, player_id)
         battle_v2_manager.serialize_for_player(room_id, player_id)
-    except (BattleV2Error, KeyError, RuntimeError):
+    except BattleV2Error:
+        battle_v2_sessions.abort(room_id, player_id)
+        emit("battle_v2_resume_rejected", {"message": "Battle session could not be resumed."})
+        return
+    except (KeyError, RuntimeError):
+        # ponytail: these two used to be swallowed alongside BattleV2Error, making a
+        # real internal bug indistinguishable from an ordinary bad-token rejection.
+        operational_counters["resume_unexpected_errors"] += 1
         battle_v2_sessions.abort(room_id, player_id)
         emit("battle_v2_resume_rejected", {"message": "Battle session could not be resumed."})
         return
@@ -1624,7 +1631,7 @@ def on_battle_v2_leave_pvp(data=None):
     room_id, player_session = context
     with lifecycle_lock:
         acknowledge_finished_match(room_id, player_session)
-    kept = remove_v2_pvp_lobby_player(room_id, player_session)
+        kept = remove_v2_pvp_lobby_player(room_id, player_session)
     emit(
         "battle_v2_lobby",
         {
@@ -1858,9 +1865,10 @@ def on_disconnect():
     player_session = session.get("player_id")
     if not player_session:
         return
-    waiting_code = waiting_code_by_player.get(player_session)
-    if waiting_code:
-        remove_v2_pvp_lobby_player(waiting_code, player_session)
+    with lifecycle_lock:
+        waiting_code = waiting_code_by_player.get(player_session)
+        if waiting_code:
+            remove_v2_pvp_lobby_player(waiting_code, player_session)
     room_id = active_match_by_player.get(player_session) or session.get("match_id")
     if room_id and room_id in battle_v2_manager.rooms:
         battle_v2_manager.disconnect_player(room_id, player_session)

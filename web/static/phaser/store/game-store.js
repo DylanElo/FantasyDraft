@@ -740,6 +740,14 @@ export class GameStore {
       this.eventCursor = 0;
       this.playbackEvents = [];
       this.recentEvents = [];
+      // ponytail: these four were missing from this reset (present in
+      // resetToLobby's), currently defused because the skill-detail sheet
+      // gates on selectedCasterSlot (reset above), but a stale selection
+      // from the just-ended match shouldn't be relying on that indirection.
+      this.detailSkillId = null;
+      this.inspectedFighter = null;
+      this.targetingStage = null;
+      this.pendingPrimaryTarget = null;
       this.ignoreBattleUpdates = false;
       this.matchLaunchPending = true;
       this.matchLaunchError = '';

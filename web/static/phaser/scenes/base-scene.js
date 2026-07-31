@@ -4,6 +4,9 @@ import { initials, safeText } from '../core/text.js?v=42';
 import { LayoutService } from '../core/layout-service.js?v=42';
 import { costColors } from '../core/roster.js?v=42';
 import { SKILL_ACTION_ATLASES, createPresentationLayer } from '../core/presentation-layer.js?v=42';
+import { Season3UI } from '../ui/season3-ui.js?v=42';
+
+const { energyPip: drawEnergyPip } = Season3UI.current;
 
 const COMBAT_SKILL_ASSETS = Object.freeze([
   Object.freeze({ key: 's3-skill-body', url: '/static/assets/skills/culling-current/body.webp' }),
@@ -552,68 +555,6 @@ export class BaseScene extends Phaser.Scene {
       });
     }
 
-    drawAppBg(frame) {
-      const g = this.graphics;
-      g.fillGradientStyle(COLORS.voidBlack, COLORS.inkBlack, 0x120b0d, COLORS.voidBlack, 1);
-      g.fillRect(0, 0, frame.fullWidth, frame.fullHeight);
-      g.fillStyle(COLORS.bg, 0.86);
-      g.fillRoundedRect(frame.x, frame.y, frame.width, frame.height, frame.desktop ? 22 : 0);
-      g.lineStyle(1, COLORS.talismanDim, frame.desktop ? 0.28 : 0);
-      g.strokeRoundedRect(frame.x + 0.5, frame.y + 0.5, frame.width - 1, frame.height - 1, frame.desktop ? 22 : 0);
-
-      const cx = frame.x + frame.width / 2;
-      const cy = frame.y + frame.height * 0.47;
-      [320, 236, 154].forEach((radius, index) => {
-        g.lineStyle(index === 1 ? 1.5 : 1, index === 1 ? COLORS.domain : COLORS.talismanDim, index === 1 ? 0.045 : 0.03);
-        g.strokeCircle(cx, cy, radius);
-      });
-      for (let i = 0; i < 7; i += 1) {
-        const y = frame.y + 84 + i * 104;
-        g.lineStyle(1, COLORS.surfaceLine, 0.045);
-        g.strokeCircle(frame.x + (i % 2 ? frame.width - 34 : 34), y, 72);
-      }
-      for (let i = 0; i < 15; i += 1) {
-        const y = frame.y + 42 + i * 48;
-        g.lineStyle(1, i % 3 === 0 ? COLORS.talismanDim : 0xffffff, i % 3 === 0 ? 0.055 : 0.025);
-        g.beginPath();
-        g.moveTo(frame.x, y);
-        g.lineTo(frame.x + frame.width, y + (i % 2 ? -18 : 18));
-        g.strokePath();
-      }
-      for (let i = 0; i < 9; i += 1) {
-        const x = frame.x + 18 + i * 49;
-        g.lineStyle(1, COLORS.talismanDim, 0.045);
-        g.beginPath();
-        g.moveTo(x, frame.y + 2);
-        g.lineTo(x - 34, frame.y + frame.height - 2);
-        g.strokePath();
-      }
-    }
-
-    topBar(frame, title, backHandler) {
-      const y = frame.top + 2;
-      this.graphics.fillStyle(COLORS.inkBlack, 0.68);
-      this.graphics.fillRoundedRect(frame.x + 10, frame.top - 4, frame.width - 20, 52, 16);
-      this.graphics.fillStyle(COLORS.talismanDim, 0.06);
-      this.graphics.fillRoundedRect(frame.x + 14, frame.top, frame.width - 28, 16, 10);
-      this.graphics.lineStyle(1, COLORS.talismanDim, 0.24);
-      this.graphics.strokeRoundedRect(frame.x + 10, frame.top - 4, frame.width - 20, 52, 16);
-      this.mono(frame.x + frame.gutter, y, 'CURSED CLASH', {
-        color: COLORS.paperText,
-        fontSize: '11px',
-        fontStyle: '700',
-      });
-      this.text(frame.x + frame.gutter, frame.top + 17, title, {
-        fontFamily: 'Cinzel, Inter, serif',
-        fontSize: '25px',
-        fontStyle: '900',
-        color: COLORS.text,
-      });
-      if (backHandler) {
-        this.iconButton(frame.x + frame.width - frame.gutter - 44, frame.top, 44, 44, '<', backHandler);
-      }
-    }
-
     toast(frame, options) {
       const opts = options || {};
       this.drawTapPulse();
@@ -696,49 +637,27 @@ export class BaseScene extends Phaser.Scene {
       });
     }
 
-    cardPanel(x, y, w, h, tone, alpha) {
-      const g = this.graphics;
-      g.fillStyle(COLORS.panel, alpha === undefined ? 0.9 : alpha);
-      const radius = Math.min(TOKEN_RADIUS.panelMin || 18, 18);
-      g.fillRoundedRect(x, y, w, h, radius);
-      g.fillStyle(COLORS.surfaceRaised, 0.26);
-      g.fillRoundedRect(x + 4, y + 4, w - 8, Math.max(10, h * 0.22), Math.max(8, radius - 4));
-      g.fillStyle(tone || COLORS.line, 0.07);
-      g.fillTriangle(x + w - 52, y, x + w, y, x + w, y + 52);
-      g.fillTriangle(x, y + h - 46, x + 46, y + h, x, y + h);
-      g.lineStyle(1.5, tone || COLORS.line, 0.42);
-      g.strokeRoundedRect(x, y, w, h, radius);
-      g.lineStyle(1, COLORS.talismanPaper, 0.055);
-      g.beginPath();
-      g.moveTo(x + 14, y + 10);
-      g.lineTo(x + w - 14, y + 10);
-      g.strokePath();
-    }
-
-    energyOrbs(x, y, energy, size) {
-      const colors = ['green', 'red', 'blue', 'white'];
-      colors.forEach((color, index) => {
-        const count = Number((energy && energy[color]) || 0);
-        const cx = x + index * (size + 12);
-        this.graphics.fillStyle(ENERGY_COLORS[color], count ? 0.95 : 0.12);
-        this.graphics.fillCircle(cx, y, size / 2);
-        this.graphics.lineStyle(1, ENERGY_COLORS[color], 0.75);
-        this.graphics.strokeCircle(cx, y, size / 2);
-        this.mono(cx + size / 2 + 2, y - 7, String(count), { fontSize: '10px', color: COLORS.text });
-      });
-    }
-
     costPips(x, y, cost, size) {
+      // ponytail: delegates to the shared drawEnergyPip primitive (see
+      // ui/energy-pip.js) instead of hand-rolling a third fill/stroke/label
+      // sequence; backingRadius === radius keeps the halo invisible so this
+      // still reads as "no backing circle", matching the prior look.
+      const radius = size / 2;
       costColors(cost).slice(0, 5).forEach((color, index) => {
         const cx = x + index * (size + 5);
-        const fill = ENERGY_COLORS[color] || COLORS.black;
-        this.graphics.fillStyle(fill, color === 'white' ? 0.88 : 0.96);
-        this.graphics.fillCircle(cx, y, size / 2);
-        this.graphics.lineStyle(1, color === 'black' ? COLORS.talismanPaper : fill, 0.82);
-        this.graphics.strokeCircle(cx, y, size / 2);
-        this.mono(cx - 3, y - 4, ENERGY_LABELS[color] || 'X', {
-          color: color === 'white' ? '#08080a' : COLORS.text,
-          fontSize: `${TYPE_SCALE.micro}px`,
+        drawEnergyPip(this, cx, y, color, {
+          radius,
+          backingRadius: radius,
+          backingAlpha: 0,
+          fillAlpha: color === 'white' ? 0.88 : 0.96,
+          strokeRadius: radius,
+          strokeWidth: 1,
+          strokeColor: color === 'black' ? COLORS.talismanPaper : (ENERGY_COLORS[color] || COLORS.black),
+          strokeAlpha: 0.82,
+          label: ENERGY_LABELS[color] || 'X',
+          labelColor: color === 'white' ? '#08080a' : COLORS.text,
+          labelFontSize: `${TYPE_SCALE.micro}px`,
+          labelOffsetY: -4,
         });
       });
       if (!cost || !cost.length) {
@@ -748,53 +667,8 @@ export class BaseScene extends Phaser.Scene {
       }
     }
 
-    portrait(characterOrId, x, y, size, options) {
-      const opts = options || {};
-      const id = typeof characterOrId === 'string'
-        ? characterOrId
-        : (characterOrId && (characterOrId.id || characterOrId.character_id));
-      const name = typeof characterOrId === 'string'
-        ? safeText(this.store.character(characterOrId).name, characterOrId)
-        : safeText(characterOrId && characterOrId.name, id);
-      const tone = this.store.assets.toneFor(id || name);
-      const cx = x + size / 2;
-      const cy = y + size / 2;
-      this.graphics.fillStyle(COLORS.inkBlack, opts.dead ? 0.74 : 0.92);
-      this.graphics.fillCircle(cx, cy, size / 2 + 3);
-      this.graphics.fillStyle(tone, opts.dead ? 0.13 : 0.26);
-      this.graphics.fillCircle(cx, cy, size / 2);
-      if (opts.noRing) {
-        this.graphics.lineStyle(1.25, opts.tone || tone, opts.dead ? 0.24 : 0.48);
-        this.graphics.strokeCircle(cx, cy, size / 2);
-      } else {
-        this.graphics.lineStyle(opts.targetable ? 2.5 : 1, opts.tone || tone, opts.dead ? 0.28 : 0.56);
-        this.graphics.strokeCircle(cx, cy, size / 2 + 3);
-        this.graphics.lineStyle(opts.selected ? 2.5 : 1.25, opts.tone || tone, opts.targetable ? 0.92 : 0.68);
-        this.graphics.strokeCircle(cx, cy, size / 2);
-      }
-      this.portraitArtwork(characterOrId, x + 3, y + 3, size - 6, size - 6, {
-        context: 'square',
-        dead: opts.dead,
-        shape: 'circle',
-        tone: opts.tone || tone,
-      });
-    }
-
-    talismanLabel(x, y, text, tone) {
-      const w = Math.max(76, text.length * 7 + 28);
-      this.graphics.fillStyle(COLORS.surfaceRaised, 0.92);
-      this.graphics.fillRoundedRect(x, y, w, 22, 6);
-      this.graphics.fillStyle(tone || COLORS.selection, 0.12);
-      this.graphics.fillTriangle(x, y, x + 16, y, x, y + 16);
-      this.graphics.lineStyle(1, tone || COLORS.selection, 0.48);
-      this.graphics.strokeRoundedRect(x, y, w, 22, 6);
-      this.mono(x + 12, y + 6, text, { color: COLORS.paperText, fontSize: '10px' });
-      return w;
-    }
-
     /* ---- Dossier-plate primitives (Combat/Queue-Review visual language,
-       generalized here for reuse by non-combat scenes). The rounded
-       primitives above stay untouched -- BootScene still uses drawAppBg. ---- */
+       generalized here for reuse by non-combat scenes). ---- */
 
     /* Shared cut-corner hexagon shape. Most Combat panels cut the top-left
        and bottom-right corners (asymmetric sizes allowed); pass cut:0 (or

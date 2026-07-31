@@ -1,25 +1,14 @@
 import json
-import subprocess
 from pathlib import Path
+
+from conftest import run_node
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def _run_node(script: str) -> dict:
-    result = subprocess.run(
-        ["node", "--experimental-default-type=module", "-"],
-        input=script,
-        text=True,
-        capture_output=True,
-        cwd=ROOT,
-        check=True,
-    )
-    return json.loads(result.stdout)
-
-
 def test_fast_socket_resume_during_boot_defers_manager_mutation_and_routes_once():
-    probe = _run_node(
+    probe = run_node(
         r"""
 globalThis.JJK_BOOTSTRAP = { battleV2Enabled: true, firstCreation: { roster: {} } };
 globalThis.JJK_MOBILE_TOKENS = {};

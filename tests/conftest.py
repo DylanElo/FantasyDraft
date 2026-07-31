@@ -1,6 +1,31 @@
+import json
+import subprocess
+from pathlib import Path
+
 import pytest
 
 from web import app as web_app
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def run_node(script: str) -> dict:
+    """Run an ESM script against the real Phaser scene/module source via Node.
+
+    ponytail: was byte-for-byte duplicated across 9 test_phaser_*.py files;
+    consolidated here since none of them varied the invocation itself, only
+    the script body.
+    """
+
+    result = subprocess.run(
+        ["node", "--experimental-default-type=module", "-"],
+        input=script,
+        text=True,
+        capture_output=True,
+        cwd=ROOT,
+        check=True,
+    )
+    return json.loads(result.stdout)
 
 
 @pytest.fixture(autouse=True)

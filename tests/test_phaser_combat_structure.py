@@ -77,10 +77,11 @@ def test_combat_scene_preserves_authoritative_state_affordances():
 def test_combat_skill_hand_uses_the_shipping_season_three_art():
     source = COMBAT_SCENE.read_text(encoding="utf-8")
 
-    assert "green: 's3-skill-body'" in source
-    assert "blue: 's3-skill-technique'" in source
-    assert "white: 's3-skill-focus'" in source
-    assert "red: 's3-skill-curse'" in source
+    # ponytail: the energy->texture map itself now lives once in
+    # core/asset-registry.js (SKILL_ART_BY_ENERGY), shared with
+    # combat-queue-review-scene.js, instead of being duplicated inline here.
+    assert "SKILL_ART_BY_ENERGY } from '../core/asset-registry.js" in source
+    assert "SKILL_ART_BY_ENERGY[semanticCost] || 's3-skill-focus'" in source
     assert "this.coverImage(textureKey" in source
     assert "context: 'hero'" in source
     assert "skill.description || this.store.effectLine(skill)" in source

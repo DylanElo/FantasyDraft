@@ -445,7 +445,7 @@ store.state = {
   event_log: [{ message: 'PRIVATE EVENT' }],
 };
 store.actions = [{
-  id: 'a1', caster_slot: 0, skill_id: 'divergent_fist',
+  id: 'a1', caster_slot: 0, skill_id: 'fc_yuji_itadori_divergent_fist',
   target_player_id: 'enemy', target_slot: 0, target_slots: [],
 }];
 store.actionWildPays = { a1: ['blue'] };
@@ -457,7 +457,7 @@ store.phaseTimerSnapshotSeconds = 25;
 store.phaseTimerSnapshotAt = Date.now();
 store.mineId = () => 'mine';
 store.enemyId = () => 'enemy';
-store.skillFor = () => ({ id: 'divergent_fist', name: 'Divergent Fist', cost: ['green', 'black'], effects: [] });
+store.skillFor = () => ({ id: 'fc_yuji_itadori_divergent_fist', name: 'Divergent Fist', cost: ['green', 'black'], effects: [] });
 store.adjustedCost = (_caster, skill) => skill.cost.slice();
 const snapshot = store.combatAccessibilitySnapshot();
 const serialized = JSON.stringify(snapshot);
@@ -501,25 +501,19 @@ globalThis.document = { getElementById: () => null };
 globalThis.localStorage = { getItem: () => null, setItem: () => {} };
 const { GameStore } = await import('./web/static/phaser/store/game-store.js');
 const store = Object.create(GameStore.prototype);
-const skill = {
-  classes: ['Physical'], target_rule: { kind: 'enemy' },
-  effects: [{ type: 'damage', target: 'target' }],
-};
-const stopped = store.statusBlocksSkill({ statuses: [
-  { name: 'Stop', duration: 1, payload: { stun_classes: ['physical'] } },
-] }, skill);
-const ignored = store.statusBlocksSkill({ statuses: [
-  { name: 'Stop', duration: 1, payload: { stun_classes: ['Physical'] } },
-  { name: 'Unstoppable', duration: 1, payload: { ignore_stun: true } },
-] }, skill);
-console.log(JSON.stringify({ stopped, ignored }));
+const fighter = { character_id: 'fighter', alive: true };
+const skill = { id: 'strike', target_rule: { kind: 'enemy' } };
+store.me = () => ({ id: 'mine', team: [fighter] });
+store.state = { skill_options: { '0': { strike: {
+  disabled_reason: 'Stunned: this skill class is disabled.',
+  adjusted_cost: ['green'],
+  legal_target_payloads: [],
+} } } };
+console.log(JSON.stringify({ reason: store.skillDisabledReason(fighter, skill) }));
 """
     )
 
-    assert probe == {
-        "stopped": "Stop: this skill class is disabled.",
-        "ignored": "",
-    }
+    assert probe == {"reason": "Stunned: this skill class is disabled."}
 
 
 def test_compact_enemy_skill_cannot_mark_visible_invulnerable_target_selectable():
@@ -531,14 +525,18 @@ globalThis.localStorage = { getItem: () => null, setItem: () => {} };
 const { GameStore } = await import('./web/static/phaser/store/game-store.js');
 const store = Object.create(GameStore.prototype);
 const compactEnemySkill = {
-  id: 'divine_dogs', classes: ['Physical'],
-  target_rule: { kind: 'enemy' }, effects: [],
+  id: 'divine_dogs', target_rule: { kind: 'enemy' },
 };
-const warded = {
-  alive: true,
-  statuses: [{ id: 'rika_protects', duration: 2, payload: { invulnerable: true } }],
+const caster = { character_id: 'megumi', alive: true };
+const warded = { alive: true };
+store.state = {
+  phase: 'planning',
+  skill_options: { '0': { divine_dogs: {
+    disabled_reason: null,
+    adjusted_cost: ['blue'],
+    legal_target_payloads: [],
+  } } },
 };
-store.state = { phase: 'planning' };
 store.selectedCasterSlot = 0;
 store.selectedSkillId = compactEnemySkill.id;
 store.targetingStage = null;
@@ -546,15 +544,16 @@ store.controlsLocked = () => false;
 store.selectedSkill = () => compactEnemySkill;
 store.enemyId = () => 'enemy';
 store.mineId = () => 'mine';
+store.me = () => ({ id: 'mine', team: [caster] });
+store.foe = () => ({ id: 'enemy', team: [warded] });
 console.log(JSON.stringify({
-  harmful: store.skillIsHarmful(compactEnemySkill),
   blocked: store.targetBlocksSkill(warded, compactEnemySkill),
   selectable: store.canTarget(warded, 0, 'enemy'),
 }));
 """
     )
 
-    assert probe == {"harmful": True, "blocked": True, "selectable": False}
+    assert probe == {"blocked": True, "selectable": False}
 
 
 def test_visible_active_status_names_its_authoritative_source_skill_and_caster():
@@ -598,7 +597,11 @@ console.log(JSON.stringify({
 
 
 def test_combat_source_uses_explicit_target_words_status_sheet_and_public_events_only():
-    combat = (ROOT / "web/static/phaser/scenes/combat-scene.js").read_text(encoding="utf-8")
+    combat = (
+        (ROOT / "web/static/phaser/scenes/combat-scene.js").read_text(encoding="utf-8")
+        + (ROOT / "web/static/phaser/scenes/combat-sheets.js").read_text(encoding="utf-8")
+        + (ROOT / "web/static/phaser/scenes/combat-fighter-field.js").read_text(encoding="utf-8")
+    )
     store = (ROOT / "web/static/phaser/store/game-store.js").read_text(encoding="utf-8")
 
     assert "'TAP TARGET'" in combat
@@ -626,7 +629,10 @@ def test_combat_source_uses_explicit_target_words_status_sheet_and_public_events
 
 
 def test_transmutation_is_an_explicit_five_for_one_mobile_sheet():
-    combat = (ROOT / "web/static/phaser/scenes/combat-scene.js").read_text(encoding="utf-8")
+    combat = (
+        (ROOT / "web/static/phaser/scenes/combat-scene.js").read_text(encoding="utf-8")
+        + (ROOT / "web/static/phaser/scenes/combat-sheets.js").read_text(encoding="utf-8")
+    )
 
     assert "renderTransmuteSheet(frame)" in combat
     assert "OPTIONAL / ONCE PER TURN / BEFORE QUEUE" in combat

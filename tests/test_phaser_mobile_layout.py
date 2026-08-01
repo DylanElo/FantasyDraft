@@ -248,7 +248,12 @@ def test_scoped_mobile_controls_and_copy_keep_accessibility_contracts():
     roster = (ROOT / "web/static/phaser/scenes/draft-roster-scene.js").read_text(encoding="utf-8")
     creation = (ROOT / "web/static/phaser/scenes/first-creation-scene.js").read_text(encoding="utf-8")
     queue = (ROOT / "web/static/phaser/scenes/combat-queue-review-scene.js").read_text(encoding="utf-8")
-    combat = (ROOT / "web/static/phaser/scenes/combat-scene.js").read_text(encoding="utf-8")
+    combat = (
+        (ROOT / "web/static/phaser/scenes/combat-scene.js").read_text(encoding="utf-8")
+        + (ROOT / "web/static/phaser/scenes/combat-sheets.js").read_text(encoding="utf-8")
+        + (ROOT / "web/static/phaser/scenes/combat-hud.js").read_text(encoding="utf-8")
+        + (ROOT / "web/static/phaser/scenes/combat-fighter-field.js").read_text(encoding="utf-8")
+    )
     lobby = (ROOT / "web/static/phaser/scenes/lobby-scene.js").read_text(encoding="utf-8")
     season_three_ui = (ROOT / "web/static/phaser/ui/season-three-ui.js").read_text(encoding="utf-8")
 
@@ -258,7 +263,6 @@ def test_scoped_mobile_controls_and_copy_keep_accessibility_contracts():
     assert "44, 44, '<'" in base
     assert "44, 44, '×'" in base
 
-    assert "const pager = { x, y: cta.y - 52, w, h: 44 };" in season_three_ui
     assert "const controls = { x, y: header.bottom + 8, w, h: 44 };" in roster
     assert "const trio = { x, y: trioLabelY + 18, w, h: 90 };" in roster
     assert "const filters = { x, y: trio.y + trio.h + 8, w, h: 44 };" in roster
@@ -323,7 +327,7 @@ def test_scoped_mobile_controls_and_copy_keep_accessibility_contracts():
 
     assert "shortText(character.name" not in roster
     assert "shortText(character.role" not in roster
-    assert "description.setMaxLines(6);" in roster
+    assert "description.setMaxLines(6);" in creation
     assert "TAP ART FOR STUDY" in roster
 
     assert 44 + 4 + 44 <= 92

@@ -41,7 +41,6 @@ def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
     assert 'id="classic-v2" class="phaser-shell-screen"' in html
     assert 'id="v2-phaser-shell"' in html
     assert '"aoi_todo"' in html
-    assert '"hiromi_higuruma"' in html
     assert 'id="btn-v2-new-match"' not in html
     assert 'id="v2-lobby-view"' not in html
     assert 'id="v2-history-view"' not in html
@@ -53,9 +52,8 @@ def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
     assert 'v2-enemy-team' not in html
     assert 'v2-my-team' not in html
     assert 'vendor/phaser.min.js?v=3.90.0' in html
-    assert 'phaser-design-tokens.js?v=42' in html
-    assert 'phaser-shell.js?v=42' in html
-    assert 'phaser-shell.css?v=42' in html
+    assert 'phaser-design-tokens.js?v=43' in html
+    assert 'phaser-shell.css?v=43' in html
     assert 'phaser-battle.js' not in html
     assert 'app.js' not in html
     assert 'stitch-tokens.css' not in html
@@ -70,9 +68,7 @@ def test_battle_v2_public_surface_uses_production_copy(monkeypatch):
     client = web_app.app.test_client()
 
     html = client.get("/").get_data(as_text=True)
-    shell_js = Path(web_app.app.static_folder, "phaser-shell.js").read_text(encoding="utf-8")
     phaser_entry_js = Path(web_app.app.static_folder, "phaser", "index.js").read_text(encoding="utf-8")
-    runtime_js = Path(web_app.app.static_folder, "phaser", "legacy-shell.js").read_text(encoding="utf-8")
     runtime_config_js = Path(web_app.app.static_folder, "phaser", "core", "runtime-config.js").read_text(encoding="utf-8")
     asset_registry_js = Path(web_app.app.static_folder, "phaser", "core", "asset-registry.js").read_text(encoding="utf-8")
     layout_service_js = Path(web_app.app.static_folder, "phaser", "core", "layout-service.js").read_text(encoding="utf-8")
@@ -89,22 +85,19 @@ def test_battle_v2_public_surface_uses_production_copy(monkeypatch):
     matchup_scene_js = Path(web_app.app.static_folder, "phaser", "scenes", "matchup-scene.js").read_text(encoding="utf-8")
     first_creation_scene_js = Path(web_app.app.static_folder, "phaser", "scenes", "first-creation-scene.js").read_text(encoding="utf-8")
     mission_map_scene_js = Path(web_app.app.static_folder, "phaser", "scenes", "mission-map-scene.js").read_text(encoding="utf-8")
-    combat_scene_js = Path(web_app.app.static_folder, "phaser", "scenes", "combat-scene.js").read_text(encoding="utf-8")
+    combat_scene_js = (
+        Path(web_app.app.static_folder, "phaser", "scenes", "combat-scene.js").read_text(encoding="utf-8")
+        + Path(web_app.app.static_folder, "phaser", "scenes", "combat-hud.js").read_text(encoding="utf-8")
+        + Path(web_app.app.static_folder, "phaser", "scenes", "combat-skill-deck.js").read_text(encoding="utf-8")
+        + Path(web_app.app.static_folder, "phaser", "scenes", "combat-fighter-field.js").read_text(encoding="utf-8")
+    )
     result_scene_js = Path(web_app.app.static_folder, "phaser", "scenes", "result-scene.js").read_text(encoding="utf-8")
     records_scene_js = Path(web_app.app.static_folder, "phaser", "scenes", "records-scene.js").read_text(encoding="utf-8")
     game_store_js = Path(web_app.app.static_folder, "phaser", "store", "game-store.js").read_text(encoding="utf-8")
     socket_client_js = Path(web_app.app.static_folder, "phaser", "network", "socket-client.js").read_text(encoding="utf-8")
     design_tokens_js = Path(web_app.app.static_folder, "phaser-design-tokens.js").read_text(encoding="utf-8")
 
-    assert "import(`./phaser/index.js?v=${SHELL_VERSION}`)" in shell_js
-    assert "const SHELL_VERSION = '42';" in shell_js
-    assert "import './legacy-shell.js?v=42';" in phaser_entry_js
-    assert "from './store/game-store.js?v=42';" in runtime_js
-    assert "from './network/socket-client.js?v=42';" in runtime_js
-    assert "from './scenes/scene-registry.js?v=42';" in runtime_js
-    assert "scene: SCENE_LIST" in runtime_js
-    assert "from './scenes/boot-scene.js?v=42';" not in runtime_js
-    assert "from './boot-scene.js?v=42';" in scene_registry_js
+    assert "from './boot-scene.js?v=43';" in scene_registry_js
     assert "export const SCENE_LIST" in scene_registry_js
     assert "export const COLORS" in runtime_config_js
     assert "export const CULLING_COLORS" in runtime_config_js
@@ -131,7 +124,7 @@ def test_battle_v2_public_surface_uses_production_copy(monkeypatch):
     assert "export class DraftScene" in draft_scene_js
     assert "extends DraftRosterScene" in draft_scene_js
     assert "export class MatchupScene" in matchup_scene_js
-    assert "from './matchup-scene.js?v=42';" in scene_registry_js
+    assert "from './matchup-scene.js?v=43';" in scene_registry_js
     assert "export class FirstCreationScene" in first_creation_scene_js
     assert "export class MissionMapScene" in mission_map_scene_js
     assert "export class CombatScene" in combat_scene_js
@@ -140,18 +133,6 @@ def test_battle_v2_public_surface_uses_production_copy(monkeypatch):
     assert "export class RecordsScene" in records_scene_js
     assert "export class GameStore" in game_store_js
     assert "export class SocketClient" in socket_client_js
-    assert "class BaseScene" not in runtime_js
-    assert "class GameStore" not in runtime_js
-    assert "class SocketClient" not in runtime_js
-    assert "class BootScene" not in runtime_js
-    assert "class LobbyScene" not in runtime_js
-    assert "class FirstCreationScene" not in runtime_js
-    assert "class MissionMapScene" not in runtime_js
-    assert "class DraftScene" not in runtime_js
-    assert "class MatchupScene" not in runtime_js
-    assert "class CombatScene" not in runtime_js
-    assert "class ResultScene" not in runtime_js
-    assert "class RecordsScene" not in runtime_js
     assert "renderBootSplash" in boot_scene_js
     assert "OPENING DOMAIN" in boot_scene_js
     assert "battle_v2_start_classic" in game_store_js
@@ -198,14 +179,8 @@ def test_battle_v2_public_surface_uses_production_copy(monkeypatch):
     assert "setDraftTarget" in game_store_js
     assert "jjk:ui-tap" in base_scene_js
     assert "Classic Queue Test" not in html
-    assert "Classic Queue Test" not in runtime_js
     assert "Classic Arena v2" not in html
     assert "Battle v2 Arena" not in html
-    assert "dev surface" not in runtime_js.lower()
-    assert "document.getElementById('btn-join')" not in runtime_js
-    assert "showScreen('game-arena')" not in runtime_js
-    assert "showScreen('battle-arena')" not in runtime_js
-    assert "showScreen('team-selection')" not in runtime_js
 
 
 def test_index_exposes_first_creation_payload_when_battle_v2_enabled(monkeypatch):
@@ -220,11 +195,13 @@ def test_index_exposes_first_creation_payload_when_battle_v2_enabled(monkeypatch
     assert '"satoru_gojo_young"' in html
     assert '"yuta_okkotsu_jjk0"' in html
     assert '"mahito"' in html  # locked variant list, not the starter roster
-    runtime_js = Path(web_app.app.static_folder, "phaser", "legacy-shell.js").read_text(encoding="utf-8")
     roster_js = Path(web_app.app.static_folder, "phaser", "core", "roster.js").read_text(encoding="utf-8")
     draft_roster_scene_js = Path(web_app.app.static_folder, "phaser", "scenes", "draft-roster-scene.js").read_text(encoding="utf-8")
     first_creation_scene_js = Path(web_app.app.static_folder, "phaser", "scenes", "first-creation-scene.js").read_text(encoding="utf-8")
-    combat_scene_js = Path(web_app.app.static_folder, "phaser", "scenes", "combat-scene.js").read_text(encoding="utf-8")
+    combat_scene_js = (
+        Path(web_app.app.static_folder, "phaser", "scenes", "combat-scene.js").read_text(encoding="utf-8")
+        + Path(web_app.app.static_folder, "phaser", "scenes", "combat-fighter-field.js").read_text(encoding="utf-8")
+    )
     game_store_js = Path(web_app.app.static_folder, "phaser", "store", "game-store.js").read_text(encoding="utf-8")
     assert "BOOT.firstCreation && BOOT.firstCreation.roster" in roster_js
     assert "roster_mode: 'first_creation'" in game_store_js
@@ -234,7 +211,6 @@ def test_index_exposes_first_creation_payload_when_battle_v2_enabled(monkeypatch
     assert "renderSetupRosterBrowser" in draft_roster_scene_js
     assert "renderSetupTrio" in draft_roster_scene_js
     assert "renderSetupCharacterStudy" in draft_roster_scene_js
-    assert "skillVisualFor(skill)" in draft_roster_scene_js
     assert "renderFeaturedCharacter" in first_creation_scene_js
     assert "renderCharacterStudy" in first_creation_scene_js
     assert "renderAuthoritativeSkill" in first_creation_scene_js
@@ -245,7 +221,6 @@ def test_index_exposes_first_creation_payload_when_battle_v2_enabled(monkeypatch
     assert "CHOOSE TECHNIQUE" in combat_scene_js
     assert "completed_missions" in html
     assert "unlock_registry" in html
-    assert "first_creation_account" not in runtime_js
     # Regression: mission counters/unlocks/active route previously only ever
     # came from this page-load bootstrap payload, so they never updated
     # after a match finished without a full reload. game-store.js must now

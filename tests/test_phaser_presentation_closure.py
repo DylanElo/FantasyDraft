@@ -326,7 +326,11 @@ console.log(JSON.stringify({ firstRequested, secondRequested, queued, secondStar
 
 
 def test_combat_presentation_closes_readability_motion_and_target_vfx_gaps():
-    combat = (ROOT / "web/static/phaser/scenes/combat-scene.js").read_text(encoding="utf-8")
+    combat = (
+        (ROOT / "web/static/phaser/scenes/combat-scene.js").read_text(encoding="utf-8")
+        + (ROOT / "web/static/phaser/scenes/combat-hud.js").read_text(encoding="utf-8")
+        + (ROOT / "web/static/phaser/scenes/combat-fighter-field.js").read_text(encoding="utf-8")
+    )
     queue = (ROOT / "web/static/phaser/scenes/combat-queue-review-scene.js").read_text(encoding="utf-8")
     playback = (ROOT / "web/static/phaser/fx/combat-playback-scene.js").read_text(encoding="utf-8")
     presentation = (ROOT / "web/static/phaser/core/presentation-layer.js").read_text(encoding="utf-8")
@@ -357,9 +361,9 @@ def test_combat_presentation_closes_readability_motion_and_target_vfx_gaps():
     assert "startupPortraitIds" in boot
     assert "preloadPresentationAssets(this)" not in boot
     assert "Object.values(SKILL_ACTION_ATLASES)" in base
-    legacy = (ROOT / "web/static/phaser/legacy-shell.js").read_text(encoding="utf-8")
-    assert "window.JJKPhaserShell = { store, domUI, bootReady: false }" in legacy
-    assert "if (!window.JJKPhaserShell.bootReady) return;" in legacy
+    entry = (ROOT / "web/static/phaser/index.js").read_text(encoding="utf-8")
+    assert "window.JJKPhaserShell = { store, domUI, bootReady: false }" in entry
+    assert "if (!window.JJKPhaserShell.bootReady) return;" in entry
     assert "window.JJKPhaserShell.bootReady = true" in boot
     assert "this.scene.start(destination)" in boot
 

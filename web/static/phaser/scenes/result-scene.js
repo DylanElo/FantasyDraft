@@ -1,7 +1,7 @@
-import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=42';
-import { safeText } from '../core/text.js?v=42';
-import { Season3UI } from '../ui/season3-ui.js?v=42';
-import { BaseScene } from './base-scene.js?v=42';
+import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=43';
+import { safeText } from '../core/text.js?v=43';
+import { Season3UI } from '../ui/season3-ui.js?v=43';
+import { BaseScene } from './base-scene.js?v=43';
 
 const {
   colors: S3_COLORS,

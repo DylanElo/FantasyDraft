@@ -1,7 +1,7 @@
-import { SocketClient } from './network/socket-client.js?v=42';
-import { GameStore } from './store/game-store.js?v=42';
-import { SCENE_LIST } from './scenes/scene-registry.js?v=42';
-import { DomUiBridge } from './core/dom-ui-bridge.js?v=42';
+import { SocketClient } from './network/socket-client.js?v=43';
+import { GameStore } from './store/game-store.js?v=43';
+import { SCENE_LIST } from './scenes/scene-registry.js?v=43';
+import { DomUiBridge } from './core/dom-ui-bridge.js?v=43';
 
 function startShell() {
   const element = document.getElementById('v2-phaser-shell');

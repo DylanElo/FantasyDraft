@@ -183,13 +183,13 @@ def test_runtime_uses_registry_preload_true_crop_and_diagnostic_fallback_contrac
     assert "image.setCrop(crop.x, crop.y, crop.width, crop.height);" in base
     assert "image.setScale(crop.scale);" in base
     assert "portraitArtwork(" in base
-    assert "drawPortraitFallback(" in base
+    assert "drawPortraitFallback(" not in base
     assert "CULLING_COLORS.ivory" in base
     assert "portraitFocal(characterOrId" in store
 
 
 def test_base_scene_cover_renderer_registers_a_bounded_local_crop_frame():
-    probe = _run_node(
+    probe = run_node(
         r"""
 globalThis.Phaser = { Scene: class {} };
 const { BaseScene } = await import('./web/static/phaser/scenes/base-scene.js');

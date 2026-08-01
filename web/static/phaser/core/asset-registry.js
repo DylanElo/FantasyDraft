@@ -3,9 +3,9 @@ import {
   portraitEntryForTextureKey,
   portraitFocalFor,
   portraitTextureKeyFor,
-} from './portrait-registry.js?v=42';
-import { COLORS, CULLING_COLORS } from './runtime-config.js?v=42';
-import { safeText } from './text.js?v=42';
+} from './portrait-registry.js?v=43';
+import { COLORS, CULLING_COLORS } from './runtime-config.js?v=43';
+import { safeText } from './text.js?v=43';
 
 // ponytail: was duplicated verbatim (under two different local names) in
 // combat-scene.js and combat-queue-review-scene.js.

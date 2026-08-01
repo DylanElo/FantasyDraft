@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -28,13 +29,6 @@ def run_node(script: str) -> dict:
     return json.loads(result.stdout)
 
 
-@pytest.fixture(autouse=True)
-def isolate_first_creation_profile_store(tmp_path, monkeypatch):
-    """Keep first-creation profile persistence out of the working tree during tests."""
-
-    monkeypatch.setenv("JJK_FIRST_CREATION_PROFILE_STORE", str(tmp_path / "first_creation_profiles.json"))
-
-
 @pytest.fixture(autouse=True, scope="session")
 def isolate_runtime_store_database(tmp_path_factory):
     """Keep durable analytics/replay writes out of the real data/ directory during tests.
@@ -46,8 +40,16 @@ def isolate_runtime_store_database(tmp_path_factory):
     after a per-test monkeypatch would have already reverted the path.
     """
 
-    web_app.runtime_store.path = tmp_path_factory.mktemp("runtime_store") / "runtime.sqlite3"
+    path = tmp_path_factory.mktemp("runtime_store") / "runtime.sqlite3"
+    previous = os.environ.get("JJK_DATABASE_PATH")
+    os.environ["JJK_DATABASE_PATH"] = str(path)
+    web_app.runtime_store.path = path
     web_app.runtime_store._initialize()
+    yield
+    if previous is None:
+        os.environ.pop("JJK_DATABASE_PATH", None)
+    else:
+        os.environ["JJK_DATABASE_PATH"] = previous
 
 
 @pytest.fixture(autouse=True)
@@ -106,6 +108,14 @@ def reset_battle_v2_runtime_state():
         web_app.missions_snapshotted_players.clear()
         web_app.mission_snapshot_retry_rooms.clear()
         web_app.mission_match_finished_at.clear()
+        with web_app.runtime_store._connect() as connection:
+            for table in (
+                "first_creation_profiles",
+                "battle_replays",
+                "analytics_events",
+                "mission_settlement_outbox",
+            ):
+                connection.execute(f"DELETE FROM {table}")
 
     _reset()
     yield

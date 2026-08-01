@@ -116,9 +116,9 @@ def test_season_three_facade_keeps_compatibility_variants_and_shared_tokens():
 globalThis.JJK_MOBILE_TOKENS = {};
 globalThis.JJK_BOOTSTRAP = {};
 const facade = await import('./web/static/phaser/ui/season3-ui.js');
-const current = await import('./web/static/phaser/ui/culling-current-ui.js?v=42');
-const flow = await import('./web/static/phaser/ui/season-three-ui.js?v=42');
-const post = await import('./web/static/phaser/ui/season3-master-ui.js?v=42');
+const current = await import('./web/static/phaser/ui/culling-current-ui.js?v=43');
+const flow = await import('./web/static/phaser/ui/season-three-ui.js?v=43');
+const post = await import('./web/static/phaser/ui/season3-master-ui.js?v=43');
 console.log(JSON.stringify({
   frozen: Object.isFrozen(facade.Season3UI),
   tokenFrozen: Object.isFrozen(facade.S3_TOKENS.palette),
@@ -163,7 +163,7 @@ def test_scenes_only_import_the_canonical_season_three_facade():
     for path in (ROOT / "web" / "static" / "phaser" / "scenes").rglob("*.js"):
         source = path.read_text(encoding="utf-8")
         for specifier in ui_import_pattern.findall(source):
-            if specifier != "../ui/season3-ui.js?v=42":
+            if specifier != "../ui/season3-ui.js?v=43":
                 offenders.append((path.name, specifier))
     assert offenders == []
 
@@ -205,14 +205,12 @@ def test_runtime_texture_budget_matches_checkout_and_stays_under_startup_caps():
     assert maximum["decoded_rgba8_bytes"] <= budget["startup_policy"]["decoded_rgba8_budget_bytes"]
 
 
-def test_runtime_cache_chain_and_delivery_manifest_agree_on_v42():
+def test_runtime_cache_chain_and_delivery_manifest_agree_on_v43():
     budget = json.loads((ASSET_ROOT / "runtime-texture-budget.json").read_text(encoding="utf-8"))
-    shell = (ROOT / "web" / "static" / "phaser-shell.js").read_text(encoding="utf-8")
     template = (ROOT / "web" / "templates" / "index.html").read_text(encoding="utf-8")
-    assert budget["runtime_cache_version"] == "42"
-    assert "const SHELL_VERSION = '42';" in shell
-    assert "phaser-shell.js') }}?v=42" in template
-    assert "phaser-design-tokens.js') }}?v=42" in template
+    assert budget["runtime_cache_version"] == "43"
+    assert "phaser/index.js') }}?v=43" in template
+    assert "phaser-design-tokens.js') }}?v=43" in template
 
     mismatches = []
     specifier_pattern = re.compile(
@@ -221,6 +219,6 @@ def test_runtime_cache_chain_and_delivery_manifest_agree_on_v42():
     for path in (ROOT / "web" / "static" / "phaser").rglob("*.js"):
         source = path.read_text(encoding="utf-8")
         for specifier in specifier_pattern.findall(source):
-            if specifier.startswith(".") and not specifier.endswith("?v=42"):
+            if specifier.startswith(".") and not specifier.endswith("?v=43"):
                 mismatches.append((str(path.relative_to(ROOT)), specifier))
     assert mismatches == []

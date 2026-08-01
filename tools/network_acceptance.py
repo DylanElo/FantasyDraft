@@ -669,7 +669,6 @@ def _assert_runtime_drained(ops_payload: dict[str, Any]) -> None:
         "analytics_outbox_size",
         "mission_snapshot_retry_rooms",
         "terminal_persistence_pending_rooms",
-        "mission_settlement_fallback_pending",
     )
     nonzero = {
         key: ops_payload.get(key)
@@ -756,7 +755,6 @@ def run_http_contract(
                 "live_rooms",
                 "battle_command_handlers_inflight",
                 "mission_settlements",
-                "mission_settlement_fallback_pending",
                 "mission_settlement_dead_lettered_total",
                 "mission_snapshot_retry_rooms",
                 "terminal_persistence_pending_rooms",
@@ -805,9 +803,6 @@ def run_http_contract(
                     "terminal_persistence_pending_rooms"
                 ),
                 "mission_settlements": ops_payload.get("mission_settlements"),
-                "mission_settlement_fallback_pending": ops_payload.get(
-                    "mission_settlement_fallback_pending"
-                ),
                 "mission_settlement_dead_lettered_total": ops_payload.get(
                     "mission_settlement_dead_lettered_total"
                 ),

@@ -484,11 +484,6 @@ def runtime_status():
     # unrelated busy room can never make this snapshot (or the safe-stop
     # gate) look busier than it actually is for a specific room.
     command_handlers_inflight = battle_v2_manager.in_flight_command_total()
-    # Fallback restoration publishes into SQLite before removing the sidecar;
-    # settlement publication writes analytics before marking a row settled.
-    # Preserve that order while reading so concurrent maintenance cannot appear
-    # absent from every side of this aggregate stop-safety snapshot.
-    mission_settlement_fallback_pending = runtime_store.mission_settlement_fallback_count()
     mission_settlement_snapshot = runtime_store.mission_settlement_counts()
     analytics_outbox_size = runtime_store.outbox_size()
     return jsonify(
@@ -511,7 +506,6 @@ def runtime_status():
             "analytics_outbox_size": analytics_outbox_size,
             "analytics_outbox_dropped_total": runtime_store.outbox_dropped_total,
             "mission_settlements": mission_settlement_snapshot,
-            "mission_settlement_fallback_pending": mission_settlement_fallback_pending,
             "mission_settlement_dead_lettered_total": runtime_store.mission_settlement_dead_lettered_total,
             "mission_settlement_claimed_total": runtime_store.mission_settlement_claimed_total,
         }
@@ -718,6 +712,9 @@ def flush_mission_settlements(
 ) -> list[tuple[str, str]]:
     """Retry durable mission merges without requiring the source room."""
 
+    # ponytail: nothing writes a new sidecar file anymore, but this still
+    # drains one left over from before that removal (or restored from a
+    # pre-migration backup) into SQLite instead of leaving it stranded.
     restored = runtime_store.restore_mission_settlement_fallback()
     operational_counters["mission_settlement_fallback_restored"] += restored
 
@@ -800,14 +797,12 @@ def settle_first_creation_missions(room_id: str) -> None:
             continue
         try:
             progress, finished_at = terminal_mission_progress_snapshot(room_id, player_id)
-            destination = runtime_store.enqueue_mission_settlement_durable(
+            runtime_store.enqueue_mission_settlement(
                 room_id,
                 player_id,
                 progress,
                 finished_at=finished_at,
             )
-            if destination == "fallback":
-                operational_counters["mission_settlement_fallback_writes"] += 1
             snapshotted.add(player_id)
         except Exception:
             mission_snapshot_retry_rooms.add(room_id)
@@ -1101,14 +1096,12 @@ def ensure_terminal_mission_snapshots(room_id: str) -> bool:
             continue
         try:
             progress, finished_at = terminal_mission_progress_snapshot(room_id, player_id)
-            destination = runtime_store.enqueue_mission_settlement_durable(
+            runtime_store.enqueue_mission_settlement(
                 room_id,
                 player_id,
                 progress,
                 finished_at=finished_at,
             )
-            if destination == "fallback":
-                operational_counters["mission_settlement_fallback_writes"] += 1
             snapshotted.add(player_id)
         except Exception:
             mission_snapshot_retry_rooms.add(room_id)

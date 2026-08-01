@@ -324,7 +324,7 @@ def test_ops_runtime_is_hidden_without_configured_bearer(monkeypatch):
         "terminal_persistence_pending_rooms",
         "rate_limit_keys", "counters", "analytics",
         "analytics_outbox_size", "analytics_outbox_dropped_total",
-        "mission_settlements", "mission_settlement_fallback_pending",
+        "mission_settlements",
         "mission_settlement_dead_lettered_total",
         "mission_settlement_claimed_total",
     }
@@ -332,34 +332,6 @@ def test_ops_runtime_is_hidden_without_configured_bearer(monkeypatch):
     # Aggregate counts only: no raw queued-event payloads are ever exposed.
     assert isinstance(response.get_json()["analytics_outbox_size"], int)
     assert isinstance(response.get_json()["analytics_outbox_dropped_total"], int)
-
-
-def test_ops_runtime_reads_settlements_before_analytics_outbox(monkeypatch):
-    monkeypatch.setenv("JJK_OPS_TOKEN", "secret-token")
-    reads = []
-    monkeypatch.setattr(
-        web_app.runtime_store,
-        "mission_settlement_fallback_count",
-        lambda: reads.append("fallback") or 0,
-    )
-    monkeypatch.setattr(
-        web_app.runtime_store,
-        "mission_settlement_counts",
-        lambda: reads.append("settlements") or {},
-    )
-    monkeypatch.setattr(
-        web_app.runtime_store,
-        "outbox_size",
-        lambda: reads.append("outbox") or 0,
-    )
-
-    response = web_app.app.test_client().get(
-        "/ops/runtime",
-        headers={"Authorization": "Bearer secret-token"},
-    )
-
-    assert response.status_code == 200
-    assert reads == ["fallback", "settlements", "outbox"]
 
 
 def test_ops_drain_cancels_waiting_lobbies_and_rejects_new_cpu_or_pvp_matches(monkeypatch):
@@ -937,10 +909,10 @@ def test_terminal_room_cleanup_reconstructs_missing_player_settlement_rows(monke
     captured = []
     monkeypatch.setattr(
         web_app.runtime_store,
-        "enqueue_mission_settlement_durable",
+        "enqueue_mission_settlement",
         lambda match_id, player_id, progress, **_kwargs: captured.append(
             (match_id, player_id, progress)
-        ) or "fallback",
+        ),
     )
 
     assert web_app.remove_battle_v2_room(room_id) is True
@@ -951,8 +923,8 @@ def test_terminal_room_cleanup_reconstructs_missing_player_settlement_rows(monke
     assert room_id not in web_app.battle_v2_manager.rooms
 
 
-def test_terminal_room_cleanup_refuses_removal_when_database_and_sidecar_both_fail(monkeypatch):
-    room_id = "cleanup-settlement-both-paths-fail"
+def test_terminal_room_cleanup_refuses_removal_when_settlement_enqueue_fails(monkeypatch):
+    room_id = "cleanup-settlement-enqueue-fails"
     web_app.battle_v2_manager.start_first_creation_match(room_id, [
         {"id": "cleanup-fail-p1", "name": "P1", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
         {"id": "cleanup-fail-p2", "name": "P2", "team": ["maki_zenin", "toge_inumaki", "panda"]},
@@ -963,16 +935,16 @@ def test_terminal_room_cleanup_refuses_removal_when_database_and_sidecar_both_fa
     state.winner_id = "cleanup-fail-p1"
     monkeypatch.setattr(
         web_app.runtime_store,
-        "enqueue_mission_settlement_durable",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("database and sidecar unavailable")),
+        "enqueue_mission_settlement",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("database unavailable")),
     )
 
     assert web_app.remove_battle_v2_room(room_id) is False
     assert room_id in web_app.battle_v2_manager.rooms
 
 
-def test_finished_update_recovers_initial_dual_snapshot_failure_without_duplicate_credit(monkeypatch):
-    """A brief outage of both durable paths must recover before room cleanup."""
+def test_finished_update_recovers_initial_snapshot_failure_without_duplicate_credit(monkeypatch):
+    """A brief settlement-enqueue outage must recover before room cleanup."""
 
     monkeypatch.delenv("JJK_FIRST_CREATION_PROFILE_STORE", raising=False)
     room_id = "finished-update-total-snapshot-recovery"
@@ -1007,12 +979,12 @@ def test_finished_update_recovers_initial_dual_snapshot_failure_without_duplicat
         "mission_progress_for_player",
         lambda _room_id, player_id: progress_by_player[player_id],
     )
-    durable_enqueue = web_app.runtime_store.enqueue_mission_settlement_durable
+    durable_enqueue = web_app.runtime_store.enqueue_mission_settlement
     monkeypatch.setattr(
         web_app.runtime_store,
-        "enqueue_mission_settlement_durable",
+        "enqueue_mission_settlement",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(
-            OSError("database and sidecar temporarily unavailable")
+            OSError("database temporarily unavailable")
         ),
     )
     before = web_app.runtime_store.analytics_summary()["missions_completed"].get("welcome", 0)
@@ -1028,7 +1000,7 @@ def test_finished_update_recovers_initial_dual_snapshot_failure_without_duplicat
 
     monkeypatch.setattr(
         web_app.runtime_store,
-        "enqueue_mission_settlement_durable",
+        "enqueue_mission_settlement",
         durable_enqueue,
     )
     with web_app.app.test_request_context():
@@ -1078,7 +1050,7 @@ def test_finished_update_reconstructs_only_missing_player_after_partial_snapshot
             "team": teams[player_id],
         },
     )
-    durable_enqueue = web_app.runtime_store.enqueue_mission_settlement_durable
+    durable_enqueue = web_app.runtime_store.enqueue_mission_settlement
     calls = []
     fail_second_player_once = {"value": True}
 
@@ -1086,12 +1058,12 @@ def test_finished_update_reconstructs_only_missing_player_after_partial_snapshot
         calls.append(player_id)
         if player_id == player_two and fail_second_player_once["value"]:
             fail_second_player_once["value"] = False
-            raise OSError("database and sidecar temporarily unavailable")
+            raise OSError("database temporarily unavailable")
         return durable_enqueue(match_id, player_id, progress, **kwargs)
 
     monkeypatch.setattr(
         web_app.runtime_store,
-        "enqueue_mission_settlement_durable",
+        "enqueue_mission_settlement",
         partially_failing_enqueue,
     )
 

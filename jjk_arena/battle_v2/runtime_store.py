@@ -35,7 +35,11 @@ class MalformedMissionSettlementError(ValueError):
 
 
 def _fsync_parent_directory(path: Path) -> None:
-    """Persist a create/replace/unlink directory entry where the OS supports it."""
+    """Persist a create/replace/unlink directory entry where the OS supports it.
+
+    ponytail: only `restore_mission_settlement_fallback` still calls this
+    (nothing writes a new sidecar anymore — see docs/audit_ledger.md).
+    """
 
     if os.name == "nt":
         return
@@ -294,98 +298,18 @@ class SQLiteRuntimeStore:
             )
         return updated
 
-    def enqueue_mission_settlement(
-        self,
-        match_id: str,
-        player_id: str,
-        progress: dict[str, Any],
-        *,
-        finished_at: float | None = None,
-    ) -> None:
-        """Durably snapshot one player's terminal mission progress."""
-
-        now = float(self.clock())
-        terminal_at = now if finished_at is None else float(finished_at)
-        payload = json.dumps(progress, sort_keys=True, separators=(",", ":"))
-        with self._connect() as connection:
-            connection.execute(
-                """
-                INSERT INTO mission_settlement_outbox(
-                    match_id, player_id, progress_json, finished_at, status,
-                    retry_count, next_attempt_at, last_error, updated_at
-                ) VALUES(?, ?, ?, ?, 'pending', 0, ?, NULL, ?)
-                ON CONFLICT(match_id, player_id) DO UPDATE SET
-                    progress_json = excluded.progress_json,
-                    finished_at = COALESCE(mission_settlement_outbox.finished_at, excluded.finished_at),
-                    status = CASE
-                        WHEN mission_settlement_outbox.status IN ('settled', 'processing', 'dead_letter')
-                        THEN mission_settlement_outbox.status
-                        ELSE 'pending'
-                    END,
-                    next_attempt_at = CASE
-                        WHEN mission_settlement_outbox.status IN ('settled', 'processing', 'dead_letter')
-                        THEN mission_settlement_outbox.next_attempt_at
-                        ELSE excluded.next_attempt_at
-                    END,
-                    last_error = CASE
-                        WHEN mission_settlement_outbox.status IN ('settled', 'processing', 'dead_letter')
-                        THEN mission_settlement_outbox.last_error
-                        ELSE NULL
-                    END,
-                    updated_at = excluded.updated_at
-                """,
-                (str(match_id), str(player_id), payload, terminal_at, now, now),
-            )
-
     @property
     def mission_settlement_fallback_path(self) -> Path:
+        """Where an old-format sidecar file would live, if one exists.
+
+        Nothing writes this file anymore (the sidecar fallback was removed —
+        see docs/audit_ledger.md). Kept as a path helper, and paired with
+        `restore_mission_settlement_fallback` below, purely so a backup taken
+        before this removal (via tools/runtime_backup.py) can still be
+        restored without silently dropping whatever it captured.
+        """
+
         return self.path.with_name(f"{self.path.name}.mission-settlement-fallback.jsonl")
-
-    def enqueue_mission_settlement_durable(
-        self,
-        match_id: str,
-        player_id: str,
-        progress: dict[str, Any],
-        *,
-        finished_at: float | None = None,
-    ) -> str:
-        """Persist a terminal snapshot in SQLite or a durable sidecar fallback."""
-
-        terminal_at = float(self.clock()) if finished_at is None else float(finished_at)
-        try:
-            self.enqueue_mission_settlement(
-                match_id,
-                player_id,
-                progress,
-                finished_at=terminal_at,
-            )
-            return "database"
-        except Exception:
-            self._require_single_worker_sidecar()
-            record = json.dumps(
-                {
-                    "match_id": str(match_id),
-                    "player_id": str(player_id),
-                    "progress": progress,
-                    "finished_at": terminal_at,
-                },
-                sort_keys=True,
-                separators=(",", ":"),
-            )
-            fallback = self.mission_settlement_fallback_path
-            fallback.parent.mkdir(parents=True, exist_ok=True)
-            with _fallback_lock:
-                descriptor = os.open(
-                    fallback,
-                    os.O_WRONLY | os.O_CREAT | os.O_APPEND,
-                    0o600,
-                )
-                with os.fdopen(descriptor, "a", encoding="utf-8") as handle:
-                    handle.write(record + "\n")
-                    handle.flush()
-                    os.fsync(handle.fileno())
-                _fsync_parent_directory(fallback)
-            return "fallback"
 
     @staticmethod
     def _require_single_worker_sidecar() -> None:
@@ -399,7 +323,10 @@ class SQLiteRuntimeStore:
             raise RuntimeError("mission settlement sidecar requires JJK_WEB_WORKERS=1")
 
     def restore_mission_settlement_fallback(self) -> int:
-        """Re-enqueue valid sidecar snapshots, retaining anything not restored."""
+        """Re-enqueue valid sidecar snapshots left over from before this store
+        stopped writing them (e.g. from a restored pre-migration backup),
+        retaining anything not restored.
+        """
 
         fallback = self.mission_settlement_fallback_path
         if not fallback.exists():
@@ -444,18 +371,48 @@ class SQLiteRuntimeStore:
                 _fsync_parent_directory(fallback)
         return restored
 
-    def mission_settlement_fallback_count(self) -> int:
-        """Count durable sidecar rows still awaiting SQLite restoration."""
+    def enqueue_mission_settlement(
+        self,
+        match_id: str,
+        player_id: str,
+        progress: dict[str, Any],
+        *,
+        finished_at: float | None = None,
+    ) -> None:
+        """Durably snapshot one player's terminal mission progress."""
 
-        fallback = self.mission_settlement_fallback_path
-        with _fallback_lock:
-            if not fallback.exists():
-                return 0
-            # Count malformed/blank rows too: restore retains them, so treating
-            # them as zero would make a planned stop falsely appear complete.
-            # An existing zero-byte file can be left by a crash between the
-            # durable create and append, and must likewise fail closed.
-            return max(1, len(fallback.read_text(encoding="utf-8").splitlines()))
+        now = float(self.clock())
+        terminal_at = now if finished_at is None else float(finished_at)
+        payload = json.dumps(progress, sort_keys=True, separators=(",", ":"))
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO mission_settlement_outbox(
+                    match_id, player_id, progress_json, finished_at, status,
+                    retry_count, next_attempt_at, last_error, updated_at
+                ) VALUES(?, ?, ?, ?, 'pending', 0, ?, NULL, ?)
+                ON CONFLICT(match_id, player_id) DO UPDATE SET
+                    progress_json = excluded.progress_json,
+                    finished_at = COALESCE(mission_settlement_outbox.finished_at, excluded.finished_at),
+                    status = CASE
+                        WHEN mission_settlement_outbox.status IN ('settled', 'processing', 'dead_letter')
+                        THEN mission_settlement_outbox.status
+                        ELSE 'pending'
+                    END,
+                    next_attempt_at = CASE
+                        WHEN mission_settlement_outbox.status IN ('settled', 'processing', 'dead_letter')
+                        THEN mission_settlement_outbox.next_attempt_at
+                        ELSE excluded.next_attempt_at
+                    END,
+                    last_error = CASE
+                        WHEN mission_settlement_outbox.status IN ('settled', 'processing', 'dead_letter')
+                        THEN mission_settlement_outbox.last_error
+                        ELSE NULL
+                    END,
+                    updated_at = excluded.updated_at
+                """,
+                (str(match_id), str(player_id), payload, terminal_at, now, now),
+            )
 
     def process_mission_settlements(
         self,

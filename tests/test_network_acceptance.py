@@ -32,7 +32,6 @@ def test_safe_stop_rejects_terminal_persistence_still_pending():
         "analytics_outbox_size": 0,
         "mission_snapshot_retry_rooms": 0,
         "terminal_persistence_pending_rooms": 1,
-        "mission_settlement_fallback_pending": 0,
         "mission_settlements": {},
     }
 
@@ -52,31 +51,10 @@ def test_safe_stop_rejects_scheduler_callback_errors():
         "analytics_outbox_size": 0,
         "mission_snapshot_retry_rooms": 0,
         "terminal_persistence_pending_rooms": 0,
-        "mission_settlement_fallback_pending": 0,
         "mission_settlements": {},
     }
 
     with pytest.raises(AcceptanceError, match="scheduler_callback_errors_total"):
-        _assert_runtime_drained(payload)
-
-
-def test_safe_stop_rejects_pending_settlement_fallback_rows():
-    payload = {
-        "accepting_new_matches": False,
-        "live_rooms": 0,
-        "waiting_lobbies": 0,
-        "scheduler_tasks": 0,
-        "scheduler_callbacks_inflight": 0,
-        "scheduler_callback_errors_total": 0,
-        "battle_command_handlers_inflight": 0,
-        "analytics_outbox_size": 0,
-        "mission_snapshot_retry_rooms": 0,
-        "terminal_persistence_pending_rooms": 0,
-        "mission_settlement_fallback_pending": 1,
-        "mission_settlements": {},
-    }
-
-    with pytest.raises(AcceptanceError, match="mission_settlement_fallback_pending"):
         _assert_runtime_drained(payload)
 
 
@@ -120,4 +98,3 @@ def test_real_network_cpu_pvp_resume_and_timeout_acceptance():
     assert report["http_after"]["ops_snapshot"]["battle_command_handlers_inflight"] == 0
     assert report["http_after"]["ops_snapshot"]["mission_snapshot_retry_rooms"] == 0
     assert report["http_after"]["ops_snapshot"]["terminal_persistence_pending_rooms"] == 0
-    assert report["http_after"]["ops_snapshot"]["mission_settlement_fallback_pending"] == 0

@@ -321,32 +321,19 @@ def test_mission_settlement_outbox_retries_after_process_restart(tmp_path):
     assert restarted.mission_settlement_rows()[0]["status"] == "settled"
 
 
-def test_initial_settlement_enqueue_failure_uses_retryable_durable_fallback(monkeypatch, tmp_path):
-    path = tmp_path / "runtime.sqlite3"
-    store = SQLiteRuntimeStore(path)
-    progress = {"completed_ids": ["welcome"]}
+def test_initial_settlement_enqueue_failure_propagates_to_the_caller(monkeypatch, tmp_path):
+    """ponytail: the sidecar fallback was removed (see docs/audit_ledger.md) --
+    an enqueue failure here now propagates instead of being silently absorbed
+    into a JSONL file. web/app.py's callers already wrap this call in their
+    own `except Exception` and retry later via `mission_snapshot_retry_rooms`
+    reconciliation, so this is not a behavior regression for the caller.
+    """
 
-    monkeypatch.setattr(store, "enqueue_mission_settlement", lambda *_args: (_ for _ in ()).throw(RuntimeError("locked")))
-    assert store.enqueue_mission_settlement_durable("match", "player", progress) == "fallback"
-    assert store.mission_settlement_fallback_path.exists()
-    assert store.mission_settlement_fallback_count() == 1
-
-    restarted = SQLiteRuntimeStore(path)
-    assert restarted.restore_mission_settlement_fallback() == 1
-    assert restarted.mission_settlement_fallback_count() == 0
-    received = []
-    restarted.process_mission_settlements(
-        lambda match_id, player_id, snapshot: received.append((match_id, player_id, snapshot))
-    )
-    assert received == [("match", "player", progress)]
-    assert not restarted.mission_settlement_fallback_path.exists()
-
-
-def test_empty_settlement_fallback_file_fails_closed(tmp_path):
     store = SQLiteRuntimeStore(tmp_path / "runtime.sqlite3")
-    store.mission_settlement_fallback_path.touch()
+    monkeypatch.setattr(store, "_connect", lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("locked")))
 
-    assert store.mission_settlement_fallback_count() == 1
+    with pytest.raises(RuntimeError, match="locked"):
+        store.enqueue_mission_settlement("match", "player", {"completed_ids": ["welcome"]})
 
 
 def test_concurrent_settlement_workers_claim_before_invoking_handler(tmp_path):
@@ -403,23 +390,6 @@ def test_expired_lease_is_at_least_once_but_stale_worker_reports_no_commit(tmp_p
     assert stale_result.result() == []
     assert calls == ["stale", "replacement"]
     assert first.mission_settlement_rows()[0]["status"] == "settled"
-
-
-def test_fallback_restore_does_not_rewrite_unchanged_fsyncd_records(monkeypatch, tmp_path):
-    store = SQLiteRuntimeStore(tmp_path / "runtime.sqlite3")
-    monkeypatch.setattr(
-        store,
-        "enqueue_mission_settlement",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("locked")),
-    )
-    assert store.enqueue_mission_settlement_durable("match", "player", {}) == "fallback"
-    before = store.mission_settlement_fallback_path.read_bytes()
-    before_mtime = store.mission_settlement_fallback_path.stat().st_mtime_ns
-
-    assert store.restore_mission_settlement_fallback() == 0
-
-    assert store.mission_settlement_fallback_path.read_bytes() == before
-    assert store.mission_settlement_fallback_path.stat().st_mtime_ns == before_mtime
 
 
 def test_atomic_profile_analytics_commit_rolls_back_and_retries_after_analytics_failure(tmp_path):

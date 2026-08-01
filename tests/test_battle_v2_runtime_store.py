@@ -131,7 +131,6 @@ def test_sqlite_profile_updates_are_atomic_across_threads(tmp_path):
 
 
 def test_profile_api_uses_sqlite_by_default_and_merges_progress(monkeypatch, tmp_path):
-    monkeypatch.delenv("JJK_FIRST_CREATION_PROFILE_STORE", raising=False)
     monkeypatch.setenv("JJK_DATABASE_PATH", str(tmp_path / "runtime.sqlite3"))
     save_first_creation_profile("player", {"selected_starter_team": ["yuji_itadori"]})
     merge_first_creation_progress(

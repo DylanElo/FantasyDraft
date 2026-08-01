@@ -1,32 +1,14 @@
-"""File-backed profile persistence for first-character-creation mission progress."""
+"""SQLite-backed profile persistence for First Creation mission progress."""
 
 from __future__ import annotations
 
-import json
 import math
-import os
 import time
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 from .first_creation_unlocks import first_creation_unlocks_payload, unknown_first_creation_unlocks
 from .runtime_store import MalformedMissionSettlementError, SQLiteRuntimeStore
-
-DEFAULT_PROFILE: dict[str, Any] = {
-    "completed_missions": [],
-    "unlocked": [],
-    "mission_first_completed_at": {},
-    "selected_starter_team": [],
-    "_selected_starter_team_at": 0.0,
-}
-
-
-def profile_store_path() -> Path:
-    """Return the JSON store path, overridable for tests/deployments."""
-
-    return Path(os.getenv("JJK_FIRST_CREATION_PROFILE_STORE", "data/first_creation_profiles.json"))
-
 
 def _empty_profile() -> dict[str, Any]:
     return {
@@ -36,26 +18,6 @@ def _empty_profile() -> dict[str, Any]:
         "selected_starter_team": [],
         "_selected_starter_team_at": 0.0,
     }
-
-
-def _load_store() -> dict[str, dict[str, Any]]:
-    path = profile_store_path()
-    if not path.exists():
-        return {}
-    try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return {}
-    return raw if isinstance(raw, dict) else {}
-
-
-def _save_store(store: dict[str, dict[str, Any]]) -> None:
-    path = profile_store_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(store, indent=2, sort_keys=True), encoding="utf-8")
-    tmp.replace(path)
-
 
 def normalize_profile(raw: dict[str, Any] | None = None) -> dict[str, Any]:
     """Normalize persisted JSON into the public profile shape."""
@@ -115,7 +77,7 @@ def merge_first_creation_profile_snapshot(
     progress: dict[str, Any],
     finished_at: float | None = None,
 ) -> tuple[dict[str, Any], list[str]]:
-    """Pure, validated profile merge used by both legacy and atomic storage paths."""
+    """Pure, validated profile merge used by SQLite storage."""
 
     if not isinstance(progress, dict):
         raise MalformedMissionSettlementError("mission settlement progress must be an object")
@@ -155,35 +117,25 @@ def merge_first_creation_profile_snapshot(
 def load_first_creation_profile(player_id: str) -> dict[str, Any]:
     """Load one player's first-creation profile."""
 
-    if not os.getenv("JJK_FIRST_CREATION_PROFILE_STORE"):
-        return normalize_profile(SQLiteRuntimeStore().load_profile(str(player_id)))
-    store = _load_store()
-    return normalize_profile(store.get(str(player_id), {}))
+    return normalize_profile(SQLiteRuntimeStore().load_profile(str(player_id)))
 
 
 def save_first_creation_profile(player_id: str, profile: dict[str, Any]) -> dict[str, Any]:
     """Persist one normalized first-creation profile."""
 
     normalized = normalize_profile(profile)
-    if not os.getenv("JJK_FIRST_CREATION_PROFILE_STORE"):
-        SQLiteRuntimeStore().save_profile(str(player_id), normalized)
-        return normalized
-    store = _load_store()
-    store[str(player_id)] = normalized
-    _save_store(store)
+    SQLiteRuntimeStore().save_profile(str(player_id), normalized)
     return normalized
 
 
 def update_first_creation_profile(player_id: str, updater) -> dict[str, Any]:
-    """Atomically update one profile when the SQLite backend is active."""
+    """Atomically update one profile."""
 
-    if not os.getenv("JJK_FIRST_CREATION_PROFILE_STORE"):
-        updated = SQLiteRuntimeStore().update_profile(
-            str(player_id),
-            lambda current: normalize_profile(updater(normalize_profile(current))),
-        )
-        return normalize_profile(updated)
-    return save_first_creation_profile(player_id, updater(load_first_creation_profile(player_id)))
+    updated = SQLiteRuntimeStore().update_profile(
+        str(player_id),
+        lambda current: normalize_profile(updater(normalize_profile(current))),
+    )
+    return normalize_profile(updated)
 
 
 def merge_first_creation_progress(
@@ -219,13 +171,11 @@ def merge_first_creation_progress(
         newly_completed.extend(newly)
         return updated
 
-    if profile_store is not None and not os.getenv("JJK_FIRST_CREATION_PROFILE_STORE"):
-        updated = normalize_profile(profile_store.update_profile(
-            str(player_id),
-            lambda current: normalize_profile(merge(normalize_profile(current))),
-        ))
-    else:
-        updated = update_first_creation_profile(player_id, merge)
+    store = profile_store or SQLiteRuntimeStore()
+    updated = normalize_profile(store.update_profile(
+        str(player_id),
+        lambda current: normalize_profile(merge(normalize_profile(current))),
+    ))
     if newly_completed and match_id:
         store = analytics_store if analytics_store is not None else SQLiteRuntimeStore()
         for mission_id in newly_completed:

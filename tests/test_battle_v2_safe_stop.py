@@ -19,7 +19,7 @@ from jjk_arena.battle_v2.timer_scheduler import PhaseTimerScheduler
 def players():
     return [
         {"id": "p1", "name": "Player One", "team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]},
-        {"id": "p2", "name": "Player Two", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+        {"id": "p2", "name": "Player Two", "team": ["satoru_gojo_young", "maki_zenin", "panda"]},
     ]
 
 

@@ -158,7 +158,7 @@ def test_planning_timer_is_server_authoritative_and_advances_turn():
         "timer",
         [
             {"id": "p1", "name": "P1", "team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]},
-            {"id": "p2", "name": "P2", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+            {"id": "p2", "name": "P2", "team": ["satoru_gojo_young", "maki_zenin", "panda"]},
         ],
     )
     assert manager.get_state("timer").phase_deadline == 105.0
@@ -180,7 +180,7 @@ def test_queue_review_timeout_preserves_player_deadline_and_discards_unconfirmed
         "queue-timer",
         [
             {"id": "p1", "name": "P1", "team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]},
-            {"id": "p2", "name": "P2", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+            {"id": "p2", "name": "P2", "team": ["satoru_gojo_young", "maki_zenin", "panda"]},
         ],
     )
     state = manager.get_state("queue-timer")
@@ -188,7 +188,7 @@ def test_queue_review_timeout_preserves_player_deadline_and_discards_unconfirmed
     manager.submit_plan("queue-timer", "p1", [{
         "id": "queued-hit",
         "caster_slot": 0,
-        "skill_id": "divergent_fist",
+        "skill_id": "fc_yuji_itadori_divergent_fist",
         "target_player_id": "p2",
         "target_slot": 0,
     }])

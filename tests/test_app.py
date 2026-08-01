@@ -245,9 +245,8 @@ def test_v2_page_uses_phaser_container_css_not_stitch_bridge(monkeypatch):
     assert ".stitch-screen" not in shell_css
     assert ".v2-first-creation-guide" not in shell_css
 
-def test_index_embeds_persisted_first_creation_profile(monkeypatch, tmp_path):
+def test_index_embeds_persisted_first_creation_profile(monkeypatch):
     monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
-    monkeypatch.setenv("JJK_FIRST_CREATION_PROFILE_STORE", str(tmp_path / "profiles.json"))
     web_app.save_first_creation_profile("player-profile", {"completed_missions": ["welcome_to_jujutsu_high"], "unlocked": ["mission_board"]})
     client = web_app.app.test_client()
     with client.session_transaction() as flask_session:

@@ -12,8 +12,8 @@ Instead it does the two things a human audit pass would otherwise spend most
 of its time on mechanically:
 
 1. Structural contract completeness -- flags skills with suspicious/empty
-   fields the type system doesn't catch (e.g. placeholder UI text, a skill
-   with no effects and no conditions).
+   fields the type system doesn't catch (e.g. placeholder UI text or a skill
+   with no effects).
 2. Special-mechanic coverage -- detects which skills grant counter, reflect,
    or skill-replacement behavior, or use non-trivial targeting, and reports
    whether that skill has any test coverage *beyond* the blanket parametrized
@@ -31,7 +31,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 from pathlib import Path
 from typing import Any
 
@@ -42,7 +41,6 @@ SCHEMA_VERSION = 2
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TESTS_DIR = REPO_ROOT / "tests"
-KIT_GRAMMAR_DOC = REPO_ROOT / "docs" / "jjk_kit_grammar.md"
 
 # The blanket per-skill parametrized test -- every skill id "appears" here by
 # construction (ALL_SKILLS iterates the whole roster), so a plain grep would
@@ -66,9 +64,6 @@ EFFECT_VOCABULARY_ALIASES: dict[str, set[str]] = {
     "invulnerability": {"invulnerable"},
     "skill_replacement": {"skill_replacements"},
 }
-
-SKILL_ID_RE = re.compile(r'"(fc_[a-z0-9_]+)"')
-
 
 def _test_file_texts() -> dict[str, str]:
     return {
@@ -111,8 +106,8 @@ def audit_structural_completeness() -> list[dict[str, Any]]:
                 issues.append("empty UI text")
             elif skill.text.strip() == skill.name.strip():
                 issues.append("UI text is just the skill name, not a description")
-            if not skill.effects and not skill.conditions:
-                issues.append("no effects and no conditions -- does this skill do anything?")
+            if not skill.effects:
+                issues.append("no effects -- does this skill do anything?")
             if not skill.classes:
                 issues.append("no skill classes assigned")
             if skill.cooldown < 0:
@@ -154,16 +149,11 @@ def audit_special_mechanic_coverage() -> list[dict[str, Any]]:
 def audit_grammar_vocabulary_drift() -> dict[str, Any]:
     used_effect_types = set()
     used_payload_keys = set()
-    used_condition_types = set()
-    total_condition_spec_entries = 0
     for character in FIRST_CREATION_ROSTER.values():
         for skill in character.skills:
             for effect in skill.effects:
                 used_effect_types.add(effect.type)
                 used_payload_keys.update(effect.payload.keys())
-            total_condition_spec_entries += len(skill.conditions)
-            for condition in skill.conditions:
-                used_condition_types.add(condition.type)
 
     actual_condition_payload_vocabulary = sorted(
         key for key in used_payload_keys if "condition" in key or "bonus" in key
@@ -185,8 +175,6 @@ def audit_grammar_vocabulary_drift() -> dict[str, Any]:
         "effect_types_used_but_undocumented": sorted(used_effect_types - DOCUMENTED_EFFECT_VOCABULARY),
         "effect_vocabulary_used_under_a_different_name": used_under_different_name,
         "effect_vocabulary_genuinely_unused_in_first_creation": documented_but_unused,
-        "condition_spec_mechanism_total_uses_across_all_78_skills": total_condition_spec_entries,
-        "legacy_condition_spec_types_in_use": sorted(used_condition_types),
         "canonical_condition_payload_vocabulary_in_use": actual_condition_payload_vocabulary,
         "conditional_payload_keys_used_but_unregistered": sorted(
             set(actual_condition_payload_vocabulary) - CONDITIONAL_PAYLOAD_KEYS

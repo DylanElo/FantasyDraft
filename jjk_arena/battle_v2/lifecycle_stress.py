@@ -42,7 +42,7 @@ os.environ.setdefault(
 )
 
 TEAM_A = ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]
-TEAM_B = ["satoru_gojo", "ryomen_sukuna", "mahito"]
+TEAM_B = ["yuta_okkotsu_jjk0", "maki_zenin", "toge_inumaki"]
 
 SCHEMA_VERSION = 2
 

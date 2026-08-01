@@ -7,8 +7,8 @@ from collections.abc import Mapping
 from dataclasses import replace
 import random
 
-from .conditions import evaluate_conditions, has_status, is_stunned_for_class, skill_is_harmful
-from .effects import apply_damage, apply_effect, apply_status, apply_turn_end_statuses, should_tick_status, tick_cooldowns, tick_statuses
+from .conditions import has_status, is_stunned_for_class, skill_is_harmful
+from .effects import apply_damage, apply_effect, apply_status, apply_turn_end_statuses, check_passive_awakenings, should_tick_status, tick_cooldowns, tick_statuses
 from .energy import EnergyValidationError, can_afford_specific, energy_display_name, normalize_energy, spend_skill_energy, split_cost, validate_wildcard_payments
 from .models import BattleEvent, BattlePhase, BattleState, CharacterState, DamageType, DurationClock, EffectContext, EffectSpec, EnergyType, PendingAction, SkillClass, SkillSpec, StatusEffect, StatusFamily
 from .targeting import TargetingError, get_character, get_player, validate_target_rule
@@ -66,6 +66,11 @@ def _adjusted_cost_skill(caster: CharacterState, skill: SkillSpec) -> SkillSpec:
         for status in caster.statuses
         if status.duration != 0
     )
+    for status in caster.statuses:
+        if status.duration != 0:
+            delta_class = status.payload.get("black_cost_delta_for_class")
+            if delta_class and any(c.value == delta_class or c == delta_class for c in skill.classes):
+                black_delta += int(status.payload.get("black_cost_delta_for_class_amount", 0))
     if black_delta == 0:
         return skill
     cost = list(skill.cost)
@@ -146,10 +151,7 @@ def validate_action(
             elif set(selected_slots) != set(enemy.active_slots):
                 raise ResolverError("Venom Bloom without poison must target the enemy team")
 
-        _, targets = validate_target_rule(state, action, skill)
-        primary_target = targets[0] if targets else None
-        if not evaluate_conditions(skill.conditions, state, action, caster, primary_target, skill.classes):
-            raise ResolverError("skill conditions are not met")
+        validate_target_rule(state, action, skill)
     except (TargetingError, EnergyValidationError) as exc:
         raise ResolverError(str(exc)) from exc
 
@@ -390,6 +392,14 @@ def _trigger_watch_statuses(state: BattleState, events: list[BattleEvent], actio
                     continue
                 if payload.get("watch_harmful") and not _is_harmful_skill(skill):
                     continue
+                if payload.get("reward_on_new_skill"):
+                    is_new = True
+                    for event in state.event_log:
+                        if event.type == "skill_resolved" and event.payload.get("player_id") == action.player_id and event.payload.get("caster_slot") == action.caster_slot and event.payload.get("skill_id") == skill.id:
+                            is_new = False
+                            break
+                    if not is_new:
+                        continue
                 _append_energy_gain(state, events, watcher_player.id, int(payload.get("reward_energy", 1)), status.name, status)
                 reward_buff = payload.get("reward_buff") or {}
                 if reward_buff:
@@ -653,6 +663,9 @@ def resolve_queue_prefix(
                     })
                 _append_event(events, state, event)
                 if event.type == "damage" and event.payload.get("amount", 0) > 0 and effect.target != "self":
+                    # Check passive awakenings triggered by this damage
+                    for awakening_event in check_passive_awakenings(recipient, effect_target_player_id, effect_target_slot, state.turn_number):
+                        _append_event(events, state, awakening_event)
                     recipient.statuses = [status for status in recipient.statuses if status.id != "damaged_last_turn"]
                     recipient.statuses.append(StatusEffect("damaged_last_turn", "Damaged Last Turn", action.player_id, action.caster_slot, effect_target_player_id, effect_target_slot, 2, payload={"duration_clock": "target_turn"}))
                     for guard in list(recipient.statuses):
@@ -684,6 +697,9 @@ def resolve_queue_prefix(
                             "damage_type": DamageType.SOUL.value,
                             "status": guard.id,
                         }))
+                        # Check passive awakenings on the retaliation target (caster)
+                        for awakening_event in check_passive_awakenings(caster, action.player_id, action.caster_slot, state.turn_number):
+                            _append_event(events, state, awakening_event)
                         break
         if any(effect.type == "damage" and effect.target != "self" for effect in skill.effects):
             _consume_statuses_by_payload(caster, "consume_after_damage")
@@ -721,11 +737,13 @@ def finish_turn(state: BattleState, player_id: str) -> list[BattleEvent]:
     for player in state.players.values():
         for slot, character in enumerate(player.team):
             for status in list(character.statuses):
-                if status.duration == 1 and status.payload.get("redirect_next_harmful_direct") and should_tick_status(status, player_id, round_ending=round_ending, turn_number=state.turn_number):
-                    source = state.players.get(status.source_player_id)
-                    if source and 0 <= status.source_slot < len(source.team) and source.team[status.source_slot].alive:
-                        source.team[status.source_slot].statuses.append(StatusEffect("boogie_woogie_guard", "Boogie Woogie Guard", status.source_player_id, status.source_slot, status.source_player_id, status.source_slot, 2, payload={"destructible_defense": 15}))
-                        _append_event(events, state, BattleEvent("status_applied", "Boogie Woogie granted 15 defense after no redirect", state.turn_number, {"status": "boogie_woogie_guard", "target_player_id": status.source_player_id, "target_slot": status.source_slot, "source_player_id": status.source_player_id, "source_slot": status.source_slot, "source_skill_id": None}))
+                if status.duration == 1 and should_tick_status(status, player_id, round_ending=round_ending, turn_number=state.turn_number):
+                    defense = int(status.payload.get("expire_grant_defense", 0))
+                    if defense > 0:
+                        source = state.players.get(status.source_player_id)
+                        if source and 0 <= status.source_slot < len(source.team) and source.team[status.source_slot].alive:
+                            source.team[status.source_slot].statuses.append(StatusEffect(f"{status.id}_guard", f"{status.name} Guard", status.source_player_id, status.source_slot, status.source_player_id, status.source_slot, 2, payload={"destructible_defense": defense}))
+                            _append_event(events, state, BattleEvent("status_applied", f"{status.name} granted {defense} defense after expiry", state.turn_number, {"status": f"{status.id}_guard", "target_player_id": status.source_player_id, "target_slot": status.source_slot, "source_player_id": status.source_player_id, "source_slot": status.source_slot, "source_skill_id": None}))
                 if status.payload.get("ends_if_source_dies"):
                     source = state.players.get(status.source_player_id)
                     if not source or not (0 <= status.source_slot < len(source.team)) or not source.team[status.source_slot].alive:

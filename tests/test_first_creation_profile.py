@@ -8,9 +8,7 @@ from jjk_arena.battle_v2.first_creation_profile import (
 from jjk_arena.battle_v2.first_creation_unlocks import first_creation_unlocks_payload, unknown_first_creation_unlocks
 
 
-def test_first_creation_profile_persists_completed_missions_and_unlocks(tmp_path, monkeypatch):
-    monkeypatch.setenv("JJK_FIRST_CREATION_PROFILE_STORE", str(tmp_path / "profiles.json"))
-
+def test_first_creation_profile_persists_completed_missions_and_unlocks():
     progress = {
         "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"],
         "completed_ids": ["welcome_to_jujutsu_high"],
@@ -27,8 +25,7 @@ def test_first_creation_profile_persists_completed_missions_and_unlocks(tmp_path
     assert "welcome_to_jujutsu_high" in loaded["mission_first_completed_at"]
 
 
-def test_first_creation_profile_payload_marks_owned_unlocks(tmp_path, monkeypatch):
-    monkeypatch.setenv("JJK_FIRST_CREATION_PROFILE_STORE", str(tmp_path / "profiles.json"))
+def test_first_creation_profile_payload_marks_owned_unlocks():
     save_first_creation_profile("player-1", {"completed_missions": ["welcome_to_jujutsu_high"], "unlocked": ["mission_board"]})
 
     payload = first_creation_profile_payload(load_first_creation_profile("player-1"))

@@ -19,6 +19,7 @@ from .models import (
     DurationClock,
     EffectSpec,
     EnergyType,
+    PassiveSpec,
     SkillClass,
     SkillSpec,
     StatusFamily,
@@ -39,6 +40,7 @@ class CharacterSpec:
     era: str = "modern"
     tags: list[str] = field(default_factory=list)
     difficulty: str = "Medium"
+    passives: list[PassiveSpec] = field(default_factory=list)
 
 
 def enemy() -> TargetRule:
@@ -164,7 +166,7 @@ YUJI = CharacterSpec(
             target_rule=enemy(),
             classes=[SkillClass.PHYSICAL, SkillClass.ACHIEVEMENT, SkillClass.INSTANT],
             effects=[
-                damage(35, DamageType.PIERCING),
+                damage(30, DamageType.PIERCING),
                 status_effect("momentum", "Momentum", 2, target="self"),
             ],
             conditions=[ConditionSpec(type="user_damaged_enemy_last_turn")],
@@ -345,12 +347,12 @@ GOJO = CharacterSpec(
         SkillSpec(
             id="red",
             name="Red",
-            text="Deal 35 piercing damage.",
+            text="Deal 30 piercing damage.",
             cost=[EnergyType.BLUE, EnergyType.BLACK],
             cooldown=1,
             target_rule=enemy(),
             classes=[SkillClass.INNATE, SkillClass.CURSED_ENERGY, SkillClass.INSTANT],
-            effects=[damage(35, DamageType.PIERCING)],
+            effects=[damage(30, DamageType.PIERCING)],
         ),
         SkillSpec(
             id="infinity",
@@ -928,6 +930,7 @@ def starter_character(
     state: str,
     difficulty: str,
     skills: list[SkillSpec],
+    passives: list[PassiveSpec] | None = None,
 ) -> CharacterSpec:
     """Build a first-character-creation roster entry."""
 
@@ -941,6 +944,7 @@ def starter_character(
         era=FIRST_CREATION_ERA,
         tags=list(FIRST_CREATION_TAGS[character_id]),
         difficulty=difficulty,
+        passives=passives or [],
     )
 
 
@@ -995,8 +999,8 @@ def s(
     )
 
 
-def kit(character_id: str, role: str, state: str, difficulty: str, rows: list[SkillSpec]) -> CharacterSpec:
-    return starter_character(character_id, role, state, difficulty, rows)
+def kit(character_id: str, role: str, state: str, difficulty: str, rows: list[SkillSpec], passives: list[PassiveSpec] | None = None) -> CharacterSpec:
+    return starter_character(character_id, role, state, difficulty, rows, passives)
 
 
 FIRST_CREATION_ROSTER: dict[str, CharacterSpec] = {
@@ -1013,8 +1017,8 @@ FIRST_CREATION_ROSTER: dict[str, CharacterSpec] = {
         s("megumi_fushiguro", "shadow_retreat", "Shadow Retreat", "Megumi or one ally becomes untargetable for 1 turn; below 50 HP also gains 10 destructible defense.", [WILD], 4, ally(), [SkillClass.STRATEGIC, SkillClass.INSTANT], [status_effect("shadow_retreat", "Shadow Retreat", 2, invulnerable=True, low_hp_destructible_defense=10)]),
     ]),
     "nobara_kugisaki": kit("nobara_kugisaki", "Ranged mark / punish", "Nail", "Easy-Medium", [
-        s("nobara_kugisaki", "nail_barrage", "Nail Barrage", "Deal 20 damage and apply Nail for 3 turns.", [TECHNIQUE], 0, enemy(), [SkillClass.INNATE, SkillClass.INSTANT], [damage(20), status_effect("nail", "Nail", 3)]),
-        s("nobara_kugisaki", "straw_doll_resonance", "Straw Doll Resonance", "Deal 25 soul damage to an enemy with Nail; otherwise deal 15 normal damage.", [TECHNIQUE, CURSE], 1, enemy(), [SkillClass.INNATE, SkillClass.SOUL, SkillClass.INSTANT], [damage(25, DamageType.SOUL, condition_status="nail"), damage(15)]),
+        s("nobara_kugisaki", "nail_barrage", "Nail Barrage", "Deal 20 damage and apply Nail for 3 turns.", [TECHNIQUE], 0, enemy(), [SkillClass.INNATE, SkillClass.INSTANT], [damage(20), status_effect("nail", "Nail", 2)]),
+        s("nobara_kugisaki", "straw_doll_resonance", "Straw Doll Resonance", "Deal 20 soul damage to an enemy with Nail; otherwise deal 15 normal damage.", [TECHNIQUE, CURSE], 1, enemy(), [SkillClass.INNATE, SkillClass.SOUL, SkillClass.INSTANT], [damage(20, DamageType.SOUL, condition_status="nail"), damage(15)]),
         s("nobara_kugisaki", "hairpin", "Hairpin", "Deal 15 piercing damage to all enemies with Nail and consume Nail; single marked targets take 25 instead.", [TECHNIQUE, WILD], 3, enemy_team("nail"), [SkillClass.INNATE, SkillClass.INSTANT], [damage(15, DamageType.PIERCING, single_target_amount=25), EffectSpec(type="remove_status", status="nail")]),
         s("nobara_kugisaki", "hammer_guard", "Hammer Guard", "Nobara becomes untargetable for 1 turn; melee attackers receive Nail.", [WILD], 4, self_target(), [SkillClass.STRATEGIC, SkillClass.INSTANT], [status_effect("hammer_guard", "Hammer Guard", 2, target="self", invulnerable=True, punish_melee_status="nail")]),
     ]),
@@ -1047,19 +1051,19 @@ _FIRST_CREATION_EXTRA_ROWS: dict[str, tuple[str, str, str, list[tuple[str, str, 
     "momo_nishimiya": ("Scout / evasive support", "Revealed", "Medium", [("wind_scythe", "Wind Scythe", "Deal 15 damage to all enemies; choose one damaged enemy to become Exposed.", [TECHNIQUE, WILD], 2, enemy_team(), [SkillClass.CURSED_ENERGY, SkillClass.INSTANT]), ("aerial_scout", "Aerial Scout", "Reveal one enemy for 2 turns; Revealed enemies take +5 damage and can grant your team energy.", [FOCUS], 3, enemy(), [SkillClass.STRATEGIC, SkillClass.INSTANT]), ("broom_rescue", "Broom Rescue", "One ally becomes untargetable for 1 turn. Momo gains 10 destructible defense.", [FOCUS, WILD], 4, ally(), [SkillClass.STRATEGIC, SkillClass.INSTANT]), ("high_altitude_evasion", "High-Altitude Evasion", "Momo becomes untargetable for 1 turn.", [WILD], 4, self_target(), [SkillClass.STRATEGIC, SkillClass.INSTANT])]),
     "mai_zenin": ("Precision ranged / ammo setup", "Hidden Bullet", "Medium", [("revolver_shot", "Revolver Shot", "Deal 20 normal damage. Hidden Bullet adds 20 piercing damage, then is consumed.", [BODY], 0, enemy(), [SkillClass.PHYSICAL, SkillClass.INSTANT]), ("rubber_round_feint", "Rubber Round Feint", "For 2 turns, reduce one enemy's Taijutsu damage by 20. If they target Mai while affected, they become Exposed.", [FOCUS], 1, enemy(), [SkillClass.STRATEGIC, SkillClass.INSTANT]), ("construction_hidden_bullet", "Construction: Hidden Bullet", "Mai gains Hidden Bullet for 3 turns. Her next Revolver Shot deals an additional 20 piercing damage, then consumes Hidden Bullet. Mai takes 5 soul damage.", [CURSE, WILD], 3, self_target(), [SkillClass.CURSED_ENERGY, SkillClass.STRATEGIC, SkillClass.INVISIBLE, SkillClass.INSTANT]), ("cover_position", "Cover Position", "Mai becomes untargetable for 1 turn; if Hidden Bullet is active, one enemy becomes Exposed.", [WILD], 4, self_target(), [SkillClass.STRATEGIC, SkillClass.INSTANT])]),
     "kasumi_miwa": ("Defensive swordswoman / counter-control", "Simple Domain", "Easy-Medium", [("new_shadow_quick_draw", "New Shadow Quick Draw", "Deal 20 damage; Simple Domain also stuns harmful skills for 1 turn.", [BODY], 1, enemy(), [SkillClass.PHYSICAL, SkillClass.INSTANT]), ("simple_domain_batto_stance", "Simple Domain: Batto Stance", "Until Miwa's next turn, she gains 20 damage reduction, counters the first harmful melee skill targeting her, and marks its caster with Quick Draw Wound.", [FOCUS, WILD], 4, self_target(), [SkillClass.BARRIER, SkillClass.STRATEGIC, SkillClass.INSTANT]), ("earnest_slash", "Earnest Slash", "Deal 30 damage; Stunned or Exposed targets deal 10 less damage.", [BODY, FOCUS], 2, enemy(), [SkillClass.PHYSICAL, SkillClass.STRATEGIC, SkillClass.INSTANT]), ("useful_retreat", "Useful Retreat", "Miwa becomes untargetable for 1 turn; Simple Domain gives an ally 10 damage reduction.", [WILD], 4, self_target(), [SkillClass.STRATEGIC, SkillClass.INSTANT])]),
-    "kokichi_muta_mechamaru": ("Artillery / remote control", "Remote Position", "Medium", [("puppet_beam", "Puppet Beam", "Deal 20 damage to one enemy.", [TECHNIQUE], 0, enemy(), [SkillClass.CURSED_ENERGY, SkillClass.INSTANT]), ("cannon_charge", "Cannon Charge", "Deal 35 damage; if Mechamaru was not damaged last turn, deal +10.", [TECHNIQUE, WILD], 2, enemy(), [SkillClass.CURSED_ENERGY, SkillClass.INSTANT]), ("remote_puppet_net", "Remote Puppet Net", "One enemy cannot use non-damaging skills or counters for 1 turn.", [FOCUS, TECHNIQUE], 2, enemy(), [SkillClass.STRATEGIC, SkillClass.CURSED_ENERGY, SkillClass.CONTROL]), ("withdraw_signal", "Withdraw Signal", "For 2 turns, Mechamaru cannot be targeted by harmful enemy skills and has 10 destructible defense.", [WILD], 4, self_target(), [SkillClass.STRATEGIC, SkillClass.INSTANT])]),
+    "kokichi_muta_mechamaru": ("Artillery / remote control", "Remote Position", "Medium", [("puppet_beam", "Puppet Beam", "Deal 20 damage to one enemy.", [TECHNIQUE], 0, enemy(), [SkillClass.CURSED_ENERGY, SkillClass.INSTANT]), ("cannon_charge", "Cannon Charge", "Deal 30 damage; if Mechamaru was not damaged last turn, deal +10.", [TECHNIQUE, WILD], 2, enemy(), [SkillClass.CURSED_ENERGY, SkillClass.INSTANT]), ("remote_puppet_net", "Remote Puppet Net", "One enemy cannot use non-damaging skills or counters for 1 turn.", [FOCUS, TECHNIQUE], 2, enemy(), [SkillClass.STRATEGIC, SkillClass.CURSED_ENERGY, SkillClass.CONTROL]), ("withdraw_signal", "Withdraw Signal", "For 2 turns, Mechamaru cannot be targeted by harmful enemy skills and has 10 destructible defense.", [WILD], 4, self_target(), [SkillClass.STRATEGIC, SkillClass.INSTANT])]),
     "junpei_yoshino": ("Poison shikigami / fragile control", "Poison", "Easy-Medium", [("moon_dregs_sting", "Moon Dregs Sting", "Deal 15 soul damage and apply Poison, which deals 10 soul damage at the end of each of the target's next 2 turns.", [CURSE], 0, enemy(), [SkillClass.CURSED_ENERGY, SkillClass.SOUL, SkillClass.INSTANT]), ("jellyfish_screen", "Jellyfish Screen", "One ally gains 15 destructible defense for 2 turns; enemies who damage that ally take poison damage.", [FOCUS], 2, ally(), [SkillClass.STRATEGIC, SkillClass.CURSED_ENERGY, SkillClass.INSTANT]), ("venom_bloom", "Venom Bloom", "Deal 20 damage to a poisoned enemy and spread 10 poison; without poison, apply 5 poison to all enemies.", [CURSE, WILD], 3, enemy(), [SkillClass.CURSED_ENERGY, SkillClass.SOUL, SkillClass.INSTANT]), ("shikigami_veil", "Shikigami Veil", "Junpei becomes untargetable for 1 turn. Existing poison effects on enemies last 1 additional turn.", [WILD], 4, self_target(), [SkillClass.STRATEGIC, SkillClass.INSTANT])]),
-    "satoru_gojo_young": ("High-ceiling control / expensive defense", "Six Eyes Read", "Hard", [("lapse_blue", "Lapse Blue", "Deal 20 damage and apply Pulled for 1 turn.", [TECHNIQUE], 0, enemy(), [SkillClass.INNATE, SkillClass.CURSED_ENERGY, SkillClass.INSTANT]), ("six_eyes_read", "Six Eyes Read", "Choose one enemy. If they use a harmful Jujutsu-class skill on their next turn, Gojo gains 1 random core energy and his next damaging skill deals +10 damage.", [FOCUS], 2, enemy(), [SkillClass.STRATEGIC, SkillClass.INVISIBLE, SkillClass.INSTANT]), ("infinity_maintenance", "Infinity Maintenance", "Gojo becomes untargetable for 1 turn. His next skill costs +1 X.", [FOCUS, WILD], 4, self_target(), [SkillClass.BARRIER, SkillClass.STRATEGIC, SkillClass.INSTANT]), ("reversal_red", "Reversal Red", "Deal 35 piercing damage; Pulled targets take +10.", [TECHNIQUE, WILD], 2, enemy(), [SkillClass.INNATE, SkillClass.CURSED_ENERGY, SkillClass.INSTANT])]),
+    "satoru_gojo_young": ("High-ceiling control / expensive defense", "Six Eyes Read", "Hard", [("lapse_blue", "Lapse Blue", "Deal 20 damage and apply Pulled for 1 turn.", [TECHNIQUE], 0, enemy(), [SkillClass.INNATE, SkillClass.CURSED_ENERGY, SkillClass.INSTANT]), ("six_eyes_read", "Six Eyes Read", "Choose one enemy. If they use a harmful Jujutsu-class skill on their next turn, Gojo gains 1 random core energy and his next damaging skill deals +10 damage.", [FOCUS], 2, enemy(), [SkillClass.STRATEGIC, SkillClass.INVISIBLE, SkillClass.INSTANT]), ("infinity_maintenance", "Infinity Maintenance", "Gojo becomes untargetable for 1 turn. His next skill costs +1 X.", [FOCUS, WILD], 4, self_target(), [SkillClass.BARRIER, SkillClass.STRATEGIC, SkillClass.INSTANT]), ("reversal_red", "Reversal Red", "Deal 30 piercing damage; Pulled targets take +10.", [TECHNIQUE, WILD], 2, enemy(), [SkillClass.INNATE, SkillClass.CURSED_ENERGY, SkillClass.INSTANT])]),
     "suguru_geto_young": ("Curse stock / summon pressure", "Curse Stock", "Hard", [("swarm_curse", "Swarm Curse", "Deal 15 damage and gain 1 Curse Stock, max 3.", [CURSE], 0, enemy(), [SkillClass.CURSED_ENERGY, SkillClass.INSTANT]), ("hookworm_curse", "Hookworm Curse", "Deal 20 damage and stun Taijutsu skills; spend Curse Stock to also stun Strategic skills.", [CURSE, WILD], 2, enemy(), [SkillClass.CURSED_ENERGY, SkillClass.CONTROL]), ("rainbow_dragon_guard", "Rainbow Dragon Guard", "Geto or an ally gains 25 destructible defense; 2+ Curse Stock also grants 10 damage reduction.", [FOCUS, CURSE], 3, ally(), [SkillClass.STRATEGIC, SkillClass.CURSED_ENERGY, SkillClass.INSTANT]), ("curse_screen", "Curse Screen", "Geto becomes untargetable for 1 turn; consume Curse Stock to protect an ally with 10 defense.", [WILD], 4, ally(), [SkillClass.STRATEGIC, SkillClass.CURSED_ENERGY, SkillClass.INSTANT]), ("compressed_uzumaki", "Compressed Uzumaki", "Replacement: at 3 Curse Stock, consume all stock, remove 20 defense, and deal 45 piercing damage.", [CURSE, CURSE, WILD], 2, enemy(), [SkillClass.CURSED_ENERGY, SkillClass.INSTANT])]),
     "shoko_ieiri_young": ("Healer / cleanse / low offense", "Medical Focus", "Easy", [("scalpel_feint", "Scalpel Feint", "Deal 10 damage and reduce healing received by 10 for 1 turn.", [FOCUS], 0, enemy(), [SkillClass.STRATEGIC, SkillClass.INSTANT]), ("reverse_cursed_treatment", "Reverse Cursed Treatment", "Heal one ally for 25 HP.", [TECHNIQUE], 0, ally(), [SkillClass.CURSED_ENERGY, SkillClass.STRATEGIC, SkillClass.INSTANT]), ("cleanse_protocol", "Cleanse Protocol", "Remove affliction/soul effects from one ally and heal them for 10.", [TECHNIQUE, FOCUS], 2, ally(), [SkillClass.CURSED_ENERGY, SkillClass.STRATEGIC, SkillClass.INSTANT]), ("emergency_step", "Emergency Step", "Shoko becomes untargetable for 1 turn; allies below 35 HP gain 10 damage reduction.", [WILD], 4, self_target(), [SkillClass.STRATEGIC, SkillClass.INSTANT])]),
     "utahime_iori_young": ("Support chant / team amplifier", "Ritual Rhythm", "Medium", [("talisman_strike", "Talisman Strike", "Deal 15 damage; Ritual Rhythm reduces the target's damage by 10.", [FOCUS], 0, enemy(), [SkillClass.STRATEGIC, SkillClass.INSTANT]), ("solo_solo_kinku", "Solo Solo Kinku", "One ally's next damaging skill deals +15.", [FOCUS, WILD], 3, ally(), [SkillClass.STRATEGIC, SkillClass.INSTANT]), ("ritual_rhythm", "Ritual Rhythm", "For 3 turns, allies deal +5 damage and receive 5 less damage. Ends if Utahime dies.", [TECHNIQUE, FOCUS], 4, self_target(), [SkillClass.CURSED_ENERGY, SkillClass.STRATEGIC, SkillClass.INSTANT]), ("curtain_step", "Curtain Step", "Utahime becomes untargetable for 1 turn; Ritual Rhythm gives an ally 10 destructible defense.", [WILD], 4, ally(), [SkillClass.BARRIER, SkillClass.STRATEGIC, SkillClass.INSTANT])]),
-    "mei_mei_young": ("Scout / crow pressure / efficient finisher", "Crow Mark", "Medium-Hard", [("axe_sweep", "Axe Sweep", "Deal 20 damage; Crow Mark targets take +10.", [BODY], 0, enemy(), [SkillClass.PHYSICAL, SkillClass.INSTANT]), ("crow_scout", "Crow Scout", "Apply Crow Mark for 3 turns; if the enemy uses a new skill next turn, Mei Mei gains energy.", [FOCUS], 2, enemy(), [SkillClass.STRATEGIC, SkillClass.INVISIBLE, SkillClass.INSTANT]), ("black_bird_strike", "Black Bird Strike", "Deal 40 piercing to a Crow Mark target, otherwise 25 damage. Mei Mei takes 5 soul damage.", [BODY, TECHNIQUE, WILD], 3, enemy(), [SkillClass.PHYSICAL, SkillClass.CURSED_ENERGY, SkillClass.INSTANT]), ("crow_screen", "Crow Screen", "Mei Mei becomes untargetable for 1 turn; a Crow Mark enemy becomes Exposed.", [WILD], 4, self_target(), [SkillClass.STRATEGIC, SkillClass.INSTANT])]),
+    "mei_mei_young": ("Scout / crow pressure / efficient finisher", "Crow Mark", "Medium-Hard", [("axe_sweep", "Axe Sweep", "Deal 20 damage; Crow Mark targets take +10.", [BODY], 0, enemy(), [SkillClass.PHYSICAL, SkillClass.INSTANT]), ("crow_scout", "Crow Scout", "Apply Crow Mark for 2 turns; if the enemy uses a new skill next turn, Mei Mei gains energy.", [FOCUS], 2, enemy(), [SkillClass.STRATEGIC, SkillClass.INVISIBLE, SkillClass.INSTANT]), ("black_bird_strike", "Black Bird Strike", "Deal 40 piercing to a Crow Mark target, otherwise 25 damage. Mei Mei takes 5 soul damage.", [BODY, TECHNIQUE, WILD], 3, enemy(), [SkillClass.PHYSICAL, SkillClass.CURSED_ENERGY, SkillClass.INSTANT]), ("crow_screen", "Crow Screen", "Mei Mei becomes untargetable for 1 turn; a Crow Mark enemy becomes Exposed.", [WILD], 4, self_target(), [SkillClass.STRATEGIC, SkillClass.INSTANT])]),
     "yuta_okkotsu_jjk0": ("Unstable special-grade protector / Rika state", "Rika's Curse", "Medium-Hard", [("cursed_katana", "Cursed Katana", "Deal 20 damage; Rika's Curse adds +10.", [BODY], 0, enemy(), [SkillClass.PHYSICAL, SkillClass.INSTANT]), ("reverse_cursed_technique", "Reverse Cursed Technique", "Heal one ally for 25 HP and remove one affliction effect.", [TECHNIQUE, FOCUS], 1, ally(), [SkillClass.CURSED_ENERGY, SkillClass.STRATEGIC, SkillClass.INSTANT]), ("rikas_curse", "Rika's Curse", "For 3 turns Yuta gains 15 defense and Cursed Katana deals +10; replaced by Cursed Speech Megaphone.", [CURSE, WILD], 4, self_target(), [SkillClass.CURSED_ENERGY, SkillClass.STRATEGIC, SkillClass.INSTANT]), ("rika_protects", "Rika Protects", "Yuta becomes untargetable for 1 turn; Rika's Curse gives one ally 15 destructible defense.", [WILD], 4, ally(), [SkillClass.STRATEGIC, SkillClass.CURSED_ENERGY, SkillClass.INSTANT]), ("cursed_speech_megaphone", "Cursed Speech Megaphone", "Replacement: stun one enemy's harmful skills for 1 turn. Yuta takes 5 soul damage.", [FOCUS, WILD], 1, enemy(), [SkillClass.STRATEGIC, SkillClass.CURSED_ENERGY, SkillClass.CONTROL, SkillClass.INSTANT])]),
 }
 
 _EXPLICIT_EXTRA_EFFECTS: dict[tuple[str, str], list[EffectSpec]] = {
     ("aoi_todo", "brutal_palm_strike"): [damage(25, bonus_status="boogie_woogie_redirect", bonus_amount=10)],
-    ("aoi_todo", "boogie_woogie"): [status_effect("boogie_woogie_redirect", "Boogie Woogie", 1, controlled_redirect=True, redirect_next_harmful_direct=True, invisible=True)],
+    ("aoi_todo", "boogie_woogie"): [status_effect("boogie_woogie_redirect", "Boogie Woogie", 1, controlled_redirect=True, redirect_next_harmful_direct=True, expire_grant_defense=15, invisible=True)],
     ("aoi_todo", "brotherly_beatdown"): [damage(30), status_effect("brotherly_stun", "Brotherly Stun", 2, stun_harmful=True, condition_ally_damaged_target_this_turn=True)],
     ("aoi_todo", "clap_feint"): [status_effect("clap_feint", "Clap Feint", 2, target="self", invulnerable=True)],
     ("noritoshi_kamo", "blood_tipped_arrow"): [damage(20), status_effect("blood_mark", "Blood Mark", 2)],
@@ -1089,7 +1093,7 @@ _EXPLICIT_EXTRA_EFFECTS: dict[tuple[str, str], list[EffectSpec]] = {
     ("satoru_gojo_young", "lapse_blue"): [damage(20), status_effect("pulled", "Pulled", 2)],
     ("satoru_gojo_young", "six_eyes_read"): [status_effect("six_eyes_read", "Six Eyes Read", 1, target="self", duration_clock=DurationClock.ROUND, watch_target_player_id="target", watch_target_slot="target", watch_skill_classes=[SkillClass.CURSED_ENERGY.value], watch_harmful=True, reward_energy=1, reward_buff={"id": "six_eyes_insight", "name": "Six Eyes Insight", "duration": 1, "damage_bonus": 10, "consume_after_damage": True}, consume_on_trigger=True, invisible=True)],
     ("satoru_gojo_young", "infinity_maintenance"): [status_effect("infinity_maintenance", "Infinity Maintenance", 2, target="self", invulnerable=True, black_cost_delta=1, consume_on_next_skill=True)],
-    ("satoru_gojo_young", "reversal_red"): [damage(35, DamageType.PIERCING, bonus_status="pulled", bonus_amount=10)],
+    ("satoru_gojo_young", "reversal_red"): [damage(30, DamageType.PIERCING, bonus_status="pulled", bonus_amount=10)],
     ("suguru_geto_young", "swarm_curse"): [damage(15), status_effect("curse_stock", "Curse Stock", 4, target="self", max_stacks=3, unlock_replacements_at_stacks=3, skill_replacements={"fc_suguru_geto_young_swarm_curse": "fc_suguru_geto_young_compressed_uzumaki"})],
     ("suguru_geto_young", "hookworm_curse"): [damage(20), status_effect("hookworm_body_stun", "Hookworm Taijutsu Stun", 2, stun_classes=[SkillClass.PHYSICAL.value]), status_effect("hookworm_focus_stun", "Hookworm Strategic Stun", 2, stun_classes=[SkillClass.STRATEGIC.value], condition_user_status="curse_stock"), EffectSpec(type="consume_status_stacks", status="curse_stock", amount=1, target="self")],
     ("suguru_geto_young", "rainbow_dragon_guard"): [status_effect("rainbow_dragon_guard", "Rainbow Dragon Guard", 2, destructible_defense=25), status_effect("rainbow_dragon_reduction", "Rainbow Dragon Reduction", 2, damage_reduction=10, condition_user_stacks=("curse_stock", 2))],
@@ -1104,7 +1108,7 @@ _EXPLICIT_EXTRA_EFFECTS: dict[tuple[str, str], list[EffectSpec]] = {
     ("utahime_iori_young", "ritual_rhythm"): [EffectSpec(type="apply_team_status", status="ritual_rhythm", duration=3, target="self", payload={"name": "Ritual Rhythm", "duration_clock": DurationClock.SOURCE_TURN.value, "families": [StatusFamily.BUFF.value], "damage_output_delta": 5, "damage_reduction": 5, "ends_if_source_dies": True})],
     ("utahime_iori_young", "curtain_step"): [status_effect("curtain_step", "Curtain Step", 2, target="self", invulnerable=True), status_effect("ritual_guard", "Ritual Guard", 2, destructible_defense=10, condition_user_status="ritual_rhythm")],
     ("mei_mei_young", "axe_sweep"): [damage(20, bonus_status="crow_mark", bonus_amount=10)],
-    ("mei_mei_young", "crow_scout"): [status_effect("crow_mark", "Crow Mark", 3), status_effect("crow_scout_watch", "Crow Scout", 1, target="self", duration_clock=DurationClock.ROUND, watch_target_player_id="target", watch_target_slot="target", reward_energy=1, consume_on_trigger=True, invisible=True)],
+    ("mei_mei_young", "crow_scout"): [status_effect("crow_mark", "Crow Mark", 2), status_effect("crow_scout_watch", "Crow Scout", 1, target="self", duration_clock=DurationClock.ROUND, watch_target_player_id="target", watch_target_slot="target", reward_energy=1, consume_on_trigger=True, invisible=True)],
     ("mei_mei_young", "black_bird_strike"): [damage(40, DamageType.PIERCING, condition_status="crow_mark"), damage(25, condition_missing_status="crow_mark"), damage(5, DamageType.SOUL, target="self")],
     ("mei_mei_young", "crow_screen"): [status_effect("crow_screen", "Crow Screen", 2, target="self", invulnerable=True), status_effect("exposed", "Exposed", 2)],
     ("yuta_okkotsu_jjk0", "cursed_katana"): [damage(20, bonus_user_status="rikas_curse", bonus_amount=10)],
@@ -1143,7 +1147,7 @@ def _set_first_creation_effects(character_id: str, slug: str, effects: list[Effe
 
 # Explicit first-creation payoff hooks.  These replace text-inferred fallback
 # effects for the kits whose mechanics drive onboarding lessons.
-_set_first_creation_effects("nobara_kugisaki", "straw_doll_resonance", [damage(25, DamageType.SOUL, condition_status="nail"), damage(15, condition_missing_status="nail")])
+_set_first_creation_effects("nobara_kugisaki", "straw_doll_resonance", [damage(20, DamageType.SOUL, condition_status="nail"), damage(15, condition_missing_status="nail")])
 _set_first_creation_effects("utahime_iori_young", "ritual_rhythm", _EXPLICIT_EXTRA_EFFECTS[("utahime_iori_young", "ritual_rhythm")], target_rule=TargetRule(kind="ally_team", min_targets=1, max_targets=3, allow_self=True))
 _set_first_creation_effects("mai_zenin", "cover_position", _EXPLICIT_EXTRA_EFFECTS[("mai_zenin", "cover_position")], target_rule=enemy())
 _set_first_creation_effects("kasumi_miwa", "useful_retreat", _EXPLICIT_EXTRA_EFFECTS[("kasumi_miwa", "useful_retreat")], target_rule=ally())
@@ -1219,3 +1223,48 @@ def validate_first_creation_team(character_ids: list[str] | tuple[str, ...]) -> 
     if invalid:
         return False, f"Locked or unknown first creation character: {invalid[0]}"
     return True, ""
+
+
+# ==========================================
+# PASSIVE AWAKENINGS
+# ==========================================
+
+FIRST_CREATION_ROSTER["yuji_itadori"].passives.append(
+    PassiveSpec(
+        id="fc_yuji_sukuna_flame",
+        name="Sukuna's Residual Flame",
+        description="When Yuji drops below 40 HP, he permanently gains +15 damage to Divergent Fist.",
+        hp_threshold=40,
+        awakening_statuses=[status_effect("yuji_sukuna_flame", "Residual Flame", -1, target="self", next_skill_modifiers={"fc_yuji_itadori_divergent_fist": {"damage": 15}})]
+    )
+)
+
+FIRST_CREATION_ROSTER["panda"].passives.append(
+    PassiveSpec(
+        id="fc_panda_gorilla_soul",
+        name="Emergency Gorilla Soul",
+        description="When Panda drops below 35 HP, he permanently enters Gorilla Core, gaining 25 destructible defense once.",
+        hp_threshold=35,
+        awakening_statuses=[status_effect("gorilla_core_emergency", "Gorilla Core", -1, target="self", destructible_defense=25)]
+    )
+)
+
+FIRST_CREATION_ROSTER["toge_inumaki"].passives.append(
+    PassiveSpec(
+        id="fc_toge_throat_overload",
+        name="Throat Overload",
+        description="When Toge drops below 30 HP, he permanently gains +10 damage reduction but takes 5 extra soul damage on all skills.",
+        hp_threshold=30,
+        awakening_statuses=[status_effect("throat_overload", "Throat Overload", -1, target="self", damage_reduction=10, self_damage_delta=5)]
+    )
+)
+
+FIRST_CREATION_ROSTER["yuta_okkotsu_jjk0"].passives.append(
+    PassiveSpec(
+        id="fc_yuta_rika_unbound",
+        name="Rika Unbound",
+        description="When Yuta drops below 45 HP, Rika fully manifests permanently, granting 15 destructible defense and modifying Cursed Katana (+10 damage).",
+        hp_threshold=45,
+        awakening_statuses=[status_effect("rika_unbound", "Rika Unbound", -1, target="self", destructible_defense=15, next_skill_modifiers={"fc_yuta_okkotsu_jjk0_cursed_katana": {"damage": 10}})]
+    )
+)

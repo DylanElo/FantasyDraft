@@ -17,16 +17,14 @@ from typing import Any, Callable
 from .damage_accounting import enemy_hp_damage_attribution
 from .energy import CORE_ENERGY, energy_display_name, gain_turn_energy, normalize_energy, split_cost
 from .conditions import has_status
-from .models import BattleEvent, BattlePhase, BattleState, CharacterState, DamageType, PendingAction, PlayerState, SkillClass, SkillSpec, use_battle_v2
+from .models import BattleEvent, BattlePhase, BattleState, CharacterState, DamageType, EnergyType, PendingAction, PlayerState, SkillClass, SkillSpec, use_battle_v2
 from .first_creation_progression import evaluate_first_creation_progress, initial_first_creation_progress
-from .resolver import ResolverError, _adjusted_cost_skill, check_winner, finish_turn, get_skill_for_action, resolve_queue, resolve_queue_prefix, validate_action_identity, validate_queue, validate_queue_identity
+from .resolver import ResolverError, _adjusted_cost_skill, check_winner, finish_turn, get_skill_for_action, resolve_queue, resolve_queue_prefix, validate_action, validate_action_identity, validate_queue, validate_queue_identity
 from .serialization import serialize_battle_state
 from .targeting import invulnerability_blocks_skill
 from .starter_roster import (
     FIRST_CREATION_ROSTER,
     FIRST_CREATION_SKILLS_BY_ID,
-    SKILLS_BY_ID,
-    STARTER_ROSTER,
     CharacterSpec,
     first_creation_catalog,
     validate_first_creation_team,
@@ -61,17 +59,11 @@ class BattlePlayerConfig:
 
 def _character_state(spec: CharacterSpec) -> CharacterState:
     replacement_ids = {
-        transformation.replacement_skill_id
-        for skill in spec.skills
-        for transformation in skill.transformations
-        if transformation.replacement_skill_id
-    }
-    replacement_ids.update(
         str(replacement)
         for skill in spec.skills
         for effect in skill.effects
         for replacement in (effect.payload.get("skill_replacements") or {}).values()
-    )
+    }
     base_skill_ids = [skill.id for skill in spec.skills if skill.id not in replacement_ids]
     return CharacterState(
         character_id=spec.id,
@@ -150,16 +142,6 @@ def _serialize_roster_catalog(roster: dict[str, CharacterSpec]) -> dict[str, dic
                         }
                         for effect in skill.effects
                     ],
-                    "conditions": [
-                        {
-                            "type": condition.type,
-                            "status": condition.status,
-                            "amount": condition.amount,
-                            "scope": condition.scope,
-                            "negate": condition.negate,
-                        }
-                        for condition in skill.conditions
-                    ],
                 }
                 for skill in spec.skills
             ],
@@ -169,15 +151,18 @@ def _serialize_roster_catalog(roster: dict[str, CharacterSpec]) -> dict[str, dic
 
 
 def skill_catalog() -> dict[str, dict[str, Any]]:
-    return _serialize_roster_catalog(STARTER_ROSTER)
+    return _serialize_roster_catalog(FIRST_CREATION_ROSTER)
 
 
 def _wildcard_payment_options(
     player: PlayerState,
     skill_id: str,
     skills: dict[str, SkillSpec] | None = None,
+    caster: CharacterState | None = None,
 ) -> list[list[EnergyType]]:
-    skill = (skills or SKILLS_BY_ID)[skill_id]
+    skill = (skills or FIRST_CREATION_SKILLS_BY_ID)[skill_id]
+    if caster is not None:
+        skill = _adjusted_cost_skill(caster, skill)
     specific, wildcard_count = split_cost(skill.cost)
     if wildcard_count == 0:
         return [[]]
@@ -224,7 +209,7 @@ def _cpu_target_payloads(
     caster_slot: int,
     skills: dict[str, SkillSpec] | None = None,
 ) -> list[dict[str, Any]]:
-    skill = (skills or SKILLS_BY_ID)[skill_id]
+    skill = (skills or FIRST_CREATION_SKILLS_BY_ID)[skill_id]
     opponent_ids = [pid for pid in state.players if pid != player_id]
     if not opponent_ids:
         return []
@@ -242,10 +227,22 @@ def _cpu_target_payloads(
     ]
     living_ally_slots.sort(key=lambda slot: player.team[slot].hp / max(1, player.team[slot].max_hp))
     if any(effect.payload.get("controlled_redirect") for effect in skill.effects):
-        alternate_slot = living_ally_slots[0] if living_ally_slots else caster_slot
+        alternates = [
+            (candidate_player.id, slot)
+            for candidate_player in state.players.values()
+            for slot in candidate_player.active_slots
+            if 0 <= slot < len(candidate_player.team) and candidate_player.team[slot].alive
+        ]
         return [
-            {"target_player_id": opponent_id, "target_slot": slot, "alternate_target_player_id": player_id, "alternate_target_slot": alternate_slot}
+            {
+                "target_player_id": opponent_id,
+                "target_slot": slot,
+                "alternate_target_player_id": alternate_player_id,
+                "alternate_target_slot": alternate_slot,
+            }
             for slot in living_enemy_slots
+            for alternate_player_id, alternate_slot in alternates
+            if (alternate_player_id, alternate_slot) != (opponent_id, slot)
         ]
     if any(effect.payload.get("conditional_targeting") == "venom_bloom" for effect in skill.effects):
         poisoned = [slot for slot in living_enemy_slots if has_status(opponent.team[slot], "poison")]
@@ -298,6 +295,120 @@ def _cpu_viewer_safe_clone(state: BattleState, player_id: str) -> BattleState:
                 )
             ]
     return trial
+
+
+def _viewer_skill_options(
+    state: BattleState,
+    player_id: str,
+    skills: dict[str, SkillSpec],
+) -> dict[str, dict[str, dict[str, Any]]]:
+    """Serialize viewer-safe costs, availability, and complete target payloads."""
+
+    visible = _cpu_viewer_safe_clone(state, player_id)
+    player = visible.players[player_id]
+    options: dict[str, dict[str, dict[str, Any]]] = {}
+    for caster_slot in player.active_slots:
+        if caster_slot < 0 or caster_slot >= len(player.team):
+            continue
+        caster = player.team[caster_slot]
+        caster_options: dict[str, dict[str, Any]] = {}
+        for base_skill_id in caster.base_skill_ids:
+            resolved_skill_id = caster.skill_replacements.get(base_skill_id, base_skill_id)
+            skill = skills.get(resolved_skill_id)
+            if skill is None:
+                continue
+            adjusted = _adjusted_cost_skill(caster, skill)
+            legal_targets: list[dict[str, Any]] = []
+            errors: list[str] = []
+            target_payloads = _cpu_target_payloads(
+                visible, player_id, resolved_skill_id, caster_slot, skills
+            )
+            queued = [
+                action
+                for action in visible.pending_actions.get(player_id, [])
+                if action.caster_slot != caster_slot
+            ]
+            required: Counter[EnergyType] = Counter()
+            wildcard_count = 0
+            for action in queued:
+                queued_caster = player.team[action.caster_slot]
+                queued_skill = _adjusted_cost_skill(
+                    queued_caster, get_skill_for_action(skills, queued_caster, action)
+                )
+                specific, wildcards = split_cost(queued_skill.cost)
+                required.update(specific)
+                wildcard_count += wildcards
+            specific, candidate_wildcards = split_cost(adjusted.cost)
+            required.update(specific)
+            wildcard_count += candidate_wildcards
+            cost_error = next(
+                (
+                    f"Not enough {energy_display_name(energy)} energy for queued actions."
+                    for energy, amount in required.items()
+                    if player.energy.get(energy, 0) < amount
+                ),
+                None,
+            )
+            if cost_error is None:
+                remaining = {
+                    energy: player.energy.get(energy, 0) - required.get(energy, 0)
+                    for energy in CORE_ENERGY
+                }
+                if sum(max(0, amount) for amount in remaining.values()) < wildcard_count:
+                    cost_error = "Not enough core energy for Wild costs."
+            candidate_remaining = {
+                energy: player.energy.get(energy, 0) - specific.get(energy, 0)
+                for energy in CORE_ENERGY
+            }
+            wildcard_pays: list[EnergyType] = []
+            for _ in range(candidate_wildcards):
+                pay = next(
+                    (energy for energy in CORE_ENERGY if candidate_remaining[energy] > 0),
+                    CORE_ENERGY[0],
+                )
+                candidate_remaining[pay] -= 1
+                wildcard_pays.append(pay)
+            for target_index, target_payload in enumerate(target_payloads):
+                candidate = PendingAction(
+                    id=f"preview:{caster_slot}:{base_skill_id}:{target_index}",
+                    player_id=player_id,
+                    caster_slot=caster_slot,
+                    skill_id=base_skill_id,
+                    target_player_id=target_payload["target_player_id"],
+                    target_slot=target_payload.get("target_slot"),
+                    target_slots=list(target_payload.get("target_slots", [])),
+                    secondary_target_slot=target_payload.get("secondary_target_slot"),
+                    alternate_target_player_id=target_payload.get("alternate_target_player_id"),
+                    alternate_target_slot=target_payload.get("alternate_target_slot"),
+                    wildcard_pays=wildcard_pays,
+                )
+                try:
+                    validate_action(visible, candidate, skills)
+                except ResolverError as exc:
+                    errors.append(str(exc))
+                    continue
+                if cost_error is None:
+                    legal_targets.append(dict(target_payload))
+            reason = None
+            if not legal_targets:
+                if caster.cooldowns.get(resolved_skill_id, 0) > 0:
+                    reason = f"Cooldown {caster.cooldowns[resolved_skill_id]}"
+                elif "caster is stunned for this skill class" in errors:
+                    reason = "Stunned: this skill class is disabled."
+                elif cost_error:
+                    reason = cost_error
+                elif errors:
+                    reason = errors[0].capitalize().rstrip(".") + "."
+                else:
+                    reason = "No legal targets."
+            caster_options[base_skill_id] = {
+                "effective_skill_id": resolved_skill_id,
+                "adjusted_cost": [energy.value for energy in adjusted.cost],
+                "disabled_reason": reason,
+                "legal_target_payloads": legal_targets,
+            }
+        options[str(caster_slot)] = caster_options
+    return options
 
 
 def _cpu_resolve_trial(
@@ -530,7 +641,6 @@ def _cpu_action_score(
     lethal_secured = False
     lethal_bonus_amount = 650 if is_hard else 500
     smart_bonus_weight = {"easy": 0.5, "normal": 1.0, "hard": 1.35}[difficulty]
-    condition_weight = {"easy": 1.0, "normal": 1.0, "hard": 1.6}[difficulty]
     target_player = state.players.get(action.target_player_id)
     target_slots = _target_slots_from_payload(
         {
@@ -653,8 +763,6 @@ def _cpu_action_score(
                 if 0 <= slot < len(target_player.team):
                     target = target_player.team[slot]
                     score += max(0, target.max_hp - target.hp) // 5
-    if skill.conditions:
-        score += int(35 * condition_weight)
     score += int(smart_bonus * smart_bonus_weight)
     score -= len(skill.cost) * (1 if is_hard else 2)
     if is_hard and not lethal_secured and smart_bonus <= 0 and remaining_teammates > 0:
@@ -823,11 +931,6 @@ class BattleV2Manager:
         self.room_first_creation_progress: dict[str, dict[str, dict[str, Any]]] = {}
         self.command_receipts: dict[str, dict[str, OrderedDict[str, str]]] = {}
         self.room_locks: dict[str, RLock] = {}
-        # Per-room in-flight command handler accounting for the safe-stop
-        # drain gate. `_in_flight_lock` only ever guards this small counter
-        # dict -- it is never held across a command's own room lock or any
-        # gameplay mutation, so querying it can never block on unrelated
-        # room traffic.
         self._in_flight_commands: Counter[str] = Counter()
         self._in_flight_lock = RLock()
         self.room_replays: dict[str, dict[str, Any]] = {}
@@ -854,6 +957,7 @@ class BattleV2Manager:
         # instance attribute here would let one room's queue clobber
         # another's; `threading.local` gives each thread its own queue.
         self._finished_callback_state = local()
+
 
     @contextmanager
     def _defer_finished_callbacks(self):
@@ -904,8 +1008,8 @@ class BattleV2Manager:
         if room_id in self.rooms:
             raise BattleV2Error("active match already exists")
 
-        roster = roster or STARTER_ROSTER
-        skills = skills or SKILLS_BY_ID
+        roster = roster or FIRST_CREATION_ROSTER
+        skills = skills or FIRST_CREATION_SKILLS_BY_ID
         catalog = catalog or _serialize_roster_catalog(roster)
         configs = [_coerce_player_config(player) for player in players]
         if len(configs) != 2:
@@ -996,11 +1100,28 @@ class BattleV2Manager:
         self.room_first_creation_progress[room_id] = initial_first_creation_progress(self.get_state(room_id))
         return self.serialize_for_player(room_id, configs[0].id)
 
+    def remove_room(self, room_id: str) -> None:
+        with self.room_locks.get(room_id, RLock()):
+            self.rooms.pop(room_id, None)
+            self.rngs.pop(room_id, None)
+            self.room_rosters.pop(room_id, None)
+            self.room_skill_maps.pop(room_id, None)
+            self.room_catalogs.pop(room_id, None)
+            self.room_roster_modes.pop(room_id, None)
+            self.room_cpu_difficulty.pop(room_id, None)
+            self.command_receipts.pop(room_id, None)
+            self.room_first_creation_progress.pop(room_id, None)
+            self.room_replays.pop(room_id, None)
+            for alias, target in list(self.room_aliases.items()):
+                if target == room_id:
+                    self.room_aliases.pop(alias, None)
+        self.room_locks.pop(room_id, None)
+
     def _skills_for_room(self, room_id: str) -> dict[str, SkillSpec]:
-        return self.room_skill_maps.get(room_id, SKILLS_BY_ID)
+        return self.room_skill_maps.get(room_id, FIRST_CREATION_SKILLS_BY_ID)
 
     def _roster_for_room(self, room_id: str) -> dict[str, CharacterSpec]:
-        return self.room_rosters.get(room_id, STARTER_ROSTER)
+        return self.room_rosters.get(room_id, FIRST_CREATION_ROSTER)
 
     def _cpu_difficulty_for_room(self, room_id: str) -> str:
         return self.room_cpu_difficulty.get(room_id, "normal")
@@ -1628,7 +1749,9 @@ class BattleV2Manager:
                 for target_payload in _cpu_target_payloads(
                     planning_state, player_id, resolved_skill_id, slot, skills
                 ):
-                    for wildcard_pays in _wildcard_payment_options(player, resolved_skill_id, skills):
+                    for wildcard_pays in _wildcard_payment_options(
+                        player, resolved_skill_id, skills, caster
+                    ):
                         candidate = PendingAction(
                             id=f"{player_id}:cpu:{slot}:{base_skill_id}",
                             player_id=player_id,
@@ -1887,6 +2010,9 @@ class BattleV2Manager:
         payload["phase_seconds_remaining"] = phase_seconds_remaining(state, self.clock)
         payload["disconnect_grace_seconds_remaining"] = self._disconnect_grace_seconds_remaining(state)
         payload["skill_catalog"] = self.room_catalogs.get(room_id, skill_catalog())
+        payload["skill_options"] = _viewer_skill_options(
+            state, viewer_id, self._skills_for_room(room_id)
+        )
         payload["roster_mode"] = self.room_roster_modes.get(room_id, "classic")
         if self.room_roster_modes.get(room_id) == "first_creation":
             self._refresh_first_creation_progress(room_id)

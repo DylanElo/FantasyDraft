@@ -8,7 +8,7 @@ from concurrent.futures import ProcessPoolExecutor
 import json
 import os
 from threading import RLock
-from typing import Any, Iterable, Iterator
+from typing import Any, Iterator
 
 from .damage_accounting import enemy_hp_damage_attribution
 from .energy import CORE_ENERGY
@@ -86,16 +86,6 @@ def iter_match_schedule(
         yield from executor.map(_run_match_task, tasks, chunksize=chunk_size)
 
 
-def run_match_schedule(
-    tasks: list[tuple[list[str], list[str], int, int]],
-    *,
-    workers: int | None = 1,
-) -> list[dict[str, Any]]:
-    """Return deterministic match tasks in input order for API compatibility."""
-
-    return list(iter_match_schedule(tasks, workers=workers))
-
-
 def _conversion_summary_accumulator() -> dict[str, Any]:
     return {
         "games": 0,
@@ -167,17 +157,6 @@ def _finalize_conversion_summary(accumulator: dict[str, Any]) -> dict[str, Any]:
             if diagnostic_events else 0.0
         ),
     }
-
-
-def summarize_energy_conversions(
-    matches: Iterable[dict[str, Any]],
-) -> dict[str, Any]:
-    """Aggregate privacy-safe conversion diagnostics for compact batch output."""
-
-    accumulator = _conversion_summary_accumulator()
-    for match in matches:
-        _record_conversion_summary(accumulator, match)
-    return _finalize_conversion_summary(accumulator)
 
 
 def run_headless_match(

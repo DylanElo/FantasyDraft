@@ -464,7 +464,6 @@ def test_ops_runtime_separates_live_and_retained_finished_rooms(monkeypatch):
     assert response.get_json()["mission_snapshot_retry_rooms"] == 1
     assert response.get_json()["terminal_persistence_pending_rooms"] == 1
 
-
 def test_ops_runtime_keeps_terminal_persistence_pending_until_callback_returns(monkeypatch):
     monkeypatch.setenv("JJK_OPS_TOKEN", "secret-token")
     room_id = "ops-terminal-persistence"
@@ -472,7 +471,7 @@ def test_ops_runtime_keeps_terminal_persistence_pending_until_callback_returns(m
         room_id,
         [
             {"id": "p1", "name": "P1", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
-            {"id": "p2", "name": "P2", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+            {"id": "p2", "name": "P2", "team": ["satoru_gojo_young", "maki_zenin", "panda"]},
         ],
     )
     callback_started = threading.Event()
@@ -527,7 +526,7 @@ def test_ops_runtime_and_cleanup_reflect_in_flight_command_for_that_room_only(mo
         room_id,
         [
             {"id": "p1", "name": "P1", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
-            {"id": "p2", "name": "P2", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+            {"id": "p2", "name": "P2", "team": ["satoru_gojo_young", "maki_zenin", "panda"]},
         ],
     )
     state = web_app.battle_v2_manager.get_state(room_id)
@@ -561,7 +560,7 @@ def test_ops_runtime_and_cleanup_reflect_in_flight_command_for_that_room_only(mo
             unrelated_room,
             [
                 {"id": "p1", "name": "P1", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
-                {"id": "p2", "name": "P2", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+                {"id": "p2", "name": "P2", "team": ["satoru_gojo_young", "maki_zenin", "panda"]},
             ],
         )
         unrelated_state = web_app.battle_v2_manager.get_state(unrelated_room)
@@ -610,7 +609,7 @@ def test_terminal_persistence_requires_opted_in_replay_archive(monkeypatch):
         room_id,
         [
             {"id": "p1", "name": "P1", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
-            {"id": "p2", "name": "P2", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+            {"id": "p2", "name": "P2", "team": ["satoru_gojo_young", "maki_zenin", "panda"]},
         ],
     )
     state = web_app.battle_v2_manager.get_state(room_id)
@@ -631,7 +630,7 @@ def test_terminal_cleanup_retries_failed_analytics_before_removing_room(monkeypa
         room_id,
         [
             {"id": "p1", "name": "P1", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
-            {"id": "p2", "name": "P2", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+            {"id": "p2", "name": "P2", "team": ["satoru_gojo_young", "maki_zenin", "panda"]},
         ],
     )
     state = web_app.battle_v2_manager.get_state(room_id)
@@ -658,7 +657,7 @@ def test_cleanup_rechecks_terminal_persistence_after_waiting_for_room_lock(monke
         room_id,
         [
             {"id": "p1", "name": "P1", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
-            {"id": "p2", "name": "P2", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+            {"id": "p2", "name": "P2", "team": ["satoru_gojo_young", "maki_zenin", "panda"]},
         ],
     )
     monkeypatch.setattr(web_app.runtime_store, "record_analytics_event", lambda *_args, **_kwargs: False)
@@ -746,7 +745,7 @@ def test_terminal_analytics_marker_requires_every_durable_event_key(monkeypatch)
         room_id,
         [
             {"id": "p1", "name": "P1", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
-            {"id": "p2", "name": "P2", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+            {"id": "p2", "name": "P2", "team": ["satoru_gojo_young", "maki_zenin", "panda"]},
         ],
     )
     state = web_app.battle_v2_manager.get_state(room_id)
@@ -864,7 +863,7 @@ def test_stale_runtime_prunes_finished_rooms_lobbies_and_rate_limits(monkeypatch
         room_id,
         [
             {"id": "p1", "name": "P1", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
-            {"id": "p2", "name": "P2", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+            {"id": "p2", "name": "P2", "team": ["satoru_gojo_young", "maki_zenin", "panda"]},
         ],
     )
     state = web_app.battle_v2_manager.get_state(room_id)
@@ -946,7 +945,6 @@ def test_terminal_room_cleanup_refuses_removal_when_settlement_enqueue_fails(mon
 def test_finished_update_recovers_initial_snapshot_failure_without_duplicate_credit(monkeypatch):
     """A brief settlement-enqueue outage must recover before room cleanup."""
 
-    monkeypatch.delenv("JJK_FIRST_CREATION_PROFILE_STORE", raising=False)
     room_id = "finished-update-total-snapshot-recovery"
     player_one = "finished-update-total-p1"
     player_two = "finished-update-total-p2"
@@ -1025,7 +1023,6 @@ def test_finished_update_recovers_initial_snapshot_failure_without_duplicate_cre
 def test_finished_update_reconstructs_only_missing_player_after_partial_snapshot_failure(monkeypatch):
     """A mixed enqueue result must preserve success and retry only the gap."""
 
-    monkeypatch.delenv("JJK_FIRST_CREATION_PROFILE_STORE", raising=False)
     room_id = "finished-update-partial-snapshot-recovery"
     player_one = "finished-update-partial-p1"
     player_two = "finished-update-partial-p2"
@@ -1090,7 +1087,6 @@ def test_finished_update_reconstructs_only_missing_player_after_partial_snapshot
 
 
 def test_profile_read_force_drains_retryable_credit_without_socket_traffic(monkeypatch):
-    monkeypatch.delenv("JJK_FIRST_CREATION_PROFILE_STORE", raising=False)
     match_id = "profile-read-recovery-match"
     player_id = "profile-read-recovery-player"
     progress = {

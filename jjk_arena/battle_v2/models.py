@@ -91,6 +91,7 @@ class SkillClass(StrEnum):
     BYPASSING = "Bypassing"
     SOULBOUND = "Soulbound"
     NONSTACKING = "Nonstacking"
+    PASSIVE = "Passive"
 
 
 @dataclass(slots=True)
@@ -131,6 +132,30 @@ class ConditionSpec:
     scope: str = "target"
     negate: bool = False
     payload: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(slots=True)
+class PassiveSpec:
+    """Data-only descriptor for a one-time HP-threshold awakening.
+
+    When the character's HP drops at or below `hp_threshold` for the first
+    time (checked immediately inside ``apply_damage``), the resolver applies
+    each status in ``awakening_statuses`` permanently (duration=-1) and emits
+    a public ``passive_awakening`` event.
+
+    ``awakening_statuses`` is a list of status dicts, each containing:
+    - ``id``            -- status id string
+    - ``name``          -- display name
+    - ``payload``       -- dict of status payload kwargs (damage_reduction,
+                          damage_bonus, skill_replacements, etc.)
+    - ``families``      -- optional list of StatusFamily strings
+    """
+
+    id: str
+    name: str
+    description: str
+    hp_threshold: int
+    awakening_statuses: list[dict[str, Any]]
 
 
 @dataclass(slots=True)
@@ -204,6 +229,11 @@ class CharacterState:
     acted_this_turn: bool = False
     base_skill_ids: list[str] = field(default_factory=list)
     turn_damage_reduction_used: int = 0
+    # Passive awakening tracking: list of PassiveSpec dicts registered at
+    # character creation; set of ids already triggered (one-time only).
+    passives: list[dict[str, Any]] = field(default_factory=list)
+    passives_triggered: set[str] = field(default_factory=set)
+
 
 
 @dataclass(slots=True)

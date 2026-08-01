@@ -22,7 +22,6 @@ def test_every_special_mechanic_skill_has_dedicated_test_coverage():
 
 def test_all_first_creation_condition_payload_keys_are_registered():
     result = run_audit()["grammar_vocabulary_drift"]
-    assert result["condition_spec_mechanism_total_uses_across_all_78_skills"] == 0
     assert result["conditional_payload_keys_used_but_unregistered"] == []
     assert set(result["canonical_condition_payload_vocabulary_in_use"]) == set(
         result["conditional_payload_schema_keys"]

@@ -147,7 +147,7 @@ def test_match_finished_analytics_are_recorded_without_any_broadcast(monkeypatch
     monkeypatch.setenv("JJK_BATTLE_SYSTEM", "v2")
     web_app.battle_v2_manager.start_classic_match("no-broadcast-room", [
         {"id": "p1", "name": "Player One", "team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]},
-        {"id": "p2", "name": "Player Two", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+        {"id": "p2", "name": "Player Two", "team": ["satoru_gojo_young", "maki_zenin", "panda"]},
     ])
 
     before = web_app.runtime_store.analytics_summary()["match_finished"]["total"]
@@ -256,15 +256,13 @@ def test_settle_first_creation_missions_retries_after_a_transient_write_failure(
         {"id": "p1", "name": "Player One", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
         {"id": "p2", "name": "Player Two", "team": ["maki_zenin", "toge_inumaki", "panda"]},
     ])
-    _finish_first_creation_match_for_p1("mission-retry-room")
-
     real_merge = web_app.merge_first_creation_progress
 
     def failing_merge(*args, **kwargs):
         raise RuntimeError("simulated transient SQLite write failure")
 
     monkeypatch.setattr(web_app, "merge_first_creation_progress", failing_merge)
-    web_app.settle_first_creation_missions("mission-retry-room")
+    _finish_first_creation_match_for_p1("mission-retry-room")
 
     profile = web_app.load_first_creation_profile("p1")
     assert "welcome_to_jujutsu_high" not in profile["completed_missions"], (
@@ -315,7 +313,7 @@ def test_decisive_pvp_match_records_one_win_and_one_loss(monkeypatch):
     p2_client = socket_client_with_player("pvp-win-loss-p2")
     for client, player_id, team in [
         (p1_client, "P1", ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]),
-        (p2_client, "P2", ["satoru_gojo", "ryomen_sukuna", "mahito"]),
+        (p2_client, "P2", ["satoru_gojo_young", "maki_zenin", "panda"]),
     ]:
         client.emit(
             "battle_v2_join_pvp",
@@ -371,7 +369,7 @@ def test_resume_rebinds_socket_and_restores_viewer_specific_queue_without_hidden
     original.emit("battle_v2_submit_plan", command_payload(state, {"actions": [{
         "id": "resume-action",
         "caster_slot": 0,
-        "skill_id": "divergent_fist",
+        "skill_id": "fc_yuji_itadori_divergent_fist",
         "target_player_id": "__cpu_v2__",
         "target_slot": 0,
     }]}))
@@ -596,7 +594,7 @@ def test_battle_v2_socket_start_submit_confirm(monkeypatch):
             "room_id": "socket-v2",
             "player_name": "Tester",
             "player_team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"],
-            "enemy_team": ["satoru_gojo", "ryomen_sukuna", "mahito"],
+            "enemy_team": ["satoru_gojo_young", "maki_zenin", "panda"],
         },
     )
     start_state = received_payload(client, "battle_v2_update")
@@ -613,7 +611,7 @@ def test_battle_v2_socket_start_submit_confirm(monkeypatch):
                 {
                     "id": "a1",
                     "caster_slot": 0,
-                    "skill_id": "divergent_fist",
+                    "skill_id": "fc_yuji_itadori_divergent_fist",
                     "target_player_id": "__cpu_v2__",
                     "target_slot": 0,
                 }
@@ -626,7 +624,7 @@ def test_battle_v2_socket_start_submit_confirm(monkeypatch):
     resolved_state = received_payload(client, "battle_v2_update")
 
     assert resolved_state["turn_player_id"] == player_id
-    assert resolved_state["players"]["__cpu_v2__"]["team"][0]["hp"] == 80
+    assert resolved_state["players"]["__cpu_v2__"]["team"][0]["hp"] == 70
     assert any(event["type"] == "skill_resolved" and "used" in event["message"] for event in resolved_state["event_log"])
 
 
@@ -639,7 +637,7 @@ def test_battle_v2_socket_convert_energy(monkeypatch):
             "room_id": "socket-v2",
             "player_name": "Tester",
             "player_team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"],
-            "enemy_team": ["satoru_gojo", "ryomen_sukuna", "mahito"],
+            "enemy_team": ["satoru_gojo_young", "maki_zenin", "panda"],
         },
     )
     start_state = received_payload(client, "battle_v2_update")
@@ -707,8 +705,8 @@ def test_battle_v2_socket_start_accepts_expanded_roster_teams(monkeypatch):
         "battle_v2_start_classic",
         {
             "room_id": "socket-v2",
-            "player_team": ["aoi_todo", "maki_zenin", "yuta_okkotsu"],
-            "enemy_team": ["hiromi_higuruma", "satoru_gojo", "mahito"],
+            "player_team": ["aoi_todo", "maki_zenin", "yuta_okkotsu_jjk0"],
+            "enemy_team": ["toge_inumaki", "satoru_gojo_young", "panda"],
         },
     )
 
@@ -716,9 +714,9 @@ def test_battle_v2_socket_start_accepts_expanded_roster_teams(monkeypatch):
     assert [character["character_id"] for character in state["players"][state["turn_player_id"]]["team"]] == [
         "aoi_todo",
         "maki_zenin",
-        "yuta_okkotsu",
+        "yuta_okkotsu_jjk0",
     ]
-    assert "hiromi_higuruma" in state["skill_catalog"]
+    assert "toge_inumaki" in state["skill_catalog"]
 
 
 def test_battle_v2_socket_end_turn_runs_cpu_response(monkeypatch):
@@ -745,15 +743,15 @@ def test_battle_v2_socket_resolves_ally_target_skill(monkeypatch):
         {
             "room_id": "socket-v2",
             "player_name": "Tester",
-            "player_team": ["yuta_okkotsu", "yuji_itadori", "nobara_kugisaki"],
-            "enemy_team": ["satoru_gojo", "ryomen_sukuna", "mahito"],
+            "player_team": ["yuta_okkotsu_jjk0", "yuji_itadori", "nobara_kugisaki"],
+            "enemy_team": ["satoru_gojo_young", "maki_zenin", "panda"],
         },
     )
     start_state = received_payload(client, "battle_v2_update")
     player_id = start_state["turn_player_id"]
     state = web_app.battle_v2_manager.get_state("socket-v2")
     state.players[player_id].energy[EnergyType.WHITE] = 1
-    state.players[player_id].energy[EnergyType.GREEN] = 1
+    state.players[player_id].energy[EnergyType.BLUE] = 1
     state.players[player_id].team[1].hp = 50
 
     client.emit(
@@ -763,10 +761,9 @@ def test_battle_v2_socket_resolves_ally_target_skill(monkeypatch):
                 {
                     "id": "heal-ally",
                     "caster_slot": 0,
-                    "skill_id": "reverse_cursed_technique",
+                    "skill_id": "fc_yuta_okkotsu_jjk0_reverse_cursed_technique",
                     "target_player_id": player_id,
                     "target_slot": 1,
-                    "wildcard_pays": ["green"],
                 }
             ]
         }),
@@ -780,7 +777,7 @@ def test_battle_v2_socket_resolves_ally_target_skill(monkeypatch):
     assert heal_events
     assert heal_events[0]["payload"]["target_player_id"] == player_id
     assert heal_events[0]["payload"]["target_slot"] == 1
-    assert heal_events[0]["payload"]["amount"] == 30
+    assert heal_events[0]["payload"]["amount"] == 25
 
 
 def test_battle_v2_socket_broadcasts_viewer_specific_private_state(monkeypatch):
@@ -792,7 +789,7 @@ def test_battle_v2_socket_broadcasts_viewer_specific_private_state(monkeypatch):
         "human-v2",
         [
             {"id": "p1", "name": "P1", "team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]},
-            {"id": "p2", "name": "P2", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+            {"id": "p2", "name": "P2", "team": ["satoru_gojo_young", "maki_zenin", "panda"]},
         ],
     )
     state = web_app.battle_v2_manager.get_state("human-v2")
@@ -844,7 +841,7 @@ def test_battle_v2_pvp_join_waits_then_starts_two_human_room(monkeypatch):
         {
             "room_id": "human-start",
             "player_name": "P2",
-            "player_team": ["satoru_gojo", "ryomen_sukuna", "mahito"],
+            "player_team": ["satoru_gojo_young", "maki_zenin", "panda"],
         },
     )
 
@@ -890,7 +887,7 @@ def test_battle_v2_pvp_waiting_player_can_cancel_lobby(monkeypatch):
         {
             "room_id": "human-cancel",
             "player_name": "P2",
-            "player_team": ["satoru_gojo", "ryomen_sukuna", "mahito"],
+            "player_team": ["satoru_gojo_young", "maki_zenin", "panda"],
         },
     )
     waiting = received_payload(p2_client, "battle_v2_lobby")
@@ -923,7 +920,7 @@ def test_battle_v2_pvp_disconnect_cleans_waiting_lobby(monkeypatch):
         {
             "room_id": "human-disconnect",
             "player_name": "P2",
-            "player_team": ["satoru_gojo", "ryomen_sukuna", "mahito"],
+            "player_team": ["satoru_gojo_young", "maki_zenin", "panda"],
         },
     )
     waiting = received_payload(p2_client, "battle_v2_lobby")
@@ -986,7 +983,7 @@ def test_cpu_start_cannot_overwrite_pvp_or_invalid_start_delete_room(monkeypatch
 
     web_app.battle_v2_manager.start_classic_match("protected-invalid", [
         {"id": "x", "name": "X", "team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]},
-        {"id": "y", "name": "Y", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+        {"id": "y", "name": "Y", "team": ["satoru_gojo_young", "maki_zenin", "panda"]},
     ])
     protected = web_app.battle_v2_manager.rooms["protected-invalid"]
     attacker.emit("battle_v2_start_classic", {"room_id": "protected-invalid", "roster_mode": "first_creation", "player_team": ["unknown", "unknown", "unknown"]})
@@ -999,7 +996,7 @@ def test_battle_v2_human_confirm_does_not_run_cpu_turn(monkeypatch):
     p2_client = socket_client_with_player("p2")
     for client, player_id, team in [
         (p1_client, "P1", ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]),
-        (p2_client, "P2", ["satoru_gojo", "ryomen_sukuna", "mahito"]),
+        (p2_client, "P2", ["satoru_gojo_young", "maki_zenin", "panda"]),
     ]:
         client.emit(
             "battle_v2_join_pvp",
@@ -1021,7 +1018,7 @@ def test_battle_v2_human_confirm_does_not_run_cpu_turn(monkeypatch):
                 {
                     "id": "a1",
                     "caster_slot": 0,
-                    "skill_id": "divergent_fist",
+                    "skill_id": "fc_yuji_itadori_divergent_fist",
                     "target_player_id": "p2",
                     "target_slot": 0,
                 }
@@ -1072,7 +1069,7 @@ def test_battle_v2_socket_start_first_creation_mode_uses_first_creation_catalog(
 
     state = received_payload(client, "battle_v2_update")
     assert "satoru_gojo_young" in state["skill_catalog"]
-    assert "mahito" not in state["skill_catalog"]
+    assert "panda" in state["skill_catalog"]
     assert state["players"]["__cpu_v2__"]["team"][0]["character_id"] == "yuta_okkotsu_jjk0"
 
 
@@ -1211,7 +1208,7 @@ def test_incompatible_second_joiner_does_not_corrupt_first_players_lobby(monkeyp
         {
             "room_id": "mismatched-code",
             "player_name": "P3",
-            "player_team": ["satoru_gojo", "ryomen_sukuna", "mahito"],
+            "player_team": ["satoru_gojo_young", "maki_zenin", "panda"],
         },
     )
     p1_update = received_payload(p1_client, "battle_v2_update")
@@ -1224,7 +1221,7 @@ def test_finished_match_releases_private_code_and_player_slot_without_ack(monkey
     p2_client = socket_client_with_player("finish-p2")
     for client, player_id, team in [
         (p1_client, "P1", ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]),
-        (p2_client, "P2", ["satoru_gojo", "ryomen_sukuna", "mahito"]),
+        (p2_client, "P2", ["satoru_gojo_young", "maki_zenin", "panda"]),
     ]:
         client.emit(
             "battle_v2_join_pvp",
@@ -1252,7 +1249,7 @@ def test_finished_match_releases_private_code_and_player_slot_without_ack(monkey
 
     p4_client.emit(
         "battle_v2_join_pvp",
-        {"room_id": "reuse-code", "player_name": "P3", "player_team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+        {"room_id": "reuse-code", "player_name": "P3", "player_team": ["satoru_gojo_young", "maki_zenin", "panda"]},
     )
     new_match = received_payload(p4_client, "battle_v2_update")
     assert new_match["match_id"] != match_id
@@ -1264,7 +1261,7 @@ def test_rematch_spam_with_same_nonce_creates_exactly_one_new_match(monkeypatch)
     p2_client = socket_client_with_player("rematch-p2")
     for client, player_id, team in [
         (p1_client, "P1", ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]),
-        (p2_client, "P2", ["satoru_gojo", "ryomen_sukuna", "mahito"]),
+        (p2_client, "P2", ["satoru_gojo_young", "maki_zenin", "panda"]),
     ]:
         client.emit(
             "battle_v2_join_pvp",
@@ -1321,7 +1318,7 @@ def test_disconnect_grace_expiry_forfeits_through_live_scheduler(monkeypatch):
     p2_client = socket_client_with_player("grace-p2")
     for client, player_id, team in [
         (p1_client, "P1", ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]),
-        (p2_client, "P2", ["satoru_gojo", "ryomen_sukuna", "mahito"]),
+        (p2_client, "P2", ["satoru_gojo_young", "maki_zenin", "panda"]),
     ]:
         client.emit(
             "battle_v2_join_pvp",
@@ -1359,7 +1356,7 @@ def test_opponent_is_immediately_notified_when_a_player_disconnects(monkeypatch)
     p2_client = socket_client_with_player("notify-p2")
     for client, player_id, team in [
         (p1_client, "P1", ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]),
-        (p2_client, "P2", ["satoru_gojo", "ryomen_sukuna", "mahito"]),
+        (p2_client, "P2", ["satoru_gojo_young", "maki_zenin", "panda"]),
     ]:
         client.emit(
             "battle_v2_join_pvp",
@@ -1388,7 +1385,7 @@ def test_rematch_is_rejected_when_a_participant_started_another_match(monkeypatc
     p2_client = socket_client_with_player("p0-p2")
     for client, player_id, team in [
         (p1_client, "P1", ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]),
-        (p2_client, "P2", ["satoru_gojo", "ryomen_sukuna", "mahito"]),
+        (p2_client, "P2", ["satoru_gojo_young", "maki_zenin", "panda"]),
     ]:
         client.emit(
             "battle_v2_join_pvp",

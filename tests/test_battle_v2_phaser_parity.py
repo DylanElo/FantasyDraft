@@ -24,25 +24,47 @@ const fighter = { character_id: 'todo', alive: true, cooldowns: {}, statuses: [{
 const replacement = { id: 'replacement', name: 'Replacement', cost: ['blue'], classes: ['Control'], target_rule: { kind: 'enemy' }, effects: [{ type: 'apply_status', target: 'target', payload: {} }] };
 const base = { id: 'source', name: 'Source', cost: ['blue'], classes: [], target_rule: { kind: 'enemy' }, effects: [{ type: 'damage', target: 'target', payload: {} }] };
 const store = Object.create(proto);
-store.state = { skill_catalog: { todo: { skills: [base, replacement] } } };
+store.state = {
+  skill_catalog: { todo: { skills: [base, replacement] } },
+  skill_options: { '0': {
+    source: {
+      effective_skill_id: 'replacement',
+      adjusted_cost: ['blue', 'black'],
+      disabled_reason: 'Stunned: this skill class is disabled.',
+      legal_target_payloads: [],
+    },
+    todo_redirect: {
+      effective_skill_id: 'todo_redirect',
+      adjusted_cost: [],
+      disabled_reason: null,
+      legal_target_payloads: [{
+        target_player_id: 'p2', target_slot: 0, target_slots: [],
+        secondary_target_slot: null,
+        alternate_target_player_id: 'p1', alternate_target_slot: 2,
+      }],
+    },
+    venom: {
+      effective_skill_id: 'venom',
+      adjusted_cost: [],
+      disabled_reason: null,
+      legal_target_payloads: [{
+        target_player_id: 'p2', target_slot: 1, target_slots: [1, 2],
+        secondary_target_slot: 2,
+        alternate_target_player_id: null, alternate_target_slot: null,
+      }],
+    },
+  } },
+};
 store.character = () => null;
 store.me = () => ({ id: 'p1', energy: { green: 0, red: 0, blue: 1, white: 0 }, team: [fighter, { alive: true, statuses: [] }, { alive: true, statuses: [] }] });
 store.foe = () => ({ id: 'p2', team: [{ alive: true, statuses: [] }, { alive: true, statuses: [{ id: 'poison', duration: 1 }] }, { alive: true, statuses: [] }] });
 store.mineId = () => 'p1'; store.enemyId = () => 'p2'; store.controlsLocked = () => false;
 store.queuedSlots = () => new Set(); store.actions = []; store.actionWildPays = {}; store.selectedCasterSlot = 0;
 store.showToast = () => {}; store.notify = () => {}; store.ensureSelectedCaster = () => {}; store.ensureWildcardPayments = () => {};
-store.pendingActionPayloads = () => store.actions; store.socketClient = { emit: () => {} }; store.targetBlocksSkill = () => false;
+store.pendingActionPayloads = () => store.actions; store.socketClient = { emit: () => {} };
 const effective = store.skillFor(fighter, 'source');
 const adjusted = store.adjustedCost(fighter, effective);
-const energyFit = store.skillFit(effective, fighter);
-const specificShortFit = store.skillFit(
-  { id: 'taijutsu', name: 'Taijutsu Skill', cost: ['green'], classes: [], target_rule: { kind: 'enemy' }, effects: [] },
-  { character_id: 'plain', alive: true, cooldowns: {}, statuses: [], skill_replacements: {} },
-);
-const harmfulSkill = { id: 'harm', cost: [], classes: ['Physical'], target_rule: { kind: 'enemy' }, effects: [{ type: 'damage', target: 'target', payload: {} }] };
-const classSkill = { id: 'class', cost: [], classes: ['Physical'], target_rule: { kind: 'enemy' }, effects: [{ type: 'damage', target: 'target', payload: {} }] };
-const harmfulBlocked = store.statusBlocksSkill({ statuses: [{ duration: 1, name: 'Stop', payload: { stun_harmful: true } }] }, harmfulSkill);
-const classBlocked = store.statusBlocksSkill({ statuses: [{ duration: 1, name: 'Body Stun', payload: { stun_classes: ['Physical'] } }] }, classSkill);
+const disabledReason = store.skillDisabledReason(fighter, effective);
 
 const todoSkill = { id: 'todo_redirect', cost: [], classes: [], target_rule: { kind: 'enemy' }, effects: [{ type: 'apply_status', target: 'target', payload: { controlled_redirect: true } }] };
 store.selectedSkillId = todoSkill.id; store.selectedSkill = () => todoSkill; store.targetingStage = null; store.pendingPrimaryTarget = null;
@@ -54,7 +76,7 @@ const venom = { id: 'venom', cost: [], classes: [], target_rule: { kind: 'enemy_
 store.selectedSkillId = venom.id; store.selectedSkill = () => venom; store.targetingStage = 'venom_primary'; store.pendingPrimaryTarget = null;
 store.target('enemy', 1); store.target('enemy', 2);
 const venomAction = store.actions[0];
-console.log(JSON.stringify({ effectiveId: effective.effective_skill_id, originalId: effective.id, adjusted, energyFit, specificShortFit, harmfulBlocked, classBlocked, todoAction, venomAction }));
+console.log(JSON.stringify({ effectiveId: effective.effective_skill_id, originalId: effective.id, adjusted, disabledReason, todoAction, venomAction }));
 """
     result = subprocess.run(
         ["node", "--experimental-default-type=module", "-"],
@@ -77,10 +99,7 @@ def test_phaser_matches_server_for_adjusted_cost_replacement_stuns_and_disabled_
     assert probe["effectiveId"] == effective_skill_id(caster, "source") == "replacement"
     assert probe["originalId"] == "source"
     assert probe["adjusted"] == [energy.value for energy in _adjusted_cost_skill(caster, skill).cost]
-    assert probe["energyFit"] == {"ok": False, "reason": "Short on Wild energy."}
-    assert probe["specificShortFit"] == {"ok": False, "reason": "Short on Taijutsu."}
-    assert probe["harmfulBlocked"] == "Stop: harmful skills are disabled."
-    assert "Body Stun" in probe["classBlocked"]
+    assert probe["disabledReason"] == "Stunned: this skill class is disabled."
 
     state = BattleState({"p1": PlayerState("p1", "P1", team=[caster]), "p2": PlayerState("p2", "P2", team=[CharacterState("enemy", "Enemy")])}, "p1")
     state.players["p1"].energy[EnergyType.BLUE] = 1

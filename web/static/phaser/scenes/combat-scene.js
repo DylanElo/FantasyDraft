@@ -117,9 +117,11 @@ export class CombatScene extends CombatQueueReviewScene {
     const skillY = reviewY - skillH - 6;
     const identityH = 48;
     const identityY = skillY - identityH;
+    const timelineH = 38;
+    const timelineY = identityY - timelineH - 6;
     const cardH = clamp(Math.round(usableH * 0.16), compressed ? 118 : 126, frame.height > 900 ? 148 : 138);
     const enemyY = frame.top + topH + (compressed ? 28 : compact ? 58 : 68);
-    const allyY = identityY - cardH - 6;
+    const allyY = timelineY - cardH - 6;
     const contentX = frame.x + (frame.width < 380 ? 12 : 15);
     const contentW = frame.width - (contentX - frame.x) * 2;
     const gap = frame.width < 380 ? 7 : 9;
@@ -146,6 +148,8 @@ export class CombatScene extends CombatQueueReviewScene {
       fieldTop: enemyY + cardH + 2,
       fieldBottom: allyY - 2,
       fieldH: Math.max(96, allyY - enemyY - cardH - 4),
+      timelineY,
+      timelineH,
       identityY,
       identityH,
       identityW,
@@ -757,10 +761,6 @@ export class CombatScene extends CombatQueueReviewScene {
       },
       disabled: false,
     });
-        () => store.inspectFighter(side, slot),
-        { cue: 'reveal' },
-      );
-    }
   }
 
   renderFighterLane(team, side, frame, layout) {
@@ -1492,6 +1492,81 @@ export class CombatScene extends CombatQueueReviewScene {
     });
   }
 
+  renderMiniTimeline(frame, layout) {
+    if (this.store.state().phase !== 'PLANNING' && this.store.state().phase !== 'QUEUE_REVIEW') return;
+    
+    const actions = this.store.actions || [];
+    if (actions.length === 0) return;
+
+    const me = this.store.state().players[this.store.mineId()];
+    if (!me || !me.team) return;
+
+    const y = layout.timelineY;
+    const h = layout.timelineH;
+    const chipW = 76;
+    const gap = 12;
+    const totalW = actions.length * chipW + (actions.length - 1) * gap;
+    const startX = frame.x + (frame.width - totalW) / 2;
+
+    this.mono(frame.x + frame.width / 2, y - 6, 'QUEUE', {
+      color: CULLING_COLORS.mutedText,
+      fontSize: '10px',
+      fontStyle: '700',
+    }).setOrigin(0.5, 1);
+
+    actions.forEach((action, index) => {
+      const x = startX + index * (chipW + gap);
+      const caster = me.team[action.caster_slot];
+      const skill = this.store.skillFor(caster, action.skill_id);
+      
+      const tone = skill ? (ENERGY_COLORS[skill.cost ? skill.cost[0] : 'white'] || CULLING_COLORS.cobalt) : CULLING_COLORS.cobalt;
+      
+      this.graphics.fillStyle(CULLING_COLORS.shadow, 0.2);
+      this.graphics.fillPoints(clippedPoints(x + 2, y + 2, chipW, h, 6), true);
+      
+      this.graphics.fillStyle(tone, 0.15);
+      this.graphics.fillPoints(clippedPoints(x, y, chipW, h, 6), true);
+      this.graphics.lineStyle(1.5, tone, 0.6);
+      this.graphics.strokePoints(clippedPoints(x, y, chipW, h, 6), true);
+
+      if (caster) {
+        this.renderPortraitPlate(caster, x + 4, y + 4, h - 8, h - 8, { alpha: 0.9, context: 'thumb' });
+      }
+
+      this.graphics.fillStyle(tone, 0.8);
+      this.graphics.fillCircle(x + h, y + h / 2, 2.5);
+      this.graphics.lineStyle(1.5, tone, 0.8);
+      this.graphics.beginPath();
+      this.graphics.moveTo(x + h + 2, y + h / 2);
+      this.graphics.lineTo(x + h + 10, y + h / 2);
+      this.graphics.strokePath();
+      this.graphics.beginPath();
+      this.graphics.moveTo(x + h + 7, y + h / 2 - 3);
+      this.graphics.lineTo(x + h + 10, y + h / 2);
+      this.graphics.lineTo(x + h + 7, y + h / 2 + 3);
+      this.graphics.strokePath();
+
+      if (action.target_player_id && action.target_slot !== undefined && action.target_slot !== null) {
+        const targetSide = action.target_player_id === this.store.mineId() ? 'mine' : 'enemy';
+        const targetState = targetSide === 'mine' ? me : this.store.state().players[this.store.enemyId()];
+        if (targetState && targetState.team) {
+          const target = targetState.team[action.target_slot];
+          if (target) {
+            this.renderPortraitPlate(target, x + chipW - h + 4, y + 4, h - 8, h - 8, { alpha: 0.9, context: 'thumb' });
+          }
+        }
+      } else {
+        this.graphics.fillStyle(CULLING_COLORS.charcoal, 0.5);
+        this.graphics.fillCircle(x + chipW - h / 2, y + h / 2, Math.max(6, (h - 8) / 2));
+      }
+      
+      this.registerHitTarget(x, y, chipW, h, 'Review queue', () => {
+        this.presentationLayerCall('interactionCue', { cue: 'target-select' });
+        this.store.openQueueReview();
+      });
+    });
+  }
+
   renderCommandDeck(frame, layout, selected) {
     this.renderIdentityStrip(frame, layout, selected);
     if (selected) {
@@ -2193,6 +2268,7 @@ export class CombatScene extends CombatQueueReviewScene {
     if (!this.store.queueReviewOpen) {
       this.renderBattlefield(frame, layout, prompt);
       this.renderFighterLane(me && me.team, 'mine', frame, layout);
+      this.renderMiniTimeline(frame, layout);
       this.renderCommandDeck(frame, layout, selected);
     }
     this.renderQueueReviewSheet(frame);

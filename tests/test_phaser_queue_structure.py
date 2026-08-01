@@ -59,6 +59,37 @@ def test_queue_command_deck_preserves_order_payment_and_validation_controls():
     assert "disabled: this.store.queueSubmitting || !queueFit.ok" in source
 
 
+def test_empty_combat_timeline_accepts_the_store_state_snapshot():
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("Node.js is required for Phaser runtime verification.")
+
+    script = """
+globalThis.Phaser = { Scene: class {} };
+const { renderMiniTimeline } = await import('./web/static/phaser/scenes/combat-skill-deck.js');
+renderMiniTimeline.call({ store: { state: { phase: 'planning' }, actions: [] } }, {}, {});
+"""
+    subprocess.run(
+        [node, "--input-type=module", "-e", script],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_combat_fighter_plate_uses_the_store_caster_selection_api():
+    source = (ROOT / "web/static/phaser/scenes/combat-fighter-field.js").read_text(encoding="utf-8")
+    assert "store.selectCaster(slot)" in source
+    assert "store.selectFighter(slot)" not in source
+
+
+def test_combat_skill_card_selects_the_authoritative_skill_id():
+    source = (ROOT / "web/static/phaser/scenes/combat-skill-deck.js").read_text(encoding="utf-8")
+    assert "this.store.selectSkill(skill.id)" in source
+    assert "this.store.selectSkill(index)" not in source
+
+
 @pytest.mark.parametrize(
     ("width", "height"),
     ((360, 800), (390, 844), (430, 932)),

@@ -10,7 +10,7 @@
   "summary": {
     "cleared_groups": 0,
     "generated_review_required_groups": 5,
-    "prototype_only_groups": 4
+    "prototype_only_groups": 1
   },
   "groups": [
     {
@@ -97,44 +97,14 @@
       "release_caution": "Fallbacks used a franchise screenshot as style/intensity context and are not release-cleared."
     },
     {
-      "id": "superseded_environment_lineage",
-      "runtime": false,
-      "origin": "generated",
-      "clearance_status": "prototype_only",
-      "provenance": "environments/PROVENANCE.md",
-      "paths": [
-        "environments/culling-current-rooftop.webp",
-        "environments/underpass-courtyard-night.png"
-      ]
-    },
-    {
-      "id": "superseded_skill_atlas_v2",
-      "runtime": false,
-      "origin": "generated_with_user_supplied_franchise_references",
-      "clearance_status": "prototype_only",
-      "provenance": "skills/PROVENANCE.md#superseded-action-atlas-v2",
-      "paths": [
-        "skills/culling-current/skill-action-atlas-v2.png"
-      ]
-    },
-    {
-      "id": "legacy_abstract_portraits",
-      "runtime": false,
-      "origin": "project_prototype",
-      "clearance_status": "prototype_only",
-      "provenance": "README.md",
-      "path_glob": "portraits/*.svg"
-    },
-    {
       "id": "concept_and_qa_artifacts",
       "runtime": false,
       "origin": "mixed_prototype_evidence",
       "clearance_status": "prototype_only",
       "provenance": "../../../artifacts/ui-redesign/README.md",
       "path_globs": [
-        "../../../artifacts/ui-redesign/concepts/**",
-        "../../../artifacts/ui-redesign/**/qa/**",
-        "../../../artifacts/visual_qa/**"
+        "../../../artifacts/ui-redesign/concepts/culling-current/**",
+        "../../../artifacts/ui-redesign/runtime-v42/**"
       ]
     }
   ]

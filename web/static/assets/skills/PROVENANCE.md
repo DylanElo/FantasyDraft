@@ -105,8 +105,9 @@ and outcomes.
 
 ## Superseded action atlas v2
 
-`culling-current/skill-action-atlas-v2.png` is retained only as generated-art
-lineage and is no longer loaded by the shipping skill-card system. It was the
+The `culling-current/skill-action-atlas-v2.png` binary was removed after it
+stopped loading in the shipping skill-card system. This record preserves its
+generated-art lineage. It was the
 interim 16-cell source before the five v3 atlases gave all 78 shipping skills
 unique cells. It is a 1254 x 1254 RGB PNG created
 on 2026-07-18 with OpenAI built-in image generation. The generated source and

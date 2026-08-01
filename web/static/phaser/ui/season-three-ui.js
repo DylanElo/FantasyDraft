@@ -31,33 +31,6 @@ function clipPoints(x, y, w, h, cut = 8) {
   return season3ClipPoints(x, y, w, h, cut);
 }
 
-export function missionMapS3Layout(frame) {
-  const x = frame.x + frame.gutter;
-  const w = frame.width - frame.gutter * 2;
-  const header = { x: frame.x + 10, y: frame.top, w: frame.width - 20, h: 62 };
-  header.bottom = header.y + header.h;
-  const cta = { x, y: frame.bottom - 50, w, h: 50 };
-  const pager = { x, y: cta.y - 52, w, h: 44 };
-  const locked = { x, y: pager.y - 98, w, h: 90 };
-  const route = { x, y: header.bottom + 8, w, h: 64 };
-  const cardTop = route.y + route.h + 10;
-  const usableHeight = frame.bottom - frame.top;
-  const pageSize = frame.width >= 430 && usableHeight >= 820 ? 2 : 1;
-  const gap = 8;
-  const available = locked.y - cardTop - 10 - gap * (pageSize - 1);
-  const cardH = Math.max(190, Math.min(pageSize === 2 ? 218 : 250, Math.floor(available / pageSize)));
-  return {
-    frame,
-    header,
-    cta,
-    pager,
-    locked,
-    route,
-    cards: { x, y: cardTop, w, h: cardH, gap, pageSize },
-    toastY: pager.y - 54,
-  };
-}
-
 export function bootS3Layout(frame) {
   const x = frame.x + frame.gutter;
   const w = frame.width - frame.gutter * 2;
@@ -76,40 +49,6 @@ export function bootS3Layout(frame) {
     title: { x, y: sigil.y + sigil.h + 18, w, h: 58 },
     meter,
     enter,
-  };
-}
-
-export function draftS3Layout(frame, options = {}) {
-  const cpu = options.cpu !== false;
-  const x = frame.x + frame.gutter;
-  const w = frame.width - frame.gutter * 2;
-  const header = { x: frame.x + 10, y: frame.top, w: frame.width - 20, h: 62 };
-  header.bottom = header.y + header.h;
-  const cta = { x, y: frame.bottom - 50, w, h: 50 };
-  const pager = { x, y: cta.y - 52, w, h: 44 };
-  let y = header.bottom + 8;
-  const player = { x, y, w, h: 62 };
-  y = player.y + player.h + 8;
-  const enemy = cpu ? { x, y, w, h: 62 } : null;
-  if (enemy) y = enemy.y + enemy.h + 8;
-  const difficulty = cpu ? { x, y, w, h: 44 } : null;
-  if (difficulty) y = difficulty.y + difficulty.h + 8;
-  const targets = { x, y, w, h: 44 };
-  y = targets.y + targets.h + 8;
-  const rosterLabelY = y;
-  const roster = { x, y: rosterLabelY + 18, w, cardH: 110, gap: 8 };
-  return {
-    frame,
-    header,
-    player,
-    enemy,
-    difficulty,
-    targets,
-    rosterLabelY,
-    roster,
-    pager,
-    cta,
-    toastY: pager.y - 54,
   };
 }
 
@@ -260,11 +199,11 @@ export function drawS3Header(scene, frame, options = {}) {
     color: S3_COLORS.inkText,
   });
   if (options.backHandler) {
-    drawS3Button(scene, x + w - 52, y + 9, 44, 44, '<', options.backHandler, {
+    const backW = 78;
+    drawS3Button(scene, x + w - backW - 8, y + 9, backW, 44, '‹ Back', options.backHandler, {
       variant: 'bone',
       accent: S3_COLORS.cyan,
-      fontSize: '16px',
-      mono: true,
+      fontSize: '15px',
       accessibilityLabel: options.backLabel || 'Back',
       accessibilityId: options.backAccessibilityId || 'back',
     });

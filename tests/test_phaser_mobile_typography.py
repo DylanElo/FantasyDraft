@@ -68,7 +68,7 @@ def test_critical_combat_and_queue_state_stays_at_readable_mobile_sizes() -> Non
 
     for marker in (
         "'POOL / AFTER'",
-        "rowError || routeParts.join",
+        "const errorNode = this.text",
         "'LEFT > RIGHT / READY' : 'PAYMENT INVALID'",
         "fontSize: confirmW",
     ):

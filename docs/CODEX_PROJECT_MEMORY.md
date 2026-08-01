@@ -261,9 +261,9 @@ A skill must expose and implement:
 - target rule
 - classes/tags
 - effects
-- conditions
+- typed effect conditions
 - duration clock
-- transformation/replacement behavior
+- status-driven replacement behavior
 - counterplay
 
 Player-facing prose is not an engine parser. Shipping behavior is explicit structured data.

@@ -344,7 +344,7 @@ export function renderSkillButton(skill, caster, index, x, y, w, h) {
         slot: index,
       });
       if (selected || state.disabled) this.store.openSkillDetail(skill.id);
-      else this.store.selectSkill(index);
+      else this.store.selectSkill(skill.id);
     },
 
     {
@@ -465,12 +465,13 @@ export function renderBottomActions(frame, layout) {
 }
 
 export function renderMiniTimeline(frame, layout) {
-  if (this.store.state().phase !== 'PLANNING' && this.store.state().phase !== 'QUEUE_REVIEW') return;
+  const state = this.store.state;
+  if (!state || !['planning', 'queue_review'].includes(state.phase)) return;
 
   const actions = this.store.actions || [];
   if (actions.length === 0) return;
 
-  const me = this.store.state().players[this.store.mineId()];
+  const me = state.players[this.store.mineId()];
   if (!me || !me.team) return;
 
   const y = layout.timelineY;
@@ -520,7 +521,7 @@ export function renderMiniTimeline(frame, layout) {
 
     if (action.target_player_id && action.target_slot !== undefined && action.target_slot !== null) {
       const targetSide = action.target_player_id === this.store.mineId() ? 'mine' : 'enemy';
-      const targetState = targetSide === 'mine' ? me : this.store.state().players[this.store.enemyId()];
+      const targetState = targetSide === 'mine' ? me : state.players[this.store.enemyId()];
       if (targetState && targetState.team) {
         const target = targetState.team[action.target_slot];
         if (target) {

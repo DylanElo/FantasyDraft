@@ -13,7 +13,7 @@ of its time on:
 
 ## 1. Structural completeness
 
-Flags empty/placeholder UI text, a skill with no effects and no conditions,
+Flags empty/placeholder UI text, a skill with no effects,
 missing skill classes, a negative cooldown, or an invalid conditional payload
 key/value — things the base dataclasses don't catch. Current result: 0 flagged
 across all 78 skills.
@@ -39,8 +39,7 @@ against what the roster actually uses. First Creation canonically authors
 conditions on the exact `EffectSpec.payload` entry they gate. The complete
 typed vocabulary and runtime validator live in
 `jjk_arena/battle_v2/effect_payload.py`; all 78 skills are checked by the
-structural audit. `ConditionSpec` remains a legacy engine capability but is
-not a parallel authoring model for new First Creation content.
+structural audit. There is no parallel skill-level condition model.
 
 Other vocabulary findings: `cost_modifier` and `damage_modifier` don't exist
 anywhere in the engine, not just unused by First Creation. `domain`,

@@ -16,8 +16,9 @@ globalThis.JJK_MOBILE_TOKENS = {};
 globalThis.JJK_BOOTSTRAP = {};
 globalThis.Phaser = { Scene: class { constructor() {} } };
 const { FirstCreationScene } = await import('./web/static/phaser/scenes/first-creation-scene.js');
-const { missionMapS3Layout } = await import('./web/static/phaser/ui/season-three-ui.js');
+const { MissionMapScene } = await import('./web/static/phaser/scenes/mission-map-scene.js');
 const creationScene = new FirstCreationScene();
+const missionScene = new MissionMapScene();
 const frames = [];
 for (const safe of [false, true]) {
   for (const [width, height] of [[360, 800], [390, 844], [430, 932]]) {
@@ -25,11 +26,8 @@ for (const safe of [false, true]) {
     const bottom = safe ? height - 44 : height - 14;
     const frame = { x: 0, width, height, gutter: 16, top, bottom, fullWidth: width, fullHeight: height };
     const creation = creationScene.firstCreationLayout(frame);
-    const mission = missionMapS3Layout(frame);
-    const missionCardsBottom = mission.cards.y
-      + mission.cards.pageSize * mission.cards.h
-      + Math.max(0, mission.cards.pageSize - 1) * mission.cards.gap;
-    frames.push({ width, height, safe, top, bottom, creation, mission, missionCardsBottom });
+    const mission = missionScene.missionMapComposition(frame);
+    frames.push({ width, height, safe, top, bottom, creation, mission });
   }
 }
 console.log(JSON.stringify({ frames }));
@@ -49,12 +47,9 @@ console.log(JSON.stringify({ frames }));
         assert creation["cta"]["h"] >= 44
         assert creation["cta"]["y"] + creation["cta"]["h"] <= entry["bottom"]
 
-        assert mission["route"]["y"] >= mission["header"]["bottom"]
-        assert entry["missionCardsBottom"] <= mission["locked"]["y"]
-        assert mission["locked"]["y"] + mission["locked"]["h"] <= mission["pager"]["y"]
-        assert mission["pager"]["y"] + mission["pager"]["h"] <= mission["cta"]["y"]
-        assert mission["cta"]["y"] + mission["cta"]["h"] <= entry["bottom"]
-        assert mission["cards"]["pageSize"] == (2 if entry["width"] == 430 else 1)
+        assert mission["map"]["y"] >= entry["top"]
+        assert mission["map"]["y"] + mission["map"]["h"] <= mission["detail"]["y"]
+        assert mission["detail"]["y"] + mission["detail"]["h"] <= entry["bottom"]
 
 
 def test_season_three_boot_team_setup_and_matchup_regions_fit_supported_safe_frames():
@@ -293,9 +288,7 @@ def test_boot_team_setup_and_matchup_use_s3_components_and_keep_authority_contra
     assert "renderSetupFeatured" in roster
     assert "renderSetupCharacterStudy" in roster
     assert "renderSetupAuthoritativeSkill" in roster
-    assert "skillVisualFor(skill)" in roster
     assert "this.store.toggleTeamPick(teamKey, character.id)" in roster
-    assert "FIRST_CREATION_ORDER" in roster
 
     assert "export class MatchupScene" in matchup
     assert "const enemyIds = isCpu ? this.store.enemyTeam.slice(0, 3) : [];" in matchup

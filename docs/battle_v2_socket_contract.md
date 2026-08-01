@@ -43,7 +43,7 @@ authoritative match id. For local/dev testing the client may provide both teams:
   "player_name": "Player",
   "roster_mode": "classic",
   "player_team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"],
-  "enemy_team": ["satoru_gojo", "ryomen_sukuna", "mahito"],
+  "enemy_team": ["satoru_gojo_young", "maki_zenin", "panda"],
   "difficulty": "hard"
 }
 ```
@@ -379,6 +379,15 @@ does not predict the server's pause or expiry. While the resume request is in
 flight, HUD, DOM mirror, and diagnostics report `resuming`/restoring rather
 than connected. A rejected resume discards the stale cached battle locally
 without emitting surrender, clears the expired token, and returns to Home.
+
+#### Authoritative skill options
+
+Each viewer update includes `skill_options` for that viewer's active fighter
+slots and base skill slots. Every option contains the effective replacement
+skill id, adjusted cost, complete legal target payloads, and a disabled reason
+when no legal action is available. The browser renders these values and never
+recomputes cost modifiers, stun families, invulnerability, anti-domain
+conversion, required statuses, or target legality.
 
 ### `battle_v2_error`
 

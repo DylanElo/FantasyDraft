@@ -412,7 +412,7 @@ def test_identity_editor_is_native_focus_managed_and_mobile_sized():
     lobby = (ROOT / "web/static/phaser/scenes/lobby-scene.js").read_text(encoding="utf-8")
     bridge = (ROOT / "web/static/phaser/core/dom-ui-bridge.js").read_text(encoding="utf-8")
     base = (ROOT / "web/static/phaser/scenes/base-scene.js").read_text(encoding="utf-8")
-    legacy = (ROOT / "web/static/phaser/legacy-shell.js").read_text(encoding="utf-8")
+    entry = (ROOT / "web/static/phaser/index.js").read_text(encoding="utf-8")
     html = (ROOT / "web/templates/index.html").read_text(encoding="utf-8")
     css = (ROOT / "web/static/phaser-shell.css").read_text(encoding="utf-8")
 
@@ -447,7 +447,7 @@ def test_identity_editor_is_native_focus_managed_and_mobile_sized():
     assert "heading: this.accessibilityHeading || ''" in base
     assert "disabledReason" in base
     assert "accessibilityLabel: options.backLabel || 'Back'" in (ROOT / "web/static/phaser/ui/season-three-ui.js").read_text(encoding="utf-8")
-    assert "new DomUiBridge(document)" in legacy
+    assert "new DomUiBridge(document)" in entry
     assert re.search(r"\.jjk-identity-actions button\s*\{[^}]*min-height:\s*48px", css, re.S)
     assert re.search(r"#jjk-identity-input\s*\{[^}]*min-height:\s*48px", css, re.S)
     assert ".jjk-a11y-action:focus-visible" in css

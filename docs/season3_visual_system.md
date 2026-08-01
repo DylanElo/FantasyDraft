@@ -207,8 +207,8 @@ The shipping skill-art source is five character-free v3 WebP atlases. Each is
 source. The stable presentation registry assigns one unique raster cell to each
 of the 78 shipping primary/replacement skill IDs and also records its affinity
 palette, sigil, motion profile, original slot, and replacement identity. The
-older `skill-action-atlas-v2.png` is retained only as documented lineage; it is
-not the shipping card source. The earlier internal `body`, `technique`, `focus`,
+older `skill-action-atlas-v2.png` binary was removed; its provenance document
+retains the lineage. The earlier internal `body`, `technique`, `focus`,
 and `curse` textures—displayed as Taijutsu, Jujutsu, Strategic, and Bloodline—
 remain graceful fallbacks and are not primary skill art.
 

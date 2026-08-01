@@ -31,13 +31,15 @@ python -m pytest -q
 ## Runtime Notes
 
 - `web/app.py` is the Flask-SocketIO bridge.
-- `web/static/phaser-shell.js` owns the v2 browser client, scene stack, SocketIO bridge, and Phaser UI.
+- `web/static/phaser/index.js` owns the v2 browser client, scene stack, SocketIO bridge, and Phaser UI.
 - `web/static/phaser-design-tokens.js` exposes the portrait-first mobile UI tokens consumed by Phaser.
 - The current Phaser visual direction is the Season 3 Culling Current system: sharp ink and hatch work, hard cel shadows, storm-lit painted cities, bone/smoke UI surfaces, barrier red, curse cyan, and strict combat-state colors. See `docs/season3_visual_system.md`.
 - `web/static/phaser-shell.css` is only the canvas/container reset. Phaser draws the v2 screens.
 - `jjk_arena/battle_v2/` contains the Battle v2 rules engine and roster data.
 - Battle v2 currently supports CPU Practice and Private PvP room lobbies. PvP waiting rooms clean up when a player cancels, resets, or disconnects.
 - `docs/mobile_phaser_ui_ux_brief.md` is the current mobile UI/UX source brief.
+- `docs/naruto_arena_design_reference.md` is a non-canonical comparative kit
+  and balance reference; locked JJK Arena contracts still take precedence.
 - `docs/mobile_screen_inventory.md` tracks the required Figma pages, Phaser screens, components, and mobile QA checklist.
 
 ## Deployment

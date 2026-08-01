@@ -1,14 +1,11 @@
-import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=43';
-import { firstCreationRoster } from '../core/roster.js?v=43';
-import { skillVisualFor } from '../core/skill-visual-registry.js?v=43';
+import { TOKEN_TYPE } from '../core/runtime-config.js?v=43';
 import { clamp, safeText, titleize } from '../core/text.js?v=43';
 import { Season3UI } from '../ui/season3-ui.js?v=43';
-import { BaseScene } from './base-scene.js?v=43';
+import { FirstCreationScene } from './first-creation-scene.js?v=43';
 
 const {
   colors: S3_COLORS,
   button: drawS3Button,
-  cost: drawS3Cost,
   pager: drawS3Pager,
   panel: drawS3Panel,
 } = Season3UI.flow;
@@ -20,39 +17,9 @@ export const TEAM_SETUP_FILTERS = Object.freeze([
   Object.freeze({ id: 'special', label: 'SPECIAL' }),
 ]);
 
-const SPECIAL_TAGS = new Set(['hidden_inventory', 'jjk0', 'outsider']);
-
-const FIRST_CREATION_ORDER = Object.freeze([
-  'yuji_itadori',
-  'megumi_fushiguro',
-  'nobara_kugisaki',
-  'maki_zenin',
-  'toge_inumaki',
-  'panda',
-  'aoi_todo',
-  'noritoshi_kamo',
-  'momo_nishimiya',
-  'mai_zenin',
-  'kasumi_miwa',
-  'kokichi_muta_mechamaru',
-  'junpei_yoshino',
-  'satoru_gojo_young',
-  'suguru_geto_young',
-  'shoko_ieiri_young',
-  'utahime_iori_young',
-  'mei_mei_young',
-  'yuta_okkotsu_jjk0',
-]);
-
-export class DraftRosterScene extends BaseScene {
+export class DraftRosterScene extends FirstCreationScene {
     constructor(key = 'DraftScene') {
       super(key);
-      this.setupFilter = 'all';
-      this.setupRosterIndex = 0;
-      this.setupSkillIndex = 0;
-      this.setupStudyCharacterId = null;
-      this.setupStudyEntryRenders = 0;
-      this.setupSkillTransition = 0;
     }
 
     teamSetupLayout(frame) {
@@ -86,50 +53,8 @@ export class DraftRosterScene extends BaseScene {
       };
     }
 
-    characterStudyLayout(frame) {
-      const x = frame.x + 10;
-      const w = frame.width - 20;
-      const header = { x, y: frame.top, w, h: 62 };
-      header.bottom = header.y + header.h;
-      const cta = { x, y: frame.bottom - 50, w, h: 50 };
-      const pager = { x, y: cta.y - 52, w, h: 44 };
-      const contentY = header.bottom + 8;
-      const contentBottom = pager.y - 8;
-      const contentH = contentBottom - contentY;
-      const skillMinH = 252;
-      const heroH = clamp(
-        Math.min(Math.round(contentH * 0.52), contentH - skillMinH - 8),
-        248,
-        320,
-      );
-      const hero = { x, y: contentY, w, h: heroH };
-      const skill = { x, y: hero.y + hero.h + 8, w, h: contentBottom - hero.y - hero.h - 8 };
-      return { frame, header, hero, skill, pager, cta };
-    }
-
-    overlayRect(x, y, w, h, color, alpha = 1) {
-      const node = this.add.rectangle(x, y, w, h, color, alpha).setOrigin(0, 0);
-      this.nodes.push(node);
-      return node;
-    }
-
-    canonicalRoster() {
-      const roster = firstCreationRoster();
-      return FIRST_CREATION_ORDER.map((characterId) => roster[characterId]).filter(Boolean);
-    }
-
     filteredSetupRoster() {
-      const roster = this.canonicalRoster();
-      if (this.setupFilter === 'tokyo') {
-        return roster.filter((character) => (character.tags || []).includes('tokyo_student'));
-      }
-      if (this.setupFilter === 'kyoto') {
-        return roster.filter((character) => (character.tags || []).includes('kyoto_student'));
-      }
-      if (this.setupFilter === 'special') {
-        return roster.filter((character) => (character.tags || []).some((tag) => SPECIAL_TAGS.has(tag)));
-      }
-      return roster;
+      return this.filteredRoster();
     }
 
     activeTeamKey() {
@@ -139,56 +64,19 @@ export class DraftRosterScene extends BaseScene {
     }
 
     setSetupFilter(filterId) {
-      if (!TEAM_SETUP_FILTERS.some((entry) => entry.id === filterId)) return;
-      this.setupFilter = filterId;
-      this.setupRosterIndex = 0;
+      this.setCreationFilter(filterId);
     }
 
     moveSetupRoster(delta) {
-      const roster = this.filteredSetupRoster();
-      this.setupRosterIndex = clamp(this.setupRosterIndex + delta, 0, Math.max(0, roster.length - 1));
+      this.moveCreationRoster(delta);
     }
 
     openSetupCharacterStudy(characterId) {
-      this.setupSkillIndex = 0;
-      this.setupStudyCharacterId = characterId;
-      this.setupStudyEntryRenders = 2;
-      this.store.openCharacterDetail(characterId);
+      this.openCharacterStudy(characterId);
     }
 
     moveSetupStudySkill(delta, skillCount) {
-      const next = clamp(this.setupSkillIndex + delta, 0, Math.max(0, skillCount - 1));
-      if (next === this.setupSkillIndex) return;
-      this.setupSkillIndex = next;
-      this.setupSkillTransition = delta < 0 ? -1 : 1;
-    }
-
-    targetRulePresentation(skill) {
-      const rule = (skill && skill.target_rule) || {};
-      const kind = titleize(rule.kind || 'enemy').toUpperCase();
-      const minTargets = Math.max(0, Number(rule.min_targets) || 0);
-      const maxTargets = Math.max(minTargets, Number(rule.max_targets) || minTargets);
-      const count = minTargets === maxTargets ? `${maxTargets} TARGET` : `${minTargets}-${maxTargets} TARGETS`;
-      const flags = [
-        `SELF ${rule.allow_self ? 'YES' : 'NO'}`,
-        `DOWNED ${rule.allow_dead ? 'YES' : 'NO'}`,
-      ];
-      if (rule.required_status) flags.push(`REQ ${titleize(rule.required_status).toUpperCase()}`);
-      return { summary: `${kind} / ${count}`, flags: flags.join(' / ') };
-    }
-
-    renderSetupSection(x, y, label, right, accent = S3_COLORS.red) {
-      this.mono(x, y, label, {
-        color: S3_COLORS.inkText,
-        fontSize: `${TYPE_SCALE.label}px`,
-        fontStyle: '900',
-      });
-      const lineStart = Math.min(right - 18, x + Math.max(112, label.length * 7 + 18));
-      this.graphics.lineStyle(2, accent, 0.72);
-      this.graphics.beginPath();
-      this.graphics.moveTo(lineStart, y + 6);
-      this.graphics.lineTo(right, y + 6);
-      this.graphics.strokePath();
+      this.moveStudySkill(delta, skillCount);
     }
 
     renderSetupTrio(layout, teamKey) {
@@ -197,7 +85,7 @@ export class DraftRosterScene extends BaseScene {
       const slotW = (w - gap * 2) / 3;
       const team = this.store[teamKey] || [];
       const accent = teamKey === 'enemyTeam' ? S3_COLORS.red : S3_COLORS.cyan;
-      this.renderSetupSection(
+      this.renderSectionLabel(
         x,
         layout.trioLabelY,
         `${teamKey === 'enemyTeam' ? 'CPU' : 'ACTIVE'} TRIO ${team.length}/3`,
@@ -256,7 +144,7 @@ export class DraftRosterScene extends BaseScene {
       const gap = 5;
       const buttonW = (region.w - gap * (TEAM_SETUP_FILTERS.length - 1)) / TEAM_SETUP_FILTERS.length;
       TEAM_SETUP_FILTERS.forEach((entry, index) => {
-        const active = this.setupFilter === entry.id;
+        const active = this.creationFilter === entry.id;
         drawS3Button(this, region.x + index * (buttonW + gap), region.y, buttonW, region.h, entry.label, () => {
           this.setSetupFilter(entry.id);
         }, {
@@ -356,18 +244,18 @@ export class DraftRosterScene extends BaseScene {
 
     renderSetupRosterBrowser(layout, teamKey) {
       const roster = this.filteredSetupRoster();
-      this.setupRosterIndex = clamp(this.setupRosterIndex, 0, Math.max(0, roster.length - 1));
-      const character = roster[this.setupRosterIndex];
+      this.creationRosterIndex = clamp(this.creationRosterIndex, 0, Math.max(0, roster.length - 1));
+      const character = roster[this.creationRosterIndex];
       this.renderSetupFilters(layout.filters);
-      if (character) this.renderSetupFeatured(character, this.setupRosterIndex, roster.length, layout.featured, teamKey);
-      const filterName = (TEAM_SETUP_FILTERS.find((entry) => entry.id === this.setupFilter) || TEAM_SETUP_FILTERS[0]).label;
-      drawS3Pager(this, layout.pager, `${filterName} / ${this.setupRosterIndex + 1} OF ${Math.max(1, roster.length)}`, () => {
+      if (character) this.renderSetupFeatured(character, this.creationRosterIndex, roster.length, layout.featured, teamKey);
+      const filterName = (TEAM_SETUP_FILTERS.find((entry) => entry.id === this.creationFilter) || TEAM_SETUP_FILTERS[0]).label;
+      drawS3Pager(this, layout.pager, `${filterName} / ${this.creationRosterIndex + 1} OF ${Math.max(1, roster.length)}`, () => {
         this.moveSetupRoster(-1);
       }, () => {
         this.moveSetupRoster(1);
       }, {
-        prevDisabled: this.setupRosterIndex === 0,
-        nextDisabled: this.setupRosterIndex >= roster.length - 1,
+        prevDisabled: this.creationRosterIndex === 0,
+        nextDisabled: this.creationRosterIndex >= roster.length - 1,
         buttonW: 66,
       });
     }
@@ -442,73 +330,7 @@ export class DraftRosterScene extends BaseScene {
     }
 
     renderSetupAuthoritativeSkill(skill, index, region) {
-      const visual = skillVisualFor(skill);
-      const replacement = visual && visual.kind === 'replacement';
-      const originalSlot = visual && Number.isInteger(visual.slot) ? visual.slot : Math.min(index, 3);
-      const artWidth = Math.min(112, Math.max(96, region.w * 0.29));
-      const artRegion = { x: region.x + 4, y: region.y + 4, w: artWidth, h: 106 };
-      drawS3Panel(this, region.x, region.y, region.w, region.h, {
-        fill: S3_COLORS.paper,
-        accent: replacement ? S3_COLORS.gold : S3_COLORS.cyan,
-        strokeWidth: 2,
-        washAlpha: 0.16,
-        hatch: false,
-        cut: 8,
-      });
-      if (this.presentationLayer) {
-        this.presentationLayer.renderSkillVisual(this, skill, artRegion, {
-          depth: 1,
-          iconDepth: 3,
-          alpha: 0.9,
-          state: this.setupStudyEntryRenders === 1 || this.setupSkillTransition ? 'selected' : 'available',
-          sheen: this.setupStudyEntryRenders === 1 || Boolean(this.setupSkillTransition),
-        });
-      }
-      const textX = artRegion.x + artRegion.w + 10;
-      const metaY = region.y + 10;
-      this.mono(textX, metaY, `SLOT ${originalSlot + 1} / ${replacement ? 'REPLACEMENT' : 'PRIMARY'}`, {
-        color: replacement ? '#8A6416' : S3_COLORS.cyanText,
-        fontSize: '12px',
-        fontStyle: '900',
-      });
-      const name = this.text(textX, metaY + 21, safeText(skill.name, 'Technique'), {
-        fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Arial, sans-serif',
-        color: S3_COLORS.inkText,
-        fontSize: region.w <= 340 ? '17px' : '18px',
-        fontStyle: '900',
-        lineSpacing: -2,
-        wordWrap: { width: Math.max(112, region.x + region.w - textX - 76) },
-      });
-      name.setMaxLines(2);
-      drawS3Cost(this, region.x + region.w - 86, metaY + 39, skill.cost || [], { size: 14, gap: 4 });
-      const targetRule = this.targetRulePresentation(skill);
-      this.mono(textX, metaY + 67, `CD ${Number(skill.cooldown) || 0} / ${targetRule.summary}`, {
-        color: S3_COLORS.inkText,
-        fontSize: '11px',
-        fontStyle: '900',
-      });
-      this.mono(textX, metaY + 85, targetRule.flags, {
-        color: S3_COLORS.mutedText,
-        fontSize: '11px',
-        fontStyle: '800',
-      });
-      const classes = (skill.classes || []).map((entry) => titleize(entry).toUpperCase()).join(' / ') || 'TECHNIQUE';
-      const classNode = this.mono(region.x + 12, region.y + 118, `CLASSES / ${classes}`, {
-        color: S3_COLORS.mutedText,
-        fontSize: '12px',
-        fontStyle: '800',
-        lineSpacing: -1,
-        wordWrap: { width: region.w - 24 },
-      });
-      classNode.setMaxLines(2);
-      const description = this.text(region.x + 12, region.y + 150, safeText(skill.text, 'No description available.'), {
-        color: S3_COLORS.inkText,
-        fontSize: '14px',
-        fontStyle: '700',
-        lineSpacing: 1,
-        wordWrap: { width: region.w - 24 },
-      });
-      description.setMaxLines(6);
+      this.renderAuthoritativeSkill(skill, index, 4, region);
     }
 
     renderSetupCharacterStudy(frame, character, teamKey, drawHeader) {
@@ -517,26 +339,26 @@ export class DraftRosterScene extends BaseScene {
       const selected = team.includes(character.id);
       const trioFull = !selected && team.length >= 3;
       const skills = character.skills || [];
-      if (this.setupStudyCharacterId !== character.id) {
-        this.setupStudyCharacterId = character.id;
-        this.setupSkillIndex = 0;
+      if (this.studyCharacterId !== character.id) {
+        this.studyCharacterId = character.id;
+        this.studySkillIndex = 0;
       }
-      this.setupSkillIndex = clamp(this.setupSkillIndex, 0, Math.max(0, skills.length - 1));
+      this.studySkillIndex = clamp(this.studySkillIndex, 0, Math.max(0, skills.length - 1));
       drawHeader(layout, selected);
       this.renderSetupStudyHero(character, selected, layout.hero, teamKey);
       let skillTargets = [];
-      if (skills[this.setupSkillIndex]) {
+      if (skills[this.studySkillIndex]) {
         const skillNodeStart = this.nodes.length;
-        this.renderSetupAuthoritativeSkill(skills[this.setupSkillIndex], this.setupSkillIndex, layout.skill);
+        this.renderSetupAuthoritativeSkill(skills[this.studySkillIndex], this.studySkillIndex, layout.skill);
         skillTargets = this.nodes.slice(skillNodeStart);
       }
-      drawS3Pager(this, layout.pager, `Skill ${this.setupSkillIndex + 1} of ${Math.max(1, skills.length)}`, () => {
+      drawS3Pager(this, layout.pager, `Skill ${this.studySkillIndex + 1} of ${Math.max(1, skills.length)}`, () => {
         this.moveSetupStudySkill(-1, skills.length);
       }, () => {
         this.moveSetupStudySkill(1, skills.length);
       }, {
-        prevDisabled: this.setupSkillIndex === 0,
-        nextDisabled: this.setupSkillIndex >= skills.length - 1,
+        prevDisabled: this.studySkillIndex === 0,
+        nextDisabled: this.studySkillIndex >= skills.length - 1,
         buttonW: 66,
       });
       const teamLabel = teamKey === 'enemyTeam' ? 'CPU Trio' : 'Active Trio';
@@ -550,28 +372,7 @@ export class DraftRosterScene extends BaseScene {
       });
       this.toast(frame, { y: layout.pager.y - 54, theme: 'light' });
 
-      if (this.setupStudyEntryRenders > 0) {
-        this.setupStudyEntryRenders -= 1;
-        if (this.setupStudyEntryRenders === 0 && this.presentationLayer) {
-          const profileTargets = this.nodes
-            .filter((node) => node && node.setAlpha && Number(node.y) >= layout.hero.y && Number(node.y) < layout.pager.y)
-            .slice(0, 6);
-          this.presentationLayer.sceneIntro(this, {
-            targets: profileTargets,
-            options: { distance: 16, stagger: 4, duration: 140 },
-          });
-        }
-      } else if (this.setupSkillTransition && this.presentationLayer) {
-        this.presentationLayer.sceneIntro(this, {
-          targets: skillTargets.filter((node) => node && node.setAlpha).slice(0, 6),
-          options: {
-            distance: this.setupSkillTransition < 0 ? -10 : 10,
-            stagger: 4,
-            duration: 140,
-          },
-        });
-        this.setupSkillTransition = 0;
-      }
+      this.animateCharacterStudy(layout, skillTargets);
       return layout;
     }
 }

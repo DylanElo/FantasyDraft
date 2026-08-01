@@ -54,9 +54,7 @@ For the first v2 roster:
 
 Shipping First Creation kits use the typed `EffectSpec.payload` grammar in
 `jjk_arena/battle_v2/effect_payload.py`. A condition belongs to the exact
-effect it gates or modifies; `SkillSpec.conditions`/`ConditionSpec` remains a
-legacy engine capability used by core tests, but it is not a second canonical
-authoring model for new First Creation content.
+effect it gates or modifies; there is no parallel skill-level condition model.
 
 Supported gates are `condition_status`, `condition_statuses`,
 `condition_missing_status`, `condition_user_status`, `condition_user_stacks`,
@@ -73,14 +71,9 @@ Every First Creation skill is schema-validated by `skill_audit.py`; unknown
 conditional/bonus keys, invalid value types, and unregistered scopes or
 targeting contracts fail the structural audit.
 
-**Implementation note (updated 2026-07-17):** the legacy
-`ConditionSpec`/`SkillSpec.conditions` mechanism is used by **zero of the 78
-First Creation skills** — an
-automated audit (`jjk_arena/battle_v2/skill_audit.py`) confirmed
-`total_condition_spec_entries == 0` across the entire roster. All shipped
-conditional behavior uses the canonical typed payload keys directly on the `EffectSpec`
-that the condition gates or modifies, evaluated inline by the resolver/effects
-layer rather than by `conditions.py::evaluate_condition`. The keys actually in
+All shipped conditional behavior uses canonical typed payload keys directly on
+the `EffectSpec` that the condition gates or modifies, evaluated inline by the
+resolver/effects layer. The keys actually in
 use (see `prepare_conditions` in
 `tests/test_first_creation_skill_execution.py` for the full contract):
 
@@ -156,7 +149,7 @@ Skill replacements are slot-based and stored on `CharacterState.skill_replacemen
 {"straw_doll_setup": "resonance_detonation"}
 ```
 
-Replacement duration should be controlled by statuses or transformations, not by checking character names. Examples for future kits include:
+Replacement duration is controlled by statuses, not by checking character names. Examples for future kits include:
 
 - Nobara: Straw Doll Setup to Resonance Detonation.
 - Megumi: Ten Shadows Setup to Mahoraga Adaptation.

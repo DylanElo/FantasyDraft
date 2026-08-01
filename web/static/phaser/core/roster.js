@@ -29,10 +29,6 @@ export function costColors(cost) {
   return (cost || []).map((color) => safeText(color).toLowerCase());
 }
 
-export function imageKeyFor(id) {
-  return portraitTextureKeyFor(id);
-}
-
 export function portraitFileFor(id) {
   return registeredPortraitFileFor(id);
 }

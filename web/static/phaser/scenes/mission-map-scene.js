@@ -16,27 +16,27 @@ const {
 const MISSION_WORLD_KEY = 'culling-current-map';
 const ROUTE_X = Object.freeze([0.22, 0.69, 0.31, 0.72, 0.25, 0.67, 0.48]);
 
-function missionMapComposition(frame) {
-  const gutter = frame.width <= 360 ? 10 : 12;
-  const x = frame.x + gutter;
-  const w = frame.width - gutter * 2;
-  const headerH = 62;
-  const detailH = frame.bottom - frame.top < 735 ? 174 : 184;
-  const detail = { x, y: frame.bottom - detailH, w, h: detailH };
-  const map = {
-    x,
-    y: frame.top + headerH + 8,
-    w,
-    h: detail.y - (frame.top + headerH + 8) - 8,
-  };
-  return { map, detail };
-}
-
 export class MissionMapScene extends BaseScene {
     constructor() {
       super('MissionMapScene');
       this.detailMissionId = null;
       this.routeEntrancePlayed = false;
+    }
+
+    missionMapComposition(frame) {
+      const gutter = frame.width <= 360 ? 10 : 12;
+      const x = frame.x + gutter;
+      const w = frame.width - gutter * 2;
+      const headerH = 62;
+      const detailH = frame.bottom - frame.top < 735 ? 174 : 184;
+      const detail = { x, y: frame.bottom - detailH, w, h: detailH };
+      const map = {
+        x,
+        y: frame.top + headerH + 8,
+        w,
+        h: detail.y - (frame.top + headerH + 8) - 8,
+      };
+      return { map, detail };
     }
 
     missionStatus(mission) {
@@ -209,7 +209,7 @@ export class MissionMapScene extends BaseScene {
 
     render() {
       const frame = this.layout.frame();
-      const layout = missionMapComposition(frame);
+      const layout = this.missionMapComposition(frame);
       this.clearSurface();
       drawS3World(this, frame, MISSION_WORLD_KEY, { imageAlpha: 0.94, washAlpha: 0.12 });
       drawS3Header(this, frame, {

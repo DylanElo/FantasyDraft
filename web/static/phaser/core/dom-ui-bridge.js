@@ -146,6 +146,7 @@ export function buildCombatAccessibilityState(snapshot) {
     interactionStageLabel: safeString(snapshot.interactionStageLabel, 'Planning'),
     interactionHeading: safeString(snapshot.interactionHeading, 'Combat Planning'),
     interactionDescription: safeString(snapshot.interactionDescription),
+    queueSubmitStatus: safeString(snapshot.queueSubmitStatus),
     interactionTimerLabel: safeString(snapshot.interactionTimerLabel, 'TURN TIME'),
     authoritativePhaseSecondsRemaining: Number.isFinite(seconds) ? Math.max(0, Math.ceil(seconds)) : null,
     connection: {
@@ -159,14 +160,18 @@ export function buildCombatAccessibilityState(snapshot) {
     })),
     allies: normalizeTeam(snapshot.allies, 'ally'),
     enemies: normalizeTeam(snapshot.enemies, 'enemy'),
-    queue: (Array.isArray(snapshot.queue) ? snapshot.queue : []).slice(0, 3).map((action, index) => ({
-      order: Math.max(1, Math.round(boundedNumber(action && action.order, index + 1))),
-      caster: safeString(action && action.caster, `Fighter ${index + 1}`),
-      skill: safeString(action && action.skill, 'Technique'),
-      target: safeString(action && action.target, 'Automatic target'),
-      cost: (Array.isArray(action && action.cost) ? action.cost : []).slice(0, 8).map((value) => safeString(value)).filter(Boolean),
-      wildcardPays: (Array.isArray(action && action.wildcardPays) ? action.wildcardPays : []).slice(0, 8).map((value) => safeString(value)).filter(Boolean),
-    })),
+    queue: (Array.isArray(snapshot.queue) ? snapshot.queue : []).slice(0, 3).map((action, index) => {
+      const validationReason = safeString(action && action.validationReason);
+      return {
+        order: Math.max(1, Math.round(boundedNumber(action && action.order, index + 1))),
+        caster: safeString(action && action.caster, `Fighter ${index + 1}`),
+        skill: safeString(action && action.skill, 'Technique'),
+        target: safeString(action && action.target, 'Automatic target'),
+        cost: (Array.isArray(action && action.cost) ? action.cost : []).slice(0, 8).map((value) => safeString(value)).filter(Boolean),
+        wildcardPays: (Array.isArray(action && action.wildcardPays) ? action.wildcardPays : []).slice(0, 8).map((value) => safeString(value)).filter(Boolean),
+        ...(validationReason ? { validationReason } : {}),
+      };
+    }),
   };
 }
 
@@ -407,11 +412,14 @@ export class DomUiBridge {
       return;
     }
     const seconds = combatState.authoritativePhaseSecondsRemaining;
+    const queueSubmitStatus = safeString(combatState.queueSubmitStatus);
     const timer = seconds === null
       ? ''
       : ` ${combatState.interactionTimerLabel}: ${seconds} second${seconds === 1 ? '' : 's'} remaining.`;
     if (this.combatPhase) {
-      this.combatPhase.textContent = `${combatState.interactionStageLabel}. ${combatState.interactionDescription}${timer}`.trim();
+      const interactionDescription = safeString(combatState.interactionDescription).replace(/[. ]+$/, '');
+      const queueStatusText = queueSubmitStatus ? ` Status: ${queueSubmitStatus}` : '';
+      this.combatPhase.textContent = `${combatState.interactionStageLabel}. ${interactionDescription}${queueStatusText}.${timer}`.trim();
     }
     if (this.combatConnection) this.combatConnection.textContent = combatState.connection.label;
     if (this.combatEnergy) {
@@ -424,7 +432,8 @@ export class DomUiBridge {
       ? combatState.queue.map((action) => {
         const cost = action.cost.length ? action.cost.join(', ') : 'free';
         const wild = action.wildcardPays.length ? ` Wild paid with ${action.wildcardPays.join(', ')}.` : '';
-        return `Order ${action.order}: ${action.caster} uses ${action.skill}. Target: ${action.target}. Cost: ${cost}.${wild}`;
+        const reason = action.validationReason ? ` ${action.validationReason}.` : '';
+        return `Order ${action.order}: ${action.caster} uses ${action.skill}. Target: ${action.target}. Cost: ${cost}.${wild}${reason}`;
       })
       : ['No actions queued.'];
     this.replaceTextList(this.combatQueue, queueItems);

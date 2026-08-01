@@ -1,19 +1,20 @@
 # Season 3 environment provenance
 
-The four original `culling-current-{home,rooftop,campus,map}.webp` files are
+The three retained original `culling-current-{home,campus,map}.webp` files are
 generated environment plates created on 2026-07-18 with OpenAI built-in image
-generation.
+generation. The superseded first rooftop binary was removed; its lineage
+record remains below.
 They contain no characters, logos, text, or baked interface. Official anime
 frames, manga panels, key visuals, and downloaded references were not supplied
 to the generator. The only image input was the project’s original generated
 master visual-system board documented in
 `artifacts/ui-redesign/s3-style/PROMPTS.md`.
 
-All shipping plates are 773 x 1672 RGB WebP, resized with Pillow LANCZOS
+The three original shipping plates are 773 x 1672 RGB WebP, resized with Pillow LANCZOS
 resampling and encoded at quality 88, method 6. No characters or UI were
 composited during post-processing.
 
-The checkout independently verifies the four shipping filenames, dimensions,
+The checkout independently verifies the three retained original filenames, dimensions,
 and hashes below. The generated source PNGs and generator session logs are not
 committed, so result IDs, source dimensions, and input-history statements are
 contemporaneous production records rather than facts reconstructable from the
@@ -22,9 +23,14 @@ shipping files alone.
 | Screen use | Shipping file | Generated source | Result | SHA-256 |
 |---|---|---|---|---|
 | Home / Boot | `culling-current-home.webp` | 852 x 1846 PNG | `exec-a85ade70-ec45-4e2d-845e-37a95a7e7201` | `B10F447B9EE20BE99D97CF334DABE3B66D4531DA1C9DC83900E24AC0D93C54E3` |
-| Combat / Queue Review / Result | `culling-current-rooftop.webp` | 853 x 1844 PNG | `exec-f546d2cb-70c6-49e6-b4e8-e6b7f693931d` | `5001A838D2D3B6BCEDC781AF1E606E2257068C53EB2B1EA1C35043384B7B4035` |
 | Draft / First Creation / Records | `culling-current-campus.webp` | 853 x 1844 PNG | `exec-530751dd-a2ff-4462-89f5-a7bb29cf11fa` | `AF8FA45F3BB5111913A2650780A31F6A91CF887BDE6D8772076BC4245FC1724C` |
 | Mission Map | `culling-current-map.webp` | 852 x 1846 PNG | `exec-1fe5e62e-e192-4965-83be-fb96b273cd39` | `04FD16C8B2FC382DC4B27B73BD55A6A0F2E58F07101B3FFAF5DBB4210A623171` |
+
+Removed lineage: the first `culling-current-rooftop.webp` was generated from
+result `exec-f546d2cb-70c6-49e6-b4e8-e6b7f693931d` with SHA-256
+`5001A838D2D3B6BCEDC781AF1E606E2257068C53EB2B1EA1C35043384B7B4035`.
+The procedural underpass prototype was also removed after the Culling Current
+direction superseded it.
 
 ## Shared generation prompt
 

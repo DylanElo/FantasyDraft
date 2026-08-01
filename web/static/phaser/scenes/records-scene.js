@@ -196,7 +196,7 @@ export class RecordsScene extends BaseScene {
         fontStyle: '800',
       });
       const progressX = region.x + Math.min(184, region.w * 0.55);
-      this.mono(progressX, region.y + 7, model.fastestWin ? `FASTEST WIN // ${model.fastestWin}T` : 'FASTEST WIN // --', {
+      this.mono(progressX, region.y + 7, model.fastestWin ? `FASTEST WIN // ${model.fastestWin}R` : 'FASTEST WIN // --', {
         color: S3_COLORS.text,
         fontSize: `${TYPE_SCALE.micro}px`,
         fontStyle: '900',
@@ -260,7 +260,7 @@ export class RecordsScene extends BaseScene {
           fontSize: '18px',
           fontStyle: '900',
         });
-        this.mono(region.x + 12, y + 34, `${localRecordDate(record.at)} // ${Number(record.turns || 0)} TURNS // ${Number(record.damage || 0)} DMG`, {
+        this.mono(region.x + 12, y + 34, `${localRecordDate(record.at)} // ${Math.ceil(Number(record.turns || 1) / 2)} ROUNDS // ${Number(record.damage || 0)} DMG`, {
           color: S3_COLORS.mutedText,
           fontSize: `${TYPE_SCALE.micro}px`,
           fontStyle: '800',

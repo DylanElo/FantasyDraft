@@ -146,6 +146,7 @@ export class GameStore {
       this.eventCursor = 0;
       this.playbackEvents = [];
       this.recentEvents = [];
+      this.combatLogOpen = false;
       this.visiblePublicAction = null;
       this.visiblePublicActionUntil = 0;
       this.phaseTimerSnapshotSeconds = null;
@@ -616,6 +617,11 @@ export class GameStore {
       this.notify();
     }
 
+    toggleCombatLog(force) {
+      this.combatLogOpen = force === undefined ? !this.combatLogOpen : Boolean(force);
+      this.notify();
+    }
+
     openSkillDetail(skillId) {
       this.inspectedFighter = null;
       this.clearToast();
@@ -740,6 +746,7 @@ export class GameStore {
       this.eventCursor = 0;
       this.playbackEvents = [];
       this.recentEvents = [];
+      this.combatLogOpen = false;
       // ponytail: these four were missing from this reset (present in
       // resetToLobby's), currently defused because the skill-detail sheet
       // gates on selectedCasterSlot (reset above), but a stale selection
@@ -822,6 +829,7 @@ export class GameStore {
         this.eventCursor = 0;
         this.playbackEvents = [];
         this.recentEvents = [];
+        this.combatLogOpen = false;
         this.visiblePublicAction = null;
         this.visiblePublicActionUntil = 0;
         this.inspectedFighter = null;
@@ -1891,6 +1899,7 @@ export class GameStore {
       this.eventCursor = 0;
       this.playbackEvents = [];
       this.recentEvents = [];
+      this.combatLogOpen = false;
       this.visiblePublicAction = null;
       this.visiblePublicActionUntil = 0;
       this.phaseTimerSnapshotSeconds = null;

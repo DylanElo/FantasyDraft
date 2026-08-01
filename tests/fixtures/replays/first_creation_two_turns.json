@@ -6,8 +6,24 @@
   "rng_seed": 17,
   "cpu_difficulty": "normal",
   "players": [
-    {"id": "p1", "name": "P1", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
-    {"id": "p2", "name": "P2", "team": ["maki_zenin", "panda", "mai_zenin"]}
+    {
+      "id": "p1",
+      "name": "P1",
+      "team": [
+        "yuji_itadori",
+        "megumi_fushiguro",
+        "nobara_kugisaki"
+      ]
+    },
+    {
+      "id": "p2",
+      "name": "P2",
+      "team": [
+        "maki_zenin",
+        "panda",
+        "mai_zenin"
+      ]
+    }
   ],
   "commands": [
     {
@@ -16,7 +32,7 @@
       "state_revision": 0,
       "client_action_nonce": "turn-1",
       "payload": {},
-      "expected_state_hash": "ca85a789e730b82b4940ef90e4d1a211d18660b2ae37c7bd906be9c1ea05e2fb"
+      "expected_state_hash": "f52d36843e0efcef3412adfa99b67d3fe7ce27dc4697fe3f18a0e384045da894"
     },
     {
       "player_id": "p2",
@@ -24,10 +40,13 @@
       "state_revision": 1,
       "client_action_nonce": "turn-2",
       "payload": {},
-      "expected_state_hash": "075a753b19e7623eb8b55ef6c0ac5ade054bade7ce55a04a91b5875ce436a5d0"
+      "expected_state_hash": "85d6678b7778a196d2be8368931fd1ec2ce5bcb760d7ec1207b3f7eacaa8a5a0"
     }
   ],
-  "initial_state_hash": "cee85b29bbb73ab4859f143c683a59961a28c0e29eeadb5cf1f91ff7ce3fe4f7",
-  "final_state_hash": "075a753b19e7623eb8b55ef6c0ac5ade054bade7ce55a04a91b5875ce436a5d0",
-  "timer_policy": {"planning_seconds": 60.0, "queue_review_seconds": 30.0}
+  "initial_state_hash": "c2f8e5293a1a834dd91fd6845734a8d6e06ae83f0829ba4b4b28c94dc78440d0",
+  "final_state_hash": "85d6678b7778a196d2be8368931fd1ec2ce5bcb760d7ec1207b3f7eacaa8a5a0",
+  "timer_policy": {
+    "planning_seconds": 60.0,
+    "queue_review_seconds": 30.0
+  }
 }

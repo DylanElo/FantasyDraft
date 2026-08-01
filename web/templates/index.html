@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=IBM+Plex+Mono:wght@500;600;700&family=Shippori+Mincho+B1:wght@600;700;800&family=Zen+Kaku+Gothic+New:wght@500;600;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='phaser-shell.css') }}?v=42">
+  <link rel="stylesheet" href="{{ url_for('static', filename='phaser-shell.css') }}?v=43">
   <script src="{{ url_for('static', filename='socket.io.min.js') }}?v=4.7.2"></script>
 </head>
 <body>
@@ -55,7 +55,7 @@
   </main>
 
   <script>
-    const PLAYER_SESSION_ID = "{{ player_id }}";
+    const PLAYER_SESSION_ID = {{ player_id | tojson }};
     const BATTLE_V2_ENABLED = {{ 'true' if battle_v2_enabled else 'false' }};
     const BATTLE_V2_STARTER_ROSTER = {{ battle_v2_catalog | tojson }};
     const FIRST_CREATION = {{ first_creation | tojson }};
@@ -67,7 +67,7 @@
     };
   </script>
   <script src="{{ url_for('static', filename='vendor/phaser.min.js') }}?v=3.90.0"></script>
-  <script src="{{ url_for('static', filename='phaser-design-tokens.js') }}?v=42"></script>
-  <script src="{{ url_for('static', filename='phaser-shell.js') }}?v=42"></script>
+  <script src="{{ url_for('static', filename='phaser-design-tokens.js') }}?v=43"></script>
+  <script type="module" src="{{ url_for('static', filename='phaser/index.js') }}?v=43"></script>
 </body>
 </html>

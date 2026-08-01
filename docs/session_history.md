@@ -3213,3 +3213,21 @@ Caution / next work:
 - The SQLite backup/restore rehearsal, and every external/human gate listed
   in `docs/release_readiness_checklist.md`, remain unrun here -- this pass
   verified code-level correctness and the automated suite only.
+
+## 2026-08-01 — PR #64 quality-check repair
+
+**Done.** Repaired the incomplete v43 Phaser delivery chain, switched combat
+cost/disabled/target affordances to the server-provided `skill_options`
+contract, removed the superseded client legality helpers, isolated the SQLite
+runtime store between tests, and corrected stale portrait/cache assertions.
+No battle rules, roster entries, dependencies, or workflow gates changed.
+
+**Verified.** The original 14-failure subset passed (103 tests). Full pytest
+passed in normal order (680 passed, 2 skipped, 210.36s) and reverse file order
+(680 passed, 2 skipped, 212.61s). `python -m pip check`, `python -m compileall
+-q jjk_arena web/app.py`, `node --check` for all 46 maintained Phaser modules,
+and `git diff --check` passed.
+
+**Remaining / delivery.** The focused commit is for PR #64's
+`fix/ponytail-audit-fixes` branch. GitHub Actions must rerun after push; no
+current mobile screenshot claim is made by this CI-only pass.

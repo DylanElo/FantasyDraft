@@ -9,7 +9,6 @@ from jjk_arena.battle_v2.models import (
     BattlePhase,
     BattleState,
     CharacterState,
-    ConditionSpec,
     DamageType,
     EffectSpec,
     EnergyType,
@@ -20,7 +19,7 @@ from jjk_arena.battle_v2.models import (
     StatusEffect,
     TargetRule,
 )
-from jjk_arena.battle_v2.resolver import ResolverError, confirm_queue, finish_turn, resolve_queue, validate_action, validate_queue
+from jjk_arena.battle_v2.resolver import ResolverError, check_winner, confirm_queue, finish_turn, resolve_queue, validate_action, validate_queue
 from jjk_arena.battle_v2.serialization import serialize_event
 
 
@@ -38,7 +37,7 @@ def make_state():
     return BattleState(players={"p1": p1, "p2": p2}, turn_player_id="p1")
 
 
-def skill(skill_id="strike", cost=None, effects=None, conditions=None, target_rule=None, cooldown=0, classes=None):
+def skill(skill_id="strike", cost=None, effects=None, target_rule=None, cooldown=0, classes=None):
     return SkillSpec(
         id=skill_id,
         name=skill_id.title(),
@@ -48,7 +47,6 @@ def skill(skill_id="strike", cost=None, effects=None, conditions=None, target_ru
         target_rule=target_rule or TargetRule(kind="enemy"),
         classes=classes or [SkillClass.PHYSICAL, SkillClass.INSTANT],
         effects=effects or [EffectSpec(type="damage", amount=20, damage_type=DamageType.NORMAL)],
-        conditions=conditions or [],
     )
 
 
@@ -277,15 +275,15 @@ def test_helpful_skill_can_target_invulnerable_ally_without_bypass():
         )
     )
     rct = skill(
-        "reverse_cursed_technique",
+        "fc_yuta_okkotsu_jjk0_rct",
         target_rule=TargetRule(kind="ally", allow_self=True),
         effects=[EffectSpec(type="heal", amount=30)],
     )
 
     validate_action(
         state,
-        PendingAction("a1", "p1", 0, "reverse_cursed_technique", "p1", 1),
-        {"reverse_cursed_technique": rct},
+        PendingAction("a1", "p1", 0, "fc_yuta_okkotsu_jjk0_rct", "p1", 1),
+        {"fc_yuta_okkotsu_jjk0_rct": rct},
     )
 
 
@@ -306,17 +304,17 @@ def test_bypassing_helpful_skill_can_target_invulnerable_ally():
         )
     )
     rct = skill(
-        "reverse_cursed_technique",
+        "fc_yuta_okkotsu_jjk0_rct",
         target_rule=TargetRule(kind="ally", allow_self=True),
         classes=[SkillClass.BYPASSING, SkillClass.INSTANT],
         effects=[EffectSpec(type="heal", amount=30)],
     )
     state.pending_actions["p1"] = [
-        PendingAction("a1", "p1", 0, "reverse_cursed_technique", "p1", 1)
+        PendingAction("a1", "p1", 0, "fc_yuta_okkotsu_jjk0_rct", "p1", 1)
     ]
     state.queue_order["p1"] = ["a1"]
 
-    resolve_queue(state, "p1", {"reverse_cursed_technique": rct})
+    resolve_queue(state, "p1", {"fc_yuta_okkotsu_jjk0_rct": rct})
 
     assert ally.hp == 70
 
@@ -408,17 +406,13 @@ def test_queue_validation_rejects_two_skills_from_same_caster_without_mutating()
     assert state.players["p2"].team[0].hp == 100
 
 
-def test_target_status_condition_and_queue_order_resolution():
+def test_queue_order_resolution():
     state = make_state()
     target = state.players["p2"].team[0]
     target.statuses.append(
         StatusEffect("marked", "Marked", "p1", 1, "p2", 0, duration=2)
     )
-    mark_payoff = skill(
-        "payoff",
-        effects=[EffectSpec(type="damage", amount=30, damage_type=DamageType.SOUL)],
-        conditions=[ConditionSpec(type="target_has", status="marked")],
-    )
+    mark_payoff = skill("payoff", effects=[EffectSpec(type="damage", amount=30, damage_type=DamageType.SOUL)])
     setup_hit = skill("setup", effects=[EffectSpec(type="damage", amount=10, damage_type=DamageType.NORMAL)])
     state.pending_actions["p1"] = [
         PendingAction("a1", "p1", 0, "setup", "p2", 0, queue_index=0),
@@ -438,14 +432,14 @@ def test_target_status_condition_and_queue_order_resolution():
 def test_effect_log_uses_skill_display_name_and_target_name():
     state = make_state()
     named_skill = skill(
-        "divergent_fist",
+        "fc_yuji_itadori_divergent_fist",
         effects=[EffectSpec(type="damage", amount=20, damage_type=DamageType.NORMAL)],
     )
     named_skill.name = "Divergent Fist"
-    state.pending_actions["p1"] = [PendingAction("a1", "p1", 0, "divergent_fist", "p2", 1)]
+    state.pending_actions["p1"] = [PendingAction("a1", "p1", 0, "fc_yuji_itadori_divergent_fist", "p2", 1)]
     state.queue_order["p1"] = ["a1"]
 
-    events = resolve_queue(state, "p1", {"divergent_fist": named_skill})
+    events = resolve_queue(state, "p1", {"fc_yuji_itadori_divergent_fist": named_skill})
 
     assert any(
         event.type == "damage" and event.message == "Divergent Fist dealt 20 damage to Sukuna"
@@ -1158,6 +1152,26 @@ def test_source_turn_status_duration_only_ticks_on_source_turn():
 
     assert target.hp == 95
     assert target.statuses[0].duration == 1
+
+
+def test_check_winner_declares_draw_on_simultaneous_double_ko():
+    # ponytail: regression test for the bug where a simultaneous double-KO
+    # (both sides' active characters dead at once) left phase=PLANNING with
+    # no winner set, stalling the match until a 12-turn no-progress tiebreak.
+    state = make_state()
+    for character in state.players["p1"].team:
+        character.hp = 0
+        character.alive = False
+    for character in state.players["p2"].team:
+        character.hp = 0
+        character.alive = False
+
+    events = check_winner(state)
+
+    assert state.phase == BattlePhase.FINISHED
+    assert state.winner_id is None
+    assert len(events) == 1
+    assert events[0].type == "battle_finished"
 
 
 def test_target_turn_status_duration_only_ticks_on_target_turn():

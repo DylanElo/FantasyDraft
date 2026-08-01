@@ -113,12 +113,12 @@ def test_todo_redirect_uses_selected_alternate_and_no_redirect_payoff_is_exclusi
     act(state, "p2", 0, "fc_yuji_itadori_divergent_fist", "p1", 1)
     assert state.players["p1"].team[2].hp == 80
     assert state.players["p1"].team[1].hp == 100
-    assert not has_status(state.players["p1"].team[0], "boogie_woogie_guard")
+    assert not has_status(state.players["p1"].team[0], "boogie_woogie_redirect_guard")
 
     state = sequence_state(["aoi_todo", "ally", "ally2"], ["yuji_itadori", "enemy2", "enemy3"])
     act(state, "p1", 0, "fc_aoi_todo_boogie_woogie", "p2", 0, alternate_target_player_id="p1", alternate_target_slot=2)
     finish_turn(state, "p2")
-    assert has_status(state.players["p1"].team[0], "boogie_woogie_guard")
+    assert has_status(state.players["p1"].team[0], "boogie_woogie_redirect_guard")
 
 
 def test_miwa_counter_only_consumes_on_melee():

@@ -1,26 +1,15 @@
 import json
 import re
-import subprocess
 from pathlib import Path
+
+from conftest import run_node
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def _run_node(script: str) -> dict:
-    result = subprocess.run(
-        ["node", "--experimental-default-type=module", "-"],
-        input=script,
-        text=True,
-        capture_output=True,
-        cwd=ROOT,
-        check=True,
-    )
-    return json.loads(result.stdout)
-
-
 def test_presentation_settings_persist_and_resolve_system_motion():
-    probe = _run_node(
+    probe = run_node(
         r"""
 const {
   PRESENTATION_SETTINGS_STORAGE_KEY,
@@ -85,7 +74,7 @@ console.log(JSON.stringify({
 
 
 def test_audio_context_and_mixer_survive_scene_transitions_with_safe_haptics():
-    probe = _run_node(
+    probe = run_node(
         r"""
 const { createPresentationLayer } = await import('./web/static/phaser/core/presentation-layer.js');
 let contextsCreated = 0;
@@ -184,7 +173,7 @@ console.log(JSON.stringify({
 
 
 def test_base_scene_stages_portraits_and_all_unique_skill_atlases_after_boot():
-    probe = _run_node(
+    probe = run_node(
         r"""
 globalThis.Phaser = { Scene: class {} };
 const { BaseScene } = await import('./web/static/phaser/scenes/base-scene.js');
@@ -242,7 +231,7 @@ console.log(JSON.stringify({
 
 
 def test_destination_scene_rejects_the_pointer_event_that_started_it():
-    probe = _run_node(
+    probe = run_node(
         r"""
 globalThis.Phaser = { Scene: class {} };
 globalThis.window = { dispatchEvent() {} };
@@ -283,7 +272,7 @@ console.log(JSON.stringify({ afterTransitionTap, afterFreshTap: { destinationAct
 
 
 def test_scene_asset_staging_deduplicates_game_wide_in_flight_textures():
-    probe = _run_node(
+    probe = run_node(
         r"""
 globalThis.Phaser = { Scene: class {} };
 const { BaseScene } = await import('./web/static/phaser/scenes/base-scene.js');
@@ -337,7 +326,11 @@ console.log(JSON.stringify({ firstRequested, secondRequested, queued, secondStar
 
 
 def test_combat_presentation_closes_readability_motion_and_target_vfx_gaps():
-    combat = (ROOT / "web/static/phaser/scenes/combat-scene.js").read_text(encoding="utf-8")
+    combat = (
+        (ROOT / "web/static/phaser/scenes/combat-scene.js").read_text(encoding="utf-8")
+        + (ROOT / "web/static/phaser/scenes/combat-hud.js").read_text(encoding="utf-8")
+        + (ROOT / "web/static/phaser/scenes/combat-fighter-field.js").read_text(encoding="utf-8")
+    )
     queue = (ROOT / "web/static/phaser/scenes/combat-queue-review-scene.js").read_text(encoding="utf-8")
     playback = (ROOT / "web/static/phaser/fx/combat-playback-scene.js").read_text(encoding="utf-8")
     presentation = (ROOT / "web/static/phaser/core/presentation-layer.js").read_text(encoding="utf-8")
@@ -368,9 +361,9 @@ def test_combat_presentation_closes_readability_motion_and_target_vfx_gaps():
     assert "startupPortraitIds" in boot
     assert "preloadPresentationAssets(this)" not in boot
     assert "Object.values(SKILL_ACTION_ATLASES)" in base
-    legacy = (ROOT / "web/static/phaser/legacy-shell.js").read_text(encoding="utf-8")
-    assert "window.JJKPhaserShell = { store, domUI, bootReady: false }" in legacy
-    assert "if (!window.JJKPhaserShell.bootReady) return;" in legacy
+    entry = (ROOT / "web/static/phaser/index.js").read_text(encoding="utf-8")
+    assert "window.JJKPhaserShell = { store, domUI, bootReady: false }" in entry
+    assert "if (!window.JJKPhaserShell.bootReady) return;" in entry
     assert "window.JJKPhaserShell.bootReady = true" in boot
     assert "this.scene.start(destination)" in boot
 

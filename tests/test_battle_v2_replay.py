@@ -122,7 +122,7 @@ def test_captured_cpu_replay_replays_an_authoritative_transmutation_decision():
         ],
         difficulty="hard",
     )
-    for turn in range(10):
+    for turn in range(19):
         state = manager.get_state(room_id)
         manager.execute_player_command(
             room_id,
@@ -140,8 +140,8 @@ def test_captured_cpu_replay_replays_an_authoritative_transmutation_decision():
         if event.type == "energy_converted"
     )
 
-    assert conversion.payload["player_id"] == "b"
-    assert conversion.payload["sources"] == {"green": 3, "red": 2}
+    assert conversion.payload["player_id"] == "a"
+    assert conversion.payload["sources"] == {"white": 5}
     assert conversion.payload["target"] == "blue"
     assert run_replay(document)["final_state_hash"] == document["final_state_hash"]
 

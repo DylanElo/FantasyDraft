@@ -1,8 +1,13 @@
-from jjk_arena.battle_v2 import (
+from jjk_arena.battle_v2.manager import (
     BattlePlayerConfig,
+    BattleV2Manager,
+    battle_state_to_dict,
+    battle_v2_enabled,
+    payload_to_action,
+)
+from jjk_arena.battle_v2.models import (
     BattlePhase,
     BattleState,
-    BattleV2Manager,
     CharacterState,
     DamageType,
     EffectSpec,
@@ -11,9 +16,6 @@ from jjk_arena.battle_v2 import (
     SkillClass,
     SkillSpec,
     TargetRule,
-    battle_state_to_dict,
-    battle_v2_enabled,
-    payload_to_action,
 )
 
 
@@ -37,7 +39,7 @@ def test_battle_v2_flag_turns_on_for_v2(monkeypatch):
 
 def test_battle_v2_models_import_and_compose():
     skill = SkillSpec(
-        id="divergent_fist",
+        id="fc_yuji_itadori_divergent_fist",
         name="Divergent Fist",
         text="Deal 20 normal damage.",
         cost=[EnergyType.GREEN],
@@ -63,7 +65,7 @@ def test_battle_v2_public_manager_api():
         0,
         {
             "caster_slot": 0,
-            "skill_id": "divergent_fist",
+            "skill_id": "fc_yuji_itadori_divergent_fist",
             "target_player_id": "p2",
             "target_slot": 0,
         },
@@ -71,5 +73,5 @@ def test_battle_v2_public_manager_api():
 
     assert manager.rng_seed == 1
     assert config.team[0] == "yuji_itadori"
-    assert action.skill_id == "divergent_fist"
+    assert action.skill_id == "fc_yuji_itadori_divergent_fist"
     assert callable(battle_state_to_dict)

@@ -18,7 +18,7 @@ def player_two():
     return {
         "id": "p2",
         "name": "Player Two",
-        "team": ["satoru_gojo", "ryomen_sukuna", "mahito"],
+        "team": ["satoru_gojo_young", "maki_zenin", "panda"],
     }
 
 
@@ -133,7 +133,7 @@ def test_start_classic_match_serializes_initial_private_view():
     assert serialized["phase"] == "planning"
     assert list(serialized["players"]) == ["p1", "p2"]
     assert serialized["players"]["p1"]["team"][0]["character_id"] == "yuji_itadori"
-    assert serialized["skill_catalog"]["yuji_itadori"]["skills"][0]["id"] == "divergent_fist"
+    assert serialized["skill_catalog"]["yuji_itadori"]["skills"][0]["id"] == "fc_yuji_itadori_divergent_fist"
     assert serialized["skill_catalog"]["yuji_itadori"]["skills"][0]["cost"] == ["green"]
     assert serialized["skill_catalog"]["yuji_itadori"]["skills"][0]["target_rule"]["kind"] == "enemy"
     assert serialized["skill_catalog"]["yuji_itadori"]["skills"][0]["effects"][0]["type"] == "damage"
@@ -211,7 +211,7 @@ def test_convert_energy_requires_no_pending_queue():
             {
                 "id": "a1",
                 "caster_slot": 0,
-                "skill_id": "divergent_fist",
+                "skill_id": "fc_yuji_itadori_divergent_fist",
                 "target_player_id": "p2",
                 "target_slot": 0,
             }
@@ -296,10 +296,9 @@ def test_visible_ongoing_status_serializes_its_source_skill_for_ui_disclosure():
         [{
             "id": "resolve",
             "caster_slot": 0,
-            "skill_id": "unbreakable_resolve",
+            "skill_id": "fc_yuji_itadori_cursed_energy_reinforcement",
             "target_player_id": "p1",
             "target_slot": 0,
-            "wildcard_pays": ["white"],
         }],
     )
     manager.confirm_queue("room", "p1")
@@ -308,9 +307,9 @@ def test_visible_ongoing_status_serializes_its_source_skill_for_ui_disclosure():
     reinforced = next(
         status
         for status in opponent_view["players"]["p1"]["team"][0]["statuses"]
-        if status["id"] == "unbreakable_resolve"
+        if status["id"] == "yuji_reinforced"
     )
-    assert reinforced["payload"]["source_skill_id"] == "unbreakable_resolve"
+    assert reinforced["payload"]["source_skill_id"] == "fc_yuji_itadori_cursed_energy_reinforcement"
 
 
 def test_hostile_invisible_status_hidden_from_target_player():
@@ -342,28 +341,29 @@ def test_hostile_invisible_status_hidden_from_target_player():
 def test_invisible_skill_and_status_events_are_private_to_source():
     manager, _ = start_manager()
     state = manager.get_state("room")
-    state.players["p1"].energy[EnergyType.WHITE] = 1
+    state.turn_player_id = "p2"
+    state.players["p2"].energy[EnergyType.WHITE] = 1
 
     manager.submit_plan(
         "room",
-        "p1",
+        "p2",
         [
             {
-                "id": "rabbit",
-                "caster_slot": 2,
-                "skill_id": "rabbit_escape",
+                "id": "read",
+                "caster_slot": 0,
+                "skill_id": "fc_satoru_gojo_young_six_eyes_read",
                 "target_player_id": "p1",
-                "target_slot": 2,
+                "target_slot": 0,
             }
         ],
     )
-    manager.confirm_queue("room", "p1")
+    manager.confirm_queue("room", "p2")
 
-    owner_view = manager.serialize_for_player("room", "p1")
-    opponent_view = manager.serialize_for_player("room", "p2")
+    owner_view = manager.serialize_for_player("room", "p2")
+    opponent_view = manager.serialize_for_player("room", "p1")
 
-    assert any("Rabbit Escape" in event["message"] for event in owner_view["event_log"])
-    assert not any("Rabbit Escape" in event["message"] for event in opponent_view["event_log"])
+    assert any("Six Eyes Read" in event["message"] for event in owner_view["event_log"])
+    assert not any("Six Eyes Read" in event["message"] for event in opponent_view["event_log"])
 
 
 def test_submit_update_confirm_queue_resolves_and_advances_turn():
@@ -378,14 +378,14 @@ def test_submit_update_confirm_queue_resolves_and_advances_turn():
             {
                 "id": "a1",
                 "caster_slot": 0,
-                "skill_id": "divergent_fist",
+                "skill_id": "fc_yuji_itadori_divergent_fist",
                 "target_player_id": "p2",
                 "target_slot": 0,
             },
             {
                 "id": "a2",
                 "caster_slot": 1,
-                "skill_id": "resonance",
+                "skill_id": "fc_nobara_kugisaki_straw_doll_resonance",
                 "target_player_id": "p2",
                 "target_slot": 1,
             },
@@ -393,15 +393,15 @@ def test_submit_update_confirm_queue_resolves_and_advances_turn():
     )
     state = manager.get_state("room")
     state.players["p2"].team[1].statuses.append(
-        StatusEffect("nail_mark", "Nail Mark", "p1", 1, "p2", 1, duration=2)
+        StatusEffect("nail", "Nail", "p1", 1, "p2", 1, duration=2)
     )
-    manager.update_queue("room", "p1", ["a2", "a1"], {"a2": ["red"]})
+    manager.update_queue("room", "p1", ["a2", "a1"], {})
     serialized = manager.confirm_queue("room", "p1")
 
     assert serialized["turn_player_id"] == "p2"
     assert serialized["phase"] == "planning"
     assert serialized["players"]["p2"]["team"][0]["hp"] == 80
-    assert serialized["players"]["p2"]["team"][1]["hp"] == 70
+    assert serialized["players"]["p2"]["team"][1]["hp"] == 80
     assert serialized["pending_actions"]["p1"] == []
     assert sum(serialized["players"]["p2"]["energy"].values()) == p2_energy_before + 3
 
@@ -416,7 +416,7 @@ def test_invalid_queue_update_does_not_mutate_saved_actions():
             {
                 "id": "a1",
                 "caster_slot": 0,
-                "skill_id": "black_flash",
+                "skill_id": "fc_yuji_itadori_black_flash_attempt",
                 "target_player_id": "p2",
                 "target_slot": 0,
             }
@@ -441,7 +441,7 @@ def test_cancel_queue_returns_to_planning():
             {
                 "id": "a1",
                 "caster_slot": 0,
-                "skill_id": "divergent_fist",
+                "skill_id": "fc_yuji_itadori_divergent_fist",
                 "target_player_id": "p2",
                 "target_slot": 0,
             }
@@ -476,7 +476,8 @@ def test_session_can_finish_match_from_full_three_action_queue():
     manager, _ = start_manager()
     state = manager.get_state("room")
     state.players["p1"].energy = {energy: 0 for energy in EnergyType}
-    state.players["p1"].energy[EnergyType.GREEN] = 3
+    state.players["p1"].energy[EnergyType.GREEN] = 1
+    state.players["p1"].energy[EnergyType.BLUE] = 2
     for target in state.players["p2"].team[:3]:
         target.hp = 20
 
@@ -487,21 +488,21 @@ def test_session_can_finish_match_from_full_three_action_queue():
             {
                 "id": "a1",
                 "caster_slot": 0,
-                "skill_id": "divergent_fist",
+                "skill_id": "fc_yuji_itadori_divergent_fist",
                 "target_player_id": "p2",
                 "target_slot": 0,
             },
             {
                 "id": "a2",
                 "caster_slot": 1,
-                "skill_id": "hammer_strike",
+                "skill_id": "fc_nobara_kugisaki_nail_barrage",
                 "target_player_id": "p2",
                 "target_slot": 1,
             },
             {
                 "id": "a3",
                 "caster_slot": 2,
-                "skill_id": "divine_dog",
+                "skill_id": "fc_megumi_fushiguro_divine_dogs",
                 "target_player_id": "p2",
                 "target_slot": 2,
             },
@@ -525,9 +526,9 @@ def test_cpu_turn_submits_first_legal_queue_and_advances_back():
 
     assert serialized["turn_player_id"] == "p1"
     assert serialized["phase"] == "planning"
-    assert serialized["players"]["p1"]["team"][0]["hp"] == 75
+    assert serialized["players"]["p1"]["team"][0]["hp"] == 80
     assert serialized["pending_actions"]["p2"] == []
-    assert any(event["message"] == "Satoru Gojo used Blue" for event in serialized["event_log"])
+    assert any(event["message"] == "Satoru Gojo (Young) used Lapse Blue" for event in serialized["event_log"])
 
 
 def test_cpu_turn_prefers_killing_payoff_over_basic_attack():
@@ -536,23 +537,23 @@ def test_cpu_turn_prefers_killing_payoff_over_basic_attack():
         "room",
         [
             {"id": "p1", "name": "Player One", "team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]},
-            {"id": "p2", "name": "CPU", "team": ["yuta_okkotsu", "aoi_todo", "maki_zenin"]},
+            {"id": "p2", "name": "CPU", "team": ["yuta_okkotsu_jjk0", "aoi_todo", "maki_zenin"]},
         ],
     )
     state = manager.get_state("room")
     state.turn_player_id = "p2"
     state.players["p2"].energy = {energy: 0 for energy in EnergyType}
     state.players["p2"].energy[EnergyType.GREEN] = 1
-    state.players["p2"].energy[EnergyType.BLUE] = 3
+    state.players["p2"].energy[EnergyType.BLUE] = 0
     state.players["p2"].team[0].statuses.append(
-        StatusEffect("rika_manifested", "Rika Manifested", "p2", 0, "p2", 0, duration=2)
+        StatusEffect("rikas_curse", "Rika's Curse", "p2", 0, "p2", 0, duration=2)
     )
-    state.players["p1"].team[0].hp = 45
+    state.players["p1"].team[0].hp = 30
 
     serialized = manager.take_cpu_turn("room", "p2")
 
     assert serialized["players"]["p1"]["team"][0]["alive"] is False
-    assert any(event["message"] == "Yuta Okkotsu used Pure Love Beam" for event in serialized["event_log"])
+    assert any(event["message"] == "Yuta Okkotsu (JJK 0) used Cursed Katana" for event in serialized["event_log"])
 
 
 def test_cpu_turn_can_choose_ally_heal_for_wounded_teammate():
@@ -561,19 +562,20 @@ def test_cpu_turn_can_choose_ally_heal_for_wounded_teammate():
         "room",
         [
             {"id": "p1", "name": "Player One", "team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]},
-            {"id": "p2", "name": "CPU", "team": ["yuta_okkotsu", "aoi_todo", "maki_zenin"]},
+            {"id": "p2", "name": "CPU", "team": ["yuta_okkotsu_jjk0", "aoi_todo", "maki_zenin"]},
         ],
     )
     state = manager.get_state("room")
     state.turn_player_id = "p2"
     state.players["p2"].energy = {energy: 0 for energy in EnergyType}
-    state.players["p2"].energy[EnergyType.WHITE] = 2
+    state.players["p2"].energy[EnergyType.WHITE] = 1
+    state.players["p2"].energy[EnergyType.BLUE] = 1
     state.players["p2"].team[1].hp = 35
 
     serialized = manager.take_cpu_turn("room", "p2")
 
-    assert serialized["players"]["p2"]["team"][1]["hp"] == 65
-    assert any(event["message"] == "Yuta Okkotsu used Reverse Cursed Technique" for event in serialized["event_log"])
+    assert serialized["players"]["p2"]["team"][1]["hp"] == 60
+    assert any(event["message"] == "Yuta Okkotsu (JJK 0) used Reverse Cursed Technique" for event in serialized["event_log"])
 
 
 def test_start_classic_match_defaults_to_normal_difficulty():
@@ -595,7 +597,7 @@ def test_hard_difficulty_still_prefers_lethal_payoff_over_basic_attack():
         "room",
         [
             {"id": "p1", "name": "Player One", "team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]},
-            {"id": "p2", "name": "CPU", "team": ["yuta_okkotsu", "aoi_todo", "maki_zenin"]},
+            {"id": "p2", "name": "CPU", "team": ["yuta_okkotsu_jjk0", "aoi_todo", "maki_zenin"]},
         ],
         difficulty="hard",
     )
@@ -603,16 +605,16 @@ def test_hard_difficulty_still_prefers_lethal_payoff_over_basic_attack():
     state.turn_player_id = "p2"
     state.players["p2"].energy = {energy: 0 for energy in EnergyType}
     state.players["p2"].energy[EnergyType.GREEN] = 1
-    state.players["p2"].energy[EnergyType.BLUE] = 3
+    state.players["p2"].energy[EnergyType.BLUE] = 0
     state.players["p2"].team[0].statuses.append(
-        StatusEffect("rika_manifested", "Rika Manifested", "p2", 0, "p2", 0, duration=2)
+        StatusEffect("rikas_curse", "Rika's Curse", "p2", 0, "p2", 0, duration=2)
     )
-    state.players["p1"].team[0].hp = 45
+    state.players["p1"].team[0].hp = 30
 
     serialized = manager.take_cpu_turn("room", "p2")
 
     assert serialized["players"]["p1"]["team"][0]["alive"] is False
-    assert any(event["message"] == "Yuta Okkotsu used Pure Love Beam" for event in serialized["event_log"])
+    assert any(event["message"] == "Yuta Okkotsu (JJK 0) used Cursed Katana" for event in serialized["event_log"])
 
 
 def test_easy_difficulty_cpu_still_only_selects_legal_actions():
@@ -621,7 +623,7 @@ def test_easy_difficulty_cpu_still_only_selects_legal_actions():
         "room",
         [
             {"id": "p1", "name": "Player One", "team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]},
-            {"id": "p2", "name": "CPU", "team": ["yuta_okkotsu", "aoi_todo", "maki_zenin"]},
+            {"id": "p2", "name": "CPU", "team": ["yuta_okkotsu_jjk0", "aoi_todo", "maki_zenin"]},
         ],
         difficulty="easy",
     )
@@ -1418,7 +1420,7 @@ def test_cpu_action_score_hard_values_a_ready_payoff_over_blind_setup():
         )
 
     skill = SkillSpec(
-        id="resonance", name="Resonance", text="", cost=[EnergyType.GREEN], cooldown=0,
+        id="fc_nobara_kugisaki_resonance", name="Resonance", text="", cost=[EnergyType.GREEN], cooldown=0,
         target_rule=TargetRule(kind="enemy"), classes=[],
         effects=[EffectSpec(type="damage", amount=25, payload={"condition_status": "nail"})],
     )
@@ -1649,7 +1651,7 @@ def test_first_creation_nobara_resonance_uses_nail_conditional_damage():
     )
     serialized = manager.confirm_queue("first", "p1")
 
-    assert serialized["players"]["p2"]["team"][0]["hp"] == 75
+    assert serialized["players"]["p2"]["team"][0]["hp"] == 80
     assert any(event["type"] == "damage_skipped" for event in serialized["event_log"])
 
 

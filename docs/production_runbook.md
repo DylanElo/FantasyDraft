@@ -86,20 +86,21 @@ are counted as successful settlement. Startup, periodic maintenance, and a
 player's relevant profile read drain pending credit; profile reads force one
 targeted retry even if no later socket event arrives.
 
-If the initial SQLite enqueue fails, the single authoritative worker appends an
-fsync'd JSONL sidecar beside the database. The sidecar is created with mode
-`0600` where supported, uses an in-process lock, and is deliberately rejected
-when `JJK_WEB_WORKERS` is not `1`; it is not a multi-process queue. Restore does
-not rewrite an unchanged sidecar during a continuing outage. Partial restores
-fsync the replacement file before atomic replace and sync the directory where
-the platform supports it.
+If the initial SQLite enqueue fails, the failure propagates to the caller
+rather than falling back to a sidecar file (the JSONL fallback was removed --
+see docs/audit_ledger.md for why: it only protected a SQLite-specific outage
+that already breaks profiles, replays, and analytics, so it wasn't buying the
+availability it looked like it was). `SQLiteRuntimeStore.restore_mission_settlement_fallback`
+and the `mission_settlement_fallback_path` helper still exist in read-only
+form purely so a sidecar bundled in a backup taken *before* this removal can
+still be restored into SQLite; nothing writes a new sidecar file anymore.
 
-If both the database and sidecar are briefly unavailable at match finish, the
-live finished room is marked for prompt snapshot reconstruction. A subsequent
-finished-state update, relevant profile read, or bounded maintenance pass
-retries the missing per-player rows; cleanup refuses to remove the room until
-all human snapshots are durable. Durable `(match_id, player_id)` keys and the
-atomic profile merge make repeated reconstruction and broadcasts idempotent.
+If the enqueue is briefly unavailable at match finish, the live finished room
+is marked for prompt snapshot reconstruction. A subsequent finished-state
+update, relevant profile read, or bounded maintenance pass retries the
+missing per-player rows; cleanup refuses to remove the room until all human
+snapshots are durable. Durable `(match_id, player_id)` keys and the atomic
+profile merge make repeated reconstruction and broadcasts idempotent.
 
 Replay capture is disabled by default. Enabling it requires an approved player
 notice/consent and retention policy because replay documents contain player
@@ -109,8 +110,12 @@ controls automatic expiry.
 Back up the database with the repository's SQLite-aware bundle tool. It uses
 `sqlite3.Connection.backup()`, verifies `PRAGMA integrity_check`, accepts the
 supported source schemas 4, 5, and 6, records privacy-safe aggregate row counts
-and SHA-256 hashes, and separately preserves the settlement sidecar with
-restrictive permissions:
+and SHA-256 hashes, and separately preserves a settlement sidecar with
+restrictive permissions if one is present. Nothing produces a new sidecar file
+anymore (see above), so a fresh backup normally has none; the tool still
+bundles and restores one if the source directory happens to have a leftover
+file from before that removal, or the source was itself restored from an
+older backup:
 
 ```bash
 # First stop/quiesce the only authoritative worker. Source must already exist;
@@ -178,8 +183,6 @@ command execution and result emission. `scheduler_callbacks_inflight` remains
 nonzero after a deadline leaves the schedule while its expire, result, and
 re-arm callbacks are still running. `scheduler_callback_errors_total` is a
 process-lifetime incident signal; investigate any increase before release.
-`mission_settlement_fallback_pending` counts durable sidecar records not yet
-restored into the SQLite settlement outbox; malformed retained lines also count.
 
 Enabling drain atomically sets `accepting_new_matches=false`, rejects new CPU
 starts and PvP joins, rejects rematches that would create a new room, and
@@ -201,7 +204,6 @@ the following conditions:
   `battle_command_handlers_inflight=0`;
 - `terminal_persistence_pending_rooms=0`;
 - `mission_snapshot_retry_rooms=0`;
-- `mission_settlement_fallback_pending=0`;
 - `analytics_outbox_size=0`;
 - mission settlement counts `pending=0`, `processing=0`, and
   `failed_retryable=0`.

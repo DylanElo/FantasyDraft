@@ -1,6 +1,7 @@
 import json
-import subprocess
 from pathlib import Path
+
+from conftest import run_node
 
 from jjk_arena.battle_v2.starter_roster import first_creation_payload
 
@@ -8,20 +9,8 @@ from jjk_arena.battle_v2.starter_roster import first_creation_payload
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def _run_node(script: str) -> dict:
-    result = subprocess.run(
-        ["node", "--experimental-default-type=module", "-"],
-        input=script,
-        text=True,
-        capture_output=True,
-        cwd=ROOT,
-        check=True,
-    )
-    return json.loads(result.stdout)
-
-
 def test_season_three_creation_and_mission_regions_fit_supported_safe_frames():
-    probe = _run_node(
+    probe = run_node(
         r"""
 globalThis.JJK_MOBILE_TOKENS = {};
 globalThis.JJK_BOOTSTRAP = {};
@@ -69,7 +58,7 @@ console.log(JSON.stringify({ frames }));
 
 
 def test_season_three_boot_team_setup_and_matchup_regions_fit_supported_safe_frames():
-    probe = _run_node(
+    probe = run_node(
         r"""
 globalThis.JJK_MOBILE_TOKENS = {};
 globalThis.JJK_BOOTSTRAP = {};
@@ -129,7 +118,7 @@ console.log(JSON.stringify({ frames }));
 
 
 def test_first_creation_navigation_is_atomic_and_cpu_safe():
-    probe = _run_node(
+    probe = run_node(
         r"""
 globalThis.JJK_BOOTSTRAP = { firstCreation: { roster: {
   alpha: { id: 'alpha', name: 'Alpha', skills: [] },

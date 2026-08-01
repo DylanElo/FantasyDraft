@@ -1,7 +1,8 @@
 import json
 import math
-import subprocess
 from pathlib import Path
+
+from conftest import run_node
 
 from jjk_arena.battle_v2.starter_roster import FIRST_CREATION_ROSTER
 
@@ -17,24 +18,12 @@ ATLAS_FILES = {
 }
 
 
-def _run_node(script: str) -> dict:
-    result = subprocess.run(
-        ["node", "--experimental-default-type=module", "-"],
-        input=script,
-        text=True,
-        capture_output=True,
-        cwd=ROOT,
-        check=True,
-    )
-    return json.loads(result.stdout)
-
-
 def _shipping_skill_ids() -> list[str]:
     return [skill.id for character in FIRST_CREATION_ROSTER.values() for skill in character.skills]
 
 
 def test_all_78_shipping_skill_ids_have_stable_visual_metadata_and_atlas_frames():
-    probe = _run_node(
+    probe = run_node(
         r"""
 const registry = await import('./web/static/phaser/core/skill-visual-registry.js');
 const entries = registry.skillVisualEntries();
@@ -124,7 +113,7 @@ console.log(JSON.stringify({
 
 
 def test_replacements_keep_original_slot_identity_in_the_visual_registry():
-    probe = _run_node(
+    probe = run_node(
         r"""
 const { skillVisualFor } = await import('./web/static/phaser/core/skill-visual-registry.js');
 console.log(JSON.stringify({
@@ -143,7 +132,7 @@ console.log(JSON.stringify({
 
 
 def test_atlas_frame_and_focal_crops_stay_inside_their_4_by_4_cells():
-    probe = _run_node(
+    probe = run_node(
         r"""
 const registry = await import('./web/static/phaser/core/skill-visual-registry.js');
 const visuals = await import('./web/static/phaser/ui/skill-visuals.js');
@@ -181,7 +170,7 @@ def test_action_atlases_exist_as_compressed_1248_square_webp_assets():
 
 
 def test_skill_art_renderer_uses_a_bounded_local_atlas_frame():
-    probe = _run_node(
+    probe = run_node(
         r"""
 const { drawSkillArtCrop } = await import('./web/static/phaser/ui/skill-visuals.js');
 const calls = {};

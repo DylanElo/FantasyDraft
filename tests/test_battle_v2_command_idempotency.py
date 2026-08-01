@@ -12,7 +12,7 @@ def manager_with_match() -> BattleV2Manager:
         "room",
         [
             {"id": "p1", "name": "P1", "team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"]},
-            {"id": "p2", "name": "P2", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+            {"id": "p2", "name": "P2", "team": ["satoru_gojo_young", "maki_zenin", "panda"]},
         ],
     )
     return manager

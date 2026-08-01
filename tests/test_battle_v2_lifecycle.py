@@ -8,7 +8,7 @@ from jjk_arena.battle_v2.timers import BattleTimerPolicy
 
 PLAYERS = [
     {"id": "p1", "name": "P1", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
-    {"id": "p2", "name": "P2", "team": ["satoru_gojo", "ryomen_sukuna", "mahito"]},
+    {"id": "p2", "name": "P2", "team": ["satoru_gojo_young", "maki_zenin", "panda"]},
 ]
 
 

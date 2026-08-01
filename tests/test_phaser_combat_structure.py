@@ -11,7 +11,13 @@ COMBAT_SCENE = ROOT / "web/static/phaser/scenes/combat-scene.js"
 
 
 def test_combat_scene_is_a_battlefield_composition_not_the_old_dashboard():
-    source = COMBAT_SCENE.read_text(encoding="utf-8")
+    combat_skill_deck = ROOT / "web/static/phaser/scenes/combat-skill-deck.js"
+    combat_fighter_field = ROOT / "web/static/phaser/scenes/combat-fighter-field.js"
+    source = (
+        COMBAT_SCENE.read_text(encoding="utf-8")
+        + combat_skill_deck.read_text(encoding="utf-8")
+        + combat_fighter_field.read_text(encoding="utf-8")
+    )
 
     assert "const cardW = (contentW - gap * 2) / 3;" in source
     assert "(team || []).slice(0, 3).forEach" in source
@@ -43,7 +49,19 @@ def test_combat_scene_is_a_battlefield_composition_not_the_old_dashboard():
 
 
 def test_combat_scene_preserves_authoritative_state_affordances():
-    source = COMBAT_SCENE.read_text(encoding="utf-8")
+    status_presentation = ROOT / "web/static/phaser/core/status-presentation.js"
+    combat_sheets = ROOT / "web/static/phaser/scenes/combat-sheets.js"
+    combat_hud = ROOT / "web/static/phaser/scenes/combat-hud.js"
+    combat_skill_deck = ROOT / "web/static/phaser/scenes/combat-skill-deck.js"
+    combat_fighter_field = ROOT / "web/static/phaser/scenes/combat-fighter-field.js"
+    source = (
+        COMBAT_SCENE.read_text(encoding="utf-8")
+        + status_presentation.read_text(encoding="utf-8")
+        + combat_sheets.read_text(encoding="utf-8")
+        + combat_hud.read_text(encoding="utf-8")
+        + combat_skill_deck.read_text(encoding="utf-8")
+        + combat_fighter_field.read_text(encoding="utf-8")
+    )
 
     assert "store.canTarget(character, slot, side)" in source
     assert "store.targetBlocksSkill(character, selectedSkill)" in source
@@ -75,12 +93,21 @@ def test_combat_scene_preserves_authoritative_state_affordances():
 
 
 def test_combat_skill_hand_uses_the_shipping_season_three_art():
-    source = COMBAT_SCENE.read_text(encoding="utf-8")
+    combat_sheets = ROOT / "web/static/phaser/scenes/combat-sheets.js"
+    combat_skill_deck = ROOT / "web/static/phaser/scenes/combat-skill-deck.js"
+    combat_fighter_field = ROOT / "web/static/phaser/scenes/combat-fighter-field.js"
+    source = (
+        COMBAT_SCENE.read_text(encoding="utf-8")
+        + combat_sheets.read_text(encoding="utf-8")
+        + combat_skill_deck.read_text(encoding="utf-8")
+        + combat_fighter_field.read_text(encoding="utf-8")
+    )
 
-    assert "green: 's3-skill-body'" in source
-    assert "blue: 's3-skill-technique'" in source
-    assert "white: 's3-skill-focus'" in source
-    assert "red: 's3-skill-curse'" in source
+    # ponytail: the energy->texture map itself now lives once in
+    # core/asset-registry.js (SKILL_ART_BY_ENERGY), shared with
+    # combat-queue-review-scene.js, instead of being duplicated inline here.
+    assert "SKILL_ART_BY_ENERGY } from '../core/asset-registry.js" in source
+    assert "SKILL_ART_BY_ENERGY[semanticCost] || 's3-skill-focus'" in source
     assert "this.coverImage(textureKey" in source
     assert "context: 'hero'" in source
     assert "skill.description || this.store.effectLine(skill)" in source

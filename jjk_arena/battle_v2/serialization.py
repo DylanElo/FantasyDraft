@@ -12,6 +12,7 @@ from .models import (
     SkillClass,
     StatusEffect,
 )
+from .conditions import full_stun_name
 
 
 def _energy_dict(energy: dict[EnergyType, int]) -> dict[str, int]:
@@ -62,6 +63,7 @@ def serialize_character(character: CharacterState, viewer_id: str) -> dict:
         "statuses": statuses,
         "skill_replacements": dict(character.skill_replacements),
         "acted_this_turn": character.acted_this_turn,
+        "fully_stunned_by": full_stun_name(character),
     }
 
 

@@ -1,26 +1,15 @@
 import json
 import re
-import subprocess
 from pathlib import Path
+
+from conftest import run_node
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def _run_node(script: str) -> dict:
-    result = subprocess.run(
-        ["node", "--experimental-default-type=module", "-"],
-        input=script,
-        text=True,
-        capture_output=True,
-        cwd=ROOT,
-        check=True,
-    )
-    return json.loads(result.stdout)
-
-
 def test_dom_action_descriptors_are_stable_and_filter_canvas_blockers():
-    probe = _run_node(
+    probe = run_node(
         r"""
 const {
   buildAccessibleActions,
@@ -67,7 +56,7 @@ console.log(JSON.stringify({
 
 
 def test_dom_bridge_reuses_focused_nodes_and_blocks_disabled_activation():
-    probe = _run_node(
+    probe = run_node(
         r"""
 const { DomUiBridge } = await import('./web/static/phaser/core/dom-ui-bridge.js');
 
@@ -175,7 +164,7 @@ console.log(JSON.stringify({
 
 
 def test_combat_dom_mirror_exposes_viewer_safe_tactical_state_in_queue_order():
-    probe = _run_node(
+    probe = run_node(
         r"""
 const { DomUiBridge, buildCombatAccessibilityState } = await import('./web/static/phaser/core/dom-ui-bridge.js');
 
@@ -313,7 +302,7 @@ console.log(JSON.stringify({
 
 
 def test_identity_dialog_saves_cancels_validates_and_restores_focus():
-    probe = _run_node(
+    probe = run_node(
         r"""
 const { DomUiBridge, stableActionDomId } = await import('./web/static/phaser/core/dom-ui-bridge.js');
 

@@ -13,8 +13,8 @@ from .models import (
     EffectSpec,
     PendingAction,
     SkillClass,
-    StatusFamily,
     StatusEffect,
+    StatusFamily,
 )
 
 
@@ -178,6 +178,73 @@ def apply_damage(
         target.hp = 0
         target.alive = False
     return actual
+
+
+def check_passive_awakenings(
+    character: CharacterState,
+    player_id: str,
+    slot: int,
+    turn_number: int,
+) -> list[BattleEvent]:
+    """Check all unresolved passive awakenings and trigger any whose
+    HP threshold has just been crossed.  Returns public BattleEvents for
+    each triggered awakening so callers can append them to the event log.
+
+    Call this immediately after any ``apply_damage`` call on a living character
+    to catch mid-resolution awakenings.  The function is idempotent: once a
+    passive is in ``passives_triggered``, it is never re-applied.
+    """
+    events: list[BattleEvent] = []
+    if not character.alive or not character.passives:
+        return events
+
+    for passive in character.passives:
+        passive_id = str(passive.get("id", ""))
+        if not passive_id or passive_id in character.passives_triggered:
+            continue
+        threshold = int(passive.get("hp_threshold", 0))
+        if character.hp > threshold:
+            continue
+
+        # Trigger: mark as done first to prevent double-trigger
+        character.passives_triggered.add(passive_id)
+
+        # Apply each permanent awakening status (duration=-1 is never ticked off)
+        for status_spec in list(passive.get("awakening_statuses", [])):
+            status_id = str(status_spec.get("id", passive_id + "_buff"))
+            status_name = str(status_spec.get("name", passive.get("name", "Awakening")))
+            payload = dict(status_spec.get("payload", {}))
+            families_raw = status_spec.get("families", [StatusFamily.BUFF.value])
+            families = [StatusFamily(f) for f in families_raw]
+            permanent_status = StatusEffect(
+                id=status_id,
+                name=status_name,
+                source_player_id=player_id,
+                source_slot=slot,
+                target_player_id=player_id,
+                target_slot=slot,
+                duration=-1,
+                families=families,
+                payload={"families": [f.value for f in families], **payload},
+            )
+            # Apply side-effects (e.g. skill_replacements) immediately
+            _apply_status_side_effects(character, permanent_status)
+            character.statuses.append(permanent_status)
+
+        events.append(BattleEvent(
+            type="passive_awakening",
+            message=f"{character.name} awakened: {passive.get('name', passive_id)}",
+            turn_number=turn_number,
+            payload={
+                "passive_id": passive_id,
+                "passive_name": passive.get("name", ""),
+                "description": passive.get("description", ""),
+                "target_player_id": player_id,
+                "target_slot": slot,
+                "hp_at_trigger": character.hp,
+            },
+        ))
+    return events
 
 
 def _consume_destructible_defense(target: CharacterState, amount: int) -> None:
@@ -727,6 +794,8 @@ def apply_turn_end_statuses(
                     },
                 )
             )
+            # Check passive awakenings after turn-end damage (e.g. poison crossing threshold)
+            events.extend(check_passive_awakenings(character, player_id, slot, turn_number))
     return events
 
 

@@ -1,6 +1,6 @@
-import { CORE_ENERGY, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, ENERGY_NAMES, TOKEN_TYPE } from '../core/runtime-config.js?v=42';
-import { CombatPlaybackScene } from '../fx/combat-playback-scene.js?v=42';
-import { Season3UI } from '../ui/season3-ui.js?v=42';
+import { CORE_ENERGY, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, ENERGY_NAMES, TOKEN_TYPE } from '../core/runtime-config.js?v=43';
+import { CombatPlaybackScene } from '../fx/combat-playback-scene.js?v=43';
+import { Season3UI } from '../ui/season3-ui.js?v=43';
 
 const {
   button: drawCurrentButton,

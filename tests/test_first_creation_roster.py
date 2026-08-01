@@ -68,10 +68,10 @@ def test_first_creation_untargetable_effects_follow_target_rule():
 
 def test_first_creation_excludes_endgame_and_mission_unlock_variants():
     starter_ids = set(FIRST_CREATION_CHARACTER_IDS)
-    assert "mahito" not in starter_ids
+    assert "panda" in starter_ids
     assert "higuruma" not in starter_ids
-    assert "ryomen_sukuna" not in starter_ids
-    assert "yuta_okkotsu" not in starter_ids
+    assert "maki_zenin" in starter_ids
+    assert "yuta_okkotsu_jjk0" in starter_ids
     assert "gojo_adult" in FIRST_CREATION_LOCKED_VARIANTS
     assert "yuta_sendai" in FIRST_CREATION_LOCKED_VARIANTS
     assert "heian_sukuna" in FIRST_CREATION_LOCKED_VARIANTS

@@ -27,3 +27,10 @@ export function titleize(value) {
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
+
+export function clockLabel(seconds) {
+  if (!Number.isFinite(seconds)) return '--:--';
+  const remaining = Math.max(0, Math.ceil(seconds));
+  const minutes = Math.floor(remaining / 60);
+  return `${String(minutes).padStart(2, '0')}:${String(remaining % 60).padStart(2, '0')}`;
+}

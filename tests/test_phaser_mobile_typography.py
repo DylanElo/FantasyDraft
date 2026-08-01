@@ -9,9 +9,28 @@ SCENE_PATHS = (
     ROOT / "web/static/phaser/scenes/combat-queue-review-scene.js",
 )
 
+# combat-scene.js was split into these renderer modules (see docs/audit_ledger.md).
+# Every method body that used to live in combat-scene.js is now a one-line
+# `.call(this, ...)` delegator there, with the real body living in one of
+# these files instead -- so any test that scans combat-scene.js for render
+# body content has to scan these too. Listed extracted-file-first so
+# `_assert_nearby_size`'s `source.index(marker)` finds a marker's *real*
+# definition (e.g. `export function renderReplayLine(...)`) rather than the
+# delegator stub in combat-scene.js, which contains the same signature text
+# but none of the body content the window is supposed to inspect.
+COMBAT_SCENE_EXTRAS = (
+    ROOT / "web/static/phaser/scenes/combat-hud.js",
+    ROOT / "web/static/phaser/scenes/combat-fighter-field.js",
+    ROOT / "web/static/phaser/scenes/combat-skill-deck.js",
+    ROOT / "web/static/phaser/scenes/combat-sheets.js",
+)
+
 
 def _source(path: Path) -> str:
-    return path.read_text(encoding="utf-8")
+    text = path.read_text(encoding="utf-8")
+    if path == SCENE_PATHS[1]:
+        text = "".join(extra.read_text(encoding="utf-8") for extra in COMBAT_SCENE_EXTRAS) + text
+    return text
 
 
 def _assert_nearby_size(source: str, marker: str, minimum: int, window: int = 700) -> None:
@@ -87,7 +106,7 @@ def test_replay_ticker_uses_its_own_lane_below_the_battlefield_prompt() -> None:
     replay = combat[combat.index(marker) : combat.index(marker) + 1100]
 
     assert "layout.fieldTop + 30" in replay
-    assert "fillRect(frame.x + (frame.width - replayW) / 2, replayY, replayW, 18)" in replay
+    assert "fillRect(rx, replayY, replayW, 18)" in replay
     assert "this.mono(frame.x + frame.width / 2, layout.fieldTop + 3," not in replay
 
 

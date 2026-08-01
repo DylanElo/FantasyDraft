@@ -49,8 +49,8 @@ const FIRST_CREATION_ORDER = Object.freeze([
 ]);
 
 export class FirstCreationScene extends BaseScene {
-    constructor() {
-      super('FirstCreationScene');
+    constructor(key = 'FirstCreationScene') {
+      super(key);
       this.creationFilter = 'all';
       this.creationRosterIndex = 0;
       this.studySkillIndex = 0;
@@ -558,6 +558,31 @@ export class FirstCreationScene extends BaseScene {
       description.setMaxLines(6);
     }
 
+    animateCharacterStudy(layout, skillTargets) {
+      if (this.studyEntryRenders > 0) {
+        this.studyEntryRenders -= 1;
+        if (this.studyEntryRenders === 0 && this.presentationLayer) {
+          const profileTargets = this.nodes
+            .filter((node) => node && node.setAlpha && Number(node.y) >= layout.hero.y && Number(node.y) < layout.pager.y)
+            .slice(0, 6);
+          this.presentationLayer.sceneIntro(this, {
+            targets: profileTargets,
+            options: { distance: 16, stagger: 4, duration: 140 },
+          });
+        }
+      } else if (this.studySkillTransition && this.presentationLayer) {
+        this.presentationLayer.sceneIntro(this, {
+          targets: skillTargets.filter((node) => node && node.setAlpha).slice(0, 6),
+          options: {
+            distance: this.studySkillTransition < 0 ? -10 : 10,
+            stagger: 4,
+            duration: 140,
+          },
+        });
+        this.studySkillTransition = 0;
+      }
+    }
+
     renderCharacterStudy(frame, character) {
       const layout = this.characterStudyLayout(frame);
       const selected = this.store.playerTeam.includes(character.id);
@@ -602,28 +627,7 @@ export class FirstCreationScene extends BaseScene {
       });
       this.toast(frame, { y: layout.pager.y - 54, theme: 'light' });
 
-      if (this.studyEntryRenders > 0) {
-        this.studyEntryRenders -= 1;
-        if (this.studyEntryRenders === 0 && this.presentationLayer) {
-          const profileTargets = this.nodes
-            .filter((node) => node && node.setAlpha && Number(node.y) >= layout.hero.y && Number(node.y) < layout.pager.y)
-            .slice(0, 6);
-          this.presentationLayer.sceneIntro(this, {
-            targets: profileTargets,
-            options: { distance: 16, stagger: 4, duration: 140 },
-          });
-        }
-      } else if (this.studySkillTransition && this.presentationLayer) {
-        this.presentationLayer.sceneIntro(this, {
-          targets: skillTargets.filter((node) => node && node.setAlpha).slice(0, 6),
-          options: {
-            distance: this.studySkillTransition < 0 ? -10 : 10,
-            stagger: 4,
-            duration: 140,
-          },
-        });
-        this.studySkillTransition = 0;
-      }
+      this.animateCharacterStudy(layout, skillTargets);
     }
 
     render() {

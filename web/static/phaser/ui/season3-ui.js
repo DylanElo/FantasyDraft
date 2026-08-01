@@ -1,6 +1,8 @@
 import * as Current from './culling-current-ui.js?v=43';
 import * as Flow from './season-three-ui.js?v=43';
 import * as PostMatch from './season3-master-ui.js?v=43';
+import { drawEnergyPip } from './energy-pip.js?v=43';
+import { renderModalSheetChrome } from './modal-sheet.js?v=43';
 import { S3_TOKENS } from './season3-tokens.js?v=43';
 
 // This is the only scene-facing presentation entrypoint. The compatibility
@@ -11,16 +13,13 @@ export const Season3UI = Object.freeze({
   current: Object.freeze({
     world: Current.drawCurrentWorld,
     panel: Current.drawCurrentPanel,
-    chip: Current.drawCurrentPill,
     button: Current.drawCurrentButton,
-    modeCard: Current.drawCurrentModeCard,
-    navigation: Current.drawCurrentNav,
+    energyPip: drawEnergyPip,
+    modalSheet: renderModalSheetChrome,
   }),
   flow: Object.freeze({
     colors: Flow.S3_COLORS,
     bootLayout: Flow.bootS3Layout,
-    draftLayout: Flow.draftS3Layout,
-    missionMapLayout: Flow.missionMapS3Layout,
     world: Flow.drawS3World,
     panel: Flow.drawS3Panel,
     chip: Flow.drawS3Chip,
@@ -35,7 +34,6 @@ export const Season3UI = Object.freeze({
     colors: PostMatch.S3_COLORS,
     world: PostMatch.drawS3World,
     panel: PostMatch.drawS3Panel,
-    chip: PostMatch.drawS3Tag,
     button: PostMatch.drawS3Button,
     progress: PostMatch.drawS3Progress,
     missionRewardModel: PostMatch.missionRewardModel,

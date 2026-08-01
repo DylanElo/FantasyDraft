@@ -1,18 +1,13 @@
 import { CORE_ENERGY, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, ENERGY_NAMES, TOKEN_TYPE } from '../core/runtime-config.js?v=43';
+import { SKILL_ART_BY_ENERGY } from '../core/asset-registry.js?v=43';
 import { CombatPlaybackScene } from '../fx/combat-playback-scene.js?v=43';
 import { Season3UI } from '../ui/season3-ui.js?v=43';
 
 const {
   button: drawCurrentButton,
   panel: drawCurrentPanel,
+  energyPip: drawEnergyPip,
 } = Season3UI.current;
-
-const SKILL_ART_BY_ENERGY = {
-  green: 's3-skill-body',
-  blue: 's3-skill-technique',
-  white: 's3-skill-focus',
-  red: 's3-skill-curse',
-};
 
 export class CombatQueueReviewScene extends CombatPlaybackScene {
     presentationLayerCall(method, payload) {
@@ -109,17 +104,16 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
       const startX = alignRight ? x - Math.max(0, visible.length - 1) * 13 : x;
       visible.forEach((color, index) => {
         const cx = startX + index * 13;
-        const tone = ENERGY_COLORS[color] || CULLING_COLORS.charcoal;
-        this.graphics.fillStyle(CULLING_COLORS.ivory, 0.98);
-        this.graphics.fillCircle(cx, y, 6);
-        this.graphics.fillStyle(tone, color === 'black' ? 0.76 : 0.96);
-        this.graphics.fillCircle(cx, y, 4.2);
-        this.graphics.lineStyle(1, color === 'black' ? CULLING_COLORS.charcoal : tone, 0.74);
-        this.graphics.strokeCircle(cx, y, 5.5);
-        this.mono(cx, y - 4, ENERGY_LABELS[color] || '?', {
-          color: color === 'white' ? CULLING_COLORS.text : CULLING_COLORS.inverseText,
-          fontSize: '10px',
-        }).setOrigin(0.5, 0);
+        drawEnergyPip(this, cx, y, color, {
+          backingRadius: 6,
+          radius: 4.2,
+          fillAlpha: color === 'black' ? 0.76 : 0.96,
+          strokeRadius: 5.5,
+          strokeColor: color === 'black' ? CULLING_COLORS.charcoal : (ENERGY_COLORS[color] || CULLING_COLORS.charcoal),
+          strokeAlpha: 0.74,
+          label: ENERGY_LABELS[color] || '?',
+          labelOffsetY: -4,
+        });
       });
     }
 
@@ -139,21 +133,19 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         const cx = firstX + index * 23;
         const current = Number(energy[color] || 0);
         const remaining = Number(after[color] === undefined ? current : after[color]);
-        this.graphics.fillStyle(CULLING_COLORS.ivory, 0.98);
-        this.graphics.fillCircle(cx, layout.sheetY + 26, 8);
-        this.graphics.fillStyle(ENERGY_COLORS[color], current ? 0.96 : 0.16);
-        this.graphics.fillCircle(cx, layout.sheetY + 26, 5.7);
-        this.graphics.lineStyle(1, color === 'white' ? CULLING_COLORS.charcoal : ENERGY_COLORS[color], current ? 0.8 : 0.28);
-        this.graphics.strokeCircle(cx, layout.sheetY + 26, 7.5);
-        this.mono(cx, layout.sheetY + 22.5, ENERGY_LABELS[color], {
-          color: color === 'white' ? CULLING_COLORS.text : CULLING_COLORS.inverseText,
-          fontSize: '10px',
-        }).setOrigin(0.5, 0);
-        this.mono(cx, layout.sheetY + 36, `${current}/${remaining}`, {
-          color: remaining < 0 ? CULLING_COLORS.redText : CULLING_COLORS.text,
-          fontSize: '12px',
-          fontStyle: '700',
-        }).setOrigin(0.5, 0);
+        drawEnergyPip(this, cx, layout.sheetY + 26, color, {
+          backingRadius: 8,
+          radius: 5.7,
+          fillAlpha: current ? 0.96 : 0.16,
+          strokeRadius: 7.5,
+          strokeAlpha: current ? 0.8 : 0.28,
+          label: ENERGY_LABELS[color],
+          labelOffsetY: -3.5,
+          below: `${current}/${remaining}`,
+          belowColor: remaining < 0 ? CULLING_COLORS.redText : CULLING_COLORS.text,
+          belowFontStyle: '700',
+          belowOffsetY: 10,
+        });
       });
     }
 
@@ -167,6 +159,13 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         }).setOrigin(1, 0);
         return 0;
       }
+
+      // Gap 5: Wild payment label — clarify what the X buttons are for.
+      this.mono(x + 8, y + 4, 'WILD PAYMENT', {
+        color: CULLING_COLORS.mutedText,
+        fontSize: '10px',
+        fontStyle: '700',
+      });
 
       for (let wildIndex = 0; wildIndex < wildCount; wildIndex += 1) {
         const pay = (this.store.actionWildPays[action.id] || [])[wildIndex] || 'black';
@@ -191,13 +190,14 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
       return Math.ceil(wildCount / 2);
     }
 
-    renderQueueActionCard(action, index, count, region, queueFit) {
+    renderQueueActionCard(action, index, count, region, queueFit, queueValidation = {}) {
       const { x, y, w, h } = region;
       const nodeStart = this.nodes.length;
       const meta = this.actionMeta(action);
       const tone = index === 0 ? CULLING_COLORS.gold : index === 1 ? CULLING_COLORS.cobalt : CULLING_COLORS.cyan;
       const last = index >= count - 1;
-      const rowError = queueFit && !queueFit.ok && queueFit.actionId === action.id ? queueFit.reason : '';
+      const actionValidationReason = queueValidation && queueValidation[action.id] ? String(queueValidation[action.id]) : '';
+      const rowError = actionValidationReason || (queueFit && !queueFit.ok && queueFit.actionId === action.id ? queueFit.reason : '');
       const validationTone = rowError ? CULLING_COLORS.vermilion : CULLING_COLORS.queued;
       const dense = count === 3 || h < 174;
       const controlSize = 44;
@@ -283,10 +283,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
       skillName.setMaxLines(2);
       skillName.setDepth(1);
 
-      const detailParts = [];
-      if (meta.secondaryRoute) detailParts.push(`2ND ${meta.secondaryRoute}`);
-      if (meta.alternateRoute) detailParts.push(`ALT ${meta.alternateRoute}`);
-      if (meta.replacement) detailParts.push('REPLACED SLOT');
+      // metaY anchors the class/detail line below the skill name block.
       const metaY = y + topInset + (dense ? 29 : 31);
       const classLine = dense
         ? `CD ${meta.cooldown} / ${meta.targetLabel}`
@@ -319,21 +316,58 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         summaryNode.setDepth(1);
       }
 
-      const routeParts = [`${meta.caster ? meta.caster.name : 'Unknown'} > ${meta.targetRoute}`];
-      routeParts.push(...detailParts);
+      // Gap 4: Structured target rows — each target type (1ST/2ND/ALT) gets its
+      // own labeled chip row so narrow 3-action cards remain readable at 390px.
+      // Replacement is already conveyed by the artwork ribbon; omit it from routes.
+      const targetRows = [];
+      if (meta.targetRoute) targetRows.push({ label: '1ST', route: meta.targetRoute, tone: CULLING_COLORS.cobalt });
+      if (meta.secondaryRoute) targetRows.push({ label: '2ND', route: meta.secondaryRoute, tone: CULLING_COLORS.gold });
+      if (meta.alternateRoute) targetRows.push({ label: 'ALT', route: meta.alternateRoute, tone: CULLING_COLORS.cyan });
+
       const routeY = Math.min(controlY - (dense ? 30 : 46), metaY + (dense ? 18 : 50));
-      const route = this.text(x + 8, routeY, rowError || routeParts.join(' / '), {
-        fontFamily: TOKEN_TYPE.mono || 'monospace',
-        fontSize: '12px',
-        fontStyle: '700',
-        color: rowError ? CULLING_COLORS.redText : CULLING_COLORS.cobaltText,
-        backgroundColor: '#F2E8D5',
-        padding: { x: 2, y: 1 },
-        lineSpacing: -2,
-        wordWrap: { width: w - 20 },
-      });
-      route.setMaxLines(dense ? 2 : 3);
-      route.setDepth(1);
+      const routeLineH = 16;
+
+      if (rowError) {
+        const errorNode = this.text(x + 8, routeY, rowError, {
+          fontFamily: TOKEN_TYPE.mono || 'monospace',
+          fontSize: '12px',
+          fontStyle: '700',
+          color: CULLING_COLORS.redText,
+          backgroundColor: '#F2E8D5',
+          padding: { x: 2, y: 1 },
+          lineSpacing: -2,
+          wordWrap: { width: w - 20 },
+        });
+        errorNode.setMaxLines(dense ? 2 : 3);
+        errorNode.setDepth(1);
+      } else {
+        targetRows.slice(0, dense ? 1 : 3).forEach((row, rowIdx) => {
+          const rowY = routeY + rowIdx * routeLineH;
+          const chipW = 22;
+          const chipH = 13;
+          this.graphics.fillStyle(row.tone, 0.86);
+          this.graphics.fillRect(x + 6, rowY + 1, chipW, chipH);
+          this.mono(x + 6 + chipW / 2, rowY + 1, row.label, {
+            color: row.tone === CULLING_COLORS.gold ? CULLING_COLORS.text : CULLING_COLORS.inverseText,
+            fontSize: '10px',
+            fontStyle: '900',
+          }).setOrigin(0.5, 0).setDepth(1);
+          const nameX = x + 6 + chipW + 3;
+          const nameW = w - (nameX - x) - 6;
+          const nameNode = this.text(nameX, rowY, row.route, {
+            fontFamily: TOKEN_TYPE.mono || 'monospace',
+            fontSize: '12px',
+            fontStyle: '700',
+            color: CULLING_COLORS.cobaltText,
+            backgroundColor: '#F2E8D5',
+            padding: { x: 2, y: 1 },
+            lineSpacing: -2,
+            wordWrap: { width: nameW },
+          });
+          nameNode.setMaxLines(1);
+          nameNode.setDepth(1);
+        });
+      }
 
       drawCurrentButton(this, x + 4, controlY, controlSize, controlSize, '<', () => {
         this.presentationLayerCall('interactionCue', { cue: 'queue', context: 'queue-reorder', action, direction: -1 });
@@ -383,6 +417,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
       }
       const layout = this.queueReviewLayout(frame);
       const queueFit = this.store.queueReviewFit();
+      const queueValidation = this.store.queueReviewValidationMap();
       const me = this.store.me();
 
       // Queue Review is the final battlefield stage, not a detached modal.
@@ -457,7 +492,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
           y: layout.cardsY,
           w: cardW,
           h: layout.cardH,
-        }, queueFit)
+        }, queueFit, queueValidation)
       )).filter(Boolean);
       this.presentationLayerCall('renderQueueReviewState', {
         frame,

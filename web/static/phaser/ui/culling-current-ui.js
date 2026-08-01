@@ -85,22 +85,6 @@ export function drawCurrentPanel(scene, x, y, w, h, options) {
   }
 }
 
-export function drawCurrentPill(scene, x, y, label, options) {
-  const opts = options || {};
-  const h = opts.h || 24;
-  const w = opts.w || Math.max(62, label.length * 7 + 24);
-  const fill = opts.fill === undefined ? CULLING_COLORS.charcoal : opts.fill;
-  scene.graphics.fillStyle(fill, opts.alpha === undefined ? 0.9 : opts.alpha);
-  scene.graphics.fillRoundedRect(x, y, w, h, h / 2);
-  scene.text(x + w / 2, y + h / 2 - 7, label, {
-    fontFamily: TOKEN_TYPE.ui || 'Inter, Arial, sans-serif',
-    fontSize: opts.fontSize || `${TYPE_SCALE.label}px`,
-    fontStyle: '800',
-    color: opts.color || CULLING_COLORS.inverseText,
-  }).setOrigin(0.5, 0);
-  return w;
-}
-
 export function drawCurrentButton(scene, x, y, w, h, label, onClick, options) {
   const opts = options || {};
   const disabled = !!opts.disabled;
@@ -142,77 +126,5 @@ export function drawCurrentButton(scene, x, y, w, h, label, onClick, options) {
     disabledReason: opts.disabledReason || opts.reason,
     accessibilityId: opts.accessibilityId,
     cue: opts.cue,
-  });
-}
-
-export function drawCurrentModeCard(scene, x, y, w, h, label, kicker, onClick, options) {
-  const opts = options || {};
-  drawCurrentPanel(scene, x, y, w, h, {
-    fill: opts.fill === undefined ? CULLING_COLORS.ivory : opts.fill,
-    stroke: opts.stroke === undefined ? CULLING_COLORS.charcoal : opts.stroke,
-    accent: opts.accent === undefined ? CULLING_COLORS.cobalt : opts.accent,
-    radius: 16,
-    shadowY: 4,
-    shadowAlpha: 0.13,
-  });
-  scene.mono(x + 13, y + 13, kicker, {
-    color: opts.accentText || CULLING_COLORS.cobaltText,
-    fontSize: '10px',
-    fontStyle: '700',
-  });
-  const title = scene.text(x + 13, y + 34, label, {
-    fontFamily: TOKEN_TYPE.ui || 'Inter, Arial, sans-serif',
-    fontSize: w < 112 ? '12px' : '13px',
-    fontStyle: '900',
-    color: CULLING_COLORS.text,
-    lineSpacing: 2,
-    wordWrap: { width: w - 24 },
-  });
-  title.setMaxLines(2);
-  scene.graphics.lineStyle(2, opts.accent || CULLING_COLORS.cobalt, 0.72);
-  scene.graphics.beginPath();
-  scene.graphics.moveTo(x + w - 26, y + h - 16);
-  scene.graphics.lineTo(x + w - 12, y + h - 16);
-  scene.graphics.lineTo(x + w - 17, y + h - 21);
-  scene.graphics.moveTo(x + w - 12, y + h - 16);
-  scene.graphics.lineTo(x + w - 17, y + h - 11);
-  scene.graphics.strokePath();
-  scene.registerHitTarget(x, y, w, h, opts.accessibilityLabel || label, onClick, {
-    disabled: opts.disabled,
-    disabledReason: opts.disabledReason || opts.reason,
-    accessibilityId: opts.accessibilityId,
-    cue: opts.cue,
-  });
-}
-
-export function drawCurrentNav(scene, region, items) {
-  const g = scene.graphics;
-  g.fillStyle(CULLING_COLORS.ivory, 0.98);
-  g.fillRect(region.x, region.y, region.w, region.h + 32);
-  g.lineStyle(1, CULLING_COLORS.charcoal, 0.16);
-  g.beginPath();
-  g.moveTo(region.x, region.y);
-  g.lineTo(region.x + region.w, region.y);
-  g.strokePath();
-  const itemW = region.w / items.length;
-  items.forEach((item, index) => {
-    const x = region.x + index * itemW;
-    if (item.active) {
-      g.fillStyle(CULLING_COLORS.cobalt, 0.1);
-      g.fillRoundedRect(x + 8, region.y + 7, itemW - 16, region.h - 14, 14);
-      g.fillStyle(CULLING_COLORS.cobalt, 0.9);
-      g.fillRoundedRect(x + itemW / 2 - 13, region.y + 7, 26, 4, 2);
-    }
-    scene.text(x + itemW / 2, region.y + 22, item.label, {
-      fontFamily: TOKEN_TYPE.ui || 'Inter, Arial, sans-serif',
-      fontSize: `${TYPE_SCALE.label}px`,
-      fontStyle: item.active ? '900' : '700',
-      color: item.active ? CULLING_COLORS.cobaltText : CULLING_COLORS.mutedText,
-    }).setOrigin(0.5, 0);
-    scene.registerHitTarget(x + 6, region.y + 4, itemW - 12, region.h - 8, item.accessibilityLabel || item.label, item.onClick, {
-      disabled: !!item.disabled,
-      disabledReason: item.disabledReason || item.reason,
-      accessibilityId: item.accessibilityId,
-    });
   });
 }

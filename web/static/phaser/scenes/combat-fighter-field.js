@@ -278,7 +278,7 @@ export function renderFighterPlate(character, side, slot, x, y, w, h) {
         targetable,
       });
       if (targetable) store.target(side, slot);
-      else if (!selectedSkill && side === 'mine') store.selectFighter(slot);
+      else if (!selectedSkill && side === 'mine') store.selectCaster(slot);
       else if (!selectedSkill) store.inspectFighter(side, slot);
     },
     onLongPress: () => {

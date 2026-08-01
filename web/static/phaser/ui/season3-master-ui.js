@@ -141,23 +141,6 @@ export function drawS3Panel(scene, x, y, w, h, options = {}) {
   }
 }
 
-export function drawS3Tag(scene, x, y, label, options = {}) {
-  const h = options.h || 22;
-  const w = options.w || Math.max(58, safeText(label).length * 6.5 + 20);
-  const points = cutRectPoints(x, y, w, h, Math.min(6, h / 3));
-  scene.graphics.fillStyle(options.fill === undefined ? S3_COLORS.ink : options.fill, options.alpha === undefined ? 0.94 : options.alpha);
-  scene.graphics.fillPoints(points, true);
-  scene.graphics.lineStyle(1, options.stroke === undefined ? S3_COLORS.boneBright : options.stroke, 0.55);
-  scene.graphics.strokePoints(points, true);
-  scene.text(x + w / 2, y + h / 2 - 7, label, {
-    fontFamily: TOKEN_TYPE.ui || 'Inter, Arial, sans-serif',
-    fontSize: options.fontSize || '10px',
-    fontStyle: '800',
-    color: options.color || S3_COLORS.inverseText,
-  }).setOrigin(0.5, 0);
-  return w;
-}
-
 export function drawS3Button(scene, x, y, w, h, label, onClick, options = {}) {
   const disabled = !!options.disabled;
   const fill = options.fill === undefined ? S3_COLORS.inkBlue : options.fill;
@@ -296,7 +279,7 @@ export function recordsModel(records) {
     counts,
     total: list.length,
     totalDamage: list.reduce((total, record) => total + Math.max(0, Number(record.damage || 0)), 0),
-    fastestWin: fastestWin ? Number(fastestWin.turns || 0) : null,
+    fastestWin: fastestWin ? Number(fastestWin.turns || 1) : null,
     biggestHit: biggestHit ? Number(biggestHit.amount || 0) : 0,
   };
 }
@@ -366,5 +349,3 @@ export function recordsLayout(frame) {
     lobby: { x, y: lobbyY, w, h: 44 },
   };
 }
-
-export const S3_TYPE = { TOKEN_TYPE, TYPE_SCALE };

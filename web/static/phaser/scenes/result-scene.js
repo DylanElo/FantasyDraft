@@ -209,7 +209,7 @@ export class ResultScene extends BaseScene {
       const reward = rewards.rewards[0];
       this.mono(region.x + 12, region.y + region.h - 25, reward
         ? `REWARD REVEALED // ${safeText(reward.title).toUpperCase()}`
-        : `TURN ${model.turns} // ${model.damage} TOTAL DAMAGE`, {
+        : `ROUND ${Math.ceil(model.turns / 2)} // ${model.damage} TOTAL DAMAGE`, {
         color: reward ? '#66501C' : S3_COLORS.mutedText,
         fontSize: '10px',
         fontStyle: '900',

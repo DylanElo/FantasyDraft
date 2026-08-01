@@ -42,7 +42,10 @@ Resolver-only character exceptions should be avoided. If a mechanic cannot be de
 
 ### Data-driven character kits
 
-Character kits should be declared as `SkillSpec` data with `EffectSpec`, `ConditionSpec`, and `TransformationSpec` entries. Character-specific behavior should not be scattered through Python conditionals that check display names.
+Character kits are declared as `SkillSpec` data with typed `EffectSpec` payloads.
+Conditions live on the exact effect they gate, and replacement windows are
+status-driven. Character-specific behavior must not be scattered through
+Python conditionals that check display names.
 
 ### Server authoritative
 
@@ -60,7 +63,7 @@ The `use_battle_v2()` helper remains as an operational guard for socket handlers
 ## Model Boundaries
 
 - `energy.py` for deterministic energy gain and wildcard payment validation.
-- `conditions.py` for kit condition evaluation.
+- `conditions.py` for shared status and stun predicates.
 - `targeting.py` for legal target checks.
 - `effects.py` for pure effect application helpers.
 - `resolver.py` for queue resolution.
@@ -195,7 +198,8 @@ regressions and documented in
 ## Acceptance Criteria
 
 - `jjk_arena.battle_v2.models` imports cleanly.
-- Data models cover battle phases, energy, damage, skill classes, skill specs, effects, conditions, transformations, statuses, pending actions, players, events, and battle state.
+- Data models cover battle phases, energy, damage, skill classes, skill specs,
+  typed effects, statuses, pending actions, players, events, and battle state.
 - CPU practice can start from the browser and run CPU responses.
 - Private PvP lobbies wait for a second player, emit viewer-specific state, and clean up on cancel, reset, or disconnect.
 - Invisible statuses, private events, and pending queues serialize per viewer.

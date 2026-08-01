@@ -11,6 +11,428 @@ After every meaningful pass, add a short dated entry with:
 
 ## 2026-07-09 - Line-ending policy and local verification
 
+## 2026-08-01 - Fix combat-scene.js syntax error from incomplete long-press refactor
+
+Source: continuation of the prior UI-consistency/long-press passes; working
+tree was still uncommitted from those sessions.
+
+What changed:
+
+- `web/static/phaser/scenes/combat-scene.js` - `renderFighterPlate` had
+  orphaned dead code left over from the long-press refactor (three stray
+  argument-only lines plus one extra closing brace, directly after the
+  `this.buttons.push({...})` call for the fighter hit target). This was a
+  hard `SyntaxError: Unexpected token ')'` that made `node --input-type=module`
+  unable to import the file at all. Removed the dead lines and the extra
+  brace; `renderFighterPlate` now ends cleanly at the `buttons.push` call.
+
+Verification:
+
+- `node --check web/static/phaser/scenes/combat-scene.js` - passed.
+- `python -m pytest -q tests/test_phaser_authority_readability.py
+  tests/test_phaser_combat_structure.py tests/test_phaser_queue_structure.py`
+  - 29 passed (previously 12 failing across these three files, all due to
+    the same Node import failure).
+- `python -m pytest -q` (full suite) - 667 passed, 2 skipped in 248.97s.
+- Dev server boot and asset delivery double-checked via `preview_logs`: all
+  `?v=43` Phaser modules and portrait assets returned 200/304, socket.io
+  handshake succeeded, no server-side errors.
+
+Caution / next work:
+
+- Live in-browser visual QA for the Phase 1/2a/2b UI consolidation work
+  (icon-only back nav, `energy-pip.js`, `modal-sheet.js`) is still
+  outstanding, for the same reason noted in the three prior sessions: the
+  preview pane was not visible/focused client-side this session either
+  (`document.visibilityState` was `"hidden"`), so Phaser's render loop never
+  ticks and screenshots time out. This is a client-side pane-visibility
+  issue, not a server or code problem - do the visual pass once the pane can
+  actually composite frames.
+- Two stray debris files were found at the repo root, left over from an
+  earlier mid-edit session on `base-scene.js`: `old-base-scene.js` and
+  `base_diff.txt` (garbled UTF-16 snapshots, superseded now that the real
+  edits are committed). Flagged to the user for deletion, not yet removed.
+- The entire multi-session working tree (this fix plus every prior
+  uncommitted pass back through the 2026-07-30 Ponytail audit) remains
+  uncommitted.
+
+Commit / pushed state:
+
+- Not yet committed.
+
+## 2026-07-31 - Combat queue validation remaining-energy propagation fix
+
+Source: local code pass.
+
+What changed:
+
+- `web/static/phaser/store/game-store.js`
+  - Fixed `queueReviewValidationState()` to accumulate per-action `remaining`
+    energy from each validation result instead of returning the initial energy
+    object unchanged.
+  - This ensures queue review correctly reflects paid costs across wildcard-paid
+    actions and returns the expected full energy shape.
+
+Verification:
+
+- `python -m pytest -q tests/test_battle_v2_phaser_parity.py::test_phaser_queue_review_blocks_missing_or_overdrawn_wild_payments`
+- `python -m pytest -q` (669 passed, 2 skipped)
+- `node --check web/static/phaser/store/game-store.js`
+- `git diff --check` (no new diff-level issues).
+
+Caution / next work:
+
+- No new functional work remains for this specific blocker.
+
+Commit / pushed state:
+
+- Not yet committed.
+
+## 2026-07-31 - UI consistency pass, Phase 1 (icon-only back nav)
+
+Source: local code pass, informed by a two-agent audit of every Phaser scene/UI
+module against `AGENTS.md` / `web/static/phaser/AGENTS.md` / the mobile UX brief.
+
+What changed:
+
+- `web/static/phaser/ui/season-three-ui.js`
+  - `drawS3Header`'s back control rendered a bare `<` glyph with only an
+    `accessibilityLabel`, no visible text - an "unexplained icon" per this
+    project's own ban and the game-ui-design skill's anti-patterns. It now
+    renders `‹ Back` as visible text, still a 44px-tall tap target. Live on
+    Mission Map, Matchup, First Creation, and Team Setup (all consume
+    `Season3UI.flow.header`).
+
+Audit findings investigated but NOT acted on (false positives from the initial
+pass, confirmed by reading the actual code):
+
+- Lobby's `CULLING_COLORS` vs. the rest of the app's `S3_PALETTE`/`S3_COLORS`
+  looked like a second, drifting palette. `season3-tokens.js:11-26` shows
+  `S3_PALETTE` is defined as a direct alias of `CULLING_COLORS` - identical hex
+  values, just a different import path. No visual bug.
+- The `drawS3Panel`/`drawS3Button`/`drawS3World` implementations differing
+  between `season-three-ui.js` (Flow), `season3-master-ui.js` (Post Match), and
+  `culling-current-ui.js` (Current/Lobby) looked like accidental duplication.
+  `season3-ui.js:6-8` states outright: "the compatibility modules remain
+  private implementation variants so the approved Current, Flow, and Post
+  Match compositions keep their exact rendering behavior." This is a
+  documented, intentional three-composition design, not drift. Left untouched.
+- Two more icon-only `<` back buttons exist in `base-scene.js` (`topBar:613`,
+  `dossierHeader:957`) but neither is called by any live scene - dead code,
+  no player-facing effect. Left as-is (out of scope for a UI-only pass; a
+  dead-code removal would be its own PR per this project's scope-discipline
+  rule).
+- The `<`/`>` pair in `combat-queue-review-scene.js:385-414` is a queue
+  reorder control (move action earlier/later), a standard directional-arrow
+  convention, not unexplained navigation. Left as-is.
+
+Verification:
+
+- `node --check web/static/phaser/ui/season-three-ui.js`
+- `python -m compileall -q jjk_arena web/app.py`
+- `python -m pytest -q` (671 passed, 2 skipped)
+- `git diff --check` (only pre-existing repo-wide CRLF normalization warnings,
+  no new issues)
+- Live browser QA (390x844 / 430x932 screenshots) was requested but the
+  preview pane was not visible client-side during this session, so Phaser's
+  render loop never ticked (`window.__phaserShellButtons` stayed unpopulated).
+  Not captured this pass - do a visual pass on Mission Map/Matchup before
+  calling this fully closed.
+
+Caution / next work:
+
+- Phase 2 (extracting real `FighterToken`/`SkillCard`/`EnergyOrb`/`StatusChip`/
+  `QueueActionCard`/`GameButton`/`BottomSheet`/`PhaseBanner` components out of
+  `combat-scene.js`/`combat-queue-review-scene.js`, per
+  `web/static/phaser/AGENTS.md:138-157`) is scoped but not started - it's a
+  larger, riskier refactor of the most complex screen and needs its own
+  sign-off pass.
+- `docs/first_creation_visual_qa.md`'s pinned runtime cache version (`42`) is
+  behind the shipped `?v=43` imports across scenes - the QA doc's screenshot
+  evidence is stale relative to code and should be refreshed alongside the
+  Phase 1 visual QA above.
+
+Commit / pushed state:
+
+- Not yet committed.
+
+## 2026-07-31 - UI consistency pass, Phase 2a (energy-pip consolidation)
+
+Source: local code pass, following the Phase 2 plan scoped after a dedicated
+research pass read the full bodies of every candidate method in
+`combat-scene.js` and `combat-queue-review-scene.js`.
+
+What changed:
+
+- New `web/static/phaser/ui/energy-pip.js` exports `drawEnergyPip(scene, cx,
+  cy, color, options)` - one shared implementation of the "ivory/charcoal
+  backed colored circle with an optional label above and a second line below"
+  drawing sequence that was previously reimplemented four separate times:
+  `renderEnergyMeter` (combat-scene.js, top HUD), the inline cost-pip block in
+  `renderSkillButton` (combat-scene.js), `renderCostOrbs` and
+  `renderEnergyCommitment` (combat-queue-review-scene.js). All four now call
+  `drawEnergyPip` with options reproducing their exact prior geometry/color
+  per call site (radii, alphas, stroke colors, label/below offsets) - visual
+  output is intended to be pixel-identical, this is a pure internal
+  consolidation.
+- Discovered and respected a locked contract during this work:
+  `tests/test_phaser_asset_delivery.py` enforces that files under
+  `web/static/phaser/scenes/` may only import `../ui/season3-ui.js` (the
+  canonical facade), and that the `Season3UI` object's top-level keys are
+  exactly `["tokens", "current", "flow", "postMatch"]`. So `energy-pip.js` is
+  NOT imported directly by either scene file - it's imported once by
+  `season3-ui.js` and exposed as `Season3UI.current.energyPip` (both combat
+  scenes already destructure from `Season3UI.current` for `drawCurrentButton`/
+  `drawCurrentPanel`/`drawCurrentWorld`, so this fits their existing usage).
+  `web/static/phaser/ui/season3-ui.js` was the only facade file touched.
+- Method names, signatures, and call sites on `CombatScene`/
+  `CombatQueueReviewScene` are unchanged (`renderEnergyMeter(...)`,
+  `renderCostOrbs(...)`, `renderEnergyCommitment(...)` are still called
+  exactly as before) - only their internal bodies now delegate to
+  `drawEnergyPip`. This matters because several tests assert on literal JS
+  source substrings (e.g. `test_phaser_queue_structure.py:32-35`:
+  `assert "this.renderCostOrbs" in source`), not just behavior.
+
+One caught-and-fixed subtlety: `renderCostOrbs`'s original stroke-color rule
+special-cased `'black'` (Wild placeholder) rather than `'white'` like the
+other three call sites, and it left label `fontStyle` unset (not bold) where
+the other three explicitly set `fontStyle: '700'`. `drawEnergyPip` has no
+forced default for `fontStyle` (only applies it if a caller passes it) so
+each of the four call sites reproduces its own original text weight exactly,
+and `renderCostOrbs`'s stroke-color override was passed explicitly to match
+its original black-special-case rather than the generic white-special-case
+default.
+
+Verification:
+
+- `node --check` on `energy-pip.js`, `season3-ui.js`, `combat-scene.js`,
+  `combat-queue-review-scene.js`.
+- `python -m compileall -q jjk_arena web/app.py`.
+- `python -m pytest -q` - 671 passed, 2 skipped (full suite, including the
+  four files with source-substring assertions on the touched methods, and the
+  `Season3UI` facade contract tests in `test_phaser_asset_delivery.py`).
+- `git diff --check` on the touched files - only pre-existing CRLF
+  normalization warnings, no new issues.
+- Live browser QA was attempted but blocked again this session: the preview
+  pane was not visible client-side, so no screenshots and no confirmation
+  that Phaser's render loop reached the Combat/Queue Review screens. Console
+  was clean on initial Lobby load only.
+
+Caution / next work:
+
+- **Live visual QA on Combat and Queue Review is still outstanding** for this
+  change specifically (top HUD energy meter, a skill card's cost pips, Queue
+  Review's cost orbs and pool/after meter, at 390x844 and 430x932) - do this
+  before considering Phase 2a fully closed, since the geometry/color mapping
+  per call site was done by careful transcription, not visual diffing.
+- Phase 2b (shared modal-sheet chrome for `renderSkillDetailSheet`/
+  `renderFighterStatusSheet`) is scoped in the plan but not started.
+- `FighterToken`/full `SkillCard`/`QueueActionCard` extraction remains
+  deferred - see the Phase 1 entry above for why.
+
+Commit / pushed state:
+
+- Not yet committed.
+
+## 2026-07-31 - UI consistency pass, Phase 2b (modal-sheet chrome consolidation)
+
+Source: local code pass, per the Phase 2 plan.
+
+What changed:
+
+- New `web/static/phaser/ui/modal-sheet.js` exports `renderModalSheetChrome(scene,
+  frame, options)` - one shared implementation of the dim backdrop + card
+  panel + full-frame blocking hit target + "x" dismiss button + optional
+  footer action button sequence that `renderSkillDetailSheet` and
+  `renderFighterStatusSheet` (both `combat-scene.js`) each drew independently.
+  Both methods now call it for their shared chrome and keep their own body
+  content (title, cost pips, description / status rows) unchanged.
+- Wired through the facade the same way as Phase 2a's `energyPip`: exposed as
+  `Season3UI.current.modalSheet` (not imported directly by the scene file),
+  respecting the same locked "scenes only import `../ui/season3-ui.js`"
+  contract found during Phase 2a.
+- The two sheets' chrome wasn't quite identical - `renderFighterStatusSheet`
+  used a different dim alpha (0.34 vs skill sheet's 0.28), a different dim
+  rect origin/size (`0,0,fullWidth,fullHeight` vs `frame.x,0,width,height`),
+  a variable stroke/accent tone (enemy vermilion vs ally cobalt, vs the skill
+  sheet's fixed gold), and 1px-different footer button geometry
+  (`x+16`/`w-32` vs `x+17`/`w-34`). `renderModalSheetChrome` takes all of
+  these as options with the skill-detail sheet's values as defaults, so each
+  call site reproduces its own prior exact geometry rather than being
+  silently unified onto one set of numbers.
+
+Unrelated observation during this pass: another agent ("Antigravity," per the
+user) is concurrently editing this same repository. Mid-session it rewrote
+`drawS3Panel`/`drawS3Portrait` in `season-three-ui.js` with a glassmorphism/
+glow style that conflicts with the locked Culling Current palette - flagged to
+the user directly (not silently reverted or ignored per an embedded tool
+instruction to do so), user confirmed it's expected/theirs, left untouched.
+Separately, by the end of this pass `base-scene.js`/`roster.js`/
+`portrait-registry.js` were also mid-edit by that same agent (a portrait
+fallback removal in progress), which transiently failed
+`tests/test_phaser_portraits.py::test_runtime_uses_registry_preload_true_crop_and_diagnostic_fallback_contracts`
+in a full `pytest -q` run. Confirmed via `git diff --stat` that neither file
+was touched by this Phase 2b work; not this change's concern.
+
+Verification:
+
+- `node --check` on `modal-sheet.js`, `season3-ui.js`, `combat-scene.js`.
+- `python -m compileall -q jjk_arena web/app.py`.
+- `python -m pytest -q tests/test_phaser_queue_structure.py
+  tests/test_phaser_mobile_layout.py tests/test_phaser_authority_readability.py
+  tests/test_app.py tests/test_phaser_asset_delivery.py
+  tests/test_phaser_combat_structure.py` - 48 passed (the files with
+  substring/facade-shape assertions plus combat structure). Full-suite
+  `pytest -q` also run; the one failure present is the concurrent-edit
+  portrait test above, unrelated to the files this pass touched.
+- `git diff --check` scoped to the changed files - only pre-existing CRLF
+  normalization warnings, no new issues.
+- Live browser QA still blocked this session (preview pane not visible
+  client-side) - same outstanding caution as Phase 2a: verify the skill
+  detail sheet and fighter status sheet visually at 390x844/430x932 before
+  calling Phase 2 fully closed.
+
+Caution / next work:
+
+- Live visual QA for Phase 2a AND 2b combined is the next concrete step
+  before this can be called done - both changes were done by careful
+  transcription of the original draw calls, not visual diffing.
+- Once the concurrent agent's `base-scene.js`/`roster.js`/
+  `portrait-registry.js` work lands, re-run the full suite to confirm
+  `test_phaser_portraits.py` passes again and there's no real interaction
+  with this session's changes (none expected - disjoint files).
+- `FighterToken`/full `SkillCard`/`QueueActionCard` extraction (the deepest,
+  riskiest part of the original AGENTS.md component-vocabulary ask) remains
+  deferred - see the Phase 1 entry for why.
+
+Commit / pushed state:
+
+- Not yet committed.
+
+## 2026-07-31 - UI consistency pass, Phase 3 evaluated and declined
+
+Read `renderFighterPlate` (`combat-scene.js:520-761`) and `renderSkillButton`
+(`combat-scene.js:1074-1272`) in full to scope the remaining
+`FighterToken`/`SkillCard` extraction `web/static/phaser/AGENTS.md:140-157`
+asks for. Unlike Phase 2a/2b, neither method is actually duplicated anywhere
+- each has exactly one call site (`renderFighterLane`/`renderCommandDeck`),
+and no other screen (e.g. `matchup-scene.js`'s team-preview cards, which use
+the unrelated `Season3UI.flow`/`drawS3Portrait` system) draws an equivalent
+card independently. So extracting them would be a large (~440 line), highly
+`this`-coupled, purely cosmetic move with no duplication bug to justify it -
+worse cost/benefit than 2a/2b, especially with live visual QA unavailable
+all session and a second agent concurrently editing adjacent rendering code
+(`base-scene.js`'s portrait pipeline). Recommended stopping the
+component-extraction effort at Phase 2; user approved that recommendation.
+No files changed this pass. Full reasoning recorded in the plan file
+(`virtual-puzzling-island.md`, "Phase 3" section) for future reference if a
+second real call site for fighter-card/skill-card rendering ever appears.
+
+Commit / pushed state:
+
+- Not yet committed.
+
+## 2026-07-31 - Combat queue submit visibility lifecycle pass
+
+Source: local code pass.
+
+What changed:
+
+- `web/static/phaser/store/game-store.js`
+  - Added queue-submit snapshot retention guard in `receiveBattleState()` so transient
+    `SENT` status is cleared when combat returns to planning or other non-resolution phases.
+  - Cleared submit snapshot in `resetToLobby()` to avoid stale post-match UI carryover.
+- `web/static/phaser/scenes/combat-scene.js`
+  - Top HUD now shows a transient `SENT N ACTIONS` line while a submission is in-flight / just submitted.
+- `web/static/phaser/core/dom-ui-bridge.js`
+  - Appended submit status to the combat phase narration for DOM accessibility consumers.
+
+## 2026-07-31 - Combat queue validation visibility + action result context pass
+
+Source: local code pass.
+
+What changed:
+
+- `web/static/phaser/scenes/combat-queue-review-scene.js`
+  - Routed per-action validation reasons from `store.queueReviewValidationMap()` into each queue card row.
+  - Kept per-row error text local to the specific row (global queue failure no longer hides other rows).
+  - Added structured compact target rows (`1ST`/`2ND`/`ALT`) for tighter 390px readability.
+- `web/static/phaser/core/dom-ui-bridge.js`
+  - Exposed optional `validationReason` in combat queue accessibility rows only when present (avoids test/consumer regressions from empty strings).
+  - Exposed queue submit status in the DOM mirror phase line for screen readers.
+- `web/static/phaser/store/game-store.js`
+  - Ensured snapshot queue objects include `validationReason` only when non-empty.
+  - Kept queue-submit snapshot flow stable for transient `SENT N ACTIONS` HUD/DOM status text.
+- `web/static/phaser/scenes/combat-scene.js`
+  - `Visible Skill` banner now prints the matched action as `Caster used Skill • Target ... • Cost ...`, including wild payments, so players can tell what just resolved.
+
+Verification:
+
+- `node --check web/static/phaser/store/game-store.js web/static/phaser/scenes/combat-scene.js web/static/phaser/scenes/combat-queue-review-scene.js web/static/phaser/core/dom-ui-bridge.js`
+- `python -m pytest -q tests/test_phaser_dom_accessibility.py tests/test_phaser_queue_structure.py tests/test_phaser_authority_readability.py`
+- `python -m pytest -q tests/test_phaser_mobile_layout.py -q`
+- `git diff --check` (clean, only existing CRLF warnings elsewhere in tree).
+
+Caution / next work:
+
+- No full-project pytest run was done in this follow-up pass; only phaser-targeted suites around accessibility/queue/contracts were rerun.
+- `combat-scene` and queue-review readability changes still rely on existing visual QA capture workflow for final sign-off.
+
+Commit / pushed state:
+
+- Not yet committed. Changes are on the working branch.
+
+## 2026-07-25 - Combat UX polish and client parity audit
+
+Source: local code pass.
+
+What changed:
+
+- `web/static/phaser/scenes/combat-scene.js`
+  - Added Aged Gold `CD / N` cooldown badge on skill slot diamonds (≥12px typography).
+  - Added class-tag strip (`PHYSICAL · MELEE` etc.) on available, unselected skill cards.
+  - Two-line disabled reason: status-blocked cards split `"StatusName: reason"` into a
+    gold status-name line and a red rule-reason line.
+  - `statusTone()` upgraded from 3-bucket to 7-family semantic palette using Culling
+    Current locked numeric colors: STUN/CONTROL=vermilion, AFFLICTION=wound-rose
+    (`0xc87070`), DEBUFF=storm-ochre (`CULLING_COLORS.sky`), BUFF=curse-cyan
+    (`CULLING_COLORS.cyan`), WARD/SHIELD=queued-green, MARK=aged-gold, SOUL=indigo-mid
+    (`0x3d4f7c`). All values are numeric `0xRRGGBB` for Phaser `fillStyle()` compatibility.
+- `web/static/phaser/scenes/combat-queue-review-scene.js`
+  - Structured target rows: `1ST` / `2ND` / `ALT` labeled chips replace flat route text.
+  - `WILD PAYMENT` label added above X-cost assignment buttons.
+- `web/static/phaser/store/game-store.js`
+  - `skillIsHarmful()`: removed `remove_status`, `counter`, `drain_energy` from harmful
+    list. Matches `targeting.py` server precedent. Ally cleanse/counter no longer blocks
+    helpful skills from targeting invulnerable allies.
+  - `skillDisabledReason()`: added no-legal-targets pre-gate via `hasManualTargetForSkill()`.
+    Single-target enemy/ally skills with no available target now return `"No legal targets."`
+    instead of an empty string (which rendered the card as READY).
+
+Verification:
+
+- `node --check` clean on all changed JS files.
+- `git diff --check` clean.
+- `python -m pytest -q` → 696 passed, 2 skipped (full suite, twice).
+
+Caution / next work:
+
+- 5 engine-level parity gaps remain for First Creation starters (separate correctness PR):
+  - Megumi `chimera_shadow_garden`: Shikigami black-cost-delta payload not implemented.
+  - Todo `fc_aoi_todo_boogie_woogie`: no-redirect defense payload not implemented.
+  - Mei Mei `fc_mei_mei_young_crow_scout`: reward fires on any skill, not just new skills.
+  - Mei Mei `fc_mei_mei_young_crow_screen`: Exposed not conditional on crow-mark status.
+  - Shoko `fc_shoko_ieiri_young_cleanse_protocol`: cleanse payload not explicitly typed to
+    affliction/soul families (may be handled by engine default — needs test coverage).
+- Note: Sukuna's `malevolent_shrine` text/payload gap is real but Sukuna is NOT a First
+  Creation starter — that gap belongs to his mission-unlock PR, not this sprint.
+- Real from-scratch mobile UI/UX redesign is next after engine correctness is clean.
+
+Commit / pushed state:
+
+- Not yet committed. Changes are on the working branch.
+
+
 Source: local repo check after external zip inspection summary.
 
 What changed:
@@ -3231,3 +3653,154 @@ and `git diff --check` passed.
 **Remaining / delivery.** The focused commit is for PR #64's
 `fix/ponytail-audit-fixes` branch. GitHub Actions must rerun after push; no
 current mobile screenshot claim is made by this CI-only pass.
+
+## 2026-07-30 — Whole-repository Ponytail audit remediation
+
+**Scope and locked contracts.** Addressed the full over-engineering audit while
+preserving the Python Battle v2 authority boundary, the 19-character/78-skill
+First Creation roster, viewer-specific hidden information, server-side timing
+and targeting, stable internal energy keys, and the portrait-first Phaser
+client. No new characters, gameplay rules, dependencies, or build pipeline
+were introduced.
+
+**Changes.**
+
+- Removed obsolete CSS/JavaScript shells, the legacy `main.py` entry shim,
+  unused model/facade APIs, prototype asset generators, superseded visual QA
+  captures, and unused prototype portraits/icons. The remaining `artifacts/`
+  set is 24 intentional files (17,765,890 bytes); deleted tracked files remain
+  recoverable from Git.
+- Made Battle v2 serialization expose viewer-safe effective skill options
+  (`effective_skill_id`, adjusted cost, disabled reason, and legal target
+  payloads), then removed the Phaser store's duplicate legality, cost,
+  invulnerability, stun, and target-rule engine.
+- Consolidated Draft roster presentation onto First Creation, moved mission
+  layout data into its only consumer, removed unused Phaser exports, and kept
+  the native ES-module boot path as the sole maintained client entry.
+- Removed the parallel JSON profile backend in favor of the existing SQLite
+  runtime store. Simplified condition/transformation contracts to the typed
+  effect/status vocabulary already used by shipping kits.
+- Restored tests and fixtures to the locked First Creation roster, replaced
+  brittle source-text assertions with behavior and serialized-contract checks,
+  removed four redundant source-only test modules, and corrected fastest-win,
+  redirect-target enumeration, deterministic replay, and network-acceptance
+  edge cases uncovered during the pass.
+- Reduced `CLAUDE.md` to a pointer to the canonical `AGENTS.md` and updated the
+  socket, kit, audit, asset, and project-memory documentation to match the
+  simplified implementation.
+
+**Verification.**
+
+- `python -m pytest -q`: 669 passed, 2 skipped in 244.27s.
+- `python -m compileall -q jjk_arena web/app.py`: passed.
+- `node --check` for all 14 changed JavaScript files: passed.
+- `python -m jjk_arena.battle_v2.skill_audit --json`: 19 characters,
+  78 skills, zero structural findings, zero special-mechanic findings, and
+  zero unregistered condition payload keys.
+- `git diff --check`: passed (Git reports only existing CRLF normalization
+  notices).
+- Live in-app browser QA at 390x844 and 430x932: home canvas filled each
+  viewport, had no document overflow, and produced no browser warnings or
+  errors.
+
+**Cautions / delivery.** The worktree was already dirty and on a detached
+`HEAD` when this audit began; unrelated existing edits were preserved. No
+branch, commit, push, or PR was created.
+
+## 2026-08-01 — Repository reconciliation after concurrent UI/gameplay work
+
+**Scope and locked contracts.** Reconciled the shared checkout without
+changing the 19-character First Creation roster, Battle v2 authority,
+viewer-specific hidden information, stable energy keys, or portrait-first
+Phaser direction. The worktree changed concurrently during this pass; the
+final verified commit was `cd2958c` on `fix/ponytail-audit-fixes`.
+
+**Changes.**
+
+- Removed untracked scratch snapshots and a one-off replay rewrite script.
+- Removed an uncommitted `CombatContext`/`SessionContext` abstraction whose
+  compatibility properties returned temporary dictionaries, breaking room
+  cleanup and lock mutation. Kept the existing manager-owned dictionaries and
+  one direct `remove_room()` cleanup path used by the web layer.
+- Preserved the live v43 Phaser modules, current WebP portraits/environments,
+  server-provided skill options, and intentional retirement of superseded
+  shells/assets/QA captures.
+- Restored the locked bone/smoke combat panel treatment, aligned adjusted-cost
+  documentation with the authoritative socket contract, marked the Naruto
+  Arena reference noncanonical, and repaired stale tests/QA instructions.
+
+**Verification.**
+
+- `python -m pytest -q`: 673 passed, 2 skipped in 241.09s.
+- Reverse test-file order: 673 passed, 2 skipped in 259.71s.
+- `python -m compileall -q jjk_arena web/app.py`: passed.
+- `node --check` for all 29 changed/untracked JavaScript files: passed.
+- `python -m jjk_arena.battle_v2.skill_audit --json`: 19 characters,
+  78 skills, zero structural/special-mechanic findings, and zero unregistered
+  conditional payload keys.
+- `python -m tools.network_acceptance`: passed CPU, PvP, planning timeout,
+  queue timeout, drain, HTTP contract, resume-token, and safe-stop checks.
+- `git diff --check`: passed; only CRLF normalization warnings were emitted.
+
+**Remaining / blockers.** Current v43 live mobile screenshots at 360x800,
+390x844, and 430x932 remain required before visual release approval. The local
+server reached `/readyz`, but the Codex in-app browser failed before attaching
+with `failed to write kernel assets: The system cannot find the path specified.
+(os error 3)`. No fallback browser automation was used. The mixed worktree
+still contains 254 changed files (1,252 insertions, 11,532 deletions) and 277
+status entries; this reconciliation pass did not stage or create a commit.
+
+## 2026-08-01 — Reconciled Battle v2 design/architecture audit and live mobile combat QA
+
+**Scope and locked contracts.** Reconciled Claude's pending work with remote
+commit `af178f8` on `fix/ponytail-audit-fixes`. Audited the maintained Phaser
+client against the locked 3v3 planning/review/resolution loop, Python Battle v2
+authority, viewer-safe state, 19-character First Creation roster, stable energy
+keys, Wild-payment semantics, and portrait-first mobile constitution. No rules,
+roster entries, dependencies, or build tooling were added.
+
+**High-impact findings fixed.**
+
+- Fixed combat rendering after an action was queued: the mini timeline called
+  the `GameStore.state` snapshot as a function and compared noncanonical
+  uppercase phases, crashing the skill deck.
+- Fixed the two broken input contracts that made the live combat loop
+  unplayable: fighter plates called nonexistent `selectFighter` instead of
+  `selectCaster`, and skill cards passed a numeric grid index instead of the
+  authoritative skill ID. Added focused regressions for all three failures.
+
+**Game-design and game-architecture audit.** The live flow now exposes adjusted
+costs, precise disabled reasons, class-scoped stun effects, visible statuses,
+legal targets before commit, queued caster/skill/target/cost/Wild payment,
+left-to-right order controls, server validation, and immediate sent/resolved
+feedback. The client continues to consume authoritative skill options and
+viewer-specific Battle v2 state rather than deciding legality, costs, effects,
+hidden information, timing, or victory. No remaining High-impact design or
+authority mismatch was observed. Low-impact density remains in some 360px
+skill/queue copy, but it does not hide controls or require scrolling.
+
+**Live mobile QA.** Completed a real CPU turn through fighter selection, skill
+selection, legal targeting, automatic Wild assignment, queue review, confirm,
+and server resolution. Planning and queue review remained usable in one
+viewport at 360x800, 390x844, and 430x932 with readable disabled reasons and
+44px-or-larger mirrored actions. The resolved turn visibly reported `SENT 2
+actions` and displayed public action/status changes. Browser errors captured
+before the fixes did not recur afterward.
+
+**Verification.**
+
+- `python -m pytest -q`: 676 passed, 2 skipped in 154.27s.
+- `python -m pip check`: no broken requirements.
+- `python -m compileall -q jjk_arena web/app.py`: passed.
+- `node --check` for every maintained Phaser JavaScript file: passed.
+- `python -m jjk_arena.battle_v2.skill_audit --json`: 19 characters, 78
+  skills, zero structural findings, zero special-mechanic findings, and zero
+  unregistered condition payload keys.
+- `python -m tools.network_acceptance`: passed CPU, PvP, planning/queue
+  timeouts, resume-token rotation, drain, HTTP, and safe-stop checks.
+- `git diff --check`: passed.
+
+**Remaining / delivery.** No High-impact player problem remains from this
+audit. The dense 360px descriptive copy is a nonblocking polish item. This
+entry is included in the reconciliation commit to be pushed on
+`fix/ponytail-audit-fixes`; GitHub Actions remains the final remote check.

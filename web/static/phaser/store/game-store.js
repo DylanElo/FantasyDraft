@@ -147,8 +147,10 @@ export class GameStore {
       this.playbackEvents = [];
       this.recentEvents = [];
       this.combatLogOpen = false;
+      this.statusDrawerCharacterId = null;
       this.visiblePublicAction = null;
       this.visiblePublicActionUntil = 0;
+      this.lastQueueSubmitSnapshot = null;
       this.phaseTimerSnapshotSeconds = null;
       this.phaseTimerSnapshotAt = null;
       this.uiClockToken = '';
@@ -221,10 +223,11 @@ export class GameStore {
       });
       this.socketClient.on('disconnect', () => {
         this.freezePhaseTimer();
-        this.connectionState = 'disconnected';
-        this.pendingCommand = null;
-        this.queueSubmitting = false;
-        if (this.scene === 'MatchupScene' && !this.state) {
+      this.connectionState = 'disconnected';
+      this.pendingCommand = null;
+      this.queueSubmitting = false;
+      this.lastQueueSubmitSnapshot = null;
+      if (this.scene === 'MatchupScene' && !this.state) {
           const matchmakingStarted = !!(this.matchLaunchPending || this.lobbyStatus);
           this.lobbyStatus = null;
           this.failMatchLaunch(matchmakingStarted
@@ -237,10 +240,11 @@ export class GameStore {
       });
       const connectionFailed = () => {
         this.freezePhaseTimer();
-        this.connectionState = 'disconnected';
-        this.pendingCommand = null;
-        this.queueSubmitting = false;
-        this.setStatus('Connection failed');
+      this.connectionState = 'disconnected';
+      this.pendingCommand = null;
+      this.queueSubmitting = false;
+      this.lastQueueSubmitSnapshot = null;
+      this.setStatus('Connection failed');
         if (this.scene === 'MatchupScene' && !this.state) {
           this.lobbyStatus = null;
           this.failMatchLaunch('Arena server could not be reached. Check the address and try again.');
@@ -622,6 +626,16 @@ export class GameStore {
       this.notify();
     }
 
+    openStatusDrawer(characterId) {
+      this.statusDrawerCharacterId = characterId;
+      this.notify();
+    }
+
+    closeStatusDrawer() {
+      this.statusDrawerCharacterId = null;
+      this.notify();
+    }
+
     openSkillDetail(skillId) {
       this.inspectedFighter = null;
       this.clearToast();
@@ -747,6 +761,7 @@ export class GameStore {
       this.playbackEvents = [];
       this.recentEvents = [];
       this.combatLogOpen = false;
+      this.statusDrawerCharacterId = null;
       // ponytail: these four were missing from this reset (present in
       // resetToLobby's), currently defused because the skill-detail sheet
       // gates on selectedCasterSlot (reset above), but a stale selection
@@ -829,7 +844,6 @@ export class GameStore {
         this.eventCursor = 0;
         this.playbackEvents = [];
         this.recentEvents = [];
-        this.combatLogOpen = false;
         this.visiblePublicAction = null;
         this.visiblePublicActionUntil = 0;
         this.inspectedFighter = null;
@@ -857,7 +871,7 @@ export class GameStore {
       this.eventCursor = log.length;
       if (nextEvents.length) {
         this.playbackEvents = nextEvents.slice(-6);
-        this.recentEvents = log.slice(-8).reverse();
+        this.recentEvents = log.slice(-30).reverse();
         const visibleAction = nextEvents.slice().reverse().find((event) => (
           safeText(event && event.type) === 'skill_resolved'
         ));
@@ -890,6 +904,8 @@ export class GameStore {
         : null;
       this.lobbyStatus = null;
       this.matchLaunchPending = false;
+      const shouldRetainQueueSubmitStatus = this.queueSubmitting
+        || ['queue_review', 'resolving', 'turn_end'].includes(data.phase);
       const ownPending = (data.pending_actions && data.pending_actions[this.mineId()]) || [];
       const me = this.me();
       if (ownPending.length) {
@@ -917,6 +933,9 @@ export class GameStore {
         this.actions = [];
         this.actionWildPays = {};
         this.queueReviewOpen = false;
+      }
+      if (!ownPending.length && !shouldRetainQueueSubmitStatus) {
+        this.lastQueueSubmitSnapshot = null;
       }
 
       const shouldConfirmQueue = !!completedCommand
@@ -1120,10 +1139,39 @@ export class GameStore {
       return targets.length ? targets.join('; ') : 'Automatic team target';
     }
 
+    actionTargetAccessibilityFromAction(action, perspectivePlayerId, players = null) {
+      const viewPlayerId = perspectivePlayerId || this.mineId();
+      const statePlayers = players || (this.state && this.state.players) || {};
+      const sideFor = (playerId) => {
+        if (!playerId) return 'Target';
+        if (playerId === viewPlayerId) return 'ALLY';
+        return 'ENEMY';
+      };
+      const route = (playerId, slot, prefix = '') => {
+        if (slot === null || slot === undefined) return '';
+        const player = statePlayers[playerId] || {};
+        const fighter = player.team ? player.team[Number(slot)] : null;
+        const name = safeText(fighter && (fighter.name || fighter.character_id), `slot ${Number(slot) + 1}`);
+        return `${prefix}${sideFor(playerId)} ${Number(slot) + 1}, ${name}`;
+      };
+      const targets = [];
+      const add = (label) => {
+        if (label && !targets.includes(label)) targets.push(label);
+      };
+      add(route(action.target_player_id, action.target_slot));
+      (Array.isArray(action.target_slots) ? action.target_slots : []).forEach((slot) => (
+        add(route(action.target_player_id, slot))
+      ));
+      add(route(action.target_player_id, action.secondary_target_slot, 'Secondary: '));
+      add(route(action.alternate_target_player_id, action.alternate_target_slot, 'Alternate: '));
+      return targets.length ? targets.join('; ') : 'Automatic team target';
+    }
+
     combatAccessibilitySnapshot() {
       const stage = this.interactionStage();
       const me = this.me();
       const foe = this.foe();
+      const queueValidation = this.queueReviewValidationMap();
       const energy = CORE_ENERGY.map((color) => ({
         key: color,
         label: ENERGY_LABELS[color],
@@ -1140,11 +1188,13 @@ export class GameStore {
         const cost = this.adjustedCost(caster, skill).map((color) => ENERGY_LABELS[color] || 'X');
         const wildcardPays = (this.actionWildPays[action.id] || [])
           .map((color) => ENERGY_LABELS[color] || safeText(color).toUpperCase());
+        const validationReason = safeText(queueValidation && queueValidation[action.id]);
         return {
           order: index + 1,
           caster: safeText(caster && (caster.name || caster.character_id), `Fighter ${Number(action.caster_slot) + 1}`),
           skill: safeText(skill && skill.name, action.skill_id || 'Technique'),
           target: this.actionTargetAccessibility(action),
+          ...(validationReason ? { validationReason } : {}),
           cost,
           wildcardPays,
         };
@@ -1158,6 +1208,7 @@ export class GameStore {
         authoritativePhase: safeText(this.state && this.state.phase).toLowerCase() || null,
         authoritativePhaseSecondsRemaining: this.phaseSecondsRemaining(),
         connection: this.combatConnectionStatus(),
+        queueSubmitStatus: this.queueSubmitStatusLine(),
         energy,
         allies: summarizeTeam(me, 'ally'),
         enemies: summarizeTeam(foe, 'enemy'),
@@ -1219,6 +1270,10 @@ export class GameStore {
     adjustedCost(character, skill) {
       const option = this.skillOption(character, skill);
       return [...((option && option.adjusted_cost) || (skill && skill.cost) || [])];
+    }
+
+    fighterFullyStunnedBy(character) {
+      return safeText(character && character.fully_stunned_by) || null;
     }
 
     skillOption(character, skill) {
@@ -1558,6 +1613,33 @@ export class GameStore {
       return payloads;
     }
 
+    queueSubmitSnapshotPayload(payloads = null) {
+      const me = this.me();
+      const submittedAt = Date.now();
+      const rows = (payloads || this.lastActionPayloads || []).map((action, index) => {
+        const caster = me && me.team ? me.team[Number(action.caster_slot)] : null;
+        const skill = caster ? this.skillFor(caster, action.skill_id) : null;
+        const cost = this.adjustedCost(caster, skill).map((color) => ENERGY_LABELS[color] || color).join('');
+        return {
+          order: index + 1,
+          caster: safeText(caster && (caster.name || caster.character_id), `Slot ${Number(action.caster_slot) + 1}`),
+          skill: safeText(skill && skill.name, action.skill_id || 'Technique'),
+          cost,
+          wildcardPays: (action.wildcard_pays || []).map((color) => ENERGY_LABELS[color] || safeText(color)),
+          target: this.actionTargetAccessibility(action),
+        };
+      });
+      return { submittedAt, rows };
+    }
+
+    queueSubmitStatusLine() {
+      const snapshot = this.lastQueueSubmitSnapshot;
+      if (!snapshot || !snapshot.rows || !snapshot.rows.length) return '';
+      const seconds = Math.max(0, Math.round((Date.now() - snapshot.submittedAt) / 1000));
+      const age = seconds < 2 ? 'now' : `${seconds}s ago`;
+      return `SENT ${snapshot.rows.length} action${snapshot.rows.length === 1 ? '' : 's'} (${age})`;
+    }
+
     ensureWildcardPayments() {
       const payloads = this.pendingActionPayloads();
       const next = {};
@@ -1578,30 +1660,67 @@ export class GameStore {
     }
 
     queueReviewFit() {
+      const validation = this.queueReviewValidationState();
+      return {
+        ok: validation.ok,
+        reason: validation.reason,
+        actionId: validation.actionId,
+        remaining: validation.remaining,
+      };
+    }
+
+    queueReviewValidationState() {
       if (!this.actions.length) return { ok: false, reason: 'Queue is empty.', actionId: null, remaining: null };
       const me = this.me();
       const energy = { green: 0, blue: 0, white: 0, red: 0, ...((me && me.energy) || {}) };
       for (const action of this.actions) {
-        const caster = me && me.team ? me.team[action.caster_slot] : null;
-        const skill = caster ? this.skillFor(caster, action.skill_id) : null;
-        if (!caster || !skill) return { ok: false, reason: 'Queued action is no longer available.', actionId: action.id, remaining: { ...energy } };
-        const pays = this.actionWildPays[action.id] || [];
-        let wildIndex = 0;
-        for (const color of this.adjustedCost(caster, skill)) {
-          const pay = color === 'black' ? pays[wildIndex++] : color;
-          if (!CORE_ENERGY.includes(pay) || Number(energy[pay] || 0) <= 0) {
-            return {
-              ok: false,
-              reason: color === 'black' ? 'Assign every Wild payment.' : `Not enough ${pay} energy.`,
-              actionId: action.id,
-              remaining: { ...energy },
-            };
-          }
-          energy[pay] -= 1;
+        const result = this.queueReviewValidationForAction(action, energy);
+        if (!result.ok) {
+          return {
+            ok: false,
+            reason: result.reason,
+            actionId: action.id,
+            remaining: result.remaining,
+          };
         }
-        if (pays.length !== wildIndex) return { ok: false, reason: 'Wild payment count changed.', actionId: action.id, remaining: { ...energy } };
+        Object.assign(energy, result.remaining);
       }
-      return { ok: true, reason: '', actionId: null, remaining: { ...energy } };
+      return { ok: true, reason: '', actionId: null, remaining: energy };
+    }
+
+    queueReviewValidationForAction(action, availableEnergy) {
+      const me = this.me();
+      const energy = { ...availableEnergy };
+      const caster = me && me.team ? me.team[action.caster_slot] : null;
+      const skill = caster ? this.skillFor(caster, action.skill_id) : null;
+      if (!caster || !skill) return { ok: false, reason: 'Queued action is no longer available.', remaining: { ...energy } };
+      const pays = this.actionWildPays[action.id] || [];
+      let wildIndex = 0;
+      for (const color of this.adjustedCost(caster, skill)) {
+        const pay = color === 'black' ? pays[wildIndex++] : color;
+        if (!CORE_ENERGY.includes(pay) || Number(energy[pay] || 0) <= 0) {
+          return {
+            ok: false,
+            reason: color === 'black' ? 'Assign every Wild payment.' : `Not enough ${pay} energy.`,
+            remaining: { ...energy },
+          };
+        }
+        energy[pay] -= 1;
+      }
+      if (pays.length !== wildIndex) return { ok: false, reason: 'Wild payment count changed.', remaining: { ...energy } };
+      return { ok: true, reason: '', remaining: { ...energy } };
+    }
+
+    queueReviewValidationMap() {
+      const reasons = Object.create(null);
+      let energy = { green: 0, blue: 0, white: 0, red: 0, ...(((this.me() && this.me().energy) || {})) };
+      for (const action of this.actions) {
+        const result = this.queueReviewValidationForAction(action, energy);
+        reasons[action.id] = result.ok ? '' : result.reason;
+        energy = { ...result.remaining };
+        if (!result.ok) break;
+      }
+      return reasons;
     }
 
     closeQueueReview() {
@@ -1680,6 +1799,7 @@ export class GameStore {
       this.queueSubmitting = true;
       this.queueReviewOpen = false;
       const payloads = this.pendingActionPayloads();
+      this.lastQueueSubmitSnapshot = this.queueSubmitSnapshotPayload(payloads);
       const started = this.beginCommand('battle_v2_update_queue', {
         queue_order: payloads.map((action) => action.id),
         wildcard_pays: Object.fromEntries(payloads.map((action) => [action.id, action.wildcard_pays || []])),
@@ -1687,6 +1807,7 @@ export class GameStore {
       if (!started) {
         this.queueSubmitting = false;
         this.queueReviewOpen = true;
+        this.lastQueueSubmitSnapshot = null;
         this.showToast('Wait for the battle state to finish updating.');
       }
       this.notify();
@@ -1700,6 +1821,7 @@ export class GameStore {
       this.detailSkillId = null;
       this.queueSubmitting = false;
       this.queueReviewOpen = false;
+      this.lastQueueSubmitSnapshot = null;
       this.beginCommand('battle_v2_cancel_queue', {}, 'cancel_queue');
       this.notify();
     }
@@ -1710,6 +1832,7 @@ export class GameStore {
       this.actionWildPays = {};
       this.queueSubmitting = true;
       this.queueReviewOpen = false;
+      this.lastQueueSubmitSnapshot = null;
       this.beginCommand('battle_v2_end_turn', {}, 'end_turn');
       this.notify();
     }
@@ -1836,6 +1959,7 @@ export class GameStore {
       this.clearMatchLaunchTimeout();
       this.matchupReturnScene = 'DraftScene';
       this.queueReviewOpen = false;
+      this.lastQueueSubmitSnapshot = null;
       this.transmuteOpen = false;
       this.transmuteSources = [];
       this.transmuteTarget = null;
@@ -1845,7 +1969,6 @@ export class GameStore {
       this.eventCursor = 0;
       this.playbackEvents = [];
       this.recentEvents = [];
-      this.combatLogOpen = false;
       this.visiblePublicAction = null;
       this.visiblePublicActionUntil = 0;
       this.phaseTimerSnapshotSeconds = null;

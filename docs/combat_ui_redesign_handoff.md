@@ -16,7 +16,7 @@ The design target is an environment-integrated, portrait-first mobile battlefiel
 
 - App/server entry point: `run_server.py`
 - Flask-SocketIO bridge and security policy: `web/app.py`
-- Phaser shell/runtime: `web/static/phaser-shell.js`
+- Phaser shell/runtime: `web/static/phaser/index.js`
 - Combat renderer: `web/static/phaser/scenes/combat-scene.js`
 - Queue Review renderer: `web/static/phaser/scenes/combat-queue-review-scene.js`
 - Asset loading: `web/static/phaser/scenes/boot-scene.js`
@@ -56,30 +56,29 @@ The design target is an environment-integrated, portrait-first mobile battlefiel
 - `web/templates/index.html`
 - `web/app.py`
 
-### New assets and tools
+### Historical assets and tools
 
-- `web/static/assets/environments/underpass-courtyard-night.png`
-- `tools/generate_underpass_environment.py`
-- `tools/capture_combat_redesign.py`
-- `artifacts/ui-redesign/`
+The superseded underpass binary, its one-off generator, and its QA iterations
+were removed after the Culling Current direction shipped. Their provenance and
+design rationale remain in this document.
 
 ## Asset provenance and readiness
 
 ### Existing assets reused
 
-- Existing First Creation portrait SVGs in `web/static/assets/portraits/`.
 - Existing Phaser runtime, interaction logic, energy colors, state store, and combat data.
 
 ### Newly created in this pass
 
-- `underpass-courtyard-night.png`, generated locally from original procedural drawing code in `tools/generate_underpass_environment.py`.
+- The removed underpass plate was generated locally from original procedural drawing code.
 - All combat layout, dossier, HUD, targeting, dock, and queue-review rendering in Phaser.
 - Visual QA capture and hit-target reporting script.
 
 ### Temporary production-intent assets
 
 - The underpass environment is an original, self-contained production-intent placeholder. It establishes composition, depth, palette, and implementation requirements, but a final commercial release should replace or professionally repaint it with approved art-direction and provenance.
-- The current portrait SVG set remains placeholder/working game art. The interface supports taller card crops, but final character illustration should be produced or licensed separately.
+- The superseded portrait SVG placeholders were removed after the 19 generated
+  starter portraits became the maintained registry.
 
 ### Production-ready implementation elements
 
@@ -110,16 +109,6 @@ For the development test dependencies:
 ```bash
 python -m pip install -r requirements-dev.txt
 ```
-
-## Regenerate the environment
-
-```bash
-python tools/generate_underpass_environment.py
-```
-
-The generator is deterministic and overwrites:
-
-`web/static/assets/environments/underpass-courtyard-night.png`
 
 ## Capture the combat QA suite
 

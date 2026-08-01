@@ -27,7 +27,8 @@ This change is limited to authoritative First Creation timing, targeting, status
 
 ## Phaser/server parity
 
-- The client computes adjusted costs from active status payloads.
+- The server serializes adjusted costs from active status payloads; the client
+  renders that viewer-safe result and does not recompute combat legality.
 - Harmful and class stuns share the server's disabled semantics and expose a concrete disabled reason.
 - Replacement skills retain original queue slot identity.
 - Primary, secondary, and alternate redirect fields survive client action construction and server serialization.

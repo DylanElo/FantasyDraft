@@ -289,8 +289,8 @@ def run_cpu_flow(
             {
                 "room_id": f"{run_id}-cpu",
                 "player_name": "Network CPU",
-                "player_team": ["yuji_itadori", "nobara_kugisaki", "megumi_fushiguro"],
-                "enemy_team": ["satoru_gojo", "ryomen_sukuna", "mahito"],
+                "player_team": ["yuji_itadori", "nobara_kugisaki", "junpei_yoshino"],
+                "enemy_team": ["satoru_gojo_young", "maki_zenin", "panda"],
                 "difficulty": "normal",
             },
         )
@@ -417,7 +417,7 @@ def run_pvp_resume_flow(
             {
                 "room_id": lobby_code,
                 "player_name": "Network P2",
-                "player_team": ["satoru_gojo", "ryomen_sukuna", "mahito"],
+                "player_team": ["satoru_gojo_young", "maki_zenin", "panda"],
             },
         )
         first_grant = first.wait_for("battle_v2_session", after=first_marker)
@@ -587,7 +587,11 @@ def run_queue_timeout_flow(
         client.connect()
         marker = client.emit(
             "battle_v2_start_classic",
-            {"room_id": f"{run_id}-queue-timeout", "player_name": "Network Queue Timeout"},
+            {
+                "room_id": f"{run_id}-queue-timeout",
+                "player_name": "Network Queue Timeout",
+                "player_team": ["yuji_itadori", "nobara_kugisaki", "junpei_yoshino"],
+            },
         )
         grant = client.wait_for("battle_v2_session", after=marker)
         match_id = grant["room_id"]
@@ -981,7 +985,6 @@ def isolated_environment(port: int, database_path: Path) -> dict[str, str]:
             "no_proxy": "127.0.0.1,localhost",
         }
     )
-    environment.pop("JJK_FIRST_CREATION_PROFILE_STORE", None)
     return environment
 
 

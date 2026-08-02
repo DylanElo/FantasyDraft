@@ -18,7 +18,7 @@ def test_boot_queues_only_splash_home_and_startup_portraits():
     assert "this.load.image('culling-current-campus'" not in source
     assert "this.load.image('culling-current-map'" not in source
     assert "this.load.image('culling-current-rooftop'" not in source
-    assert "'culling-current-home',\n  'culling-current-home-hero'" in registry
+    assert "'culling-current-home',\n]);" in registry
 
 
 def test_environment_registry_and_scene_staging_are_deterministic():
@@ -90,7 +90,7 @@ console.log(JSON.stringify({
 """
     )
 
-    assert probe["initial"] == ["culling-current-home", "culling-current-home-hero"]
+    assert probe["initial"] == ["culling-current-home"]
     assert probe["campusScenes"] == ["DraftScene", "FirstCreationScene", "RecordsScene"]
     assert probe["missionAssets"] == ["culling-current-map"]
     assert probe["firstResult"] == "queued"
@@ -110,25 +110,27 @@ console.log(JSON.stringify({
     assert probe["unknown"] == "fallback"
 
 
-def test_season_three_facade_keeps_compatibility_variants_and_shared_tokens():
+def test_incident_cut_facade_keeps_models_tokens_and_pure_layouts():
     probe = run_node(
         r"""
 globalThis.JJK_MOBILE_TOKENS = {};
 globalThis.JJK_BOOTSTRAP = {};
 const facade = await import('./web/static/phaser/ui/season3-ui.js');
-const current = await import('./web/static/phaser/ui/culling-current-ui.js?v=43');
-const flow = await import('./web/static/phaser/ui/season-three-ui.js?v=43');
-const post = await import('./web/static/phaser/ui/season3-master-ui.js?v=43');
+const flow = await import('./web/static/phaser/ui/season-three-ui.js?v=57');
+const post = await import('./web/static/phaser/ui/season3-master-ui.js?v=57');
+const incident = await import('./web/static/phaser/ui/incident-cut/presentation.js?v=57');
+const incidentTokens = await import('./web/static/phaser/ui/incident-cut/tokens.js?v=57');
 console.log(JSON.stringify({
   frozen: Object.isFrozen(facade.Season3UI),
   tokenFrozen: Object.isFrozen(facade.S3_TOKENS.palette),
   roles: Object.keys(facade.Season3UI),
-  currentWorldCompatible: facade.Season3UI.current.world === current.drawCurrentWorld,
-  flowPanelCompatible: facade.Season3UI.flow.panel === flow.drawS3Panel,
-  flowColorsCompatible: facade.Season3UI.flow.colors === flow.S3_COLORS,
+  layoutFrozen: Object.isFrozen(facade.IncidentCutLayouts),
+  currentWorldCompatible: facade.Season3UI.current.world === incident.drawIncidentWorld,
+  flowPanelCompatible: facade.Season3UI.flow.panel === incident.drawIncidentSurface,
+  flowColorsCompatible: facade.Season3UI.flow.colors === incidentTokens.INCIDENT,
   flowBootLayoutCompatible: facade.Season3UI.flow.bootLayout === flow.bootS3Layout,
-  postButtonCompatible: facade.Season3UI.postMatch.button === post.drawS3Button,
-  postColorsCompatible: facade.Season3UI.postMatch.colors === post.S3_COLORS,
+  postButtonCompatible: facade.Season3UI.postMatch.button === incident.drawIncidentButton,
+  postColorsCompatible: facade.Season3UI.postMatch.colors === incidentTokens.INCIDENT,
   postResultModelCompatible: facade.Season3UI.postMatch.resultModel === post.resultModel,
   colors: facade.S3_TOKENS.semantic,
   flowBone: flow.S3_COLORS.bone,
@@ -139,6 +141,7 @@ console.log(JSON.stringify({
 
     assert probe["frozen"] is True
     assert probe["tokenFrozen"] is True
+    assert probe["layoutFrozen"] is True
     assert probe["roles"] == ["tokens", "current", "flow", "postMatch"]
     assert probe["currentWorldCompatible"] is True
     assert probe["flowPanelCompatible"] is True
@@ -163,7 +166,7 @@ def test_scenes_only_import_the_canonical_season_three_facade():
     for path in (ROOT / "web" / "static" / "phaser" / "scenes").rglob("*.js"):
         source = path.read_text(encoding="utf-8")
         for specifier in ui_import_pattern.findall(source):
-            if specifier != "../ui/season3-ui.js?v=43":
+            if specifier != "../ui/season3-ui.js?v=57":
                 offenders.append((path.name, specifier))
     assert offenders == []
 
@@ -209,8 +212,8 @@ def test_runtime_cache_chain_and_delivery_manifest_agree_on_v43():
     budget = json.loads((ASSET_ROOT / "runtime-texture-budget.json").read_text(encoding="utf-8"))
     template = (ROOT / "web" / "templates" / "index.html").read_text(encoding="utf-8")
     assert budget["runtime_cache_version"] == "43"
-    assert "phaser/index.js') }}?v=43" in template
-    assert "phaser-design-tokens.js') }}?v=43" in template
+    assert "phaser/index.js') }}?v=57" in template
+    assert "phaser-design-tokens.js') }}?v=57" in template
 
     mismatches = []
     specifier_pattern = re.compile(
@@ -219,6 +222,40 @@ def test_runtime_cache_chain_and_delivery_manifest_agree_on_v43():
     for path in (ROOT / "web" / "static" / "phaser").rglob("*.js"):
         source = path.read_text(encoding="utf-8")
         for specifier in specifier_pattern.findall(source):
-            if specifier.startswith(".") and not specifier.endswith("?v=43"):
+            if specifier.startswith(".") and not specifier.endswith("?v=57"):
                 mismatches.append((str(path.relative_to(ROOT)), specifier))
     assert mismatches == []
+
+
+def test_starter_trio_proof_art_is_local_query_opt_in_only():
+    probe = run_node(
+        r"""
+globalThis.location = { hostname: 'localhost', search: '?art=proof' };
+globalThis.JJK_MOBILE_TOKENS = {};
+globalThis.JJK_BOOTSTRAP = {};
+const runtime = await import('./web/static/phaser/core/runtime-config.js');
+const portraits = await import('./web/static/phaser/core/portrait-registry.js');
+const skills = await import('./web/static/phaser/core/skill-visual-registry.js');
+console.log(JSON.stringify({
+  localEnabled: runtime.localProductionProofArtEnabled(location),
+  remoteEnabled: runtime.localProductionProofArtEnabled({ hostname: 'example.com', search: '?art=proof' }),
+  missingQueryEnabled: runtime.localProductionProofArtEnabled({ hostname: 'localhost', search: '' }),
+  yujiPortrait: portraits.portraitEntryFor('yuji_itadori').url,
+  makiPortrait: portraits.portraitEntryFor('maki_zenin').url,
+  atlasKeys: Object.keys(skills.SKILL_ACTION_ATLASES),
+  yujiAtlas: skills.skillVisualFor('fc_yuji_itadori_divergent_fist').art.atlasKey,
+  makiAtlas: skills.skillVisualFor('fc_maki_zenin_cursed_tool_combo').art.atlasKey,
+}));
+"""
+    )
+
+    assert probe == {
+        "localEnabled": True,
+        "remoteEnabled": False,
+        "missingQueryEnabled": False,
+        "yujiPortrait": "/static/assets/portraits/culling-current/production-proof/yuji-itadori/portrait-runtime.webp",
+        "makiPortrait": "/static/assets/portraits/culling-current/maki-zenin.webp",
+        "atlasKeys": ["body", "technique", "curse", "focusGuard", "focusControl", "proof"],
+        "yujiAtlas": "s3-starter-trio-proof-atlas",
+        "makiAtlas": "s3-skill-atlas-body-v3",
+    }

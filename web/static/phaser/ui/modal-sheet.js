@@ -1,5 +1,5 @@
-import { CULLING_COLORS } from '../core/runtime-config.js?v=43';
-import { drawCurrentButton, drawCurrentPanel } from './culling-current-ui.js?v=43';
+import { CULLING_COLORS } from '../core/runtime-config.js?v=57';
+import { drawCurrentButton, drawCurrentPanel } from './culling-current-ui.js?v=57';
 
 // Shared chrome for full-screen modal sheets (skill detail, fighter status
 // inspection): a dim backdrop, the card panel, a full-frame blocking hit

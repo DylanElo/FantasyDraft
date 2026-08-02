@@ -9,6 +9,52 @@ After every meaningful pass, add a short dated entry with:
 - What remains or needs caution
 - Relevant commits or pushed state
 
+## 2026-08-02 - Idempotent Windows launcher
+
+- Fixed `start_server.bat` so a healthy JJK Arena already listening on the
+  configured host/port is reused instead of reported as a port-in-use failure.
+- Verified the real occupied-port path with `JJK_NO_BROWSER=1`: the launcher
+  reported the existing URL and exited successfully.
+- `tests/test_start_server_launcher.py`: 4 passed; `git diff --check` passed.
+- No commit or push was performed.
+
+## 2026-08-02 - Structural mobile combat remake
+
+What changed:
+
+- Replaced the 2x2 planning-card grid with a single thumb-reachable four-skill
+  command rail and gave the battlefield substantially more vertical space.
+- Replaced the three narrow Queue Review columns with a dedicated full-screen
+  order editor. The left-to-right resolution contract remains explicit while
+  each action gets a full-width row for targets, cost, Wild payment, validation,
+  and 44px reorder controls.
+- Queue Review now exits planning rendering at the scene boundary, preventing
+  planning HUD and fighter nodes from leaking into the order editor.
+- Bumped the maintained Phaser cache graph from `v43` to `v44` so deployed
+  browsers cannot retain the previous combat layout.
+
+Verification:
+
+- Live authoritative CPU flow passed through Planning, Orders Open, Queue
+  Review, Back, Confirm, server resolution, CPU response, and the next turn.
+- Browser viewport and Phaser canvas matched 360x800, 390x844, and 430x932;
+  the browser console had no warnings or errors.
+- Focused combat, queue, mobile-layout, authority, accessibility, app-shell,
+  and asset-delivery tests passed: 59 tests.
+- Full repository verification passed: 677 tests passed, 2 skipped; Python
+  compileall, every Phaser JavaScript syntax check, and `git diff --check`
+  also passed.
+- Development screenshots and hashes are recorded under
+  `artifacts/ui-redesign/combat-remake-v1/qa/`.
+
+Remaining / caution:
+
+- This remakes Combat Planning and Queue Review, not every non-combat scene.
+- Production art is still prototype-only and sound/haptics still require a
+  physical-device listening pass.
+- The working tree remains uncommitted and includes pre-existing unrelated
+  edits; no push or PR was performed.
+
 ## 2026-07-09 - Line-ending policy and local verification
 
 ## 2026-08-01 - Fix combat-scene.js syntax error from incomplete long-press refactor
@@ -3804,3 +3850,465 @@ before the fixes did not recur afterward.
 audit. The dense 360px descriptive copy is a nonblocking polish item. This
 entry is included in the reconciliation commit to be pushed on
 `fix/ponytail-audit-fixes`; GitHub Actions remains the final remote check.
+
+## 2026-08-01 — NA Helper character/skill reference extraction
+
+**Scope and locked contracts.** Extracted the public NA Helper structured
+character dataset for manual kit research without importing images, changing
+the locked First Creation roster, or treating source prose as executable
+Battle v2 behavior. Shipping skills must still be authored as explicit typed
+`SkillSpec` / `EffectSpec` contracts against the canonical JJK Arena rules.
+
+**Output.** Created an ignored local corpus under
+`data/reference/na_helper/`: lossless nested source JSON, flattened character
+CSV, flattened skill CSV, and a provenance/hash manifest. The source contains
+207 unique characters and 936 unique skill records; the CSV uses stable local
+reference IDs and preserves English/Portuguese text, energy, classes,
+cooldowns, and remote image URLs without downloading images. Corrected the
+stale `220+` coverage claim in the design-reference document. Added a
+reconstruction ledger, named skill/state relation table, nested kit index, and
+machine-readable reconstruction manifest. Exact semantic-markup claims,
+candidate-mechanic evidence excerpts, and a source review queue make each
+derived signal auditable. Derived target/mechanic fields are explicitly
+labelled as unreviewed candidates. Added a 21-row mechanic balance catalog and
+207-row kit-archetype candidate table for comparative design analysis.
+
+**Verification.** Confirmed 207 raw and CSV character rows, 936 CSV skill rows,
+207 unique character IDs, 936 unique skill IDs, zero missing names, zero broken
+character links, and zero malformed cooldowns. The raw source SHA-256 is
+`f72f57ba03c44b96a091328a0ffac2f883b6638559de163b75a7f2c28fdb2a87`.
+The reconstruction layer contains 936 ledger rows, 207 kit records, 209 named
+relations (201 resolved to source skills and 8 retained as named states or
+unresolved source labels), zero missing descriptions, and zero invalid cost
+totals. Extracted 1,641 unique marked claims and 2,750 evidence rows matching
+the 2,750 emitted mechanic signals. The review queue records 331 unknown target
+signals, 15 placeholder classes, 8 unresolved named relations, 4 skills with no
+candidate mechanic, 2 paired `br` source anomalies, 2 shared icon URLs, and 1
+empty source claim.
+
+**Remaining / delivery.** The corpus is intentionally ignored by Git and is
+reference-only. A later manual mapping pass must decide which patterns inform
+JJK kits and explicitly review the 331 skills whose prose does not yield a
+safe target signal; no automatic prose-to-effects conversion was added.
+
+## 2026-08-01 — Uzumaki Naruto normalized reference kit
+
+**Scope and locked contracts.** Manually normalized the NA Helper Uzumaki
+Naruto source record as reference-only JSON. Battle v2, the First Creation
+roster, and shipping kit behavior were not changed; source prose remains
+non-executable.
+
+**Output.** Added ignored local file
+`data/reference/na_helper/uzumaki_naruto.normalized.json` with four active
+slots, one passive, two named states, explicit costs/classes/cooldowns,
+targets, requirements, ordered effects, source confidence, and unresolved
+evidence. The missing Kyuubi's Presence source record, unspecified duration
+clocks, and unspecified attack damage families remain explicit instead of
+being invented.
+
+**Verification.** PowerShell JSON parsing passed. Assertions confirmed five
+skill records, Rasengan's source damage of 45, Shadow Clones' Random cost, two
+states, and three unresolved evidence gaps. `git diff --check` passed.
+
+**Remaining / delivery.** This single kit is the gold-standard trial record.
+Its unresolved items require an original skill record, authoritative rules
+source, or controlled battle evidence before exact runtime reconstruction.
+
+## 2026-08-02 — Starter trio visual production proof
+
+**Scope and locked contracts.** Produced a non-runtime art-direction proof for
+Yuji, Megumi, and Nobara without changing Battle v2, the locked First Creation
+roster, Phaser behavior, or maintained runtime assets. The proof follows the
+Culling Current palette and the portrait/skill-image contracts in the Season 3
+visual system. Existing portraits were identity references only.
+
+**Output.** Added three original 3:4 portrait masters, 600x800 WebP runtime
+derivatives, and 12 named-skill icons with 512x512 WebP derivatives. Added
+portrait-crop and 56 px icon contact sheets, generation result IDs, SHA-256
+source hashes, and an explicit prototype-only clearance entry. The rejected
+Yuji hand draft and temporary QA files were removed.
+
+**Verification.** All source portraits are 1086x1448 RGB PNGs; all source skill
+icons are 1254x1254 RGB PNGs. The three portraits passed roster, square-face,
+wide-combat, and token crop review. All 12 icons remained distinct and readable
+at 56 px. Runtime derivatives decode as 600x800 portraits and 512x512 icons.
+The maintained runtime registries and gameplay files were not changed.
+`tests/test_phaser_asset_delivery.py` and `tests/test_phaser_portraits.py`
+passed (14 tests), the clearance manifest parsed as JSON, and
+`git diff --check` passed.
+
+**Remaining / delivery.** These assets are intentionally not wired into the
+game and are not commercially release-cleared. Before scaling to the remaining
+16 portraits and 66 skill icons, the trio should be enabled behind a
+development-only asset switch and checked in the real Phaser flow at 360x800,
+390x844, and 430x932.
+
+## 2026-08-02 — Starter trio Phaser vertical slice
+
+**Scope and locked contracts.** Integrated the accepted Yuji/Megumi/Nobara
+proof into the maintained Phaser presentation without changing Battle v2,
+skill behavior, roster membership, socket payloads, or viewer privacy. The
+server remained authoritative for legality, adjusted costs, targets, queue
+validation, resolution, statuses, CPU actions, and energy.
+
+**Output.** Added a local-only `?art=proof` switch that reuses the existing
+portrait registry, skill-atlas loader, and skill renderer. Non-local hosts and
+normal URLs retain the maintained art. Packed the 12 proof icons into one
+2048x2048 deferred atlas. Fixed the shared planning-card layer so named skill
+art is visible, added a compact `slot · adjusted cost` overlay, and corrected
+ordinary playback from the false `DOMAIN RESOLUTION` label to `TURN
+RESOLUTION`. Reconciled the two stale v42 visual-contract references with the
+already-tested v43 runtime chain.
+
+**Verification.** Completed a real CPU encounter through Home, Team Setup,
+Matchup, Planning, target selection, Orders Open, Queue Review, Confirm,
+authoritative resolution, status playback, CPU response, and the next Planning
+turn. Browser QA passed at 360x800, 390x844, and 430x932 with matching canvas
+dimensions and zero console warnings/errors. Focused Phaser tests passed before
+the final full-suite run. `python -m pytest -q` passed with 677 tests and 2
+skips; `python -m compileall -q jjk_arena web/app.py`, syntax checks for every
+changed JavaScript file, and `git diff --check` passed. Durable screenshots and hashes are recorded under
+`artifacts/ui-redesign/s3-structure-v2/qa/current-proof/`.
+
+**Remaining / delivery.** The proof art remains prototype-only and the QA set
+is development evidence because it was captured from a dirty working tree.
+Physical iOS/Android audio-haptics listening, commercial rights review, and
+production of the remaining 16 portraits and 66 icons remain separate gates.
+
+## 2026-08-02 — Combat Planning composition remake
+
+**Scope and locked contracts.** Replaced the rejected Combat Planning
+composition without changing Battle v2, socket payloads, skill legality,
+targeting, costs, queue behavior, hidden information, or damage. The Python
+server remains authoritative; Phaser only renders serialized state and sends
+intent.
+
+**Output.** Removed the active three-card-lane, segmented dashboard, vertical
+target-current, and full skill-card composition. Combat now uses a compact
+status strip, two thumb-sized squad-token rows, a large caster-versus-target
+focus stage, an expanded authoritative technique readout, four technique
+icons, and the existing full-screen Queue Review. Adjusted cost, disabled
+reason, legal target, queue target, order count, energy, phase, and timer stay
+visible. Bumped the maintained Phaser cache chain from v44 to v45. Durable QA
+captures are under `artifacts/ui-redesign/combat-remake-v2/qa/`.
+
+**Verification.** Completed a real CPU flow through Home, Team Setup, Matchup,
+Combat Planning, technique selection, and authoritative queue creation. The
+selected self technique produced `Q1 TARGET`, advanced the active fighter, and
+enabled `REVIEW 1/3`. Browser console warnings/errors were empty. Live captures
+fit at 360x800, 390x844, and 430x932 without scrolling; the browser screenshot
+backend emitted the latter two at 390x843 and 430x931 while the viewport
+capability remained set to the requested sizes. `python -m pytest -q` passed
+with 678 tests and 2 skips. Syntax checks for every changed JavaScript file,
+`python -m compileall -q jjk_arena web/app.py`, and `git diff --check` passed.
+
+**Remaining / delivery.** This pass remakes Combat Planning and preserves the
+already-separated Queue Review; it does not claim the rest of the game's
+screens are remade. The working tree still contains earlier uncommitted work,
+including unrelated local changes, so no commit or push was made in this pass.
+
+## 2026-08-02 — From-scratch combat concept comparison
+
+**Scope and locked contracts.** Compared three generated Combat Planning
+directions using the game-image, game-design, game-architect, and Ponytail
+rubrics. The review preserved Battle v2's 3v3, 100 HP, four-color energy,
+left-to-right queue, Wild payment, target-legality, viewer-safe state, and
+server-authority contracts. No runtime code or gameplay rule changed.
+
+**Evaluation.** At 360x800, 390x844, and 430x932, Six-Point Formation scored
+66/100, Fighter Theater 73/100, and Living Manga Queue 83/100. The first two
+failed shipping gates around queue comprehension, adjusted-cost/disabled-state
+clarity, and complete fighter-state readability. Living Manga Queue was the
+only viable revision foundation because its three panels directly encode
+left-to-right resolution order while keeping all six combatants visible.
+
+**Output and verification.** Revised only Living Manga Queue to expose T/J/S/B
+counts, 100-point HP, visible status marks, legal and invulnerable targets,
+primary/secondary routing, adjusted `J+X` cost, cooldown, `NO ENERGY`, unpaid
+Wild state, and disabled Review. The accepted preview is
+`artifacts/concept-art/combat-ui-from-scratch/concept-03-living-manga-queue-revised-v2.png`.
+It decodes as 853x1844 RGB with a 0.4626 aspect ratio, matching the 390x844
+target ratio of 0.4621. A deterministic 360x800 downscale retained all six
+fighters, four approximately 48 px technique regions, and the complete Review
+control.
+
+**Remaining / delivery.** The accepted image is a direction prototype, not an
+implementation specification. Before Phaser work, its composition needs one
+deterministic interaction wireframe covering panel expansion, target stages,
+secondary/alternate targets, queue cancellation/reordering, Wild assignment,
+and status/detail inspection. No commit or push was made from the existing
+dirty branch.
+
+## 2026-08-02 — Incident Cut recovery and player-facing correction pass
+
+**Scope and locked contracts.** Recovered the mistakenly rolled-back Incident
+Cut presentation from recorded patches and restored its 24 QA files from the
+Recycle Bin. Battle v2 authority, 3v3 action limits, target legality, four-color
+energy, Wild payment, left-to-right queue order, hidden PvP state, roster, and
+balance were not changed.
+
+**Player fixes.** Home now uses the character-free city plate and renders the
+saved trio once. Queue Review derives `RESOLVES` from the real action count,
+hides reorder controls for one action, and labels energy as `NOW > AFTER`.
+Resolution keeps commands withdrawn for the full visible playback window.
+Compact disabled ribbons are clipped within each technique card at 360px, while
+full reasons remain in details and accessibility text. Fizzled events now use
+the skill display name instead of leaking an internal skill id. Removed the
+player-facing `CULLING CURRENT` Result label and updated the maintained cache
+graph to v50.
+
+**Verification.** Live CPU browser QA covered Home, Team Setup, Matchup, Combat
+Planning, targeting, one-action Queue Review, authoritative confirmation,
+Resolution, and Result at 360x800, 390x844, and 430x932 with no browser console
+warnings or errors. Final captures are under
+`artifacts/ui-redesign/incident-cut/after-v50/`. All changed JavaScript passed
+`node --check`; Python compilation passed; 72 focused launcher, app, Battle v2,
+mobile, queue, asset, matchup, and typography tests passed; `git diff --check`
+passed with existing line-ending warnings.
+
+**Remaining / delivery.** A repository-wide `pytest -q` attempt reached the
+304-second command limit without a reported failure, so this pass does not
+claim the full suite passed. Five-person first-match usability testing and
+commercial asset-rights review remain external gates. The branch was already
+dirty with Claude/user work; no commit or push was made.
+
+## 2026-08-02 — Reference-driven grayscale combat reset
+
+**Scope and locked contracts.** Rejected further Incident Cut decoration and
+authored a separate interaction prototype grounded in identifiable Naruto
+Arena, Marvel Snap, Pokemon TCG Pocket, Persona 5, and Arknights patterns. The
+prototype preserves six visible fighters, one action per living fighter,
+authoritative adjusted cost and target legality, left-to-right Queue Review,
+Wild payment visibility, and server-authored resolution. Production Phaser,
+socket, kit, balance, and asset files were not changed.
+
+**Output.** Added `artifacts/ui-redesign/reference-driven-combat/` with a
+reference matrix and a dependency-free interactive HTML study. Planning uses
+a readable 2x2 technique grid. Targeting is a distinct state with both field
+highlights and thumb-zone target buttons, including an explicit blocked reason.
+Review is disabled at zero actions, a queued fighter cannot act twice, Queue
+Review is a dedicated order/cost surface, and Resolution stages one event while
+retaining compact six-fighter HP context. Twelve captures cover Planning,
+Targeting, Queue Review, and Resolution at 360x800, 390x844, and 430x932.
+
+**Verification.** Live browser interaction completed skill selection, legal
+target choice, queued-action locking, Queue Review, commit, and Resolution.
+The illegal Ward target remained disabled, Review enabled only after a legal
+target, and browser warnings/errors were empty. Visual inspection found and
+corrected initial horizontal crop, fighter-name truncation, leaked underlying
+layers, single-action reorder affordance, and upper-screen-only targeting.
+`git diff --check` passed for the artifact and session history.
+
+**Remaining / delivery.** This is deliberately grayscale and proves only the
+combat interaction hierarchy; it is not production art and does not replace
+the current Phaser UI. The next gate is user approval of this structure before
+building the visual language or integrating it. The existing branch remains
+dirty with prior Claude/user work; no commit or push was made.
+
+## 2026-08-02 — Figma combat UX v1 design-system and mobile-flow pass
+
+**Scope and locked contracts.** Built the editable Figma combat source at
+`https://www.figma.com/design/TJv95jCdSqCC3IhoJrA1oZ` against the locked
+Battle v2 flow, portrait-first 3v3 layout, server-authored legality and cost,
+left-to-right queue order, Wild allocation, replacement skills, viewer-safe
+hidden reveals, and explicit status/disabled feedback. No gameplay, socket,
+kit, roster, balance, or Phaser runtime behavior changed.
+
+**Output.** Completed token foundations and reusable Energy Pip, Status Chip,
+Skill Card, Fighter Token, Queue Action Card, Game Button, Phase Banner,
+Bottom Sheet, Toast, and Damage Number components. Strategic energy is opaque
+white. Fighter tokens expose explicit Legal Target, Blocked, Stunned, Down,
+queued, priority-status, and `+N` states. Added full combat screens at 360x800,
+390x844, and 430x932 using real repository Yuji, Megumi, and Nobara portraits,
+plus a five-frame Planning -> Queue Review -> Resolving -> Turn End -> Finished
+storyboard and a nine-case combat QA matrix.
+
+**Verification.** Figma metadata and screenshots validated component variant
+counts, token bindings, image hashes, and the three target viewport sizes.
+Automated bounds checks found no visible content outside any mobile frame and
+no missing fonts. CLEAR, REVIEW QUEUE, and PASS are all at least 44px after a
+QA-discovered auto-layout shrink was corrected. Visual QA also corrected a
+black queued-state fallback, missing WebP portrait rendering, flattened
+variant captions, clipped button variants, a two-pixel queue overlap, and
+missing Stunned component-property references.
+
+**Remaining / delivery.** Figma is now the editable design source and handoff;
+the Phaser runtime has not yet been rewritten to match it. Production
+implementation still requires a focused UI-only diff, syntax/tests, and live
+browser comparison captures at the three target sizes. The existing branch
+contains substantial unrelated Claude/user changes; no commit or push was
+made.
+
+## 2026-08-02 — Figma combat IA structural reset
+
+**Scope and locked contracts.** Marked the prior Figma mobile screens and flow
+as rejected reskin references and restarted the combat interaction architecture
+without changing Battle v2, sockets, kits, roster, balance, or Phaser. The
+concepts preserve six visible fighters, one action per living fighter,
+server-authored legality and adjusted cost, explicit disabled and hidden/reveal
+states, Wild assignment, and left-to-right Queue Review.
+
+**Output.** Added three grayscale 390x844 flows covering Planning, Targeting,
+and Queue Review: Central Tactical Stage, Focus + Periphery, and Persistent
+Queue Spine. Scored all three against hierarchy, thumb reach, six-fighter
+readability, targeting, cost feedback, queue comprehension, Battle v2 fit,
+implementation complexity, and player appeal. Focus + Periphery won 81/90.
+Its revision replaces abbreviated fighter rails with readable identities and
+durable legality/status labels, adds server-state and adjusted-cost receipts,
+shows replacement and disabled reasons, and keeps a visible queue ledger.
+
+**Verification.** Inspected exported Figma renders for all nine concept states,
+then the revised winner at 360x800, 390x844, and 430x932. The first 360 proof
+failed because side identities wrapped too aggressively; the rails were widened
+and re-exported before acceptance. Revised 390 targeting makes legal and blocked
+targets explicit before commit. Revised Queue Review exposes disabled actors,
+Wild payment, server revalidation, and left-to-right resolution. No stacked
+team rows or 2x2 skill grid remain in the winner.
+
+**Remaining / delivery.** This pass is an editable grayscale interaction
+contract, not production art or Phaser implementation. The rejected Figma
+pages remain archived for comparison only. The next step is a focused UI-only
+Phaser implementation of the winning spatial model, followed by live browser
+QA at all three locked portrait sizes. The worktree already contains extensive
+Claude/user changes; only this session-history entry was added locally and no
+commit or push was made.
+
+## 2026-08-02 — Reference-led combat direction v2
+
+**Scope and locked contracts.** Rejected the prior dashboard-like Figma
+concepts and restarted from a reference board built around battlefield-first
+combat, direct fighter targeting, a thumb-side technique hand, persistent
+left-to-right queue state, and control-free resolution. The design preserves
+all Battle v2 authority boundaries: the client displays legal and blocked
+targets, adjusted cost, Wild payment, stun/poison state, queue order, and the
+authoritative damage receipt without deciding any of them.
+
+**Output.** Added editable `03 Reference Board v2` and
+`04 Combat Direction v2` pages to the existing Figma file. The combat page now
+contains a high-fidelity 390x844 Planning -> Targeting -> Queue Review ->
+Resolution prototype with real repository portraits and skill art. The flow is
+clickable through the primary actions. Added explicit 360x800 and 430x932
+Planning proofs; the prior structural concept and comparison pages are marked
+rejected rather than presented as current direction.
+
+**Verification.** Inspected fresh exports of all four 390x844 states and both
+responsive proofs. All visible player-readable text is at least 12px, queue
+targets are 44-48px high, and primary actions are 46-51px high. Targeting shows
+legal Maki/Toge states and Panda's invulnerability block before commit. Queue
+Review exposes left-to-right order, adjusted costs, Wild assignment, and
+Nobara's class stun. Resolution removes planning controls and shows action
+order, damage, HP change, persistent poison, and the next action.
+
+**Remaining / delivery.** This is the replacement design direction, not a
+Phaser implementation. The next gate is user acceptance of the Figma flow;
+only then should the existing combat renderer be replaced in a focused UI-only
+change. The worktree remains heavily dirty with prior Claude/user changes. No
+runtime files, commit, or push were made in this pass.
+
+## 2026-08-03 — Combat direction v2 semantic and motion refinement
+
+**Scope and locked contracts.** Refined the approved battlefield-first Figma
+direction without changing Battle v2 rules, kits, socket contracts, roster,
+damage, costs, or Phaser runtime code. The pass focused on the locked
+player-facing distinctions between committed selection, legal targeting,
+validated queue state, disabled reasons, core energy, and authoritative
+resolution feedback.
+
+**Output.** Selection now uses aged gold, legal targets use curse cyan, queued
+actions use queue green, and disabled or invulnerable state is explicitly
+labeled. Targeting attaches SELECTED, LEGAL, and INVULNERABLE chips directly to
+the relevant fighters and the receipt lists every target state before commit.
+Core energy is color-coded in every decision header, with Strategic rendered
+opaque white. Queue Review now has visible touch grips, HOLD + DRAG wording,
+green validation treatment for both queued actions, typed cost colors, and a
+red stunned/no-action state. The resolution receipt now identifies Yuji as the
+fighter retaining Poison 2, and the impact slash was reduced so Maki remains
+readable.
+
+**Motion and hierarchy.** Replaced the unstable multi-part HUD with one compact
+phase/timer line and one energy line throughout the prototype. Smart Animate
+timing is now 180ms for Planning -> Targeting, 220ms for Targeting -> Queue
+Review, and 350ms for Queue Review -> Resolution so decision feedback stays
+fast while resolution receives more weight.
+
+**Verification.** Inspected fresh exports of Planning, Targeting, Queue Review,
+Resolution, and the 360x800 and 430x932 Planning proofs. All visible text is at
+least 12px, queue targets are 44-48px high, primary actions are 46-51px high,
+the product fonts are limited to Barlow Condensed, IBM Plex Mono, and Zen Kaku
+Gothic New, and all three prototype transitions point to the correct state.
+The few out-of-frame bounds reported by structural QA are intentional clipped
+atmosphere, impact, and fanned-card artwork rather than interactive content.
+
+**Remaining / delivery.** This is still a Figma interaction and motion contract,
+not implemented Phaser animation. The dirty worktree was preserved; no runtime
+files, commit, or push were made.
+
+## 2026-08-03 — Combat direction v2 Phaser implementation
+
+**Scope and locked contracts.** Implemented the approved Figma combat direction
+through the maintained Phaser renderers only. Battle v2, socket payloads, kit
+data, legality, costs, targeting, hidden information, and resolution remain
+server-authoritative. Existing Claude/user work across the dirty tree was
+preserved and reconciled rather than replaced wholesale.
+
+**Output.** Replaced the old stacked command hierarchy with a compact two-line
+turn/energy HUD, persistent three-cut queue strip, larger staged fighter
+portraits, a four-card illustrated technique hand, and a dedicated targeting
+receipt. Fighter cards now say `SELECTED`, `LEGAL`, `INVULNERABLE`, and show a
+readable visible status instead of an unexplained count. Targeting exposes
+adjusted cost, authoritative target grammar, every legal/blocked fighter, route
+lines, and a cancel action. Queue Review keeps the field visible, exposes Wild
+payment and energy now/after, and Resolution replaces planning controls with a
+persistent authoritative turn receipt. Bumped the maintained cache graph
+atomically to v53.
+
+**Verification.** `node --check` passed for all 38 changed Phaser JavaScript
+files. The focused Phaser/app suite passed 65 tests. The full suite passed 678
+tests with 2 optional skips. `python -m compileall -q jjk_arena web/app.py` and
+`git diff --check` passed. Live CPU combat exercised Planning, Targeting, Orders
+Open, Queue Review, and Resolution in the Codex in-app Chromium browser. Final
+360x800, 390x844, and 430x932 viewport/canvas dimensions matched exactly and the
+console had zero warnings or errors. Captures and hashes are recorded under
+`artifacts/ui-redesign/incident-cut/qa/v53/`.
+
+**Remaining / delivery.** Queue ordering retains explicit 44px arrow controls;
+drag reordering was not added as a second interaction path. One in-place QA
+viewport switch briefly required a reload before Phaser repainted at the new
+size; cold loads at all three required sizes were exact. The worktree remains
+heavily dirty from the broader Claude/user pass, and this implementation has not
+been committed or pushed.
+
+## 2026-08-03 — Combat clarity and resize polish
+
+**Scope and locked contracts.** Polished the implemented Incident Cut combat
+renderer without changing Battle v2 rules, socket contracts, kits, legality,
+costs, hidden information, or server authority. The pass addressed only
+viewer-safe status naming, resolution comprehension, and portrait viewport
+reflow.
+
+**Output.** Visible status chips now prefer meaningful effect or behavior names
+such as `STUN`, `SHIELD`, `WARD`, and the compact authoritative status name.
+Opponent actions are attributed correctly even when a viewer-safe playback
+event omits the actor id. Resolution receipts deduplicate repeated events and
+compact damage into skill, amount, and target so AoE hits remain distinct.
+Removed the delayed cinematic text card and suppressed `turn_skipped` playback
+only when a real skill resolves in the same batch, eliminating contradictory
+or overlapping banners while retaining the curtain, ring, slash, impact, and
+floating-status animation. Added a native resize refresh around Phaser's
+existing resize scale mode. The maintained cache graph is now v57.
+
+**Verification.** All changed Phaser JavaScript passed `node --check`; the
+focused Phaser/app suite passed 65 tests. The final full repository suite passed
+680 tests with 2 optional skips. Live CPU combat at 360x800, 390x844, and 430x932
+confirmed exact DOM, shell, and canvas dimensions after in-place resizing.
+Planning, Queue Review, status chips, pass/resolution, opponent attribution,
+and the compact target-aware receipt were exercised; the console reported zero
+warnings or errors. Evidence and hashes are under
+`artifacts/ui-redesign/incident-cut/qa/v57/`.
+
+**Remaining / delivery.** Queue ordering still uses the established 44px arrow
+controls rather than adding drag as a second input model. The browser capture
+API omitted one final scanline at 390x844 and 430x932 even though live viewport,
+shell, and canvas measurements were exact; the QA README records that caveat.
+The worktree remains heavily dirty from the broader Claude/user pass, so no
+commit or push has been made yet.

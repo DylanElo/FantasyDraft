@@ -10,32 +10,33 @@ ROOT = Path(__file__).resolve().parents[1]
 QUEUE_SCENE = ROOT / "web/static/phaser/scenes/combat-queue-review-scene.js"
 
 
-def test_queue_review_is_an_illustrated_command_deck_on_the_battlefield():
+def test_queue_review_is_a_dedicated_touch_first_order_editor():
     source = QUEUE_SCENE.read_text(encoding="utf-8")
     combat = (ROOT / "web" / "static" / "phaser" / "scenes" / "combat-scene.js").read_text(encoding="utf-8")
 
-    # Queue Review keeps the spatial battle context and replaces only the
-    # lower command dock with the final left-to-right action deck.
-    assert "this.renderBattlefield(frame, layout.battle" in source
-    assert "this.renderFighterLane(me && me.team, 'mine'" in source
+    # Queue Review expands the storyboard over the lower 35% and leaves the
+    # authoritative battlefield visible behind it.
+    assert "const sheetY = frame.bottom - sheetH;" in source
+    assert "this.graphics.fillRect(layout.sheetX, layout.sheetY, layout.sheetW, layout.sheetH);" in source
     assert "const actions = this.store.actions.slice(0, 3);" in source
     assert "this.renderQueueActionCard(action, index, actions.length" in source
-    assert "const cardW = (cardsW - cardGap * Math.max(0, actions.length - 1)) / actions.length;" in source
+    assert "x: cardsX + index * (cardW + cardGap)" in source
     assert "'Queue Review Battlefield Lock'" in source
-    assert "fillRect(0, 0, frame.fullWidth" not in source
 
     assert "'FINAL ORDER'" in source
-    assert "'LEFT > RIGHT / READY'" in source
+    assert "actions.map((_, index) => index + 1).join(' > ')" in source
+    assert "if (count > 1) drawCurrentButton" in source
+    assert "'ENERGY  NOW > AFTER'" in source
     assert "SKILL_ART_BY_ENERGY" in source
     assert "this.coverImage(artKey" in source
     assert "this.renderIntegratedSkillArtwork(meta.skill" in source
     assert "this.renderEnergyCommitment(frame, layout, queueFit)" in source
     assert "this.renderCostOrbs" in source
     assert "this.renderWildPayments" in source
-    assert "drawCurrentPanel(this, layout.sheetX" not in source
-    assert "one\n      // torn paper plane" in source
+    assert "const textW = Math.max(96, controlsX - textX - 6);" in source
     assert "renderTargetLane', { selectedSkill: null }" in combat
     assert "renderSelectedFighter', { character: null }" in combat
+    assert "if (!resolutionPlayback)" in combat
 
 
 def test_queue_command_deck_preserves_order_payment_and_validation_controls():
@@ -67,7 +68,14 @@ def test_empty_combat_timeline_accepts_the_store_state_snapshot():
     script = """
 globalThis.Phaser = { Scene: class {} };
 const { renderMiniTimeline } = await import('./web/static/phaser/scenes/combat-skill-deck.js');
-renderMiniTimeline.call({ store: { state: { phase: 'planning' }, actions: [] } }, {}, {});
+const chain = { setOrigin() { return this; } };
+renderMiniTimeline.call({
+  store: { state: { phase: 'planning' }, actions: [], me() { return null; }, foe() { return null; } },
+  graphics: {
+    fillStyle() {}, fillPoints() {}, lineStyle() {}, strokePoints() {},
+  },
+  mono() { return chain; },
+}, {}, { contentX: 8, contentW: 344, timelineY: 72, timelineH: 48 });
 """
     subprocess.run(
         [node, "--input-type=module", "-e", script],
@@ -94,7 +102,7 @@ def test_combat_skill_card_selects_the_authoritative_skill_id():
     ("width", "height"),
     ((360, 800), (390, 844), (430, 932)),
 )
-def test_queue_command_deck_fits_below_six_large_fighter_cards(width, height):
+def test_queue_order_editor_uses_full_phone_width_and_safe_footer(width, height):
     node = shutil.which("node")
     if not node:
         pytest.skip("Node.js is required for Phaser layout verification.")
@@ -120,14 +128,14 @@ console.log(JSON.stringify({{ frame, battle, queue }}));
     battle = data["battle"]
     queue = data["queue"]
 
-    ally_bottom = battle["allyY"] + battle["cardH"]
-    three_card_width = (queue["sheetW"] - 16 - 12) / 3
-
-    assert battle["cardW"] >= 107
-    assert battle["cardH"] >= 118
-    assert ally_bottom < queue["sheetY"] <= battle["dockY"]
+    assert battle["cardW"] >= 105
+    assert 118 <= battle["cardH"] <= 126
+    assert queue["sheetY"] == frame["bottom"] - queue["sheetH"]
+    assert queue["sheetH"] <= (frame["bottom"] - frame["top"]) * 0.35 + 1
+    assert queue["sheetW"] == frame["width"]
     assert queue["cardsY"] < queue["cardsBottom"]
-    assert queue["cardH"] >= 132
-    assert three_card_width >= 110
-    assert queue["footerH"] >= 44
+    three_panel_width = (queue["sheetW"] - 16 - 10) / 3
+    assert three_panel_width >= 105
+    assert queue["cardsBottom"] - queue["cardsY"] >= 150
+    assert queue["footerH"] >= 52
     assert queue["footerY"] + queue["footerH"] == frame["bottom"]

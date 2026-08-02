@@ -1,6 +1,8 @@
 // Presentation-only metadata keyed by the authoritative Battle v2 skill id.
 // Nothing in this registry decides legality, cost, targeting, or effects.
 
+import { localProductionProofArtEnabled } from './runtime-config.js?v=57';
+
 const PALETTES = Object.freeze({
   body: Object.freeze({ surface: 0x101b36, ink: 0x17191e, accent: 0x4fb06d, flare: 0x35dde8, paper: 0xf2e8d5 }),
   technique: Object.freeze({ surface: 0x101b36, ink: 0x17191e, accent: 0x3d6bff, flare: 0x35dde8, paper: 0xf2e8d5 }),
@@ -8,11 +10,11 @@ const PALETTES = Object.freeze({
   curse: Object.freeze({ surface: 0x17191e, ink: 0x17191e, accent: 0xe32620, flare: 0x35dde8, paper: 0xf2e8d5 }),
 });
 
-const atlas = (key, filename) => Object.freeze({
+const atlas = (key, filename, sourceWidth = 1248, sourceHeight = sourceWidth) => Object.freeze({
   key,
   path: `/static/assets/skills/culling-current/${filename}`,
-  sourceWidth: 1248,
-  sourceHeight: 1248,
+  sourceWidth,
+  sourceHeight,
   columns: 4,
   rows: 4,
   frameCount: 16,
@@ -21,13 +23,29 @@ const atlas = (key, filename) => Object.freeze({
 // Every shipping skill receives one unique authored raster cell. The five
 // atlases remain presentation-only and are split by semantic family so mobile
 // scenes can load them on demand without preloading the former 3.6 MB PNG.
-export const SKILL_ACTION_ATLASES = Object.freeze({
+const STANDARD_SKILL_ACTION_ATLASES = {
   body: atlas('s3-skill-atlas-body-v3', 'skill-atlas-body-v3.webp'),
   technique: atlas('s3-skill-atlas-technique-v3', 'skill-atlas-technique-v3.webp'),
   curse: atlas('s3-skill-atlas-curse-v3', 'skill-atlas-curse-v3.webp'),
   focusGuard: atlas('s3-skill-atlas-focus-guard-v3', 'skill-atlas-focus-guard-v3.webp'),
   focusControl: atlas('s3-skill-atlas-focus-control-v3', 'skill-atlas-focus-control-v3.webp'),
-});
+};
+
+const PRODUCTION_PROOF_SKILL_ATLAS = atlas(
+  's3-starter-trio-proof-atlas',
+  'production-proof/starter-trio-proof-atlas.webp',
+  2048,
+);
+const USE_PRODUCTION_PROOF_ART = localProductionProofArtEnabled();
+const PRODUCTION_PROOF_CHARACTER_IDS = new Set([
+  'yuji_itadori',
+  'megumi_fushiguro',
+  'nobara_kugisaki',
+]);
+
+export const SKILL_ACTION_ATLASES = Object.freeze(USE_PRODUCTION_PROOF_ART
+  ? { ...STANDARD_SKILL_ACTION_ATLASES, proof: PRODUCTION_PROOF_SKILL_ATLAS }
+  : STANDARD_SKILL_ACTION_ATLASES);
 
 // Compatibility export for presentation consumers that need a safe fallback.
 export const SKILL_ACTION_ATLAS = SKILL_ACTION_ATLASES.body;
@@ -222,13 +240,16 @@ const atlasCounters = {
   curse: 0,
   focusGuard: 0,
   focusControl: 0,
+  proof: 0,
 };
 
 function allocateAtlas(row) {
   const affinity = row[3];
   const motionProfile = row[5];
-  let atlasKey = affinity;
-  if (affinity === 'focus') {
+  let atlasKey = USE_PRODUCTION_PROOF_ART && PRODUCTION_PROOF_CHARACTER_IDS.has(row[1])
+    ? 'proof'
+    : affinity;
+  if (atlasKey === 'focus') {
     const tactical = motionProfile === 'control' || motionProfile === 'reveal' || motionProfile === 'strike';
     atlasKey = tactical || atlasCounters.focusGuard >= SKILL_ACTION_ATLASES.focusGuard.frameCount
       ? 'focusControl'

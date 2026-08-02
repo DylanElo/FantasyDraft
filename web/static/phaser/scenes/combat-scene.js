@@ -3,24 +3,25 @@ import {
   CULLING_COLORS,
   ENERGY_COLORS,
   ENERGY_LABELS,
-} from '../core/runtime-config.js?v=43';
-import { clamp, safeText } from '../core/text.js?v=43';
+} from '../core/runtime-config.js?v=57';
+import { clamp, safeText } from '../core/text.js?v=57';
 import {
   activeStatuses,
   statusCardLabel,
-} from '../core/status-presentation.js?v=43';
+} from '../core/status-presentation.js?v=57';
 import {
   renderCombatLogSheet,
   renderConnecting,
   renderFighterStatusSheet,
   renderSkillDetailSheet,
   renderTransmuteSheet,
-} from './combat-sheets.js?v=43';
+} from './combat-sheets.js?v=57';
 import {
-  renderTopHud,
+  renderCompactStatusHud,
+  renderResolutionReceipt,
   renderVisibleActionBanner,
   visibleActionSummary,
-} from './combat-hud.js?v=43';
+} from './combat-hud.js?v=57';
 import {
   compactSkillCardDisabledReason,
   renderBottomActions,
@@ -30,7 +31,7 @@ import {
   renderSkillButton,
   renderTechniqueArtwork,
   skillPresentation,
-} from './combat-skill-deck.js?v=43';
+} from './combat-skill-deck.js?v=57';
 import {
   actionTargetMark,
   renderBattlefield,
@@ -40,9 +41,9 @@ import {
   renderPortraitPlate,
   renderQueueMarks,
   renderReplayLine,
-} from './combat-fighter-field.js?v=43';
-import { Season3UI } from '../ui/season3-ui.js?v=43';
-import { CombatQueueReviewScene } from './combat-queue-review-scene.js?v=43';
+} from './combat-fighter-field.js?v=57';
+import { IncidentCutLayouts, Season3UI } from '../ui/season3-ui.js?v=57';
+import { CombatQueueReviewScene } from './combat-queue-review-scene.js?v=57';
 
 export { compactSkillCardDisabledReason };
 
@@ -74,64 +75,8 @@ export class CombatScene extends CombatQueueReviewScene {
   }
 
   combatLayout(frame) {
-    const usableH = frame.bottom - frame.top;
-    const compressed = usableH < 740;
-    const compact = usableH < 830;
-    const topH = compressed ? 54 : 56;
-    const reviewH = compressed ? 50 : 54;
-    const reviewY = frame.bottom - reviewH;
-    const skillH = clamp(Math.round(usableH * 0.21), compressed ? 158 : 164, frame.height > 900 ? 194 : 178);
-    const skillY = reviewY - skillH - 6;
-    const identityH = 48;
-    const identityY = skillY - identityH;
-    const timelineH = 38;
-    const timelineY = identityY - timelineH - 6;
-    const cardH = clamp(Math.round(usableH * 0.16), compressed ? 118 : 126, frame.height > 900 ? 148 : 138);
-    const enemyY = frame.top + topH + (compressed ? 28 : compact ? 58 : 68);
-    const allyY = timelineY - cardH - 6;
-    const contentX = frame.x + (frame.width < 380 ? 12 : 15);
-    const contentW = frame.width - (contentX - frame.x) * 2;
-    const gap = frame.width < 380 ? 7 : 9;
-    const cardW = (contentW - gap * 2) / 3;
-    const identityW = clamp(Math.round(frame.width * 0.245), 86, 106);
-    const skillX = contentX;
-    const skillGap = frame.width < 380 ? 7 : 9;
-    const skillColumns = 2;
-    const skillRows = 2;
-    const skillW = (contentW - skillGap) / skillColumns;
-    const skillCardH = (skillH - skillGap) / skillRows;
-    return {
-      usableH,
-      compressed,
-      compact,
-      topH,
-      contentX,
-      contentW,
-      gap,
-      cardW,
-      cardH,
-      enemyY,
-      allyY,
-      fieldTop: enemyY + cardH + 2,
-      fieldBottom: allyY - 2,
-      fieldH: Math.max(96, allyY - enemyY - cardH - 4),
-      timelineY,
-      timelineH,
-      identityY,
-      identityH,
-      identityW,
-      dockY: identityY,
-      skillX,
-      skillY,
-      skillW,
-      skillH,
-      skillCardH,
-      skillColumns,
-      skillRows,
-      skillGap,
-      reviewY,
-      reviewH,
-    };
+    const layout = IncidentCutLayouts.combat(frame);
+    return { ...layout, compressed: layout.compact, dockY: layout.identityY };
   }
 
   renderWorld(frame) {
@@ -158,7 +103,7 @@ export class CombatScene extends CombatQueueReviewScene {
   }
 
   renderTopHud(frame, state, me, layout) {
-    return renderTopHud.call(this, frame, state, me, layout);
+    return renderCompactStatusHud.call(this, frame, state, me, layout);
   }
 
 
@@ -260,6 +205,10 @@ export class CombatScene extends CombatQueueReviewScene {
     return renderVisibleActionBanner.call(this, frame, layout);
   }
 
+  renderResolutionReceipt(frame, layout) {
+    return renderResolutionReceipt.call(this, frame, layout);
+  }
+
 
   renderBattlefield(frame, layout, prompt) {
     return renderBattlefield.call(this, frame, layout, prompt);
@@ -330,6 +279,26 @@ export class CombatScene extends CombatQueueReviewScene {
     const selected = me && me.team ? me.team[this.store.selectedCasterSlot] : null;
     const layout = this.combatLayout(frame);
     this.playbackTargets = {};
+
+    if (this.store.queueReviewOpen) {
+      this.presentationLayerCall('renderTargetLane', { selectedSkill: null });
+      this.presentationLayerCall('renderSelectedFighter', { character: null });
+      this.renderTopHud(frame, state, me, layout);
+      this.renderMiniTimeline(frame, layout);
+      this.renderFighterLane(foe && foe.team, 'enemy', frame, layout);
+      this.renderBattlefield(frame, layout, 'FINALIZE THE STORYBOARD');
+      this.renderFighterLane(me && me.team, 'mine', frame, layout);
+      this.renderQueueReviewSheet(frame);
+      this.toast(frame, { theme: 'light' });
+      this.playEvents(frame);
+      this.renderPresentationSettingsSheet(frame, {
+        onExit: () => this.store.resetToLobby(),
+        exitLabel: 'EXIT BATTLE',
+      });
+      this.syncButtonDebug();
+      return;
+    }
+
     this.renderTopHud(frame, state, me, layout);
     this.renderVisibleActionBanner(frame, layout);
 
@@ -408,33 +377,30 @@ export class CombatScene extends CombatQueueReviewScene {
                 : me && me.queue_confirmed
                   ? 'QUEUE CONFIRMED / WAITING'
                   : 'WAITING FOR SERVER';
+    const visiblePlayback = typeof this.store.currentVisibleAction === 'function'
+      && !!this.store.currentVisibleAction();
     const prompt = state.winner_id
       ? 'BATTLE FINISHED'
+      : visiblePlayback
+        ? 'TURN RESOLUTION'
       : this.store.controlsLocked()
         ? lockedPrompt
-        : this.store.queueReviewOpen
-          ? 'REVIEW RESOLUTION ORDER'
-          : this.store.selectedSkillId
-            ? targetStagePrompt
-            : this.store.selectedCasterSlot !== null
-              ? 'SELECT ONE OF FOUR TECHNIQUES'
-              : 'SELECT ONE OF YOUR FIGHTERS';
-
-    if (this.store.queueReviewOpen) {
-      // Queue Review replaces the planning command deck. Clear any persistent
-      // planning-only ring handles so they cannot drift over FINAL ORDER.
-      this.presentationLayerCall('renderTargetLane', { selectedSkill: null });
-      this.presentationLayerCall('renderSelectedFighter', { character: null });
-    }
+        : this.store.selectedSkillId
+          ? targetStagePrompt
+          : this.store.selectedCasterSlot !== null
+            ? 'SELECT ONE OF FOUR TECHNIQUES'
+            : 'SELECT ONE OF YOUR FIGHTERS';
 
     this.renderFighterLane(foe && foe.team, 'enemy', frame, layout);
-    if (!this.store.queueReviewOpen) {
-      this.renderBattlefield(frame, layout, prompt);
-      this.renderFighterLane(me && me.team, 'mine', frame, layout);
+    this.renderBattlefield(frame, layout, prompt);
+    this.renderFighterLane(me && me.team, 'mine', frame, layout);
+    const resolutionPlayback = visiblePlayback || ['resolving', 'turn_end'].includes(state.phase);
+    if (!resolutionPlayback) {
       this.renderMiniTimeline(frame, layout);
       this.renderCommandDeck(frame, layout, selected);
+    } else {
+      this.renderResolutionReceipt(frame, layout);
     }
-    this.renderQueueReviewSheet(frame);
     this.toast(frame, { theme: 'light' });
     this.playEvents(frame);
     this.renderPresentationSettingsSheet(frame, {

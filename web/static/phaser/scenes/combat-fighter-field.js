@@ -1,8 +1,8 @@
-import { CULLING_COLORS, TOKEN_TYPE } from '../core/runtime-config.js?v=43';
-import { clamp, initials, shortText } from '../core/text.js?v=43';
-import { clippedPoints } from '../core/shape.js?v=43';
-import { eventTone } from '../fx/event-metrics.js?v=43';
-import { activeStatuses, statusTone } from '../core/status-presentation.js?v=43';
+import { CULLING_COLORS, ENERGY_LABELS, TOKEN_TYPE } from '../core/runtime-config.js?v=57';
+import { clamp, initials, shortText } from '../core/text.js?v=57';
+import { clippedPoints } from '../core/shape.js?v=57';
+import { eventTone } from '../fx/event-metrics.js?v=57';
+import { activeStatuses, statusTone } from '../core/status-presentation.js?v=57';
 
 // Called via `.call(this, ...)` from a one-line delegator method on
 // CombatScene -- see web/static/phaser/scenes/combat-sheets.js's docstring
@@ -295,10 +295,151 @@ export function renderFighterPlate(character, side, slot, x, y, w, h) {
 }
 
 export function renderFighterLane(team, side, frame, layout) {
-  const y = side === 'enemy' ? layout.enemyY : layout.allyY;
+  const baseY = side === 'enemy' ? layout.enemyY : layout.allyY;
   (team || []).slice(0, 3).forEach((character, slot) => {
-    const x = layout.contentX + slot * (layout.cardW + layout.gap);
-    this.renderFighterPlate(character, side, slot, x, y, layout.cardW, layout.cardH);
+    const selected = side === 'mine' && Number(this.store.selectedCasterSlot) === slot;
+    const centerX = layout.contentX + slot * (layout.cardW + layout.gap) + layout.cardW / 2;
+    const tokenW = selected ? Math.min(layout.cardW + 8, 126) : Math.min(layout.cardW - 12, 104);
+    const tokenH = selected ? layout.cardH + 42 : layout.cardH;
+    const x = centerX - tokenW / 2;
+    const y = baseY + (slot === 1 ? -8 : 5) - (selected ? 48 : 0);
+    renderSquadToken.call(this, character, side, slot, x, y, tokenW, tokenH);
+  });
+}
+
+function renderSquadToken(character, side, slot, x, y, w, h) {
+  const store = this.store;
+  const selected = side === 'mine' && store.selectedCasterSlot === slot;
+  const queuedIndex = side === 'mine'
+    ? store.actions.findIndex((action) => Number(action.caster_slot) === slot)
+    : -1;
+  const selectedSkill = store.selectedSkill();
+  const targetable = store.canTarget(character, slot, side);
+  const protectedTarget = !!selectedSkill && store.targetBlocksSkill(character, selectedSkill);
+  const targetMark = this.actionTargetMark(side, slot);
+  const dead = !character || !character.alive;
+  const fullyStunnedBy = store.fighterFullyStunnedBy(character);
+  const tone = targetable
+    ? CULLING_COLORS.target
+    : protectedTarget
+      ? CULLING_COLORS.muted
+      : selected
+        ? CULLING_COLORS.selected
+        : queuedIndex >= 0
+          ? CULLING_COLORS.queued
+          : fullyStunnedBy
+            ? CULLING_COLORS.enemy
+            : side === 'enemy' ? CULLING_COLORS.enemy : CULLING_COLORS.cobalt;
+  const portraitSize = Math.min(w + 4, h - 10);
+  const portraitX = x + (w - portraitSize) / 2;
+  const portraitY = y;
+
+  this.graphics.fillStyle(CULLING_COLORS.shadow, selected || targetable ? 0.3 : 0.16);
+  this.graphics.fillPoints(clippedPoints(portraitX + 2, portraitY + 3, portraitSize, portraitSize, 12), true);
+  this.renderPortraitPlate(character, portraitX, portraitY, portraitSize, portraitSize, {
+    alpha: dead ? 0.28 : protectedTarget ? 0.46 : 1,
+    context: 'thumb',
+  });
+  this.graphics.lineStyle(selected || targetable ? 3 : 1.5, tone, dead ? 0.3 : 0.96);
+  this.graphics.strokePoints(clippedPoints(portraitX, portraitY, portraitSize, portraitSize, 12), true);
+
+  const hp = Number(character && character.hp ? character.hp : 0);
+  const maxHp = Math.max(1, Number(character && character.max_hp ? character.max_hp : 1));
+  const hpPct = clamp(hp / maxHp, 0, 1);
+  const hpTone = hpPct <= 0.3 ? CULLING_COLORS.enemy : hpPct <= 0.6 ? CULLING_COLORS.gold : CULLING_COLORS.queued;
+  this.graphics.fillStyle(CULLING_COLORS.charcoal, 0.84);
+  this.graphics.fillRect(x + 3, y + h - 17, w - 6, 7);
+  this.graphics.fillStyle(hpTone, dead ? 0.25 : 0.98);
+  this.graphics.fillRect(x + 3, y + h - 17, (w - 6) * hpPct, 7);
+  this.mono(x + w / 2, y + h - 11, dead ? 'DOWN' : `${hp}/${maxHp}`, {
+    color: dead ? CULLING_COLORS.mutedText : CULLING_COLORS.inverseText,
+    backgroundColor: '#17191E',
+    fontSize: '12px',
+    fontStyle: '900',
+    padding: { x: 3, y: 1 },
+  }).setOrigin(0.5, 0);
+  this.text(x + w / 2, y + h - 31, (character && character.name) || 'Down', {
+    fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
+    fontSize: '12px', fontStyle: '900', color: CULLING_COLORS.inverseText,
+    stroke: CULLING_COLORS.charcoal, strokeThickness: 4, align: 'center',
+  }).setOrigin(0.5, 0).setMaxLines(1);
+  const stateLabel = targetMark
+    || (queuedIndex >= 0
+      ? `Q${queuedIndex + 1}`
+      : targetable
+        ? 'LEGAL'
+        : protectedTarget
+          ? 'INVULNERABLE'
+          : fullyStunnedBy
+            ? 'STUNNED'
+            : selected
+              ? 'SELECTED'
+              : '');
+  if (stateLabel) {
+    this.mono(x + w / 2, y - 5, stateLabel, {
+      color: tone === CULLING_COLORS.selected ? CULLING_COLORS.text : CULLING_COLORS.inverseText,
+      backgroundColor: tone,
+      fontSize: '12px',
+      fontStyle: '900',
+      padding: { x: 4, y: 2 },
+    }).setOrigin(0.5, 0.5).setDepth(2);
+  }
+
+  const statuses = activeStatuses(character);
+  const visibleStatuses = this.visibleStatusLabels(character);
+  if (visibleStatuses.length) {
+    this.mono(x + w / 2, y + h - 49, shortText(visibleStatuses[0], 16).toUpperCase(), {
+      color: CULLING_COLORS.inverseText,
+      backgroundColor: statusTone(statuses[0]),
+      fontSize: '12px',
+      fontStyle: '900',
+      padding: { x: 5, y: 3 },
+    }).setOrigin(0.5, 0).setDepth(2);
+  }
+
+  const playerId = side === 'mine' ? store.mineId() : store.enemyId();
+  if (playerId) {
+    this.playbackTargets = this.playbackTargets || {};
+    this.playbackTargets[`${playerId}:${slot}`] = {
+      x: portraitX + portraitSize / 2,
+      y: portraitY + portraitSize / 2,
+      side,
+      slot,
+      size: portraitSize,
+      tone,
+    };
+  }
+  this.presentationLayerCall('renderFighterState', {
+    character,
+    side,
+    slot,
+    region: { x: portraitX, y: portraitY, w: portraitSize, h: portraitSize },
+    selected,
+    targetable,
+    protected: protectedTarget,
+    queuedIndex,
+    targetMark,
+    dead,
+  });
+
+  const fighterName = (character && character.name) || 'Down';
+  const interactionLabel = targetable
+    ? 'Select legal target'
+    : side === 'mine' ? 'Select fighter' : 'Inspect fighter';
+  this.registerHitTarget(x, y - 4, w, h + 4, `${interactionLabel}: ${fighterName}, ${dead ? 'Down' : `${hp}/${maxHp}`}`, () => {
+    this.presentationLayerCall('interactionCue', {
+      cue: targetable ? 'target-lock' : side === 'mine' ? 'fighter-select' : 'fighter-tap',
+      character,
+      side,
+      slot,
+      targetable,
+    });
+    if (targetable) store.target(side, slot);
+    else if (!selectedSkill && side === 'mine') store.selectCaster(slot);
+    else if (!selectedSkill) store.inspectFighter(side, slot);
+  }, {
+    onLongPress: () => store.inspectFighter(side, slot),
+    accessibilityId: `fighter-${side}-${slot}`,
   });
 }
 
@@ -338,6 +479,7 @@ export function renderQueueMarks(frame, layout, y) {
 }
 
 export function renderReplayLine(frame, layout) {
+  if (typeof this.store.currentVisibleAction === 'function' && this.store.currentVisibleAction()) return;
   const events = this.store.recentEvents.slice(0, 1);
   if (!events.length || layout.fieldH <= 150) return;
   const event = events[0];
@@ -365,66 +507,162 @@ export function renderReplayLine(frame, layout) {
 }
 
 export function renderBattlefield(frame, layout, prompt) {
-  const g = this.graphics;
-  const centerX = frame.x + frame.width / 2;
-  const centerY = layout.fieldTop + layout.fieldH * 0.62;
   const selectedSkill = this.store.selectedSkill();
-  const laneTone = CULLING_COLORS.target;
-  const laneAlpha = selectedSkill ? 0.94 : 0.58;
-  const laneTop = layout.fieldTop + 31;
-  const laneBottom = layout.allyY - 5;
-  const ringRadius = Math.min(42, Math.max(24, (layout.fieldH - 40) * 0.3));
+  const casterSlot = Number(this.store.selectedCasterSlot);
+  const hasCaster = Number.isInteger(casterSlot) && casterSlot >= 0;
+  const casterX = layout.contentX + casterSlot * (layout.cardW + layout.gap) + layout.cardW / 2;
+  const casterY = layout.allyY + layout.cardH * 0.38;
+  const teams = [
+    ['enemy', this.store.foe() && this.store.foe().team, layout.enemyY],
+    ['mine', this.store.me() && this.store.me().team, layout.allyY],
+  ];
 
-  // Keep the center readable while making the combat route unmistakable:
-  // a translucent cyan current rises from the active trio into a target
-  // sigil, matching the vertical decision flow of the mobile reference.
-  g.fillStyle(laneTone, selectedSkill ? 0.2 : 0.12);
-  g.fillPoints([
-    { x: centerX - 30, y: laneBottom },
-    { x: centerX + 30, y: laneBottom },
-    { x: centerX + 10, y: laneTop },
-    { x: centerX - 10, y: laneTop },
-  ], true);
-  g.lineStyle(selectedSkill ? 3.5 : 2.5, laneTone, laneAlpha);
-  g.beginPath();
-  g.moveTo(centerX, laneBottom);
-  g.lineTo(centerX, laneTop);
-  g.strokePath();
-  // The presentation layer owns the animated target sigil when a skill is
-  // active. Keep only a quiet static center marker before targeting so the
-  // same ring/arrow is never drawn twice over the battlefield.
-  if (!selectedSkill) {
-    g.fillStyle(CULLING_COLORS.ivory, 0.14);
-    g.fillCircle(centerX, centerY, ringRadius + 7);
-    g.lineStyle(2, laneTone, laneAlpha);
-    g.strokeCircle(centerX, centerY, ringRadius);
-    g.lineStyle(1, laneTone, laneAlpha * 0.62);
-    g.strokeCircle(centerX, centerY, ringRadius + 8);
+  if (selectedSkill && hasCaster) {
+    teams.forEach(([side, team, y]) => {
+      (team || []).slice(0, 3).forEach((character, slot) => {
+        if (!this.store.canTarget(character, slot, side)) return;
+        const targetX = layout.contentX + slot * (layout.cardW + layout.gap) + layout.cardW / 2;
+        const targetY = y + layout.cardH * 0.38;
+        const bendY = casterY + (targetY - casterY) * 0.52;
+        this.graphics.lineStyle(2, CULLING_COLORS.target, 0.82);
+        this.graphics.beginPath();
+        this.graphics.moveTo(casterX, casterY);
+        this.graphics.lineTo((casterX + targetX) / 2 + (slot - 1) * 8, bendY);
+        this.graphics.lineTo(targetX, targetY);
+        this.graphics.strokePath();
+        this.graphics.fillStyle(CULLING_COLORS.target, 0.94);
+        this.graphics.fillCircle(targetX, targetY, 4);
+      });
+    });
   }
 
-  // The instruction floats in the world instead of sitting in a legacy
-  // prompt panel. A short ink underline keeps it legible over the rooftop.
-  const promptW = Math.min(292, frame.width - 44);
-  const promptY = layout.fieldTop + 4;
-  g.lineStyle(3, CULLING_COLORS.ivory, 0.72);
+  const y = layout.stageTop + layout.stageH * 0.5 - 11;
+  this.text(frame.x + frame.width / 2, y, prompt, {
+    fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
+    fontSize: layout.compact ? '13px' : '15px',
+    fontStyle: '900',
+    color: selectedSkill ? '#9AF7FF' : CULLING_COLORS.inverseText,
+    stroke: CULLING_COLORS.charcoal,
+    strokeThickness: 5,
+    align: 'center',
+    wordWrap: { width: layout.contentW - 32 },
+  }).setOrigin(0.5, 0);
+  this.graphics.lineStyle(1.5, selectedSkill ? CULLING_COLORS.target : CULLING_COLORS.ivory, selectedSkill ? 0.72 : 0.22);
+  this.graphics.beginPath();
+  this.graphics.moveTo(frame.x + 28, y + 26);
+  this.graphics.lineTo(frame.x + frame.width - 28, y + 26);
+  this.graphics.strokePath();
+  this.presentationLayerCall('renderTargetLane', { frame, layout, prompt, selectedSkill, centerX: frame.x + frame.width / 2, centerY: y });
+  this.renderReplayLine(frame, layout);
+}
+
+function renderBattlefieldLegacy(frame, layout, prompt) {
+  const g = this.graphics;
+  const centerX = frame.x + frame.width / 2;
+  const centerY = layout.fieldTop + layout.fieldH / 2;
+  const selectedSkill = this.store.selectedSkill();
+  const selected = this.store.me() && this.store.me().team
+    ? this.store.me().team[this.store.selectedCasterSlot]
+    : null;
+  const focusAction = [...(this.store.actions || [])].reverse().find((action) => (
+    Number(action.caster_slot) === Number(this.store.selectedCasterSlot)
+  ));
+  const pending = this.store.pendingPrimaryTarget;
+  const targetPlayerId = pending ? pending.playerId : focusAction && focusAction.target_player_id;
+  const targetSlot = pending ? pending.slot : focusAction && focusAction.target_slot;
+  const targetPlayer = targetPlayerId && this.store.state.players[targetPlayerId];
+  const target = targetPlayer && targetPlayer.team && targetSlot != null
+    ? targetPlayer.team[targetSlot]
+    : null;
+  const stageX = layout.contentX;
+  const stageY = layout.fieldTop;
+  const stageW = layout.contentW;
+  const stageH = layout.fieldH;
+  const splitX = stageX + stageW * 0.52;
+  const portraitW = Math.min(150, stageW * 0.43);
+  const portraitH = stageH - 46;
+
+  g.fillStyle(CULLING_COLORS.shadow, 0.22);
+  g.fillPoints(clippedPoints(stageX + 3, stageY + 5, stageW, stageH, 12), true);
+  g.fillStyle(CULLING_COLORS.charcoal, 0.78);
+  g.fillPoints(clippedPoints(stageX, stageY, stageW, stageH, 12), true);
+  g.fillStyle(CULLING_COLORS.cobalt, 0.24);
+  g.fillTriangle(stageX, stageY, splitX + 22, stageY, stageX, stageY + stageH);
+  g.fillStyle(selectedSkill ? CULLING_COLORS.target : CULLING_COLORS.ivory, selectedSkill ? 0.14 : 0.07);
+  g.fillTriangle(stageX + stageW, stageY, splitX - 10, stageY + stageH, stageX + stageW, stageY + stageH);
+  g.lineStyle(2, selectedSkill ? CULLING_COLORS.target : CULLING_COLORS.gold, selectedSkill ? 0.92 : 0.52);
+  g.strokePoints(clippedPoints(stageX, stageY, stageW, stageH, 12), true);
+  g.lineStyle(2, CULLING_COLORS.ivory, 0.3);
   g.beginPath();
-  g.moveTo(centerX - promptW * 0.38, promptY + 18);
-  g.lineTo(centerX + promptW * 0.38, promptY + 14);
+  g.moveTo(splitX + 18, stageY + 8);
+  g.lineTo(splitX - 18, stageY + stageH - 8);
   g.strokePath();
-  g.lineStyle(1.5, laneTone, selectedSkill ? 0.98 : 0.72);
-  g.beginPath();
-  g.moveTo(centerX - promptW * 0.34, promptY + 20);
-  g.lineTo(centerX + promptW * 0.34, promptY + 16);
-  g.strokePath();
-  this.text(centerX, promptY, prompt, {
+
+  if (selected) {
+    this.renderPortraitPlate(selected, stageX + 4, stageY + 30, portraitW, portraitH, {
+      alpha: 0.98,
+      context: 'hero',
+    });
+    this.text(stageX + 10, stageY + stageH - 25, selected.name, {
+      fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
+      fontSize: layout.compressed ? '14px' : '16px',
+      fontStyle: '900',
+      color: CULLING_COLORS.inverseText,
+      stroke: CULLING_COLORS.charcoal,
+      strokeThickness: 4,
+      wordWrap: { width: portraitW - 8 },
+    }).setMaxLines(2);
+  } else {
+    this.mono(stageX + stageW * 0.25, centerY - 7, 'CHOOSE ALLY', {
+      color: '#CDE6FF',
+      fontSize: '12px',
+      fontStyle: '900',
+    }).setOrigin(0.5, 0);
+  }
+
+  const targetX = splitX + 8;
+  const targetW = stageX + stageW - targetX - 5;
+  if (target) {
+    this.renderPortraitPlate(target, targetX, stageY + 30, targetW, portraitH, {
+      alpha: 0.98,
+      context: 'hero',
+    });
+    this.text(targetX + targetW - 6, stageY + stageH - 25, target.name, {
+      fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
+      fontSize: layout.compressed ? '14px' : '16px',
+      fontStyle: '900',
+      color: CULLING_COLORS.inverseText,
+      stroke: CULLING_COLORS.charcoal,
+      strokeThickness: 4,
+      align: 'right',
+      wordWrap: { width: targetW - 8 },
+    }).setOrigin(1, 0).setMaxLines(2);
+  } else {
+    const reticleX = targetX + targetW / 2;
+    g.lineStyle(2, selectedSkill ? CULLING_COLORS.target : CULLING_COLORS.ivory, selectedSkill ? 0.96 : 0.26);
+    g.strokeCircle(reticleX, centerY + 4, 28);
+    g.beginPath();
+    g.moveTo(reticleX - 38, centerY + 4);
+    g.lineTo(reticleX - 18, centerY + 4);
+    g.moveTo(reticleX + 18, centerY + 4);
+    g.lineTo(reticleX + 38, centerY + 4);
+    g.strokePath();
+    this.mono(reticleX, centerY + 40, selectedSkill ? 'LEGAL TARGET' : 'TARGET', {
+      color: selectedSkill ? CULLING_COLORS.target : '#D4D8E0',
+      fontSize: '10px',
+      fontStyle: '900',
+    }).setOrigin(0.5, 0);
+  }
+
+  this.text(centerX, stageY + 7, prompt, {
     fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
     fontSize: layout.compressed ? '13px' : '14px',
     fontStyle: '900',
-    color: selectedSkill ? '#006B75' : CULLING_COLORS.cobaltText,
-    stroke: CULLING_COLORS.inverseText,
-    strokeThickness: 3,
+    color: selectedSkill ? '#9AF7FF' : CULLING_COLORS.inverseText,
+    stroke: CULLING_COLORS.charcoal,
+    strokeThickness: 4,
     align: 'center',
-    wordWrap: { width: promptW - 24 },
+    wordWrap: { width: stageW - 24 },
   }).setOrigin(0.5, 0);
 
   this.presentationLayerCall('renderTargetLane', {
@@ -434,125 +672,101 @@ export function renderBattlefield(frame, layout, prompt) {
     selectedSkill,
     centerX,
     centerY,
-    ringRadius,
+    ringRadius: 28,
   });
   this.renderReplayLine(frame, layout);
-  // Keep Q1/Q2/Q3 above fighter state chips, which occupy the band beginning
-  // at allyY - 20. This gap remains readable in both Planning and Review.
-  this.renderQueueMarks(frame, layout, layout.fieldBottom - 42);
 }
 
 export function renderIdentityStrip(frame, layout, selected) {
-  const x = frame.x;
+  const x = layout.contentX;
   const y = layout.identityY;
-  const w = frame.width;
+  const w = layout.contentW;
   const h = layout.identityH;
-  const tone = selected ? CULLING_COLORS.gold : CULLING_COLORS.cobalt;
+  const selectedSkill = this.store.selectedSkill();
+  const tone = selectedSkill ? CULLING_COLORS.target : selected ? CULLING_COLORS.gold : CULLING_COLORS.cobalt;
   const identityW = layout.identityW;
-  const identityArtH = layout.identityH;
+  const textX = x + identityW + 10;
+  const textW = w - identityW - 18;
 
-  if (selected) {
-    this.portraitArtwork(selected, x - 8, y + 1, identityW + 35, identityArtH - 2, {
-      context: 'hero',
-      depth: -2,
-      alpha: 0.98,
-    });
-    this.graphics.fillStyle(CULLING_COLORS.cobalt, 0.38);
-    this.graphics.fillTriangle(x, y + 5, x + identityW + 18, y + identityArtH, x, y + identityArtH);
-    this.graphics.fillStyle(CULLING_COLORS.cobalt, 0.9);
-    this.graphics.fillPoints([
-      { x, y: y + 8 },
-      { x: x + identityW + 12, y: y + 2 },
-      { x: x + identityW + 4, y: y + identityArtH },
-      { x, y: y + identityArtH },
-    ], true);
-  } else {
-    this.graphics.fillStyle(CULLING_COLORS.cobalt, 0.72);
-    this.graphics.fillTriangle(x, y, x + identityW + 18, y + identityArtH, x, y + identityArtH);
-  }
-
-  // A single editorial slash carries selection guidance. There is no
-  // full-width command panel behind the character art or technique cards.
-  this.graphics.fillStyle(CULLING_COLORS.ivory, 0.93);
+  this.graphics.fillStyle(CULLING_COLORS.shadow, 0.2);
+  this.graphics.fillPoints(clippedPoints(x + 2, y + 3, w, h, 9), true);
+  this.graphics.fillStyle(CULLING_COLORS.ivory, 0.97);
+  this.graphics.fillPoints(clippedPoints(x, y, w, h, 9), true);
+  this.graphics.fillStyle(CULLING_COLORS.cobalt, 0.94);
   this.graphics.fillPoints([
-    { x: x + identityW - 10, y: y + 8 },
-    { x: x + w, y },
-    { x: x + w, y: y + h - 6 },
-    { x: x + identityW + 3, y: y + h },
+    { x, y },
+    { x: x + identityW + 10, y },
+    { x: x + identityW - 4, y: y + h },
+    { x, y: y + h },
   ], true);
-  this.graphics.fillStyle(tone, 0.86);
-  this.graphics.fillRect(x + identityW - 4, y + h - 4, w - identityW + 4, 3);
+  this.graphics.fillStyle(tone, 0.96);
+  this.graphics.fillRect(textX, y + h - 5, textW, 3);
+  this.graphics.lineStyle(1.5, tone, 0.82);
+  this.graphics.strokePoints(clippedPoints(x, y, w, h, 9), true);
 
   if (!selected) {
-    this.text(x + identityW + 10, y + 10, 'SELECT A FIGHTER', {
+    this.text(textX, y + 12, 'CHOOSE YOUR FIGHTER', {
       fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
-      fontSize: '16px',
+      fontSize: '17px',
       fontStyle: '900',
       color: CULLING_COLORS.cobaltText,
     });
-    this.mono(x + identityW + 11, y + 31, 'TAP ONE OF THE THREE ALLY PORTRAITS', {
-      color: CULLING_COLORS.cobaltText,
+    this.mono(textX, y + 39, 'THEN CHOOSE ONE OF FOUR TECHNIQUES', {
+      color: CULLING_COLORS.mutedText,
       fontSize: '12px',
       fontStyle: '700',
     });
     return;
   }
 
-  this.mono(x + 8, y + 5, 'SELECTED FIGHTER', {
+  this.renderPortraitPlate(selected, x + 3, y + 3, identityW - 8, h - 6, {
+    alpha: 0.98,
+    context: 'thumb',
+  });
+  this.mono(x + 7, y + 5, 'ACTIVE', {
     color: '#CDE6FF',
     fontSize: '10px',
-    fontStyle: '700',
-  });
-  const identityName = this.text(x + 8, y + 19, selected.name, {
-    fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
-    fontSize: frame.width < 380 ? '12px' : '13px',
     fontStyle: '900',
-    color: CULLING_COLORS.inverseText,
-    lineSpacing: -2,
-    wordWrap: { width: identityW - 12 },
-  });
-  identityName.setMaxLines(2);
-  const selectedSkill = this.store.selectedSkill();
-  const instruction = selectedSkill
-    ? `TARGET / ${this.store.targetLabel(selectedSkill).toUpperCase()}`
-    : this.store.queuedSlots().has(Number(this.store.selectedCasterSlot))
-      ? 'ORDER COMMITTED'
-      : 'CHOOSE TECHNIQUE';
-  this.text(x + identityW + 8, y + 11, instruction, {
-    fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
-    color: selectedSkill ? '#007C84' : CULLING_COLORS.cobaltText,
-    fontSize: frame.width < 380 ? '12px' : '14px',
-    fontStyle: '900',
-    wordWrap: { width: frame.width - identityW - 108 },
+    backgroundColor: CULLING_COLORS.cobalt,
+    padding: { x: 3, y: 2 },
   });
 
-  const queueX = x + w - 82;
-  this.mono(queueX, y + 5, 'ORDER', {
-    color: CULLING_COLORS.mutedText,
-    fontSize: '10px',
-    fontStyle: '700',
+  const heading = selectedSkill ? selectedSkill.name : selected.name;
+  const headingNode = this.text(textX, y + 7, heading, {
+    fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
+    color: selectedSkill ? '#007C84' : CULLING_COLORS.cobaltText,
+    fontSize: frame.width < 380 ? '14px' : '16px',
+    fontStyle: '900',
+    lineSpacing: -2,
+    wordWrap: { width: textW },
   });
-  [0, 1, 2].forEach((index) => {
-    const filled = index < this.store.actions.length;
-    const cx = queueX + 9 + index * 22;
-    const cy = y + 29;
-    this.graphics.fillStyle(filled ? CULLING_COLORS.queued : CULLING_COLORS.concrete, filled ? 0.94 : 0.62);
-    this.graphics.fillPoints([
-      { x: cx, y: cy - 8 },
-      { x: cx + 10, y: cy },
-      { x: cx, y: cy + 8 },
-      { x: cx - 10, y: cy },
-    ], true);
-    this.mono(cx, cy - 4, String(index + 1), {
-      color: filled ? CULLING_COLORS.inverseText : CULLING_COLORS.mutedText,
-      fontSize: '10px',
-      fontStyle: '700',
-    }).setOrigin(0.5, 0);
-  });
+  headingNode.setMaxLines(2);
+
+  if (selectedSkill) {
+    const cost = this.store.adjustedCost(selected, selectedSkill);
+    const costLabel = cost.length ? cost.map((color) => ENERGY_LABELS[color] || 'X').join(' ') : 'FREE';
+    const reason = this.store.skillDisabledReason(selected, selectedSkill);
+    this.mono(textX, y + h - 24, reason
+      ? reason.toUpperCase()
+      : `${costLabel}  /  ${this.store.targetLabel(selectedSkill).toUpperCase()}  /  TAP CYAN TARGET`, {
+      color: reason ? CULLING_COLORS.redText : CULLING_COLORS.cobaltText,
+      fontSize: frame.width < 380 ? '10px' : '12px',
+      fontStyle: '900',
+      wordWrap: { width: textW },
+    }).setMaxLines(2);
+  } else {
+    this.mono(textX, y + h - 24, this.store.queuedSlots().has(Number(this.store.selectedCasterSlot))
+      ? 'ACTION QUEUED / SELECT ANOTHER FIGHTER'
+      : 'CHOOSE A TECHNIQUE BELOW', {
+      color: CULLING_COLORS.mutedText,
+      fontSize: '12px',
+      fontStyle: '900',
+    });
+  }
 
   this.presentationLayerCall('renderSelectedFighter', {
     character: selected,
-    region: { x, y, w: identityW + 18, h: identityArtH },
+    region: { x, y, w: identityW, h },
     selectedSkill,
     queued: this.store.queuedSlots().has(Number(this.store.selectedCasterSlot)),
   });

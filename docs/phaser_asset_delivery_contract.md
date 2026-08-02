@@ -26,7 +26,7 @@ deprecated layouts.
 dimensions, and scene ownership. Boot queues only:
 
 - `culling-current-home` for the splash; and
-- `culling-current-home-hero` for the immediate Home destination.
+- `culling-current-home` for Boot and the immediate Home destination.
 
 Campus, map, and rooftop plates are requested when a scene first calls its
 world component. Requests are deduplicated across concurrent scenes, attempted
@@ -57,11 +57,11 @@ console never imply copyright, trademark, likeness, or commercial clearance.
 
 ## Runtime and QA version policy
 
-The maintained Phaser cache version is exactly `42`. A QA evidence set is
+The maintained Phaser cache version is exactly `57`. A QA evidence set is
 current only when its adjacent manifest or README records all of:
 
 - exact source commit;
-- cache version `42` from the HTML shell through the ES-module graph;
+- cache version `57` from the HTML shell through the ES-module graph;
 - browser name and version;
 - page origin;
 - viewport and Phaser canvas dimensions;
@@ -71,7 +71,7 @@ current only when its adjacent manifest or README records all of:
 
 Evidence captured from another cache version or source commit remains useful
 historical evidence but cannot satisfy the current release gate. The checked-in
-v27 and v28 Season 3 structural packs therefore remain historical; a complete
-v42 390x844 and 430x932 set is still required before visual-release approval.
+v27, v28, and v42 Season 3 structural packs therefore remain historical; a complete
+v57 390x844 and 430x932 set is still required before visual-release approval.
 The cache chain must be changed atomically in the template, shell loader, and
 every maintained module import. Mixed-version graphs fail preflight.

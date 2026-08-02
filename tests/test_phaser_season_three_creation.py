@@ -102,11 +102,8 @@ console.log(JSON.stringify({ frames }));
 
         matchup = entry["matchup"]
         assert matchup["header"]["y"] >= entry["top"]
-        assert matchup["mode"]["y"] >= matchup["header"]["bottom"]
-        assert matchup["mode"]["y"] + matchup["mode"]["h"] <= matchup["enemy"]["y"]
-        assert matchup["enemy"]["y"] + matchup["enemy"]["h"] <= matchup["objective"]["y"]
-        assert matchup["objective"]["y"] + matchup["objective"]["h"] <= matchup["player"]["y"]
-        assert matchup["player"]["y"] + matchup["player"]["h"] <= matchup["status"]["y"]
+        assert matchup["confrontation"]["y"] >= matchup["header"]["bottom"]
+        assert matchup["confrontation"]["y"] + matchup["confrontation"]["h"] <= matchup["status"]["y"]
         assert matchup["status"]["y"] + matchup["status"]["h"] <= matchup["cta"]["y"]
         assert matchup["cta"]["h"] >= 44
         assert matchup["cta"]["y"] + matchup["cta"]["h"] <= entry["bottom"]
@@ -292,7 +289,7 @@ def test_boot_team_setup_and_matchup_use_s3_components_and_keep_authority_contra
 
     assert "export class MatchupScene" in matchup
     assert "const enemyIds = isCpu ? this.store.enemyTeam.slice(0, 3) : [];" in matchup
-    assert "hidden: !isCpu" in matchup
+    assert "const hidden = !isCpu;" in matchup
     assert "this.store.startMatch()" in matchup
     assert "this.store.resetToLobby()" in matchup
     assert "Enter Arena" in matchup

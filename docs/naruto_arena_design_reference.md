@@ -1,7 +1,7 @@
 # Naruto Arena — Kit & Balance Design Reference
 
 **Source**: Scraped from na-helper.vercel.app/data/characters.json
-**Coverage**: 220+ characters, full skill data (energy costs, classes, cooldowns, descriptions, state machines)
+**Coverage**: 207 characters and 936 skills (energy costs, classes, cooldowns, descriptions, and referenced state transitions)
 **Purpose**: Design reference for JJK Arena kit grammar, energy economy, damage tuning, and counterplay patterns.
 
 > This document is descriptive of what Naruto Arena does, not prescriptive of what JJK Arena must copy.
@@ -324,4 +324,4 @@ Slot 4 -- Universal Invulnerability / Dodge
 
 ---
 
-Last updated: 2026-07-31. Source: na-helper.vercel.app scrape + full character dataset analysis (220+ characters).
+Last verified: 2026-08-01. Source: na-helper.vercel.app structured dataset (207 characters, 936 skills).

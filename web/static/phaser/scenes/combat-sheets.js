@@ -6,15 +6,15 @@ import {
   ENERGY_LABELS,
   ENERGY_NAMES,
   TOKEN_TYPE,
-} from '../core/runtime-config.js?v=43';
-import { clockLabel, safeText, shortText, titleize } from '../core/text.js?v=43';
-import { eventTone } from '../fx/event-metrics.js?v=43';
+} from '../core/runtime-config.js?v=57';
+import { clockLabel, safeText, shortText, titleize } from '../core/text.js?v=57';
+import { eventTone } from '../fx/event-metrics.js?v=57';
 import {
   activeStatuses,
   statusDurationText,
   statusEffectSummary,
-} from '../core/status-presentation.js?v=43';
-import { Season3UI } from '../ui/season3-ui.js?v=43';
+} from '../core/status-presentation.js?v=57';
+import { Season3UI } from '../ui/season3-ui.js?v=57';
 
 const {
   button: drawCurrentButton,

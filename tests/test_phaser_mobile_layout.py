@@ -83,23 +83,19 @@ def _safe_frame(width, height, safe_top=0, safe_bottom=0):
 def _combat_geometry(frame):
     usable = frame["bottom"] - frame["top"]
     compressed = usable < 740
-    compact = usable < 830
-    top_height = 58 if compressed else 60
-    review_height = 50
+    top_height = 46
+    review_height = 52 if compressed else 56
     review_y = frame["bottom"] - review_height
-    skill_min = 132 if compressed else 140
-    skill_max = 166 if frame["height"] > 900 else 154
-    skill_height = min(skill_max, max(skill_min, round(usable * 0.18)))
-    skill_y = review_y - skill_height - 8
-    identity_height = 44
-    identity_y = skill_y - identity_height - 5
-    card_min = 118 if compressed else 126
-    card_max = 150 if frame["height"] > 900 else 142
-    card_height = min(card_max, max(card_min, round(usable * 0.165)))
-    enemy_y = frame["top"] + top_height + (38 if compressed else 44 if compact else 50)
-    ally_y = identity_y - card_height - 7
-    field_top = enemy_y + card_height + 2
-    field_bottom = ally_y - 2
+    skill_height = 82 if compressed else 88
+    skill_y = review_y - skill_height - 6
+    identity_height = 72 if compressed else 78
+    identity_y = skill_y - identity_height
+    card_height = 72 if compressed else 78
+    enemy_y = frame["top"] + top_height + 10
+    ally_y = identity_y - card_height - 8
+    timeline_y = ally_y - 36
+    field_top = enemy_y + card_height + 6
+    field_bottom = timeline_y - 4
     return {
         "dock_y": identity_y,
         "dock_height": frame["bottom"] - identity_y,
@@ -107,7 +103,7 @@ def _combat_geometry(frame):
         "enemy_y": enemy_y,
         "field_top": field_top,
         "field_bottom": field_bottom,
-        "field_height": max(96, field_bottom - field_top),
+        "field_height": max(176, field_bottom - field_top),
         "ally_y": ally_y,
         "identity_y": identity_y,
         "identity_height": identity_height,
@@ -124,41 +120,36 @@ def test_combat_center_stage_survives_normal_and_safe_phone_frames():
             frame = _safe_frame(width, height, safe_top, safe_bottom)
             frame["height"] = height
             combat = _combat_geometry(frame)
-            assert combat["enemy_y"] >= frame["top"] + 96
-            assert combat["field_height"] >= 96
-            assert combat["enemy_y"] + combat["card_height"] + 2 == combat["field_top"]
-            assert combat["field_bottom"] + 2 == combat["ally_y"]
-            assert combat["ally_y"] + combat["card_height"] + 7 == combat["identity_y"]
-            assert combat["identity_y"] + combat["identity_height"] + 5 == combat["skill_y"]
-            assert combat["skill_y"] + combat["skill_height"] + 8 == combat["review_y"]
+            assert combat["enemy_y"] >= frame["top"] + 56
+            assert combat["field_height"] >= 176
+            assert combat["enemy_y"] + combat["card_height"] + 6 == combat["field_top"]
+            assert combat["field_bottom"] + 40 == combat["ally_y"]
+            assert combat["ally_y"] + combat["card_height"] + 8 == combat["identity_y"]
+            assert combat["identity_y"] + combat["identity_height"] == combat["skill_y"]
+            assert combat["skill_y"] + combat["skill_height"] + 6 == combat["review_y"]
             assert combat["review_y"] + combat["review_height"] == frame["bottom"]
             assert combat["dock_y"] + combat["dock_height"] == frame["bottom"]
 
 
-def test_queue_review_keeps_enemy_lane_and_footer_clear_with_safe_insets():
+def test_queue_review_owns_the_phone_and_keeps_footer_clear_with_safe_insets():
     for safe_top, safe_bottom in ((0, 0), (47, 34)):
         for width, height in ((360, 800), (390, 844), (430, 932)):
             frame = _safe_frame(width, height, safe_top, safe_bottom)
             frame["height"] = height
             combat = _combat_geometry(frame)
-            compressed = frame["bottom"] - frame["top"] < 730
-            ally_bottom = combat["ally_y"] + combat["card_height"]
-            sheet_y = max(frame["top"] + 300, min(combat["dock_y"], ally_bottom + 8))
-            header_height = 42 if compressed else 46
-            cards_y = sheet_y + header_height + 4
-            footer_y = frame["bottom"] - 44
-            cards_bottom = footer_y - 4
-            card_height = max(132, cards_bottom - cards_y)
-            three_card_width = (width - 16 - 12) / 3
+            compressed = frame["bottom"] - frame["top"] < 740
+            sheet_y = frame["top"]
+            header_height = 88 if compressed else 96
+            cards_y = sheet_y + header_height + 8
+            footer_y = frame["bottom"] - 52
+            cards_bottom = footer_y - 8
+            three_row_height = (cards_bottom - cards_y - 16) / 3
             assert combat["enemy_y"] + combat["card_height"] < combat["field_bottom"]
             assert combat["field_bottom"] < combat["ally_y"]
-            assert ally_bottom < sheet_y
-            assert sheet_y <= combat["dock_y"]
-            assert cards_y + card_height == cards_bottom
-            assert card_height >= 132
-            assert three_card_width >= 44 * 2 + 8
-            assert cards_bottom + 4 == footer_y
-            assert footer_y + 44 == frame["bottom"]
+            assert sheet_y == frame["top"]
+            assert three_row_height >= 150
+            assert cards_bottom + 8 == footer_y
+            assert footer_y + 52 == frame["bottom"]
 
 
 def _first_creation_geometry(frame):
@@ -253,6 +244,7 @@ def test_scoped_mobile_controls_and_copy_keep_accessibility_contracts():
         + (ROOT / "web/static/phaser/scenes/combat-sheets.js").read_text(encoding="utf-8")
         + (ROOT / "web/static/phaser/scenes/combat-hud.js").read_text(encoding="utf-8")
         + (ROOT / "web/static/phaser/scenes/combat-fighter-field.js").read_text(encoding="utf-8")
+        + (ROOT / "web/static/phaser/scenes/combat-skill-deck.js").read_text(encoding="utf-8")
     )
     lobby = (ROOT / "web/static/phaser/scenes/lobby-scene.js").read_text(encoding="utf-8")
     season_three_ui = (ROOT / "web/static/phaser/ui/season-three-ui.js").read_text(encoding="utf-8")
@@ -285,14 +277,14 @@ def test_scoped_mobile_controls_and_copy_keep_accessibility_contracts():
     assert "Mission Map" not in creation
 
     assert "const controlSize = 44;" in queue
-    assert "const sheetY = Math.max(frame.top + 300" in queue
-    assert "allyBottom + 8" in queue
-    assert "this.renderBattlefield(frame, layout.battle" in queue
-    assert "this.renderFighterLane(me && me.team, 'mine'" in queue
+    assert "const sheetH = Math.min(310" in queue
+    assert "const sheetY = frame.bottom - sheetH;" in queue
+    assert "this.renderQueueActionCard(action, index, actions.length" in queue
     assert "const cardW = (cardsW - cardGap" in queue
     assert "'Queue Review Battlefield Lock'" in queue
     assert "fillRect(0, 0, frame.fullWidth" not in queue
     assert "'FINAL ORDER'" in queue
+    assert "actions.map((_, index) => index + 1).join(' > ')" in queue
     assert "subtitle: 'SERVER VALIDATES'" in queue
     assert "SKILL_ART_BY_ENERGY" in queue
     assert "shortText(meta.skill ? meta.skill.name" not in queue
@@ -310,13 +302,14 @@ def test_scoped_mobile_controls_and_copy_keep_accessibility_contracts():
     assert "44, 44, '×'" in combat
     assert "const y = frame.top;" in combat
     assert "shortText(skill.name" not in combat
+    assert "shortText(stateLabel, w < 84 ? 10 : 14)" in combat
     assert "shortText((character && character.name" not in combat
     assert "nameNode.setMaxLines(2);" in combat
     assert "y: y - 3," in combat
     assert "state.phase_seconds_remaining" in combat
     assert "CULLING_COLORS.target" in combat
-    assert "const usableH = frame.bottom - frame.top;" in combat
-    assert "fieldH: Math.max(96, allyY - enemyY - cardH - 4)" in combat
+    assert "IncidentCutLayouts.combat(frame)" in combat
+    assert "layout.stageH" in combat
     assert "depth: -1," in combat
     assert "this.topBar(frame, 'Opening Domain'" not in combat
     assert "'JJK ARENA / CONNECTING'" in combat

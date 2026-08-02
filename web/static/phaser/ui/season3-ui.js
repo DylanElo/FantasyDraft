@@ -1,41 +1,53 @@
-import * as Current from './culling-current-ui.js?v=43';
-import * as Flow from './season-three-ui.js?v=43';
-import * as PostMatch from './season3-master-ui.js?v=43';
-import { drawEnergyPip } from './energy-pip.js?v=43';
-import { renderModalSheetChrome } from './modal-sheet.js?v=43';
-import { S3_TOKENS } from './season3-tokens.js?v=43';
+import * as PostMatch from './season3-master-ui.js?v=57';
+import { drawEnergyPip } from './energy-pip.js?v=57';
+import { renderModalSheetChrome } from './modal-sheet.js?v=57';
+import { S3_TOKENS } from './season3-tokens.js?v=57';
+import { bootS3Layout } from './season-three-ui.js?v=57';
+import { INCIDENT } from './incident-cut/tokens.js?v=57';
+import { incidentCombatLayout, incidentHomeLayout, incidentMatchupLayout } from './incident-cut/layout.js?v=57';
+import {
+  drawIncidentButton,
+  drawIncidentChip,
+  drawIncidentCost,
+  drawIncidentHeader,
+  drawIncidentPager,
+  drawIncidentPortrait,
+  drawIncidentProgress,
+  drawIncidentSurface,
+  drawIncidentWorld,
+} from './incident-cut/presentation.js?v=57';
 
 // This is the only scene-facing presentation entrypoint. The compatibility
 // modules remain private implementation variants so the approved Current,
 // Flow, and Post Match compositions keep their exact rendering behavior.
-export const Season3UI = Object.freeze({
+export const IncidentCutUI = Object.freeze({
   tokens: S3_TOKENS,
   current: Object.freeze({
-    world: Current.drawCurrentWorld,
-    panel: Current.drawCurrentPanel,
-    button: Current.drawCurrentButton,
+    world: drawIncidentWorld,
+    panel: drawIncidentSurface,
+    button: drawIncidentButton,
     energyPip: drawEnergyPip,
     modalSheet: renderModalSheetChrome,
   }),
   flow: Object.freeze({
-    colors: Flow.S3_COLORS,
-    bootLayout: Flow.bootS3Layout,
-    world: Flow.drawS3World,
-    panel: Flow.drawS3Panel,
-    chip: Flow.drawS3Chip,
-    button: Flow.drawS3Button,
-    header: Flow.drawS3Header,
-    progress: Flow.drawS3Progress,
-    portrait: Flow.drawS3Portrait,
-    cost: Flow.drawS3Cost,
-    pager: Flow.drawS3Pager,
+    colors: INCIDENT,
+    bootLayout: bootS3Layout,
+    world: drawIncidentWorld,
+    panel: drawIncidentSurface,
+    chip: drawIncidentChip,
+    button: drawIncidentButton,
+    header: drawIncidentHeader,
+    progress: drawIncidentProgress,
+    portrait: drawIncidentPortrait,
+    cost: drawIncidentCost,
+    pager: drawIncidentPager,
   }),
   postMatch: Object.freeze({
-    colors: PostMatch.S3_COLORS,
-    world: PostMatch.drawS3World,
-    panel: PostMatch.drawS3Panel,
-    button: PostMatch.drawS3Button,
-    progress: PostMatch.drawS3Progress,
+    colors: INCIDENT,
+    world: drawIncidentWorld,
+    panel: drawIncidentSurface,
+    button: drawIncidentButton,
+    progress: drawIncidentProgress,
     missionRewardModel: PostMatch.missionRewardModel,
     outcomeVisual: PostMatch.outcomeVisual,
     recordsLayout: PostMatch.recordsLayout,
@@ -45,6 +57,15 @@ export const Season3UI = Object.freeze({
   }),
 });
 
-export { S3_TOKENS } from './season3-tokens.js?v=43';
+// Compatibility export while scenes migrate; only Incident Cut renders.
+export const Season3UI = IncidentCutUI;
+
+export const IncidentCutLayouts = Object.freeze({
+  combat: incidentCombatLayout,
+  home: incidentHomeLayout,
+  matchup: incidentMatchupLayout,
+});
+
+export { S3_TOKENS } from './season3-tokens.js?v=57';
 
 export const Season3Components = Season3UI;

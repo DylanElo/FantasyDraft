@@ -1,22 +1,23 @@
-# Season 3 visual system
+# Incident Cut visual system
 
-Status: locked product direction, 2026-07-18.
+Status: implemented maintained-client direction, 2026-08-02.
 
 This document defines the visual source of truth for the maintained Phaser
-client. `Culling Current` remains the internal implementation codename. The
+client. `Incident Cut` is the internal implementation codename and supersedes
+the earlier Culling Current screen compositions. The semantic palette, asset
+provenance, accessibility, viewer privacy, and server-authority rules remain.
+The
 player-facing game is not renamed, the starter era is not changed, and the
 visual direction does not unlock Culling Game characters or alter progression.
 
 ## Direction
 
 Every visible screen, character illustration, environment, transition, VFX
-layer, and routine UI surface must belong to one coherent Season 3 Culling Game
-art system. The reference traits were distilled from current official material,
-including the [official Season 3 site](https://jujutsukaisen.jp/shimetsukaiyu/)
-and official [Culling Game key-visual announcement](https://jujutsukaisen.jp/news/20260109_04.php).
-Those links are design-context citations only; they do not imply affiliation,
-endorsement, licensing, or that official images were supplied as generator
-inputs.
+layer, and routine UI surface belongs to one coherent environment-first
+editorial system. Navigation behaves like authored scene changes; selection
+stages a fighter; targeting draws barrier geometry; the queue reads as a
+left-to-right three-shot storyboard; resolution retracts commands; and Results
+lands as an episode-ending title card.
 
 The game uses fresh generated or appropriately licensed compositions. Do not
 paste, trace, or regenerate official frames, key visuals, manga panels, logos,
@@ -74,6 +75,20 @@ fifth generated resource.
   designated character-led hero composition may include generated character
   art, but still contains no baked UI, title, labels, icons, or controls and
   requires its own provenance and release-rights review.
+
+## Shipped composition contract
+
+- Home is a full-screen trio staging scene with an edge navigation rail and a
+  contextual Deploy mode cut. It has no feature-card grid or bottom app bar.
+- First Creation and Team Setup share a featured-fighter browser and the same
+  authoritative Character Study treatment.
+- Mission nodes live directly on the painted route map.
+- Matchup is a diagonal confrontation with layered trios; unrevealed PvP
+  opponents remain sealed.
+- Combat reserves at least 55% of the mobile frame for the stage. HUD, four
+  technique cuts, storyboard, and next action stay within approximately 35%.
+- Queue Review expands across the lower 35% while the battlefield remains
+  visible. Results and Records use outcome/reel compositions, not dashboards.
 
 ## UI contract
 
@@ -185,8 +200,8 @@ implementation of this direction.
 
 | Runtime plate | Screens |
 |---|---|
-| `culling-current-home.webp` | Boot |
-| `culling-current-home-hero-v2.webp` | Home |
+| `culling-current-home.webp` | Boot, Home |
+| `culling-current-home-hero-v2.webp` | Retained prototype plate; not loaded at runtime |
 | `culling-current-campus.webp` | Draft, First Creation, Records |
 | `culling-current-map.webp` | Mission Map |
 | `culling-current-rooftop-v2.webp` | Combat, Queue Review, Result |
@@ -293,7 +308,7 @@ identifiers, hashes, processing, and limitations are recorded under
 `web/static/assets/skills/PROVENANCE.md`, and
 `artifacts/ui-redesign/s3-style/PROMPTS.md`.
 
-The maintained Phaser cache version for this structural and vocabulary pass is `v42`.
+The maintained Phaser cache version for this Incident Cut pass is `v57`.
 
 ## Gameplay invariants
 

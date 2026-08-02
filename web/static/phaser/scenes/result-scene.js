@@ -1,7 +1,7 @@
-import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=43';
-import { safeText } from '../core/text.js?v=43';
-import { Season3UI } from '../ui/season3-ui.js?v=43';
-import { BaseScene } from './base-scene.js?v=43';
+import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=57';
+import { safeText } from '../core/text.js?v=57';
+import { Season3UI } from '../ui/season3-ui.js?v=57';
+import { BaseScene } from './base-scene.js?v=57';
 
 const {
   colors: S3_COLORS,
@@ -72,7 +72,7 @@ export class ResultScene extends BaseScene {
       this.graphics.moveTo(region.x, region.y + region.h);
       this.graphics.lineTo(region.x + region.w - 30, region.y + region.h);
       this.graphics.strokePath();
-      this.mono(region.x + 12, region.y + 7, 'CULLING CURRENT // AFTER ACTION', {
+      this.mono(region.x + 12, region.y + 7, 'AFTER ACTION', {
         color: S3_COLORS.barrier,
         fontSize: `${TYPE_SCALE.label}px`,
         fontStyle: '900',

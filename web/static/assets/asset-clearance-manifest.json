@@ -10,7 +10,7 @@
   "summary": {
     "cleared_groups": 0,
     "generated_review_required_groups": 5,
-    "prototype_only_groups": 1
+    "prototype_only_groups": 2
   },
   "groups": [
     {
@@ -95,6 +95,20 @@
         "skills/culling-current/curse.webp"
       ],
       "release_caution": "Fallbacks used a franchise screenshot as style/intensity context and are not release-cleared."
+    },
+    {
+      "id": "starter_trio_production_proof",
+      "runtime": false,
+      "origin": "generated_with_existing_identity_references",
+      "clearance_status": "prototype_only",
+      "provenance": "production-proof/README.md",
+      "path_globs": [
+        "portraits/culling-current/production-proof/**",
+        "skills/culling-current/production-proof/**",
+        "production-proof/**",
+        "../../../artifacts/ui-redesign/s3-structure-v2/qa/current-proof/**"
+      ],
+      "release_caution": "Named character likenesses and generated visual assets require explicit rights and commercial-release review before any runtime promotion."
     },
     {
       "id": "concept_and_qa_artifacts",

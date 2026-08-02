@@ -110,20 +110,82 @@ def test_active_status_chips_use_meaningful_labels_instead_of_truncated_name_fra
         r"""
 globalThis.Phaser = { Scene: class { constructor() {} } };
 const { CombatScene } = await import('./web/static/phaser/scenes/combat-scene.js');
+const { statusCardLabel } = await import('./web/static/phaser/core/status-presentation.js');
 const scene = new CombatScene();
 const labels = scene.visibleStatusLabels({
   statuses: [
     { id: 'stopped', name: 'Stop', duration: 2, families: ['Stun'], payload: { stun_harmful: true } },
     { id: 'poison', name: 'Poison', duration: 1, families: ['Affliction'], payload: { turn_end_damage: 10 } },
+    { id: 'tool_parry_stance', name: 'Tool-Parry Stance', duration: 2, families: ['Buff'], payload: {} },
     { id: 'nue_fallback', name: 'Nue Fallback', duration: 0, families: ['Debuff'], payload: { damage_output_delta: -15 } },
   ],
 });
-console.log(JSON.stringify({ labels }));
+const specific = statusCardLabel({ id: 'tool_parry_stance', name: 'Tool-Parry Stance', duration: 2, families: ['Buff'], payload: {} });
+console.log(JSON.stringify({ labels, specific }));
 """
     )
 
     assert probe["labels"] == ["STUN 2", "POISON 1"]
+    assert probe["specific"] == "TOOL-PARRY 2"
     assert all("..." not in label for label in probe["labels"])
+
+
+def test_visible_action_without_actor_id_is_attributed_from_the_viewer_safe_message():
+    probe = _run_node(
+        r"""
+const { visibleActionSummary } = await import('./web/static/phaser/scenes/combat-hud.js');
+const context = {
+  store: {
+    state: { pending_actions: {} },
+    actions: [],
+    mineId: () => 'mine-player',
+    me: () => ({ team: [{ name: 'Yuji Itadori' }] }),
+    foe: () => ({ team: [{ name: 'Yuta Okkotsu (JJK 0)' }] }),
+  },
+};
+const summary = visibleActionSummary.call(context, {
+  message: 'Yuta Okkotsu (JJK 0) used Cursed Katana',
+  payload: { action_id: 'cpu-action' },
+});
+console.log(JSON.stringify(summary));
+"""
+    )
+
+    assert probe == {
+        "message": "Yuta Okkotsu (JJK 0) used Cursed Katana",
+        "isOpponent": True,
+    }
+
+
+def test_resolution_receipt_keeps_aoe_damage_targets_distinct():
+    probe = _run_node(
+        r"""
+const { renderResolutionReceipt } = await import('./web/static/phaser/scenes/combat-hud.js');
+const lines = [];
+const context = {
+  store: {
+    currentVisibleAction: () => null,
+    recentEvents: [
+      { type: 'damage_applied', message: 'Spear Sweep dealt 15 damage to Yuji Itadori' },
+      { type: 'damage_applied', message: 'Spear Sweep dealt 15 damage to Megumi Fushiguro' },
+    ],
+  },
+  graphics: {
+    fillStyle() { return this; }, fillPoints() { return this; },
+    lineStyle() { return this; }, strokePoints() { return this; },
+  },
+  mono(x, y, value) { lines.push(value); return { setMaxLines() {} }; },
+  text() { return { setMaxLines() {} }; },
+};
+renderResolutionReceipt.call(context, { width: 390 }, {
+  contentX: 0, contentW: 390, commandY: 600, commandH: 220,
+});
+console.log(JSON.stringify({ lines }));
+"""
+    )
+
+    assert "01  SPEAR SWEEP -15 → YUJI ITADORI" in probe["lines"]
+    assert "02  SPEAR SWEEP -15 → MEGUMI FUSH..." in probe["lines"]
 
 
 def test_client_timer_counts_down_from_authoritative_snapshot_without_ending_the_phase():
@@ -605,8 +667,8 @@ def test_combat_source_uses_explicit_target_words_status_sheet_and_public_events
     store = (ROOT / "web/static/phaser/store/game-store.js").read_text(encoding="utf-8")
 
     assert "'TAP TARGET'" in combat
-    assert "'BLOCKED'" in combat
-    assert "'LEGAL'" not in combat
+    assert "'INVULNERABLE'" in combat
+    assert "'LEGAL'" in combat
     assert "renderFighterStatusSheet" in combat
     assert "SOURCE SKILL" in combat
     assert "${detailStage.timerLabel} ${clockLabel(detailSeconds)}" in combat
@@ -623,8 +685,9 @@ def test_combat_source_uses_explicit_target_words_status_sheet_and_public_events
     assert "RESTORING BATTLE SESSION" in combat
     assert "PASSING TURN" in combat
     assert "SERVER VALIDATING QUEUE" in combat
-    prompt_block = combat[combat.index("const prompt =") : combat.index("if (this.store.queueReviewOpen)")]
-    assert prompt_block.index("this.store.controlsLocked()") < prompt_block.index("this.store.queueReviewOpen")
+    assert combat.index("if (this.store.queueReviewOpen)") < combat.index("this.renderTopHud(frame, state, me, layout)")
+    prompt_block = combat[combat.index("const prompt =") : combat.index("this.renderFighterLane(foe")]
+    assert "this.store.queueReviewOpen" not in prompt_block
     assert "this.clearToast();\n      this.queueReviewOpen = true" in store
 
 

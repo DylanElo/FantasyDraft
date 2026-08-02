@@ -1,7 +1,7 @@
-import { CORE_ENERGY, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, ENERGY_NAMES, TOKEN_TYPE } from '../core/runtime-config.js?v=43';
-import { SKILL_ART_BY_ENERGY } from '../core/asset-registry.js?v=43';
-import { CombatPlaybackScene } from '../fx/combat-playback-scene.js?v=43';
-import { Season3UI } from '../ui/season3-ui.js?v=43';
+import { CORE_ENERGY, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, ENERGY_NAMES, TOKEN_TYPE } from '../core/runtime-config.js?v=57';
+import { SKILL_ART_BY_ENERGY } from '../core/asset-registry.js?v=57';
+import { CombatPlaybackScene } from '../fx/combat-playback-scene.js?v=57';
+import { Season3UI } from '../ui/season3-ui.js?v=57';
 
 const {
   button: drawCurrentButton,
@@ -76,24 +76,22 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
 
     queueReviewLayout(frame) {
       const battle = typeof this.combatLayout === 'function' ? this.combatLayout(frame) : null;
-      const fallbackDockY = Math.max(frame.top + 360, frame.bottom - 286);
-      const allyBottom = battle ? battle.allyY + battle.cardH : fallbackDockY - 8;
-      const sheetY = Math.max(frame.top + 300, Math.min(battle ? battle.dockY : fallbackDockY, allyBottom + 8));
-      const footerH = 44;
+      const sheetH = Math.min(310, Math.round((frame.bottom - frame.top) * 0.35));
+      const sheetY = frame.bottom - sheetH;
+      const footerH = 52;
       const footerY = frame.bottom - footerH;
-      const headerH = battle && battle.compressed ? 50 : 54;
-      const cardsY = sheetY + headerH + 4;
-      const cardsBottom = footerY - 4;
+      const headerH = 54;
+      const cardsY = sheetY + headerH + 5;
+      const cardsBottom = footerY - 8;
       return {
         battle,
         sheetX: frame.x,
         sheetY,
         sheetW: frame.width,
-        sheetH: frame.bottom - sheetY + 22,
+        sheetH,
         headerH,
         cardsY,
         cardsBottom,
-        cardH: Math.max(132, cardsBottom - cardsY),
         footerY,
         footerH,
       };
@@ -124,8 +122,8 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
       const right = layout.sheetX + layout.sheetW - 12;
       const firstX = right - 78;
 
-      this.mono(right - 88, layout.sheetY + 4, 'POOL / AFTER', {
-        color: CULLING_COLORS.mutedText,
+      this.mono(right - 158, layout.sheetY + 4, 'ENERGY  NOW > AFTER', {
+        color: CULLING_COLORS.inverseText,
         fontSize: '12px',
         fontStyle: '700',
       });
@@ -142,8 +140,8 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
           label: ENERGY_LABELS[color],
           labelOffsetY: -3.5,
           below: `${current}/${remaining}`,
-          belowColor: remaining < 0 ? CULLING_COLORS.redText : CULLING_COLORS.text,
-          belowFontStyle: '700',
+          belowColor: remaining < 0 ? '#FF938C' : CULLING_COLORS.inverseText,
+          belowFontStyle: '900',
           belowOffsetY: 10,
         });
       });
@@ -369,7 +367,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         });
       }
 
-      drawCurrentButton(this, x + 4, controlY, controlSize, controlSize, '<', () => {
+      if (count > 1) drawCurrentButton(this, x + 4, controlY, controlSize, controlSize, '<', () => {
         this.presentationLayerCall('interactionCue', { cue: 'queue', context: 'queue-reorder', action, direction: -1 });
         this.store.moveQueuedAction(action.id, -1);
       }, {
@@ -384,7 +382,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         cut: 7,
         disabled: index === 0,
       });
-      drawCurrentButton(this, x + w - controlSize - 4, controlY, controlSize, controlSize, '>', () => {
+      if (count > 1) drawCurrentButton(this, x + w - controlSize - 4, controlY, controlSize, controlSize, '>', () => {
         this.presentationLayerCall('interactionCue', { cue: 'queue', context: 'queue-reorder', action, direction: 1 });
         this.store.moveQueuedAction(action.id, 1);
       }, {
@@ -410,6 +408,167 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         || null;
     }
 
+    renderQueueActionRow(action, index, count, region, queueFit, queueValidation = {}) {
+      const { x, y, w, h } = region;
+      const nodeStart = this.nodes.length;
+      const meta = this.actionMeta(action);
+      const rowError = String(queueValidation[action.id]
+        || (queueFit && !queueFit.ok && queueFit.actionId === action.id ? queueFit.reason : '')
+        || '');
+      const tone = rowError ? CULLING_COLORS.vermilion : index === 0 ? CULLING_COLORS.gold : CULLING_COLORS.cobalt;
+      const controlSize = 44;
+      const controlsX = x + w - controlSize - 6;
+      const artX = x + 42;
+      const artW = Math.min(78, Math.round(w * 0.22));
+      const textX = artX + artW + 8;
+      const textW = Math.max(96, controlsX - textX - 6);
+      const artRegion = { x: artX, y: y + 6, w: artW, h: h - 12 };
+
+      drawCurrentPanel(this, x, y, w, h, {
+        fill: CULLING_COLORS.ivory,
+        stroke: tone,
+        accent: tone,
+        alpha: 0.98,
+        cut: 10,
+        strokeWidth: index === 0 ? 2 : 1.5,
+        shadowY: 3,
+        shadowAlpha: 0.18,
+      });
+      if (meta.skill && typeof this.renderIntegratedSkillArtwork === 'function') {
+        this.renderIntegratedSkillArtwork(meta.skill, artRegion, {
+          context: 'queue-action',
+          slot: index,
+          cost: meta.cost,
+          caster: meta.caster,
+          alpha: rowError ? 0.48 : 0.94,
+          depth: 0.5,
+          disabled: !!rowError,
+          state: rowError ? 'disabled' : 'queued',
+        });
+      }
+      this.graphics.fillStyle(CULLING_COLORS.charcoal, 0.72);
+      this.graphics.fillRect(artX, y + h - 27, artW, 21);
+      this.renderCostOrbs(artX + 10, y + h - 17, meta.cost, 5);
+
+      this.graphics.fillStyle(tone, 0.98);
+      this.graphics.fillPoints([
+        { x: x + 4, y: y + 4 },
+        { x: x + 36, y: y + 4 },
+        { x: x + 32, y: y + 38 },
+        { x: x + 4, y: y + 38 },
+      ], true);
+      this.text(x + 19, y + 9, String(index + 1), {
+        fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
+        fontSize: '20px',
+        fontStyle: '900',
+        color: index === 0 && !rowError ? CULLING_COLORS.text : CULLING_COLORS.inverseText,
+      }).setOrigin(0.5, 0);
+
+      const title = this.text(textX, y + 8, meta.skill ? meta.skill.name : action.skill_id, {
+        fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
+        fontSize: '15px',
+        fontStyle: '900',
+        color: CULLING_COLORS.text,
+        wordWrap: { width: textW },
+        lineSpacing: -2,
+      });
+      title.setMaxLines(2);
+      this.mono(textX, y + 43, meta.replacement ? `REPLACED · ${meta.targetLabel}` : meta.targetLabel, {
+        color: meta.replacement ? CULLING_COLORS.redText : CULLING_COLORS.cobaltText,
+        fontSize: '10px',
+        fontStyle: '900',
+      });
+
+      const routes = [
+        ['1ST', meta.targetRoute],
+        ['2ND', meta.secondaryRoute],
+        ['ALT', meta.alternateRoute],
+      ].filter(([, route]) => route);
+      if (rowError) {
+        this.text(textX, y + 61, rowError, {
+          fontFamily: TOKEN_TYPE.mono || 'monospace',
+          fontSize: '12px',
+          fontStyle: '800',
+          color: CULLING_COLORS.redText,
+          wordWrap: { width: textW },
+          lineSpacing: -2,
+        }).setMaxLines(3);
+      } else {
+        routes.slice(0, 3).forEach(([label, route], routeIndex) => {
+          this.mono(textX, y + 61 + routeIndex * 17, `${label}  ${route}`, {
+            color: CULLING_COLORS.text,
+            fontSize: '10px',
+            fontStyle: routeIndex === 0 ? '900' : '700',
+            wordWrap: { width: textW },
+          }).setMaxLines(1);
+        });
+      }
+
+      const wildCount = meta.cost.filter((color) => color === 'black').length;
+      if (wildCount) {
+        this.mono(textX, y + h - 46, 'WILD PAYMENT', {
+          color: CULLING_COLORS.mutedText,
+          fontSize: '10px',
+          fontStyle: '900',
+        });
+        for (let wildIndex = 0; wildIndex < wildCount; wildIndex += 1) {
+          const pay = (this.store.actionWildPays[action.id] || [])[wildIndex] || 'black';
+          drawCurrentButton(this, textX + 78 + (wildIndex % 2) * 46, y + h - 48 - Math.floor(wildIndex / 2) * 46, 44, 44, `X>${ENERGY_LABELS[pay] || '?'}`, () => {
+            this.store.cycleWildcardPay(action.id, wildIndex);
+          }, {
+            accessibilityLabel: `Assign Wild payment ${wildIndex + 1} for ${meta.skill ? meta.skill.name : 'queued action'}`,
+            accessibilityId: `queue-wild-${action.id}-${wildIndex}`,
+            fill: pay === 'white' ? CULLING_COLORS.ivory : (ENERGY_COLORS[pay] || CULLING_COLORS.charcoal),
+            stroke: ENERGY_COLORS[pay] || CULLING_COLORS.gold,
+            color: pay === 'white' ? CULLING_COLORS.text : CULLING_COLORS.inverseText,
+            fontSize: '10px',
+            display: false,
+            cut: 7,
+          });
+        }
+      } else {
+        this.mono(textX, y + h - 23, meta.summary || 'FIXED COST', {
+          color: CULLING_COLORS.mutedText,
+          fontSize: '10px',
+          fontStyle: '700',
+          wordWrap: { width: textW },
+        }).setMaxLines(1);
+      }
+
+      drawCurrentButton(this, controlsX, y + 6, controlSize, controlSize, '↑', () => {
+        this.store.moveQueuedAction(action.id, -1);
+      }, {
+        accessibilityLabel: `Move ${meta.skill ? meta.skill.name : 'queued action'} earlier`,
+        accessibilityId: `queue-move-earlier-${action.id}`,
+        disabled: index === 0,
+        disabledReason: 'This action is already first.',
+        fill: CULLING_COLORS.ivory,
+        stroke: CULLING_COLORS.cobalt,
+        color: CULLING_COLORS.cobaltText,
+        fontSize: '18px',
+        display: false,
+        cut: 7,
+      });
+      drawCurrentButton(this, controlsX, y + h - controlSize - 6, controlSize, controlSize, '↓', () => {
+        this.store.moveQueuedAction(action.id, 1);
+      }, {
+        accessibilityLabel: `Move ${meta.skill ? meta.skill.name : 'queued action'} later`,
+        accessibilityId: `queue-move-later-${action.id}`,
+        disabled: index >= count - 1,
+        disabledReason: 'This action is already last.',
+        fill: CULLING_COLORS.ivory,
+        stroke: CULLING_COLORS.cobalt,
+        color: CULLING_COLORS.cobaltText,
+        fontSize: '18px',
+        display: false,
+        cut: 7,
+      });
+      const newNodes = this.nodes.slice(nodeStart);
+      return newNodes.find((node) => node && node.type === 'Image')
+        || newNodes.find((node) => node && node.type === 'Container')
+        || null;
+    }
+
     renderQueueReviewSheet(frame) {
       if (!this.store.queueReviewOpen || !this.store.actions.length) {
         this.presentationLayerCall('renderQueueReviewState', { actions: [], cards: [] });
@@ -418,20 +577,7 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
       const layout = this.queueReviewLayout(frame);
       const queueFit = this.store.queueReviewFit();
       const queueValidation = this.store.queueReviewValidationMap();
-      const me = this.store.me();
 
-      // Queue Review is the final battlefield stage, not a detached modal.
-      // Restore the center field and allied lane that CombatScene yields while
-      // review is open, then replace only the lower command deck.
-      if (layout.battle && typeof this.renderBattlefield === 'function') {
-        this.renderBattlefield(frame, layout.battle, 'Lock the left-to-right resolution order');
-      }
-      if (layout.battle && typeof this.renderFighterLane === 'function') {
-        this.renderFighterLane(me && me.team, 'mine', frame, layout.battle);
-      }
-
-      // Block the battle controls without dimming or covering the illustrated
-      // field. Queue controls are registered after this blocker and win hit tests.
       this.buttons.push({
         x: 0,
         y: 0,
@@ -442,56 +588,44 @@ export class CombatQueueReviewScene extends CombatPlaybackScene {
         disabled: false,
       });
 
-      // This is a battlefield command cut, not a modal/dashboard panel: one
-      // torn paper plane rises from the bottom while the fight stays visible.
-      this.graphics.fillStyle(CULLING_COLORS.shadow, 0.22);
-      this.graphics.fillPoints([
-        { x: layout.sheetX, y: layout.sheetY + 2 },
-        { x: layout.sheetX + layout.sheetW * 0.42, y: layout.sheetY - 5 },
-        { x: layout.sheetX + layout.sheetW, y: layout.sheetY + 3 },
-        { x: layout.sheetX + layout.sheetW, y: layout.sheetY + layout.sheetH },
-        { x: layout.sheetX, y: layout.sheetY + layout.sheetH },
-      ], true);
-      this.graphics.fillStyle(CULLING_COLORS.ivory, 0.985);
-      this.graphics.fillPoints([
-        { x: layout.sheetX, y: layout.sheetY },
-        { x: layout.sheetX + layout.sheetW * 0.42, y: layout.sheetY - 7 },
-        { x: layout.sheetX + layout.sheetW, y: layout.sheetY + 1 },
-        { x: layout.sheetX + layout.sheetW, y: layout.sheetY + layout.sheetH },
-        { x: layout.sheetX, y: layout.sheetY + layout.sheetH },
-      ], true);
-      this.graphics.fillStyle(CULLING_COLORS.cobalt, 0.92);
-      this.graphics.fillTriangle(layout.sheetX, layout.sheetY + 4, layout.sheetX + 152, layout.sheetY + 4, layout.sheetX, layout.sheetY + layout.headerH);
-      this.graphics.lineStyle(2, queueFit.ok ? CULLING_COLORS.gold : CULLING_COLORS.vermilion, 0.88);
+      this.graphics.fillStyle(CULLING_COLORS.charcoal, 0.78);
+      this.graphics.fillRect(layout.sheetX, layout.sheetY, layout.sheetW, layout.sheetH);
+      this.graphics.fillStyle(CULLING_COLORS.ivory, 0.98);
+      this.graphics.fillRect(layout.sheetX, layout.cardsY - 4, layout.sheetW, layout.sheetH - layout.headerH + 4);
+      this.graphics.fillStyle(CULLING_COLORS.cobalt, 0.96);
+      this.graphics.fillTriangle(layout.sheetX, layout.sheetY, layout.sheetX + 176, layout.sheetY, layout.sheetX, layout.sheetY + layout.headerH);
+      this.graphics.lineStyle(3, queueFit.ok ? CULLING_COLORS.gold : CULLING_COLORS.vermilion, 0.94);
       this.graphics.beginPath();
-      this.graphics.moveTo(layout.sheetX, layout.sheetY + 1);
-      this.graphics.lineTo(layout.sheetX + layout.sheetW, layout.sheetY + 1);
+      this.graphics.moveTo(layout.sheetX, layout.cardsY - 5);
+      this.graphics.lineTo(layout.sheetX + layout.sheetW, layout.cardsY - 5);
       this.graphics.strokePath();
 
-      this.text(layout.sheetX + 12, layout.sheetY + 5, 'FINAL ORDER', {
+      this.text(layout.sheetX + 12, layout.sheetY + 8, 'FINAL ORDER', {
         fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
         fontSize: '18px',
         fontStyle: '900',
         color: CULLING_COLORS.inverseText,
       });
-      this.mono(layout.sheetX + 13, layout.sheetY + 29, queueFit.ok ? 'LEFT > RIGHT / READY' : 'PAYMENT INVALID', {
+      const actions = this.store.actions.slice(0, 3);
+      const resolutionOrder = actions.map((_, index) => index + 1).join(' > ');
+      this.mono(layout.sheetX + 13, layout.sheetY + 35, queueFit.ok ? `RESOLVES ${resolutionOrder}` : 'PAYMENT INVALID', {
         color: queueFit.ok ? CULLING_COLORS.inverseText : '#FFE4DF',
         fontSize: '12px',
         fontStyle: '800',
       });
       this.renderEnergyCommitment(frame, layout, queueFit);
 
-      const actions = this.store.actions.slice(0, 3);
-      const cardGap = 6;
+      const cardGap = 5;
       const cardsX = layout.sheetX + 8;
       const cardsW = layout.sheetW - 16;
       const cardW = (cardsW - cardGap * Math.max(0, actions.length - 1)) / actions.length;
+      const cardH = layout.cardsBottom - layout.cardsY;
       const motionCards = actions.map((action, index) => (
         this.renderQueueActionCard(action, index, actions.length, {
           x: cardsX + index * (cardW + cardGap),
           y: layout.cardsY,
           w: cardW,
-          h: layout.cardH,
+          h: cardH,
         }, queueFit, queueValidation)
       )).filter(Boolean);
       this.presentationLayerCall('renderQueueReviewState', {

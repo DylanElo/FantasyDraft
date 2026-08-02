@@ -1,4 +1,4 @@
-import { CULLING_COLORS, ENERGY_COLORS } from '../core/runtime-config.js?v=43';
+import { CULLING_COLORS, ENERGY_COLORS } from '../core/runtime-config.js?v=57';
 
 // Shared "energy pip" primitive: an ivory/charcoal-backed colored circle with
 // an optional label above and a second line below (count, or current/after

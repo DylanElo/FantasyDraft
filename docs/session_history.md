@@ -4312,3 +4312,233 @@ API omitted one final scanline at 390x844 and 430x932 even though live viewport,
 shell, and canvas measurements were exact; the QA README records that caveat.
 The worktree remains heavily dirty from the broader Claude/user pass, so no
 commit or push has been made yet.
+
+## 2026-08-03 — React + Phaser frontend vNext vertical slice
+
+**Scope and locked contracts.** Added an isolated `frontend-vnext/` application
+without changing the legacy Phaser client, Python Battle v2, Socket.IO events,
+kits, balance, or production infrastructure. The slice preserves 3v3 ordered
+actions, T/J/S/B plus Wild presentation, viewer-safe legal targets, and a clear
+authority boundary. The current user request explicitly makes combat
+landscape-first for this new slice, superseding the earlier portrait combat
+direction only inside `frontend-vnext/`.
+
+**Output.** Built the requested title, Yuji profile proof, six-character team
+selection, matchup, React-over-Phaser combat planning, target selection, queue
+review/reordering/Wild payment, deterministic three-turn resolution, results,
+and rematch flow. React owns semantic application UI; Phaser owns the arena,
+rain, flash, and camera impact. `mockAuthority.ts` is the isolated temporary
+source of authoritative snapshots until the live adapter is connected. Local
+instructions and 1440x900, 1280x720, and 844x390 captures are included.
+
+**Verification.** `npm run build` passed. Three focused Vitest checks cover
+keyboard entry, team replacement/matchup flow, authoritative target/queue
+construction, Wild payment, ordering, and resolution. Live browser QA covered
+the complete title-to-rematch flow at desktop and mobile-landscape sizes; the
+console reported zero warnings or errors. The final mobile proof shows Yuji
+selected, Divergent Fist selected, cyan legal targets, Orders Open, energy, and
+the queued action together.
+
+**Remaining / delivery.** The existing versioned Socket.IO adapter, reconnect,
+viewer-private live state, and authoritative event playback are intentionally
+deferred; the mock boundary is labeled in-product and in the README. Phaser's
+lazy-loaded engine chunk remains about 1.2 MB before gzip. Existing generated
+character art remains temporary and requires rights review. The broader dirty
+worktree was preserved; no commit or push was made.
+
+## 2026-08-03 — Frontend vNext audit release archive
+
+**Output.** Created
+`artifacts/releases/FantasyDraft-frontend-vnext-audit-20260803-040840.zip`
+containing the frontend source, lockfile, production build, temporary runtime
+assets, local instructions, focused tests, and all three required QA captures.
+
+**Verification.** Rebuilt the production bundle and reran the three focused
+Vitest checks successfully before packaging. The ZIP opened successfully with
+56 entries and 6,138,557 uncompressed bytes. Required source, build, lockfile,
+and QA entries were present. No `node_modules`, Git metadata, caches, coverage,
+or logs were included. ZIP size is 4,971,289 bytes; SHA-256 is
+`C759FAD8923F8E4D351C298E52F703FE50AD583EEA318162202A2E61A3929439`.
+
+**Remaining / delivery.** This is an audit artifact, not a live-server release:
+the mocked-authority boundary and temporary art caveats remain unchanged. The
+archive was not committed or pushed.
+
+## 2026-08-03 — Phaser battlefield staging prototype
+
+**Output.** Rebuilt only `frontend-vnext` combat. Phaser now owns six spatial
+fighter entities, idle/selection/target states, compact world-space HP/status,
+camera framing, Yuji's advance, Maki's reactions, separate 20-damage physical
+and 10-damage delayed impacts, damage numbers, and formation return. React now
+owns contextual technique controls, explicit target/queue confirmation,
+semantic status, keyboard controls, and the reduced-motion toggle. The profile,
+team selection, route flow, Python engine, and kit balance were not changed.
+
+**Verification.** `npm run build` passed. Five focused Vitest checks passed,
+covering the existing slice plus Yuji/Divergent Fist/Maki targeting, compact
+queue, resolution start/completion, 20+10 damage, planning return, keyboard
+flow, and reduced motion. Live Phaser browser QA passed at 1440x900, 1280x720,
+and 844x390; seven required captures plus five sequence frames are stored in
+`frontend-vnext/artifacts/battlefield-qa`. The fresh mobile-resolution run had
+no browser warnings or errors.
+
+**Remaining / delivery.** Existing portrait illustrations remain temporary
+layered battle art, not production sprite sheets or transparent full-body art.
+The mocked-authority adapter remains intentionally labeled. Phaser's lazy chunk
+still triggers Vite's size warning. The unrelated dirty worktree was preserved;
+no commit or push was made.
+
+**Audit archive.** Created
+`artifacts/releases/FantasyDraft-frontend-vnext-battlefield-audit-20260803-114934.zip`.
+The archive contains 61 entries and 7,880,651 uncompressed bytes; ZIP size is
+6,493,335 bytes and SHA-256 is
+`2F1040E74DF2A019EB9DB38F17368CA6095609CA19D89DB89811AB3B302AA26B`.
+Source, production build, all required evidence, and canonical context were
+confirmed present; dependencies, Git metadata, caches, and logs were excluded.
+
+## 2026-08-03 — Isolated Divergent Fist choreography laboratory
+
+**Scope and locked contracts.** Added only an isolated
+`/prototype/divergent-fist` route under `frontend-vnext`. The existing combat
+route, `App.tsx`, `Battlefield.tsx`, mocked authority, Python Battle v2,
+Socket.IO contracts, character balance, progression, and other screens remain
+unchanged. Phaser owns the lab battlefield and choreography; React owns the
+development controls and accessibility announcements.
+
+**Output.** Added a reusable Phaser `FighterEntity`, a deterministic 16-beat
+director, explicit timing/damage configuration, Figma-blocked desktop/mobile
+formations, world-space targeting, compact mock queue, separate physical and
+delayed impacts, two Maki reactions, health settling, formation return,
+pause/step/replay/speed/reduced-motion/debug controls, and an asset registry.
+Temporary SVG silhouettes/effects are deliberately labeled placeholders. The
+artist-facing asset manifest records production filenames, dimensions,
+anchors, facing, layers, safe areas, mirroring, breakpoint use, and status.
+
+**Verification.** `npm run build` passed. Four Vitest files with nine tests
+passed, including deterministic beat order, 20+10 damage separation, pause,
+manual step, reduced motion, reset/replay, and keyboard-only
+selection→target→queue→resolve. Live Phaser QA passed at 1440x900, 1280x720,
+and 844x390 with no browser warnings or errors. The nine requested state
+captures plus one extra breakpoint capture are stored in
+`frontend-vnext/artifacts/divergent-fist-lab`. Manual Step now holds impact VFX
+for inspection while automatic Replay retains animated fades.
+
+**Remaining / delivery.** Final character, environment, icon, VFX, texture,
+and typography production is intentionally not attempted. The lab is not the
+final combat implementation and is not connected to live battle state. The
+broader dirty worktree was preserved; no commit or push was made.
+
+**Audit archive.** Created
+`artifacts/releases/FantasyDraft-divergent-fist-lab-audit-20260803-125151.zip`.
+The archive contains 117 entries, is 5,325,937 bytes, and has SHA-256
+`44107D178C32317F48C031E109F628E3948245754819F97ABD448FDDA628559C`.
+Source, production build, asset contract/placeholders, screenshots, and project
+context were confirmed present; dependencies, Git metadata, caches, and logs
+were excluded.
+
+## 2026-08-03 — Divergent Fist lab v2 audit pass
+
+**Scope and locked contracts.** Refined only the existing isolated
+`/prototype/divergent-fist` route. Python Battle v2, Socket.IO, the maintained
+combat route, balance, fighters, and skills were not changed. The sequence
+remains a mock-authority visual choreography lab with fixed 20 physical + 10
+delayed damage and final Maki health 70.
+
+**Output.** Replaced reused/poster-shaped blocking art with transparent,
+pose-specific Yuji and Maki SVGs and separately layered environment/VFX/UI
+placeholders. Expanded the deterministic director to the required 21 beats,
+added explicit confirmation/queue/pause/resume/previous/next/jump controls,
+independent formation/fighter/effect debug overlays, a curved Yuji-to-Maki
+intent path, damage-lag HP treatment, distinct physical/compression/delayed
+states, explicit desktop/mobile formations, and versioned lab asset URLs to
+prevent stale rejected effects from surviving browser caches. The asset
+manifest and replacement backlog cover all 41 runtime slots.
+
+**Verification.** Six Vitest files with 12 tests passed. TypeScript and the
+Vite production build passed; the existing Phaser chunk-size warning remains.
+All 43 lab SVGs passed strict structural/accessibility inspection and
+`git diff --check` passed. Live browser QA captured eight required states at
+exact `1440×900`, `1280×720`, and `844×390` dimensions (24 images), plus a
+sequence strip, reduced-motion strip, three reduced-motion source frames, and
+a battlefield-only debug-anchor proof under
+`frontend-vnext/artifacts/divergent-fist-lab-v2`.
+
+**Remaining / delivery.** All visual assets remain clearly marked temporary;
+final art, typography, licensing/provenance review, and visual approval are
+still required. Phaser's lazy chunk remains approximately 1.2 MB before gzip.
+The broader dirty worktree was preserved; no commit or push was made. A fresh
+audit archive is delivered separately in `artifacts/releases`.
+
+## 2026-08-03 — Divergent Fist technical closure and artist handoff
+
+**Scope and locked contracts.** Closed only the isolated
+`/prototype/divergent-fist` laboratory. The Figma-approved composition,
+formation, choreography, 20 physical + 10 delayed damage, 21-beat timing,
+Python Battle v2, Socket.IO, maintained combat route, kits, and balance were
+not changed. No final art was generated.
+
+**Output.** Wired the full nine-layer environment and documented render depths;
+registered six distinct Yuji poses, seven distinct Maki poses, two fighter
+shadows, one support slot, all 12 effect slots, and all 10 shared UI slots.
+Fighter health visuals now inherit the fighter container. Added development
+missing-pose failures, deterministic beat snapshots, readable reduced-motion
+impacts, complete independent/all-debug controls, live pose/health/camera and
+previous/next status, exact viewport presets, clean-frame export, artist review
+mode, a focused manifest audit, and the final Artist Delivery Checklist. Seven
+superseded unreferenced SVGs were removed so disk and manifest agree.
+
+**Verification.** Eight Vitest files with 18 tests passed. The focused manifest
+audit passed all 47 registered assets. TypeScript and the Vite production build
+passed; the existing Phaser chunk-size warning remains. All 46 final SVG files
+passed strict structural inspection (the one shadow file intentionally serves
+two slots). Live browser QA produced 30 deterministic normal frames, six
+reduced-motion frames, full/focused debug captures, artist-review evidence, and
+a 10-state strip. All 36 source frames passed exact-size and painted-content
+checks at 1440x900, 1280x720, and 844x390.
+
+**Remaining / delivery.** Engineering stops here as requested. All 47 registry
+entries remain explicitly marked placeholder; human art production,
+rights/provenance review, and visual approval are the next phase. The broader
+dirty worktree was preserved; no commit or push was made. The closure report is
+in `frontend-vnext/artifacts/divergent-fist-closure/audit-report.md`; a fresh
+audit ZIP is delivered separately in `artifacts/releases`.
+
+**Audit archive.** Created
+`artifacts/releases/FantasyDraft-divergent-fist-closure-audit-20260803-154449.zip`.
+The archive contains 251 entries, is 8,006,704 bytes, and has SHA-256
+`6914BC06A9AD8513CF2FF410B773048347EF7CC96EA286B29D8E9A4C46464498`.
+Source, production build, exact manifest/checklist, canonical context, and all
+closure evidence were confirmed present; dependencies, Git metadata, caches,
+logs, and older unrelated captures were excluded.
+
+## 2026-08-03 — Divergent Fist engineering freeze and production-art handoff
+
+**Scope and locked contracts.** Stabilized only the isolated
+`/prototype/divergent-fist` laboratory. The approved Figma composition,
+formation, targeting, 21-beat choreography, 20 physical + 10 delayed damage,
+fighter poses, layer order, and mobile framing were unchanged. No production
+art was generated and the live Battle v2 client was not integrated.
+
+**Output.** Synchronized the camera with playback speed and pause/resume,
+replaced camera FX with deterministic tweened framing/shake, and completed
+settled camera snapshots for every manual beat, reset, and replay. Added a
+focused camera/playback contract test, a JSON-only production-ID switch, and a
+one-command production-art audit. Created the artist handoff with the exact
+47-slot manifest, replacement guide, current NOT READY audit, Figma references,
+30 exact clean captures, three exact debug captures, two review strips, and
+byte-identical live pause evidence.
+
+**Verification.** Nine Vitest files with 29 tests passed. The focused 47-slot
+manifest audit passed. TypeScript and the Vite production build passed; the
+existing Phaser chunk-size warning remains. Live QA confirmed two paused frames
+captured 700 ms apart were byte-identical, and a 2x replay completed at
+`planning-restored` with the camera at wide 1.00x. The production-art audit
+correctly exits non-zero with 47 missing/unregistered production files, zero
+warnings, and 47 placeholder slots.
+
+**Remaining / delivery.** Engineering is frozen pending a human-produced,
+rights-cleared art drop. Artists should follow
+`frontend-vnext/art-handoff/divergent-fist/README.md`, copy the exact filenames,
+update `productionAssetIds.json`, and rerun `npm run audit:divergent-fist-art`.
+The wider dirty worktree was preserved. Freeze commit:
+`TO_BE_RECORDED_AFTER_COMMIT`.

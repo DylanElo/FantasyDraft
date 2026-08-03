@@ -14,7 +14,7 @@ engineering-frozen pending production art.
 - Further engineering requires a concrete asset-driven need found during import,
   audit, or exact-viewport QA.
 
-Freeze baseline commit: `TO_BE_RECORDED_AFTER_COMMIT`
+Freeze baseline commit: `fbf9cab6f4d3fddb41f60b9007f8e9f1dd18cfb9`
 
 This freeze does not claim the presentation is visually finished. Every
 current runtime asset remains a placeholder until a validated, approved, and

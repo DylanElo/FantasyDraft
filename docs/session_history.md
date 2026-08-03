@@ -4540,5 +4540,5 @@ warnings, and 47 placeholder slots.
 rights-cleared art drop. Artists should follow
 `frontend-vnext/art-handoff/divergent-fist/README.md`, copy the exact filenames,
 update `productionAssetIds.json`, and rerun `npm run audit:divergent-fist-art`.
-The wider dirty worktree was preserved. Freeze commit:
-`TO_BE_RECORDED_AFTER_COMMIT`.
+The wider dirty worktree was preserved. Freeze baseline commit:
+`fbf9cab6f4d3fddb41f60b9007f8e9f1dd18cfb9`.

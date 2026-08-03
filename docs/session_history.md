@@ -4551,3 +4551,14 @@ The archive contains 229 entries and 9,196,460 uncompressed bytes; ZIP size is
 Frozen source, production build, artist handoff, exact QA evidence, and
 canonical project context were confirmed present. Dependencies, Git metadata,
 caches, logs, nested archives, and unrelated artifacts were excluded.
+
+**Corrected vNext freeze package.** Created the distinctly named
+`artifacts/releases/FantasyDraft-vnext-divergent-fist-freeze-fbf9cab-20260803-175953.zip`
+after the stale closure archive was reported as the review upload. The new ZIP
+is 7,543,808 bytes with SHA-256
+`A3F62A3AB0ABE239EF9D05B14360F0C6F1CE0DC8DA2E2212A86FC0C85A984801`.
+An inside-the-archive audit confirmed 229 entries, 9,196,969 uncompressed
+bytes, all 12 required freeze deliverables, 30 clean captures, three debug
+captures, two pause-evidence frames, two reference strips, the frozen baseline
+SHA, the art-drop command, and pause-safe camera methods. Forbidden dependency,
+Git, cache, log, nested-archive, and unrelated-artifact entries were zero.

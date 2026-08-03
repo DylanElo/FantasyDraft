@@ -4542,3 +4542,12 @@ rights-cleared art drop. Artists should follow
 update `productionAssetIds.json`, and rerun `npm run audit:divergent-fist-art`.
 The wider dirty worktree was preserved. Freeze baseline commit:
 `fbf9cab6f4d3fddb41f60b9007f8e9f1dd18cfb9`.
+
+**Audit archive.** Created
+`artifacts/releases/FantasyDraft-divergent-fist-frozen-audit-20260803-174805.zip`.
+The archive contains 229 entries and 9,196,460 uncompressed bytes; ZIP size is
+7,543,661 bytes and SHA-256 is
+`D702186762A015057C3AC993FCAECDE6E9841F8350EBF4F600039DB0902978F4`.
+Frozen source, production build, artist handoff, exact QA evidence, and
+canonical project context were confirmed present. Dependencies, Git metadata,
+caches, logs, nested archives, and unrelated artifacts were excluded.

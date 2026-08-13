@@ -1,12 +1,12 @@
-import { BootScene } from './boot-scene.js?v=57';
-import { LobbyScene } from './lobby-scene.js?v=57';
-import { DraftScene } from './draft-scene.js?v=57';
-import { FirstCreationScene } from './first-creation-scene.js?v=57';
-import { MissionMapScene } from './mission-map-scene.js?v=57';
-import { MatchupScene } from './matchup-scene.js?v=57';
-import { CombatScene } from './combat-scene.js?v=57';
-import { ResultScene } from './result-scene.js?v=57';
-import { RecordsScene } from './records-scene.js?v=57';
+import { BootScene } from './boot-scene.js?v=58';
+import { LobbyScene } from './lobby-scene.js?v=58';
+import { DraftScene } from './draft-scene.js?v=58';
+import { FirstCreationScene } from './first-creation-scene.js?v=58';
+import { MissionMapScene } from './mission-map-scene.js?v=58';
+import { MatchupScene } from './matchup-scene.js?v=58';
+import { CombatScene } from './combat-scene.js?v=58';
+import { ResultScene } from './result-scene.js?v=58';
+import { RecordsScene } from './records-scene.js?v=58';
 
 export const SCENE_LIST = [
   BootScene,

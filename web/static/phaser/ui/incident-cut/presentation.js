@@ -1,7 +1,7 @@
-import { ENERGY_COLORS, ENERGY_LABELS, TOKEN_TYPE, TYPE_SCALE } from '../../core/runtime-config.js?v=57';
-import { stageEnvironmentTexture } from '../../core/asset-registry.js?v=57';
-import { safeText } from '../../core/text.js?v=57';
-import { INCIDENT } from './tokens.js?v=57';
+import { ENERGY_COLORS, ENERGY_LABELS, TOKEN_TYPE, TYPE_SCALE } from '../../core/runtime-config.js?v=58';
+import { stageEnvironmentTexture } from '../../core/asset-registry.js?v=58';
+import { safeText } from '../../core/text.js?v=58';
+import { INCIDENT } from './tokens.js?v=58';
 
 export function cutPoints(x, y, w, h, cut = 8, reverse = false) {
   const c = Math.max(0, Math.min(cut, w / 4, h / 3));

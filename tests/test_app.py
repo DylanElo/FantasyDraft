@@ -52,8 +52,8 @@ def test_index_exposes_battle_v2_entry_when_enabled(monkeypatch):
     assert 'v2-enemy-team' not in html
     assert 'v2-my-team' not in html
     assert 'vendor/phaser.min.js?v=3.90.0' in html
-    assert 'phaser-design-tokens.js?v=57' in html
-    assert 'phaser-shell.css?v=57' in html
+    assert 'phaser-design-tokens.js?v=58' in html
+    assert 'phaser-shell.css?v=58' in html
     assert 'phaser-battle.js' not in html
     assert 'app.js' not in html
     assert 'stitch-tokens.css' not in html
@@ -97,7 +97,7 @@ def test_battle_v2_public_surface_uses_production_copy(monkeypatch):
     socket_client_js = Path(web_app.app.static_folder, "phaser", "network", "socket-client.js").read_text(encoding="utf-8")
     design_tokens_js = Path(web_app.app.static_folder, "phaser-design-tokens.js").read_text(encoding="utf-8")
 
-    assert "from './boot-scene.js?v=57';" in scene_registry_js
+    assert "from './boot-scene.js?v=58';" in scene_registry_js
     assert "export const SCENE_LIST" in scene_registry_js
     assert "window.addEventListener('resize', refreshSize" in phaser_entry_js
     assert "game.scale.resize(width, height)" in phaser_entry_js
@@ -127,7 +127,7 @@ def test_battle_v2_public_surface_uses_production_copy(monkeypatch):
     assert "export class DraftScene" in draft_scene_js
     assert "extends DraftRosterScene" in draft_scene_js
     assert "export class MatchupScene" in matchup_scene_js
-    assert "from './matchup-scene.js?v=57';" in scene_registry_js
+    assert "from './matchup-scene.js?v=58';" in scene_registry_js
     assert "export class FirstCreationScene" in first_creation_scene_js
     assert "export class MissionMapScene" in mission_map_scene_js
     assert "export class CombatScene" in combat_scene_js

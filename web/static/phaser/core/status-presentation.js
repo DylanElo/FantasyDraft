@@ -1,5 +1,5 @@
-import { CULLING_COLORS } from './runtime-config.js?v=57';
-import { safeText, titleize } from './text.js?v=57';
+import { CULLING_COLORS } from './runtime-config.js?v=58';
+import { safeText, titleize } from './text.js?v=58';
 
 export function activeStatuses(character) {
   return [...((character && character.statuses) || [])]

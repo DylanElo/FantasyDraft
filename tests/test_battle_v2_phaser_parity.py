@@ -639,6 +639,74 @@ console.log(JSON.stringify({ afterOlderSameMatch, afterNewMatch }));
     }
 
 
+def test_phaser_preserves_and_plays_complete_combined_player_and_cpu_event_batch():
+    script = r"""
+globalThis.JJK_BOOTSTRAP = { battleV2Enabled: true, firstCreation: { roster: {} } };
+globalThis.JJK_MOBILE_TOKENS = {};
+globalThis.Phaser = { Scene: class {} };
+globalThis.window = { JJKPhaserShell: null, setTimeout: () => {}, setInterval: () => {} };
+globalThis.document = { getElementById: () => null };
+globalThis.localStorage = { getItem: () => null, setItem: () => {} };
+const { GameStore } = await import('./web/static/phaser/store/game-store.js');
+const { CombatPlaybackScene } = await import('./web/static/phaser/fx/combat-playback-scene.js');
+
+const playerEvents = [
+  { id: 'yuji-skill', type: 'skill_resolved' },
+  { id: 'yuji-physical', type: 'damage', amount: 20 },
+  { id: 'yuji-delayed', type: 'damage', amount: 10 },
+];
+const cpuEvents = Array.from({ length: 7 }, (_, index) => ({
+  id: `cpu-${index}`, type: index === 0 ? 'skill_resolved' : 'status_applied',
+}));
+const eventLog = [...playerEvents, ...cpuEvents];
+const state = {
+  match_id: 'combined-resolution', state_revision: 1, phase: 'planning', turn_player_id: 'p1',
+  event_log: [], pending_actions: {},
+  players: { p1: { id: 'p1', queue_confirmed: false, team: [] }, p2: { id: 'p2', team: [] } },
+};
+const store = Object.create(GameStore.prototype);
+Object.assign(store, {
+  state, playerId: 'p1', actions: [], actionWildPays: {}, queueReviewOpen: false,
+  queueSubmitting: false, pendingCommand: null, ignoreBattleUpdates: false,
+  eventCursor: 0, playbackEvents: [], recentEvents: [], disconnectDeadline: null,
+  lobbyStatus: null, matchLaunchPending: false, selectedCasterSlot: null,
+  selectedSkillId: null, firstCreationAccount: null,
+  mineId() { return 'p1'; },
+  me() { return this.state.players.p1; },
+  ensureWildcardPayments() {}, ensureSelectedCaster() {}, rememberResult() {},
+  changeScene() {}, notify() {},
+});
+store.receiveBattleState({ ...state, state_revision: 2, event_log: eventLog });
+
+const scheduled = [];
+const scene = new CombatPlaybackScene();
+scene.store = store;
+scene.time = { delayedCall(_delay, callback) { scheduled.push(callback); } };
+scene.playbackReducedMotion = () => false;
+scene.playCinematicCurtain = () => {};
+scene.playEvent = (event) => scheduled.push(event.id);
+scene.playEvents({ x: 0, y: 0, width: 390, height: 844 });
+for (const callback of scheduled.filter((entry) => typeof entry === 'function')) callback();
+
+console.log(JSON.stringify({
+  retained: eventLog.map((event) => event.id),
+  played: scheduled.filter((entry) => typeof entry === 'string'),
+}));
+"""
+    result = subprocess.run(
+        ["node", "--experimental-default-type=module", "-"],
+        input=script,
+        text=True,
+        capture_output=True,
+        cwd=ROOT,
+        check=True,
+    )
+    probe = json.loads(result.stdout)
+
+    assert probe["played"] == probe["retained"]
+    assert probe["played"][:3] == ["yuji-skill", "yuji-physical", "yuji-delayed"]
+
+
 def test_phaser_rapid_add_action_waits_for_authoritative_revision_without_mutating_queue():
     """A second optimistic plan edit cannot overtake the first submit_plan."""
 

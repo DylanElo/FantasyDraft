@@ -36,7 +36,7 @@ export class CombatPlaybackScene extends BaseScene {
         ? events.filter((event) => safeText(event.type) !== 'turn_skipped')
         : events;
       if (hasQueuedResolution) this.playCinematicCurtain(frame);
-      playbackEvents.slice(0, 7).forEach((event, index) => {
+      playbackEvents.forEach((event, index) => {
         if (safeText(event.type) === 'skill_resolved') actionNumber += 1;
         const visibleActionNumber = actionNumber || null;
         this.time.delayedCall(baseDelay + index * eventSpacing, () => this.playEvent(event, frame, visibleActionNumber));

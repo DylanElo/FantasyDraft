@@ -4618,3 +4618,24 @@ left Maki at 70 HP with Soul Bruise present, and produced no later
 **Remaining.** The provisional v58 browser captures were discarded because
 they came from the superseded rule. Fresh release evidence must be captured
 from the corrected commit after this backend change passes review.
+
+## 2026-08-14 — Preserve combined player and CPU resolution playback
+
+**Done.** Removed both client-side event caps from the Phaser authority path.
+`GameStore` now appends every unseen server event to the pending playback
+queue, and `CombatPlaybackScene` schedules the complete queue. This preserves
+Yuji's authoritative physical 20 and delayed 10 events when the same server
+update also contains the CPU reply.
+
+**Verified.** A focused Node-backed regression sends one combined ten-event
+batch and proves all events play in order, beginning with Yuji's skill, 20,
+and 10. JavaScript syntax checks and the focused Phaser parity/application
+suite passed; the full repository suite passed 690 tests with 2 optional
+skips; Python compilation and `git diff --check` passed. Fresh 430x932 live
+browser frames show `-20` on Maki, then the separate `-10`, then Soul Bruise,
+before the CPU reply playback.
+
+**Remaining.** Review and merge are pending. This correction changes no
+authority, damage, timing, layout, art, or CPU behavior; the combined server
+snapshot still applies final HP immediately while its viewer-safe events play
+in order.

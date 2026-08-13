@@ -870,7 +870,7 @@ export class GameStore {
       const nextEvents = log.slice(this.eventCursor);
       this.eventCursor = log.length;
       if (nextEvents.length) {
-        this.playbackEvents = nextEvents.slice(-6);
+        this.playbackEvents.push(...nextEvents);
         this.recentEvents = log.slice(-30).reverse();
         const visibleAction = nextEvents.slice().reverse().find((event) => (
           safeText(event && event.type) === 'skill_resolved'

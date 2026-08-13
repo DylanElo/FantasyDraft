@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect x="22" y="22" width="468" height="468" rx="42" fill="#101b36" stroke="#d8bf68" stroke-width="24"/>
+  <path d="m96 318 172-166 60 62 88-38-30 104 57 70-126 16-62 76-37-108Z" fill="#e32620" stroke="#f2e8d5" stroke-width="20"/>
+  <text x="256" y="84" fill="#f2e8d5" font-family="Arial" font-size="36" font-weight="700" text-anchor="middle">DF PLACEHOLDER</text>
+</svg>

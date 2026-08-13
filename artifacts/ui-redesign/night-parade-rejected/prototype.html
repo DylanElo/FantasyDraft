@@ -1,0 +1,952 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Night Parade — JJK Arena</title>
+<style>
+  :root{
+    --void:#070A14; --veil:#121A30; --veil2:#18213C; --line:#26314F;
+    --bone:#EDE8DB; --dim:#8B93AC;
+    --cyan:#45E0EA; --crimson:#FF4438; --gold:#E4C475; --violet:#9B7BD6;
+    /* energy colours are gameplay law — taken from JJK_MOBILE_TOKENS unchanged */
+    --tE:#4FB06D; --jE:#3D6BFF; --sE:#EDE9D5; --bE:#D43B3B;
+    --disp:"Bahnschrift SemiBold Condensed","Bahnschrift","Arial Narrow",Arial,sans-serif;
+    --mono:"Cascadia Code",Consolas,monospace;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+  html,body{height:100%;overflow:hidden}
+  body{margin:0;background:#03050B;font-family:"Segoe UI",system-ui,sans-serif;color:var(--bone);display:flex;justify-content:center}
+  #stage{position:relative;width:100%;max-width:440px;height:100dvh;overflow:hidden;background:var(--void)}
+  #arena{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:manipulation}
+
+  .lay{position:absolute;inset:0;display:none;flex-direction:column;
+       padding:max(12px,env(safe-area-inset-top)) 15px max(12px,env(safe-area-inset-bottom))}
+  .lay.on{display:flex}
+
+  h1,.dh{font-family:var(--disp);text-transform:uppercase;letter-spacing:.02em;margin:0;font-weight:600}
+  .sub{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+  button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer;text-align:left}
+  .scroll{flex:1;overflow-y:auto;overscroll-behavior:contain}
+  .scroll::-webkit-scrollbar{width:0}
+
+  .cta{display:block;width:100%;padding:15px 0;border-radius:3px;text-align:center;flex:none;
+       font-family:var(--disp);text-transform:uppercase;letter-spacing:.07em;font-size:17px;
+       background:var(--cyan);color:#04262A;transition:transform .08s}
+  .cta:active{transform:scale(.97)}
+  .cta.gold{background:var(--gold);color:#1E1503}
+  .cta.ghost{background:rgba(10,14,26,.66);color:var(--dim);border:1px solid var(--line);backdrop-filter:blur(4px)}
+  .cta.sm{padding:12px 0;font-size:14px;min-height:46px}
+  .cta:disabled{filter:grayscale(.85) brightness(.6);pointer-events:none}
+
+  .topbar{display:flex;align-items:center;gap:10px;flex:none;margin-bottom:10px}
+  /* 44px floor on every control — locked mobile constitution minimum */
+  .back{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--dim);
+        border:1px solid var(--line);border-radius:22px;padding:0 15px;min-height:44px;
+        display:flex;align-items:center;background:rgba(10,14,26,.6);flex:none}
+  .card{background:rgba(18,26,48,.92);border:1px solid var(--line);border-radius:4px;padding:11px 12px;backdrop-filter:blur(6px)}
+  .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .nm{font-family:var(--disp);text-transform:uppercase;font-size:15.5px;letter-spacing:.03em}
+  .rl{font-size:11px;color:var(--dim);margin-top:2px}
+  .tag{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+       padding:3px 7px;border-radius:2px;background:var(--veil2);color:var(--dim);flex:none}
+  .tag.cy{color:var(--cyan);background:rgba(69,224,234,.12)}
+  .tag.gd{color:var(--gold);background:rgba(228,196,117,.12)}
+  .tag.rd{color:var(--crimson);background:rgba(255,68,56,.12)}
+
+  /* title */
+  #vTitle{justify-content:flex-end}
+  #vTitle .logo{font-size:min(19vw,78px);line-height:.9}
+  #vTitle .logo .thin{color:var(--dim);font-weight:300}
+  #vTitle p{color:var(--dim);font-size:13.5px;max-width:33ch;margin:10px 0 18px;text-shadow:0 2px 12px #000}
+
+  /* home */
+  #vHome{justify-content:space-between}
+  #homeTop .sub{text-shadow:0 2px 10px #000}
+  #trioStrip{display:flex;gap:7px;margin:9px 0}
+  .slot{flex:1;border:1px solid var(--line);border-radius:4px;padding:8px 6px;text-align:center;
+        background:rgba(10,14,26,.6);backdrop-filter:blur(4px)}
+  .slot .s1{font-family:var(--disp);font-size:12px;text-transform:uppercase;letter-spacing:.02em;
+            white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .slot .s2{font-size:9.5px;color:var(--dim);margin-top:1px}
+  .slot.empty .s1{color:var(--dim)}
+  .homeRail{display:flex;flex-direction:column;gap:7px;margin-bottom:9px}
+
+  /* roster */
+  .filters{display:flex;gap:6px;flex:none;margin-bottom:9px}
+  .fil{flex:1;text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:.08em;
+       min-height:44px;display:flex;align-items:center;justify-content:center;
+       border:1px solid var(--line);border-radius:3px;color:var(--dim);background:rgba(10,14,26,.6)}
+  .fil.on{background:var(--cyan);color:#04262A;border-color:var(--cyan)}
+  .rrow{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+  .rrow .pick{flex:1;display:flex;justify-content:space-between;align-items:center;gap:8px;
+    background:rgba(18,26,48,.92);border:1px solid var(--line);border-radius:4px;padding:10px 11px}
+  .rrow .pick.on{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
+  .info{flex:none;width:44px;height:44px;border:1px solid var(--line);border-radius:4px;
+        display:flex;align-items:center;justify-content:center;color:var(--cyan);
+        font-family:var(--mono);font-size:13px;background:rgba(18,26,48,.9)}
+
+  /* study */
+  #vStudy{background:rgba(5,8,16,.93);backdrop-filter:blur(6px)}
+  .skillBlk{border:1px solid var(--line);border-radius:4px;padding:11px 12px;margin-bottom:8px;background:rgba(18,26,48,.7)}
+  .skillBlk .sh{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .skillBlk .snm{font-family:var(--disp);text-transform:uppercase;font-size:14px;letter-spacing:.03em}
+  .skillBlk .sdesc{font-size:12px;color:var(--bone);opacity:.85;margin-top:6px;line-height:1.45}
+  .meta{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+
+  /* missions */
+  .mnode{display:flex;align-items:center;gap:11px;margin-bottom:8px;min-height:48px}
+  .dot{width:26px;height:26px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;
+       font-family:var(--mono);font-size:11px;border:1.5px solid var(--line);color:var(--dim);background:var(--void)}
+  .dot.cleared{border-color:var(--tE);color:var(--tE)}
+  .dot.active{border-color:var(--cyan);color:var(--cyan);box-shadow:0 0 12px rgba(69,224,234,.45)}
+  .dot.sealed{opacity:.4}
+  .mbody{flex:1}
+
+  /* matchup */
+  #vMatch{justify-content:space-between;text-align:center}
+  .vs{font-family:var(--disp);font-size:34px;color:var(--crimson);text-shadow:0 0 22px rgba(255,68,56,.5)}
+
+  /* battle */
+  #vBattle{justify-content:space-between;pointer-events:none}
+  #vBattle > *{pointer-events:auto}
+  #top{display:flex;justify-content:space-between;align-items:flex-start;text-shadow:0 2px 10px #000;flex:none}
+  #turnlbl{font-family:var(--disp);font-size:19px;text-transform:uppercase;line-height:1}
+  #phase{font-family:var(--mono);font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--cyan);margin-top:3px}
+  #pool{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;max-width:150px}
+  #bottom{display:flex;flex-direction:column;gap:7px;flex:none}
+  #log{font-family:var(--mono);font-size:10px;color:var(--dim);min-height:15px;text-shadow:0 2px 8px #000}
+  #log b{color:var(--bone)}
+  #trayTtl{display:flex;justify-content:space-between;align-items:baseline}
+  #trayTtl .dh{font-size:14px}
+  .skl{width:100%;display:flex;justify-content:space-between;align-items:center;gap:8px;
+       background:rgba(18,26,48,.92);border:1px solid var(--line);border-radius:3px;padding:8px 11px;backdrop-filter:blur(6px)}
+  .skl+.skl{margin-top:5px}
+  .skl .sn{font-size:12.5px}
+  .skl .sd{font-size:10px;color:var(--dim);margin-top:1px}
+  .skl.legal{border-color:var(--cyan);box-shadow:inset 0 0 0 1px rgba(69,224,234,.3)}
+  .skl.off{opacity:.4;pointer-events:none}
+
+  .ech{width:23px;height:23px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+       font-family:var(--mono);font-size:11.5px;font-weight:700;color:#070A14;flex:none;box-shadow:0 0 10px rgba(0,0,0,.6)}
+  .ech.T{background:var(--tE)} .ech.J{background:var(--jE);color:#fff}
+  .ech.S{background:var(--sE)} .ech.B{background:var(--bE);color:#fff}
+  .ech.X{background:none;border:1.5px dashed var(--dim);color:var(--dim);box-shadow:none}
+  .ech.spent{opacity:.2;filter:grayscale(1)}
+  .ech.sm{width:18px;height:18px;font-size:9.5px}
+  .cost{display:flex;gap:4px;flex:none}
+
+  /* results */
+  #vEnd{justify-content:center;align-items:center;text-align:center;gap:11px;background:rgba(5,8,16,.8);backdrop-filter:blur(4px)}
+  #endWord{font-size:min(17vw,68px);line-height:.95}
+  #endWord.lose{color:#FFB1AA}
+  .rrule{width:58px;height:2px;background:var(--crimson)}
+  #endStats{display:flex;gap:18px;font-family:var(--mono);font-size:11px;color:var(--dim);margin:4px 0 14px}
+  #endStats b{color:var(--bone)}
+  #vEnd .cta{max-width:270px}
+
+  #mute{position:absolute;top:max(12px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);
+        font-family:var(--mono);font-size:9px;letter-spacing:.12em;color:var(--dim);
+        background:rgba(10,14,26,.5);border:1px solid var(--line);border-radius:20px;padding:4px 10px;z-index:9}
+</style>
+
+<div id="stage">
+  <canvas id="arena"></canvas>
+  <button id="mute" onclick="toggleMute()">♪ ON</button>
+
+  <div class="lay on" id="vTitle">
+    <div class="sub">Jujutsu arena · 3v3 tactical</div>
+    <h1 class="logo">Night<br><span class="thin">Parade</span></h1>
+    <p>Shibuya, after dark. Nineteen sorcerers, one incident. Build a trio, spend cursed energy, and exorcise what walks tonight.</p>
+    <button class="cta" onclick="go('home')">Enter</button>
+  </div>
+
+  <div class="lay" id="vHome">
+    <div id="homeTop">
+      <div class="sub" id="homeClock">Shibuya · 23:47</div>
+      <h1 style="font-size:27px;margin-top:3px">Night Parade</h1>
+      <div id="trioStrip"></div>
+    </div>
+    <div>
+      <div class="homeRail">
+        <button class="card row" onclick="go('roster')"><div><div class="nm">First Creation</div><div class="rl" id="rosterSub">Choose your three from 19</div></div><span class="tag cy">19</span></button>
+        <button class="card row" onclick="go('missions')"><div><div class="nm">Incidents</div><div class="rl" id="missionSub">Mission route</div></div><span class="tag gd" id="missionTag">1/6</span></button>
+        <button class="card row" onclick="go('records')"><div><div class="nm">Records</div><div class="rl" id="recordSub">Device history</div></div><span class="tag" id="recordTag">0</span></button>
+      </div>
+      <button class="cta gold" id="deployBtn" onclick="go('matchup')">Deploy</button>
+    </div>
+  </div>
+
+  <div class="lay" id="vRoster">
+    <div class="topbar"><button class="back" onclick="go('home')">← Home</button>
+      <div><div class="sub">First Creation</div><div class="dh" style="font-size:17px" id="rosterCount">0 of 3 staged</div></div></div>
+    <div id="trioStrip2" style="display:flex;gap:7px;margin-bottom:9px;flex:none"></div>
+    <div class="filters" id="filters"></div>
+    <div class="scroll" id="rosterList"></div>
+    <button class="cta gold" id="lockBtn" style="margin-top:9px" onclick="go('home')">Pick 3</button>
+  </div>
+
+  <div class="lay" id="vStudy">
+    <div class="topbar"><button class="back" onclick="closeStudy()">← Back</button>
+      <div><div class="sub" id="studyAff">Tokyo</div><div class="dh" style="font-size:19px" id="studyName">—</div></div></div>
+    <div class="scroll" id="studyBody"></div>
+    <button class="cta sm ghost" style="margin-top:8px" onclick="closeStudy()">Close</button>
+  </div>
+
+  <div class="lay" id="vMissions">
+    <div class="topbar"><button class="back" onclick="go('home')">← Home</button>
+      <div><div class="sub">Incident route</div><div class="dh" style="font-size:17px">Missions</div></div></div>
+    <div class="scroll" id="missionList"></div>
+    <div class="card" id="missionDossier" style="margin-top:9px;flex:none"></div>
+    <button class="cta sm" style="margin-top:8px" onclick="useRecommended()">Use recommended trio</button>
+  </div>
+
+  <div class="lay" id="vMatch">
+    <div class="topbar"><button class="back" onclick="go('home')">← Home</button>
+      <div><div class="sub" id="matchMode">CPU practice</div><div class="dh" style="font-size:17px" id="matchTitle">Matchup</div></div></div>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:8px">
+      <div class="sub">Their side</div>
+      <div id="foeTrio"></div>
+      <div class="vs">VS</div>
+      <div class="sub">Your side</div>
+      <div id="myTrio"></div>
+    </div>
+    <button class="cta" onclick="startBattle()">Enter the incident</button>
+  </div>
+
+  <div class="lay" id="vBattle">
+    <div id="top">
+      <div><div id="turnlbl">Turn 1</div><div id="phase">Planning</div></div>
+      <div id="pool"></div>
+    </div>
+    <div id="bottom">
+      <div id="log"></div>
+      <div id="trayTtl"><div class="dh" id="trayName">&nbsp;</div><div class="sub" id="trayHint"></div></div>
+      <div id="skills"></div>
+      <button class="cta ghost" id="confirmBtn" onclick="confirmTurn()">Pass turn</button>
+    </div>
+  </div>
+
+  <div class="lay" id="vEnd">
+    <div class="sub" id="endSub">Battle over</div>
+    <h1 class="dh" id="endWord">Exorcised</h1>
+    <div class="rrule"></div>
+    <div id="endStats"></div>
+    <button class="cta" onclick="startBattle()">Rematch</button>
+    <button class="cta ghost" style="max-width:270px;margin-top:7px" onclick="go('home')">Return home</button>
+  </div>
+
+  <div class="lay" id="vRecords">
+    <div class="topbar"><button class="back" onclick="go('home')">← Home</button>
+      <div><div class="sub">Device-local · last 12</div><div class="dh" style="font-size:17px">Records</div></div></div>
+    <div class="scroll" id="recordList"></div>
+  </div>
+</div>
+
+<script>
+/* ================= ROSTER — the locked 19 First Creation starters =================
+   Kits here are ILLUSTRATIVE prototype values, not the authoritative Battle v2
+   SkillSpec data. Names, eras and affiliations follow the locked roster. */
+const R=[
+ ["yuji","Yuji Itadori","Brawler · Divergent Fist","tokyo","#FF7A62","spiky",1.02,[
+   ["Divergent Fist",["T"],"dmg",20,"melee","20 damage. The second impact lands a beat after the first."],
+   ["Black Flash",["T","X"],"dmg",35,"flash","35 damage. A distorted hit that warps space on contact."],
+   ["Tough It Out",[],"shield",15,"buff","Gain 15 destructible defense."]]],
+ ["megumi","Megumi Fushiguro","Summoner · Ten Shadows","tokyo","#6E9BFF","shag",1,[
+   ["Divine Dog",["J"],"dmg",18,"beast","18 damage from a shadow shikigami."],
+   ["Nue",["J","X"],"stun",14,"bolt","14 damage and the target is stunned for one turn."],
+   ["Rabbit Escape",["S"],"teamshield",8,"buff","Every living ally gains 8 destructible defense."]]],
+ ["nobara","Nobara Kugisaki","Zoner · Straw Doll","tokyo","#F58CB4","bob",.96,[
+   ["Hairpin",["J"],"dmg",16,"ranged","16 damage. Nails detonate on the struck point."],
+   ["Resonance",["J","B"],"pierce",28,"pierce","28 piercing damage. Ignores destructible defense."],
+   ["Hammer Stance",[],"charge",1,"buff","Gain 1 random core energy."]]],
+ ["maki","Maki Zenin","Weapons · Cursed Tools","tokyo","#6FD79A","pony",1.04,[
+   ["Naginata Sweep",["T"],"dmg",17,"melee","17 damage with the polearm."],
+   ["Playful Cloud",["T","T"],"dmg",32,"heavy","32 damage. Technique-less force, three linked strikes."],
+   ["Read the Field",["S"],"charge",1,"buff","Gain 1 random core energy."]]],
+ ["toge","Toge Inumaki","Controller · Cursed Speech","tokyo","#C9CBD6","collar",.98,[
+   ["Get Twisted",["J"],"dmg",15,"ranged","15 damage. Salmon."],
+   ["Don't Move",["J","S"],"stun",8,"bolt","8 damage and the target is stunned for one turn."],
+   ["Throat Care",[],"heal",12,"heal","Heal an ally 12. Tuna mayo."]]],
+ ["panda","Panda","Bruiser · Cursed Corpse","tokyo","#E8E2D2","bulk",1.22,[
+   ["Palm Strike",["T"],"dmg",18,"melee","18 damage from a mutated cursed corpse."],
+   ["Gorilla Mode",["T","T"],"dmg",30,"heavy","30 damage. Swaps to the gorilla core."],
+   ["Brace",[],"shield",18,"buff","Gain 18 destructible defense."]]],
+ ["yuta","Yuta Okkotsu","Duelist · Rika (JJK 0)","tokyo","#8FE3D0","shag",1.03,[
+   ["Cursed Blade",["T"],"dmg",19,"melee","19 damage with a reinforced blade."],
+   ["Rika's Reach",["J","X"],"dmg",30,"beast","30 damage. Rika strikes on his behalf."],
+   ["Copy",["S"],"charge",1,"buff","Gain 1 random core energy."]]],
+ ["todo","Aoi Todo","Support · Boogie Woogie","kyoto","#E4C475","pomp",1.12,[
+   ["Clap Combo",["T"],"dmg",19,"melee","19 damage set up off a positional switch."],
+   ["Boogie Woogie",["S"],"heal",20,"heal","Swap an ally out of danger. Heal 20."],
+   ["Best Friend",["S","X"],"stun",10,"bolt","10 damage and the target is stunned for one turn."]]],
+ ["kamo","Noritoshi Kamo","Marksman · Blood Manipulation","kyoto","#C0453F","longhair",1.01,[
+   ["Flowing Red Scale",["B"],"dmg",16,"ranged","16 damage from manipulated blood."],
+   ["Piercing Blood",["B","J"],"pierce",27,"pierce","27 piercing damage. Ignores destructible defense."],
+   ["Blood Meld",[],"heal",10,"heal","Heal an ally 10."]]],
+ ["momo","Momo Nishimiya","Skirmisher · Broom Flight","kyoto","#C9A2E8","longhair",.94,[
+   ["Sweep Pass",["J"],"dmg",14,"ranged","14 damage on a flying pass."],
+   ["Windrider",["J","S"],"stun",8,"bolt","8 damage and the target is stunned for one turn."],
+   ["Updraft",["S"],"teamshield",8,"buff","Every living ally gains 8 destructible defense."]]],
+ ["mai","Mai Zenin","Sniper · Construction","kyoto","#D98FA0","longhair",.97,[
+   ["Snap Shot",["T"],"dmg",17,"ranged","17 damage from a conjured revolver."],
+   ["Conjured Round",["T","B"],"pierce",26,"pierce","26 piercing damage. Costs her dearly to construct."],
+   ["Steady",[],"charge",1,"buff","Gain 1 random core energy."]]],
+ ["miwa","Kasumi Miwa","Duelist · New Shadow Style","kyoto","#9EC8E8","pony",.99,[
+   ["Batto Sword",["T"],"dmg",16,"melee","16 damage on a drawn cut."],
+   ["Simple Domain",["S"],"shield",20,"buff","Gain 20 destructible defense inside a small radius."],
+   ["Flash Draw",["T","X"],"dmg",28,"heavy","28 damage. One committed strike."]]],
+ ["mecha","Kokichi Muta","Artillery · Mechamaru","kyoto","#B8B39C","mech",1.08,[
+   ["Rocket Fist",["T"],"dmg",17,"ranged","17 damage from a launched puppet fist."],
+   ["Ultra Cannon",["J","B"],"pierce",30,"pierce","30 piercing damage. Ignores destructible defense."],
+   ["Repair",[],"heal",14,"heal","Heal an ally 14."]]],
+ ["gojo","Satoru Gojo","Ace · Limitless (Young)","special","#7FD9FF","blind",1.05,[
+   ["Blue",["J"],"dmg",20,"ranged","20 damage. Convergence pulls the target in."],
+   ["Red",["J","X"],"dmg",34,"heavy","34 damage. Divergence throws it back out."],
+   ["Infinity",["S"],"shield",22,"buff","Gain 22 destructible defense."]]],
+ ["geto","Suguru Geto","Summoner · Curse Manipulation (Young)","special","#9B7BD6","longtail",1.04,[
+   ["Curse Volley",["J"],"dmg",17,"beast","17 damage from a released curse."],
+   ["Maximum Uzumaki",["J","B"],"pierce",31,"pierce","31 piercing damage. Compresses his stock into one blow."],
+   ["Absorb",["S"],"charge",1,"buff","Gain 1 random core energy."]]],
+ ["shoko","Shoko Ieiri","Medic · Reverse Cursed Technique (Young)","special","#D8C7B0","longhair",.97,[
+   ["Scalpel",["T"],"dmg",12,"melee","12 damage. She would rather not."],
+   ["Reverse Cursed Technique",["S"],"heal",26,"heal","Heal an ally 26."],
+   ["Field Triage",[],"teamshield",8,"buff","Every living ally gains 8 destructible defense."]]],
+ ["utahime","Utahime Iori","Support · Assist Technique (Young)","special","#D96A7A","longhair",.98,[
+   ["Purification",["S"],"dmg",14,"ranged","14 damage through a struck talisman."],
+   ["Assist",["S","X"],"teamshield",12,"buff","Every living ally gains 12 destructible defense."],
+   ["Rally",[],"charge",1,"buff","Gain 1 random core energy."]]],
+ ["meimei","Mei Mei","Controller · Black Bird (Young)","special","#A8AEBD","longhair",1.02,[
+   ["Crow Strike",["J"],"dmg",16,"beast","16 damage from a directed bird."],
+   ["Bird Strike",["J","B"],"pierce",29,"pierce","29 piercing damage. Paid for in advance."],
+   ["Scout",[],"charge",1,"buff","Gain 1 random core energy."]]],
+ ["junpei","Junpei Yoshino","Zoner · Poison Jellyfish","special","#8FBF7A","hood",.96,[
+   ["Jellyfish Sting",["B"],"dmg",15,"ranged","15 damage from a drifting shikigami."],
+   ["Paralysis",["B","S"],"stun",8,"bolt","8 damage and the target is stunned for one turn."],
+   ["Retreat",[],"shield",14,"buff","Gain 14 destructible defense."]]]
+].map(a=>({id:a[0],name:a[1],role:a[2],aff:a[3],rim:a[4],hair:a[5],build:a[6],
+  skills:a[7].map(s=>({n:s[0],cost:s[1],type:s[2],v:s[3],fx:s[4],d:s[5]}))}));
+
+// Some of these characters are known by surname, some by given name; splitting
+// the full name would print "Satoru" and "Suguru".
+const SHORT={yuji:"Yuji",megumi:"Megumi",nobara:"Nobara",maki:"Maki",toge:"Toge",panda:"Panda",
+ yuta:"Yuta",todo:"Todo",kamo:"Kamo",momo:"Momo",mai:"Mai",miwa:"Miwa",mecha:"Mechamaru",
+ gojo:"Gojo",geto:"Geto",shoko:"Shoko",utahime:"Utahime",meimei:"Mei Mei",junpei:"Junpei"};
+const shortOf=id=>SHORT[id]||byId(id).name.split(' ')[0];
+
+const FOES=[
+ {id:"c1",name:"Grade 2 Curse",label:"GRADE 2",rim:"#FF6A5C",horn:1,build:.95,skills:[
+  {n:"Claw",cost:[],type:"dmg",v:14,fx:"melee"},{n:"Rend",cost:[],type:"dmg",v:20,fx:"melee"}]},
+ {id:"c2",name:"Grade 1 Curse",label:"GRADE 1",rim:"#FF4438",horn:2,build:1.12,skills:[
+  {n:"Crush",cost:[],type:"dmg",v:17,fx:"heavy"},{n:"Howl",cost:[],type:"stun",v:8,fx:"bolt"}]},
+ {id:"c3",name:"Special Grade",label:"SPECIAL",rim:"#C24BFF",horn:3,build:1.2,skills:[
+  {n:"Distort",cost:[],type:"pierce",v:16,fx:"pierce"},{n:"Devour",cost:[],type:"dmg",v:22,fx:"heavy"}]}];
+
+const MISSIONS=[
+ {n:"Sendai Alley",d:"A grade 2 nests in a shuttered arcade.",rec:["yuji","megumi","nobara"]},
+ {n:"Line 3 Platform",d:"Commuters are walking past something they cannot see.",rec:["maki","toge","panda"]},
+ {n:"Kyoto Exchange",d:"A sanctioned bout that stops being sanctioned.",rec:["todo","kamo","miwa"]},
+ {n:"Rooftop Veil",d:"A curtain went up over four city blocks.",rec:["gojo","geto","meimei"]},
+ {n:"Ward 9 Clinic",d:"Casualties first. The curse is still inside.",rec:["shoko","utahime","momo"]},
+ {n:"The Night Parade",d:"Everything that has been building, at once.",rec:["yuta","gojo","maki"]}];
+
+const ECOLORS=["T","J","S","B"];
+const AFF={tokyo:"Tokyo",kyoto:"Kyoto",special:"Special"};
+const RM=matchMedia("(prefers-reduced-motion:reduce)").matches;
+
+/* ================= AUDIO ================= */
+let AC=null,muted=false;
+function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}return AC}
+function blip(f,dur,type,vol,slide){
+  if(muted)return;const c=ac();if(!c)return;
+  const o=c.createOscillator(),g2=c.createGain();
+  o.type=type||'square';o.frequency.setValueAtTime(f,c.currentTime);
+  if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(40,slide),c.currentTime+dur);
+  g2.gain.setValueAtTime(0,c.currentTime);
+  g2.gain.linearRampToValueAtTime(vol||.06,c.currentTime+.008);
+  g2.gain.exponentialRampToValueAtTime(.0001,c.currentTime+dur);
+  o.connect(g2);g2.connect(c.destination);o.start();o.stop(c.currentTime+dur+.02);
+}
+function noise(dur,vol,hp){
+  if(muted)return;const c=ac();if(!c)return;
+  const n=Math.floor(c.sampleRate*dur),b=c.createBuffer(1,n,c.sampleRate),d=b.getChannelData(0);
+  for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);
+  const s=c.createBufferSource();s.buffer=b;
+  const f=c.createBiquadFilter();f.type='highpass';f.frequency.value=hp||400;
+  const g2=c.createGain();g2.gain.value=vol||.09;
+  s.connect(f);f.connect(g2);g2.connect(c.destination);s.start();
+}
+const SFX={
+  tap:()=>blip(520,.05,'square',.03), pick:()=>blip(760,.08,'triangle',.05,980),
+  hit:()=>{noise(.16,.11,300);blip(150,.12,'square',.05,60)},
+  heavy:()=>{noise(.3,.15,180);blip(90,.24,'sawtooth',.07,40)},
+  flash:()=>{blip(1400,.07,'square',.06,300);noise(.28,.16,600)},
+  heal:()=>blip(560,.16,'sine',.05,880), buff:()=>blip(340,.14,'triangle',.05,520),
+  bolt:()=>{blip(240,.18,'sawtooth',.05,90);noise(.12,.07,900)},
+  die:()=>{noise(.5,.13,150);blip(180,.5,'sawtooth',.06,30)},
+  win:()=>[523,659,784,1046].forEach((f,i)=>setTimeout(()=>blip(f,.22,'triangle',.06),i*110)),
+  lose:()=>[392,330,262,196].forEach((f,i)=>setTimeout(()=>blip(f,.3,'sawtooth',.05),i*140))
+};
+function toggleMute(){muted=!muted;document.getElementById('mute').textContent=muted?'♪ OFF':'♪ ON'}
+
+/* ================= CANVAS ================= */
+const cv=document.getElementById('arena'),g=cv.getContext('2d');
+let W=0,H=0,DPR=1,city=null;
+let rain=[],parts=[],shake=0,hitstop=0,flashScreen=0,tPrev=0,stageMode='none';
+const var_cyan='#45E0EA';
+function fit(){
+  const r=document.getElementById('stage').getBoundingClientRect();
+  W=r.width;H=r.height;DPR=Math.min(devicePixelRatio||1,2);
+  cv.width=W*DPR;cv.height=H*DPR;g.setTransform(DPR,0,0,DPR,0,0);
+  buildCity();layout();
+}
+addEventListener('resize',fit);
+function buildCity(){
+  const c=document.createElement('canvas');c.width=Math.max(1,W);c.height=Math.max(1,H);const x=c.getContext('2d');
+  let seed=9;const rr=()=>((seed=seed*16807%2147483647)/2147483647);
+  const horizon=H*0.62;
+  for(const L of [{h:.30,col:'#0C1226',y:0,lit:.22},{h:.22,col:'#080D1C',y:14,lit:.34}]){
+    let bx=-20;
+    while(bx<W+20){
+      const bw=18+rr()*44,bh=40+rr()*L.h*H*1.5,by=horizon+L.y-bh;
+      x.fillStyle=L.col;x.fillRect(bx,by,bw,bh);
+      x.fillStyle='rgba(69,224,234,.5)';
+      for(let wy=by+6;wy<horizon+L.y-6;wy+=8)
+        for(let wx=bx+4;wx<bx+bw-4;wx+=7) if(rr()<L.lit)x.fillRect(wx,wy,2,3);
+      bx+=bw+2+rr()*8;
+    }
+  }
+  const neon=['#45E0EA','#FF4438','#C24BFF','#E4C475'];
+  for(let i=0;i<7;i++){
+    const nx=rr()*W,ny=horizon-30-rr()*H*0.34,nh=16+rr()*46,col=neon[Math.floor(rr()*4)];
+    x.save();x.shadowColor=col;x.shadowBlur=14;x.fillStyle=col;x.globalAlpha=.55;
+    x.fillRect(nx,ny,2.5,nh);x.restore();
+  }
+  city=c;
+}
+function layout(){
+  const rowE=H*0.32,rowA=H*0.55;
+  foe.forEach((u,i)=>{u.bx=W*(0.22+i*0.28);u.by=rowE;u.sc=(H/844)*0.80*(u.build||1);u.face=-1});
+  my.forEach((u,i)=>{u.bx=W*(0.22+i*0.28);u.by=rowA;u.sc=(H/844)*0.92*(u.build||1);u.face=1});
+}
+function initRain(){rain=[];for(let i=0;i<70;i++)rain.push({x:Math.random()*W,y:Math.random()*H,l:8+Math.random()*16,s:260+Math.random()*300})}
+
+function figPath(x){
+  x.beginPath();
+  x.moveTo(-10,-43);x.lineTo(-9.4,-1);x.lineTo(-2.4,-1);x.lineTo(-1.8,-43);
+  x.moveTo(1.8,-43);x.lineTo(2.4,-1);x.lineTo(9.4,-1);x.lineTo(10,-43);
+  x.moveTo(-12.4,-74);x.lineTo(12.4,-74);x.lineTo(9.6,-39);x.lineTo(-9.6,-39);
+  x.moveTo(11.4,-73);x.lineTo(17,-49);x.lineTo(12.4,-47.4);x.lineTo(6.8,-71);
+  x.moveTo(-11.4,-73);x.lineTo(-16.4,-50);x.lineTo(-11.8,-48.4);x.lineTo(-6.8,-71);
+  x.moveTo(-3.4,-79);x.lineTo(3.4,-79);x.lineTo(3.4,-71);x.lineTo(-3.4,-71);
+  x.closePath();
+}
+function headPath(x){x.beginPath();x.arc(0,-86,8.8,0,7)}
+function hairPath(x,style,horn){
+  x.beginPath();
+  if(horn){
+    x.moveTo(-9,-90);x.lineTo(-11,-104);x.lineTo(-4,-92);
+    if(horn>1){x.moveTo(9,-90);x.lineTo(11,-104);x.lineTo(4,-92)}
+    if(horn>2){x.moveTo(0,-94);x.lineTo(0,-110);x.lineTo(5,-93)}
+    x.moveTo(-10.2,-86);x.arc(0,-86,10.2,Math.PI,0);return;
+  }
+  switch(style){
+    case 'spiky':
+      for(let i=-3;i<=3;i++){const p=i*3.1;x.moveTo(p-3.2,-91);x.lineTo(p+.4,-102);x.lineTo(p+3.2,-91)}
+      x.moveTo(-10,-88);x.arc(0,-86,10,Math.PI,0);break;
+    case 'shag':
+      for(let i=-3;i<=3;i++){const p=i*3.3;x.moveTo(p-3.4,-89);x.lineTo(p,-100+Math.abs(i)*1.6);x.lineTo(p+3.4,-89)}
+      x.moveTo(-10.4,-86);x.arc(0,-86,10.4,Math.PI,0);
+      x.moveTo(-10.4,-86);x.lineTo(-9.6,-74);x.lineTo(-6,-76);x.lineTo(-6.6,-88);break;
+    case 'bob':
+      x.moveTo(-11,-78);x.lineTo(-11,-90);x.arc(0,-88,11,Math.PI,0);x.lineTo(11,-78);
+      x.lineTo(7,-79);x.lineTo(7.4,-89);x.lineTo(-7.4,-89);x.lineTo(-7,-79);break;
+    case 'pony':
+      x.moveTo(-10,-88);x.arc(0,-86,10,Math.PI,0);
+      x.moveTo(-6,-92);x.lineTo(-17,-84);x.lineTo(-15,-70);x.lineTo(-10,-80);break;
+    case 'pomp':
+      x.moveTo(-10,-88);x.bezierCurveTo(-12,-108,12,-110,10,-88);break;
+    case 'collar':
+      x.moveTo(-10,-88);x.arc(0,-86,10,Math.PI,0);
+      x.moveTo(-11,-78);x.lineTo(-12,-64);x.lineTo(12,-64);x.lineTo(11,-78);break;
+    case 'longhair':
+      x.moveTo(-10.6,-88);x.arc(0,-86,10.6,Math.PI,0);
+      x.moveTo(10.6,-86);x.lineTo(11.4,-58);x.lineTo(6.4,-60);x.lineTo(6,-86);
+      x.moveTo(-10.6,-86);x.lineTo(-11.4,-58);x.lineTo(-6.4,-60);x.lineTo(-6,-86);break;
+    case 'longtail':
+      x.moveTo(-10,-88);x.arc(0,-86,10,Math.PI,0);
+      x.moveTo(-4,-94);x.lineTo(-13,-88);x.lineTo(-12,-56);x.lineTo(-7,-58);x.lineTo(-7,-86);break;
+    case 'blind':
+      for(let i=-3;i<=3;i++){const p=i*3.1;x.moveTo(p-3.2,-91);x.lineTo(p+.2,-101);x.lineTo(p+3.2,-91)}
+      x.moveTo(-10,-88);x.arc(0,-86,10,Math.PI,0);
+      x.moveTo(-10.5,-89);x.lineTo(10.5,-89);x.lineTo(10.5,-83);x.lineTo(-10.5,-83);break;
+    case 'bulk':
+      x.moveTo(-10.6,-88);x.arc(0,-86,10.6,Math.PI,0);
+      x.moveTo(-11,-96);x.arc(-9,-96,4.6,0,7);x.moveTo(13.6,-96);x.arc(9,-96,4.6,0,7);break;
+    case 'mech':
+      x.moveTo(-10,-95);x.lineTo(10,-95);x.lineTo(11,-80);x.lineTo(-11,-80);
+      x.moveTo(-2,-99);x.lineTo(2,-99);x.lineTo(2,-104);x.lineTo(-2,-104);break;
+    case 'hood':
+      x.moveTo(-12,-76);x.lineTo(-11,-92);x.arc(0,-90,11,Math.PI,0);x.lineTo(12,-76);
+      x.lineTo(8,-77);x.lineTo(8,-88);x.lineTo(-8,-88);x.lineTo(-8,-77);break;
+  }
+}
+function drawFighter(u,t,bars){
+  if(u.alpha<=0)return;
+  const bob=RM?0:Math.sin(t/620+u.ph)*1.4;
+  const x=u.bx+(u.ox||0),y=u.by+(u.oy||0)+bob;
+  g.save();g.globalAlpha=u.alpha;
+  g.save();g.translate(x,u.by+1);g.scale(1,.3);g.beginPath();g.arc(0,0,13*u.sc,0,7);
+  g.fillStyle='rgba(0,0,0,.5)';g.fill();g.restore();
+  g.save();g.translate(x,u.by);g.scale(u.face*u.sc,-u.sc*.42);g.globalAlpha=u.alpha*.14;
+  figPath(g);g.fillStyle=u.rim;g.fill();g.restore();
+  g.translate(x,y);g.scale(u.face*u.sc,u.sc);
+  let dark;
+  if(u.hitF>0)dark='#FFFFFF';
+  else{const lg=g.createLinearGradient(0,-104,0,0);
+    lg.addColorStop(0,'#26314F');lg.addColorStop(.5,'#151D34');lg.addColorStop(1,'#090D19');dark=lg;}
+  figPath(g);g.fillStyle=dark;g.fill();
+  headPath(g);g.fillStyle=dark;g.fill();
+  hairPath(g,u.hair,u.horn);g.fillStyle=u.hitF>0?'#FFF':u.rim;g.globalAlpha=u.alpha*(u.hitF>0?1:.5);g.fill();g.globalAlpha=u.alpha;
+  g.save();g.shadowColor=u.rim;g.shadowBlur=u.charge>0?18:9;
+  g.strokeStyle=u.hitF>0?'#fff':u.rim;g.lineWidth=1.5;g.globalAlpha=u.alpha*(u.charge>0?1:.85);
+  figPath(g);g.stroke();headPath(g);g.stroke();hairPath(g,u.hair,u.horn);g.stroke();g.restore();
+  if(!u.horn){g.fillStyle=u.hitF>0?'#000':u.rim;g.fillRect(2,-88,4,1.7)}
+  else{g.save();g.shadowColor=u.rim;g.shadowBlur=8;g.fillStyle=u.rim;
+       g.fillRect(-6,-88,4,2);g.fillRect(2,-88,4,2);g.restore()}
+  g.restore();
+  if(u.shield>0){
+    g.save();g.globalAlpha=u.alpha*.5;g.strokeStyle=var_cyan;g.lineWidth=1.4;
+    g.shadowColor=var_cyan;g.shadowBlur=8;
+    g.beginPath();g.ellipse(x,y-46*u.sc,20*u.sc,50*u.sc,0,0,7);g.stroke();g.restore();
+  }
+  if(bars)drawBar(u,x);
+}
+function drawBar(u,x){
+  const w=54,h=4,top=u.by+(u.oy||0)-116;
+  g.save();g.globalAlpha=u.alpha;
+  g.fillStyle='rgba(4,7,14,.85)';g.fillRect(x-w/2-1,top-1,w+2,h+2);
+  const p=Math.max(0,u.hp)/100;
+  g.fillStyle=p<=.3?'#FF4438':p<=.6?'#E4C475':'#4FB06D';
+  g.fillRect(x-w/2,top,w*p,h);
+  if(u.shield>0){g.fillStyle=var_cyan;g.fillRect(x-w/2,top-3.5,Math.min(w,w*u.shield/100),2.2)}
+  g.font='600 8.5px "Segoe UI",sans-serif';g.textAlign='center';
+  g.fillStyle=u.stun?'#FF4438':'rgba(237,232,219,.75)';
+  g.fillText(u.stun?'STUNNED':u.short,x,top-6.5);
+  const q=queue.find(a=>a.actor===u);
+  if(q){g.font='600 8px monospace';const tw=g.measureText(q.skill.n).width+10;
+    g.fillStyle='rgba(79,176,109,.95)';g.fillRect(x-tw/2,top+h+3,tw,11);
+    g.fillStyle='#04160B';g.fillText(q.skill.n,x,top+h+11.2)}
+  g.restore();
+  if(sel===u||(pending&&isTargetable(u))){
+    const gold=sel===u&&!pending;
+    g.save();g.strokeStyle=gold?'#E4C475':var_cyan;g.lineWidth=1.8;
+    g.shadowColor=gold?'#E4C475':var_cyan;g.shadowBlur=12;
+    g.globalAlpha=.55+Math.sin(performance.now()/180)*.35;
+    g.beginPath();g.ellipse(x,u.by+1,17*u.sc,6*u.sc,0,0,7);g.stroke();g.restore();
+  }
+}
+function burst(x,y,col,n,spd,life){
+  for(let i=0;i<(RM?Math.min(n,6):n);i++){
+    const a=Math.random()*7,s=spd*(.35+Math.random());
+    parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-30,g:210,c:col,t:0,life:life||.55,r:1+Math.random()*2.2});
+  }
+}
+function slashFX(x,y,col,ang,len){parts.push({slash:1,x,y,c:col,ang,len:len||42,t:0,life:.3})}
+function ringFX(x,y,col,r){parts.push({ring:1,x,y,c:col,t:0,life:.45,r0:r||8})}
+function popup(x,y,txt,col){parts.push({txt,x,y,c:col,t:0,life:.9})}
+function updParts(dt){
+  for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.t+=dt;
+    if(p.t>=p.life){parts.splice(i,1);continue}
+    if(!p.slash&&!p.ring&&!p.txt){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=p.g*dt}
+    if(p.txt)p.y-=46*dt;}
+}
+function drawParts(){
+  parts.forEach(p=>{
+    const k=1-p.t/p.life;g.save();g.globalAlpha=Math.max(0,k);
+    if(p.txt){
+      g.font='600 23px Bahnschrift SemiBold Condensed,Arial Narrow,Arial,sans-serif';
+      g.textAlign='center';g.lineWidth=3;g.strokeStyle='rgba(0,0,0,.75)';
+      g.strokeText(p.txt,p.x,p.y);g.fillStyle=p.c;g.fillText(p.txt,p.x,p.y);
+    }else if(p.slash){
+      g.translate(p.x,p.y);g.rotate(p.ang);g.strokeStyle=p.c;g.lineWidth=3.4*k+.6;
+      g.shadowColor=p.c;g.shadowBlur=16;g.beginPath();g.arc(0,0,p.len*(0.7+(1-k)*0.5),-0.85,0.85);g.stroke();
+    }else if(p.ring){
+      g.strokeStyle=p.c;g.lineWidth=2.6*k+.4;g.shadowColor=p.c;g.shadowBlur=14;
+      g.beginPath();g.arc(p.x,p.y,p.r0+(1-k)*46,0,7);g.stroke();
+    }else{g.fillStyle=p.c;g.shadowColor=p.c;g.shadowBlur=7;g.fillRect(p.x-p.r/2,p.y-p.r/2,p.r,p.r)}
+    g.restore();
+  });
+}
+function frame(now){
+  const dt=Math.min(.05,(now-tPrev)/1000||0);tPrev=now;
+  if(hitstop>0)hitstop-=dt;else updParts(dt);
+  rain.forEach(r=>{r.y+=r.s*dt;r.x-=r.s*dt*.18;if(r.y>H){r.y=-20;r.x=Math.random()*W}});
+  shake*=Math.pow(.0016,dt);flashScreen=Math.max(0,flashScreen-dt*3.2);
+  g.clearRect(0,0,W,H);g.save();
+  const sx=shake>.4?(Math.random()-.5)*shake:0,sy=shake>.4?(Math.random()-.5)*shake:0;
+  g.translate(sx,sy);
+  const sky=g.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0,'#0D1430');sky.addColorStop(.45,'#0A0F22');sky.addColorStop(1,'#05070E');
+  g.fillStyle=sky;g.fillRect(-10,-10,W+20,H+20);
+  if(city)g.drawImage(city,0,0);
+  const gr=g.createLinearGradient(0,H*0.6,0,H);
+  gr.addColorStop(0,'rgba(12,18,38,.9)');gr.addColorStop(1,'rgba(4,6,12,1)');
+  g.fillStyle=gr;g.fillRect(0,H*0.6,W,H*0.4);
+  g.strokeStyle='rgba(69,224,234,.10)';g.lineWidth=1;
+  g.beginPath();g.moveTo(0,H*0.62);g.lineTo(W,H*0.62);g.stroke();
+  if(stageMode!=='none'){
+    const bars=stageMode==='battle';
+    foe.forEach(u=>drawFighter(u,now,bars));
+    my.forEach(u=>drawFighter(u,now,bars));
+    if(bars)drawParts();
+  }
+  g.strokeStyle='rgba(150,190,220,.16)';g.lineWidth=1;g.beginPath();
+  rain.forEach(r=>{g.moveTo(r.x,r.y);g.lineTo(r.x-r.l*.18,r.y+r.l)});g.stroke();
+  const vg=g.createRadialGradient(W/2,H*.42,H*.2,W/2,H*.5,H*.78);
+  vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,.72)');
+  g.fillStyle=vg;g.fillRect(0,0,W,H);
+  if(stageMode==='battle'){
+    const sc=g.createLinearGradient(0,H*.6,0,H);
+    sc.addColorStop(0,'rgba(5,7,14,0)');sc.addColorStop(1,'rgba(5,7,14,.9)');
+    g.fillStyle=sc;g.fillRect(0,H*.6,W,H*.4);
+  }
+  if(flashScreen>0){g.fillStyle='rgba(255,255,255,'+(flashScreen*.5)+')';g.fillRect(0,0,W,H)}
+  g.restore();
+  [...my,...foe].forEach(u=>{if(u.hitF>0)u.hitF-=dt*7});
+  requestAnimationFrame(frame);
+}
+
+/* ================= STATE ================= */
+let picked=[],my=[],foe=[],pool=[],spentIdx=new Set(),turn=1,busy=false;
+let sel=null,pending=null,queue=[],stats={dealt:0,black:0};
+let filter='all',studyOf=null,activeMission=0,records=[];
+const $=id=>document.getElementById(id);
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+const wait=ms=>new Promise(r=>setTimeout(r,RM?Math.min(ms,80):ms));
+const byId=id=>R.find(c=>c.id===id);
+
+function store(k,v){try{v===undefined?null:localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+function load(k,d){try{const s=localStorage.getItem(k);return s?JSON.parse(s):d}catch(e){return d}}
+
+function showLay(v){document.querySelectorAll('.lay').forEach(x=>x.classList.remove('on'));$(v).classList.add('on')}
+function go(where){
+  ac();SFX.tap();
+  if(where==='home'){stageMode='none';showLay('vHome');drawHome()}
+  if(where==='roster'){stageMode='none';showLay('vRoster');drawRoster()}
+  if(where==='missions'){stageMode='none';showLay('vMissions');drawMissions()}
+  if(where==='records'){stageMode='none';showLay('vRecords');drawRecords()}
+  if(where==='matchup'){
+    if(picked.length!==3){go('roster');return}
+    buildSides();stageMode='matchup';showLay('vMatch');drawMatchup();
+  }
+}
+
+/* ---------- home ---------- */
+function slotHTML(id){
+  const c=id&&byId(id);
+  return `<div class="slot${c?'':' empty'}"><div class="s1">${c?shortOf(id):'Empty'}</div>
+    <div class="s2">${c?c.role.split(' · ')[0]:'tap roster'}</div></div>`;
+}
+function drawHome(){
+  $("trioStrip").innerHTML=[0,1,2].map(i=>slotHTML(picked[i])).join('');
+  $("rosterSub").textContent=picked.length===3?picked.map(shortOf).join(' · '):`Choose your three from 19`;
+  $("missionTag").textContent=(activeMission+1)+'/'+MISSIONS.length;
+  $("missionSub").textContent=MISSIONS[activeMission].n;
+  $("recordTag").textContent=records.length;
+  $("recordSub").textContent=records.length?`${records.filter(r=>r.win).length} won · ${records.filter(r=>!r.win).length} lost`:'No incidents yet';
+  const d=$("deployBtn");d.disabled=picked.length!==3;
+  d.textContent=picked.length===3?'Deploy':'Pick a trio first';
+}
+
+/* ---------- roster ---------- */
+function drawRoster(){
+  $("rosterCount").textContent=`${picked.length} of 3 staged`;
+  $("trioStrip2").innerHTML=[0,1,2].map(i=>slotHTML(picked[i])).join('');
+  $("filters").innerHTML=[['all','All 19'],['tokyo','Tokyo'],['kyoto','Kyoto'],['special','Special']]
+    .map(([k,l])=>`<button class="fil${filter===k?' on':''}" onclick="setFilter('${k}')">${l}</button>`).join('');
+  const list=R.filter(c=>filter==='all'||c.aff===filter);
+  $("rosterList").innerHTML=list.map(c=>{
+    const i=picked.indexOf(c.id);
+    return `<div class="rrow">
+      <button class="pick${i>=0?' on':''}" onclick="stage('${c.id}')">
+        <div><div class="nm">${c.name}</div><div class="rl">${c.role}</div></div>
+        ${i>=0?`<span class="tag gd">Staged ${i+1}</span>`:`<span class="tag cy">Tap</span>`}
+      </button>
+      <button class="info" onclick="openStudy('${c.id}')" aria-label="Details">i</button></div>`;
+  }).join('');
+  const l=$("lockBtn");l.disabled=picked.length!==3;
+  l.textContent=picked.length===3?'Lock trio':`Pick ${3-picked.length} more`;
+}
+function setFilter(k){filter=k;SFX.tap();drawRoster()}
+function stage(id){
+  const i=picked.indexOf(id);
+  if(i>=0)picked.splice(i,1);else if(picked.length<3)picked.push(id);
+  store('np_trio',picked);SFX.pick();drawRoster();
+}
+/* ---------- character study ---------- */
+function openStudy(id){
+  studyOf=id;const c=byId(id);SFX.tap();
+  $("studyName").textContent=c.name;
+  $("studyAff").textContent=AFF[c.aff]+' · First Creation';
+  const kindLabel={dmg:'Harmful · damage',pierce:'Harmful · piercing',stun:'Harmful · stun',
+    heal:'Helpful · heal',shield:'Helpful · defense',teamshield:'Helpful · team defense',charge:'Helpful · energy'};
+  const target={dmg:'One enemy',pierce:'One enemy',stun:'One enemy',heal:'One ally',
+    shield:'Self',teamshield:'All allies',charge:'Self'};
+  $("studyBody").innerHTML=`<div class="card" style="margin-bottom:9px">
+      <div class="row"><div class="nm">${c.role.split(' · ')[0]}</div><span class="tag cy">${c.role.split(' · ')[1]||''}</span></div>
+      <div class="rl" style="margin-top:5px">Starter · ladder-viable · one skill per turn</div></div>`
+    +c.skills.map(s=>`<div class="skillBlk">
+      <div class="sh"><div class="snm">${s.n}</div><div class="cost">${costHTML(s.cost)}</div></div>
+      <div class="sdesc">${s.d}</div>
+      <div class="meta"><span class="tag">${kindLabel[s.type]}</span><span class="tag">${target[s.type]}</span>
+        <span class="tag">No cooldown</span>${s.cost.includes('X')?'<span class="tag gd">Wild cost</span>':''}</div>
+    </div>`).join('')
+    +`<div class="rl" style="margin-top:4px;line-height:1.5">Prototype kit values — not the authoritative Battle v2 SkillSpec data.</div>`;
+  showLay('vStudy');
+}
+function closeStudy(){SFX.tap();showLay('vRoster');drawRoster()}
+
+/* ---------- missions ---------- */
+function drawMissions(){
+  $("missionList").innerHTML=MISSIONS.map((m,i)=>{
+    const st=i<activeMission?'cleared':i===activeMission?'active':i===activeMission+1?'':'sealed';
+    const lab=i<activeMission?'Cleared':i===activeMission?'Active':i===activeMission+1?'Open':'Sealed';
+    return `<button class="mnode" onclick="selectMission(${i})" ${st==='sealed'?'disabled':''} style="width:100%">
+      <span class="dot ${st}">${i+1}</span>
+      <span class="mbody"><span class="nm" style="display:block">${m.n}</span>
+      <span class="rl" style="display:block">${lab}</span></span></button>`;
+  }).join('');
+  const m=MISSIONS[activeMission];
+  $("missionDossier").innerHTML=`<div class="sub">Selected incident</div>
+    <div class="nm" style="margin-top:4px">${m.n}</div>
+    <div class="rl" style="margin-top:4px;line-height:1.5">${m.d}</div>
+    <div class="rl" style="margin-top:7px">Recommended: ${m.rec.map(shortOf).join(' · ')}</div>`;
+}
+function selectMission(i){if(i>activeMission+1)return;activeMission=Math.min(i,MISSIONS.length-1);SFX.tap();drawMissions()}
+function useRecommended(){picked=[...MISSIONS[activeMission].rec];store('np_trio',picked);SFX.pick();go('roster')}
+
+/* ---------- records ---------- */
+function drawRecords(){
+  $("recordList").innerHTML=records.length?records.map(r=>`<div class="card" style="margin-bottom:7px">
+      <div class="row"><div class="nm" style="color:${r.win?'var(--tE)':'var(--crimson)'}">${r.win?'Exorcised':'Defeated'}</div>
+        <span class="tag">${r.turns} turn${r.turns===1?'':'s'}</span></div>
+      <div class="rl" style="margin-top:4px">${r.trio} · ${r.dealt} damage dealt</div></div>`).join('')
+    :`<div class="card"><div class="rl">No incidents recorded on this device yet.</div></div>`;
+}
+
+/* ---------- matchup ---------- */
+function trioRow(list,mine){
+  return list.map(u=>`<div class="card row" style="margin-bottom:6px">
+    <div><div class="nm">${u.name}</div><div class="rl">${mine?byId(u.id).role:'Curse'}</div></div>
+    <span class="tag ${mine?'cy':'rd'}">${mine?'Ally':'Enemy'}</span></div>`).join('');
+}
+function drawMatchup(){
+  $("myTrio").innerHTML=trioRow(my,true);
+  $("foeTrio").innerHTML=trioRow(foe,false);
+  $("matchTitle").textContent=MISSIONS[activeMission].n;
+}
+
+/* ================= BATTLE ================= */
+function mkUnit(s,side){
+  return{...s,side,short:(s.label||SHORT[s.id]||s.name.split(' ')[0]).toUpperCase(),hp:100,shield:0,stun:false,
+    alive:true,alpha:1,ox:0,oy:0,hitF:0,charge:0,ph:Math.random()*6};
+}
+function buildSides(){
+  my=picked.map(id=>mkUnit(byId(id),'my'));
+  foe=FOES.map(f=>mkUnit(f,'foe'));
+  layout();
+}
+function startBattle(){
+  if(picked.length!==3){go('roster');return}
+  buildSides();
+  pool=[rnd(ECOLORS)];spentIdx=new Set();turn=1;queue=[];sel=null;pending=null;busy=false;
+  stats={dealt:0,black:0};parts=[];stageMode='battle';
+  showLay('vBattle');logLine('The parade begins.');render();SFX.buff();
+}
+function costHTML(c){return c.map(x=>`<span class="ech ${x} sm">${x}</span>`).join('')||`<span class="sub">free</span>`}
+function isTargetable(u){
+  if(!pending||!u.alive)return false;
+  return pending.skill.type==='heal'?u.side==='my':u.side==='foe';
+}
+function render(){
+  $("turnlbl").textContent='Turn '+turn;
+  $("pool").innerHTML=pool.map((c,i)=>`<span class="ech ${c}${spentIdx.has(i)?' spent':''}">${c}</span>`).join('');
+  $("phase").textContent=busy?'Resolving':pending?'Choose a target':sel?'Choose a skill':'Planning · your move';
+  drawTray();
+  const cb=$("confirmBtn");
+  cb.style.display=(!pending&&!busy)?'block':'none';
+  cb.className='cta '+(queue.length?'gold':'ghost');
+  cb.textContent=queue.length?`Confirm turn · ${queue.length} action${queue.length>1?'s':''}`:'Pass turn';
+}
+function tryReserve(cost){
+  const free=pool.map((c,i)=>spentIdx.has(i)?null:c),take=[];
+  for(const c of cost){if(c==='X')continue;
+    const i=free.findIndex((f,ix)=>f===c&&!take.includes(ix));if(i<0)return null;take.push(i)}
+  for(const c of cost){if(c!=='X')continue;
+    const i=free.findIndex((f,ix)=>f!==null&&!take.includes(ix));if(i<0)return null;take.push(i)}
+  return take;
+}
+function drawTray(){
+  const t=$("skills");
+  if(!sel||busy){$("trayName").innerHTML='&nbsp;';$("trayHint").textContent='';t.innerHTML='';return}
+  $("trayName").textContent=sel.name;
+  $("trayHint").textContent=sel.stun?'stunned':'one skill per turn';
+  t.innerHTML='';
+  sel.skills.forEach(s=>{
+    const spend=tryReserve(s.cost),legal=!!spend&&!sel.stun;
+    const b=document.createElement('button');b.className='skl'+(legal?' legal':' off');
+    b.innerHTML=`<div><div class="sn">${s.n}</div><div class="sd">${sel.stun?'Stunned — cannot act':spend?s.d:'Not enough energy'}</div></div><span class="cost">${costHTML(s.cost)}</span>`;
+    if(legal)b.onclick=()=>{
+      SFX.tap();
+      if(s.type==='shield'||s.type==='teamshield'||s.type==='charge'){
+        queue.push({actor:sel,skill:s,target:sel,spend});spend.forEach(i=>spentIdx.add(i));sel=null;render();
+      }else{pending={actor:sel,skill:s,spend};render()}
+    };
+    t.appendChild(b);
+  });
+}
+function hitTest(px,py){
+  for(const u of [...my,...foe]){
+    if(!u.alive)continue;
+    const w=26*u.sc,h=112*u.sc;
+    if(px>u.bx-w&&px<u.bx+w&&py>u.by-h&&py<u.by+14)return u;
+  }
+  return null;
+}
+cv.addEventListener('click',e=>{
+  if(stageMode!=='battle'||busy)return;
+  const r=cv.getBoundingClientRect();
+  const u=hitTest(e.clientX-r.left,e.clientY-r.top);
+  if(u)tapUnit(u);else if(!pending){sel=null;render()}
+});
+function tapUnit(u){
+  if(busy)return;
+  if(pending){
+    if(isTargetable(u)){
+      queue.push({actor:pending.actor,skill:pending.skill,target:u,spend:pending.spend});
+      pending.spend.forEach(i=>spentIdx.add(i));pending=null;sel=null;SFX.pick();render();
+    }
+    return;
+  }
+  if(u.side!=='my'||!u.alive)return;
+  const q=queue.findIndex(a=>a.actor===u);
+  if(q>=0){queue[q].spend.forEach(i=>spentIdx.delete(i));queue.splice(q,1);sel=u;SFX.tap();render();return}
+  sel=(sel===u)?null:u;SFX.tap();render();
+}
+function logLine(h){$("log").innerHTML=h}
+function ease(p){return 1-Math.pow(1-p,3)}
+// rAF stops firing when the tab is hidden, so a timer backstop guarantees the
+// turn finishes instead of hanging mid-resolution.
+function tween(fn,ms){return new Promise(res=>{
+  if(RM){fn(1);return res()}
+  const t0=performance.now();let done=false;
+  const finish=()=>{if(done)return;done=true;fn(1);clearTimeout(bail);res()};
+  const bail=setTimeout(finish,ms+400);
+  (function step(now){if(done)return;const p=Math.min(1,(now-t0)/ms);fn(p);
+    p<1?requestAnimationFrame(step):finish()})(performance.now());
+});}
+function applyDamage(t,amount,pierce){
+  let dealt=amount;
+  if(!pierce&&t.shield>0){
+    const abs=Math.min(t.shield,dealt);t.shield-=abs;dealt-=abs;
+    if(abs)popup(t.bx-16,t.by-92*t.sc,'▣'+abs,var_cyan);
+  }
+  if(dealt>0){t.hp-=dealt;popup(t.bx+10,t.by-96*t.sc,'-'+dealt,'#FF4438');
+    t.hitF=1;shake=Math.min(16,6+dealt*.22);hitstop=.055}
+  if(t.hp<=0){t.hp=0;t.alive=false;burst(t.bx,t.by-46*t.sc,t.rim,34,300,1);SFX.die();
+    tween(p=>{t.alpha=1-p},520)}
+  return dealt;
+}
+async function playFX(a,t,s){
+  const kind=s.fx||'melee',tx=t.bx,ty=t.by-48*t.sc,ax=a.bx,ay=a.by-48*a.sc;
+  const ang=Math.atan2(ty-ay,tx-ax);
+  if(kind==='melee'||kind==='heavy'||kind==='flash'){
+    a.charge=1;
+    await tween(p=>{a.ox=(tx-ax)*.62*ease(p);a.oy=(ty-ay)*.62*ease(p)},kind==='heavy'?230:150);
+    if(kind==='flash'){flashScreen=1;SFX.flash();slashFX(tx,ty,'#fff',ang,58);ringFX(tx,ty,'#C24BFF',6)}
+    else if(kind==='heavy'){SFX.heavy();slashFX(tx,ty,a.rim,ang,54);ringFX(tx,ty,a.rim,10)}
+    else{SFX.hit();slashFX(tx,ty,a.rim,ang,40)}
+    burst(tx,ty,a.rim,kind==='melee'?14:26,kind==='heavy'?260:190);a.charge=0;
+  }else if(kind==='ranged'||kind==='pierce'||kind==='beast'||kind==='bolt'){
+    a.charge=1;const col=kind==='bolt'?'#C24BFF':a.rim;
+    await tween(p=>{a.ox=-(tx-ax)*.10*Math.sin(p*3.14)},180);
+    SFX[kind==='bolt'?'bolt':'hit']();
+    await tween(p=>{
+      const px=ax+(tx-ax)*p,py=ay+(ty-ay)*p-Math.sin(p*3.14)*26;
+      parts.push({x:px,y:py,vx:0,vy:0,g:0,c:col,t:0,life:.22,r:kind==='pierce'?2.4:3.4});
+    },kind==='pierce'?200:300);
+    ringFX(tx,ty,col,6);burst(tx,ty,col,18,210);
+    if(kind==='bolt'){slashFX(tx,ty,col,ang+1.5,34);flashScreen=.5}
+    a.charge=0;
+  }else if(kind==='heal'){
+    SFX.heal();ringFX(tx,ty,'#4FB06D',10);
+    for(let i=0;i<16;i++)parts.push({x:tx+(Math.random()-.5)*30,y:ty+18,vx:0,vy:-40-Math.random()*50,g:-20,c:'#7BE0A0',t:0,life:.7,r:1.8});
+    await wait(160);
+  }else{
+    SFX.buff();ringFX(ax,ay,var_cyan,8);
+    for(let i=0;i<14;i++)parts.push({x:ax+(Math.random()-.5)*26,y:ay+20,vx:0,vy:-50,g:-30,c:var_cyan,t:0,life:.6,r:1.8});
+    await wait(150);
+  }
+}
+async function doSkill(a){
+  const s=a.skill,t=a.target;
+  logLine(`<b>${a.actor.name}</b> · ${s.n}${t!==a.actor?' → <b>'+t.name+'</b>':''}`);
+  if((s.type==='dmg'||s.type==='pierce'||s.type==='stun')&&!t.alive){logLine('…target already down');return}
+  await playFX(a.actor,t,s);
+  if(s.type==='dmg'||s.type==='pierce'||s.type==='stun'){
+    const d=applyDamage(t,s.v,s.type==='pierce');
+    if(a.actor.side==='my')stats.dealt+=d;
+    if(s.n==='Black Flash')stats.black++;
+    if(s.type==='stun'&&t.alive)t.stun=true;
+    if(t.alive)await tween(p=>{t.ox=Math.sin(p*12)*7*(1-p)*t.face*-1},260);
+  }else if(s.type==='heal'){t.hp=Math.min(100,t.hp+s.v);popup(t.bx+8,t.by-96*t.sc,'+'+s.v,'#4FB06D')}
+  else if(s.type==='shield'){t.shield+=s.v;popup(t.bx+8,t.by-96*t.sc,'▣'+s.v,var_cyan)}
+  else if(s.type==='teamshield'){(a.actor.side==='my'?my:foe).forEach(u=>{if(u.alive){u.shield+=s.v;popup(u.bx+8,u.by-96*u.sc,'▣'+s.v,var_cyan)}})}
+  else if(s.type==='charge'){pool.push(rnd(ECOLORS));popup(a.actor.bx,a.actor.by-96*a.actor.sc,'+1',var_cyan)}
+  await tween(p=>{a.actor.ox*=(1-p);a.actor.oy*=(1-p)},200);
+  a.actor.ox=0;a.actor.oy=0;render();await wait(230);
+}
+async function confirmTurn(){
+  if(busy)return;
+  busy=true;pending=null;sel=null;render();
+  pool=pool.filter((c,i)=>!spentIdx.has(i));spentIdx=new Set();
+  for(const a of queue){if(a.actor.alive)await doSkill(a)}
+  queue=[];
+  my.forEach(u=>u.stun=false);
+  if(!foe.some(u=>u.alive))return endBattle(true);
+  $("phase").textContent='Enemy turn';logLine('<b>Their move.</b>');
+  await wait(650);
+  for(const e of foe){
+    if(!e.alive)continue;
+    if(e.stun){e.stun=false;logLine(`<b>${e.name}</b> is stunned`);await wait(450);continue}
+    const alive=my.filter(u=>u.alive);if(!alive.length)break;
+    const t=Math.random()<.35?alive.reduce((a,b)=>a.hp<b.hp?a:b):rnd(alive);
+    await doSkill({actor:e,skill:rnd(e.skills),target:t});
+    if(!my.some(u=>u.alive))break;
+  }
+  if(!my.some(u=>u.alive))return endBattle(false);
+  turn++;
+  for(let i=0;i<my.filter(u=>u.alive).length;i++)pool.push(rnd(ECOLORS));
+  if(pool.length>8)pool=pool.slice(-8);
+  busy=false;logLine('Your move.');render();
+}
+function endBattle(win){
+  busy=true;
+  records.unshift({win,turns:turn,dealt:stats.dealt,
+    trio:picked.map(shortOf).join(' · ')});
+  records=records.slice(0,12);store('np_records',records);
+  if(win&&activeMission<MISSIONS.length-1){activeMission++;store('np_mission',activeMission)}
+  setTimeout(()=>{
+    win?SFX.win():SFX.lose();
+    $("endWord").textContent=win?'Exorcised':'Defeated';
+    $("endWord").className='dh'+(win?'':' lose');
+    $("endSub").textContent=(win?'Victory':'Defeat')+' · '+MISSIONS[Math.max(0,activeMission-(win?1:0))].n;
+    $("endStats").innerHTML=`<span><b>${turn}</b> turn${turn===1?'':'s'}</span><span><b>${stats.dealt}</b> dealt</span><span><b>${stats.black}</b> Black Flash</span>`;
+    showLay('vEnd');
+  },900);
+}
+
+/* ================= BOOT ================= */
+picked=load('np_trio',[]).filter(id=>byId(id)).slice(0,3);
+records=load('np_records',[]);
+activeMission=Math.min(load('np_mission',0),MISSIONS.length-1);
+fit();initRain();requestAnimationFrame(frame);
+</script>

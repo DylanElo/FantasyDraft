@@ -1,7 +1,7 @@
-import { COLORS, CULLING_COLORS, ENERGY_NAMES, TOKEN_TYPE } from '../core/runtime-config.js?v=43';
-import { safeText, shortText } from '../core/text.js?v=43';
-import { eventAmount, eventTone } from './event-metrics.js?v=43';
-import { BaseScene } from '../scenes/base-scene.js?v=43';
+import { COLORS, CULLING_COLORS, ENERGY_NAMES, TOKEN_TYPE } from '../core/runtime-config.js?v=58';
+import { safeText, shortText } from '../core/text.js?v=58';
+import { eventAmount, eventTone } from './event-metrics.js?v=58';
+import { BaseScene } from '../scenes/base-scene.js?v=58';
 
 export class CombatPlaybackScene extends BaseScene {
     playbackReducedMotion() {
@@ -32,8 +32,11 @@ export class CombatPlaybackScene extends BaseScene {
       const reducedMotion = this.playbackReducedMotion();
       const baseDelay = hasQueuedResolution ? (reducedMotion ? 80 : 220) : 0;
       const eventSpacing = reducedMotion ? 420 : 650;
+      const playbackEvents = hasQueuedResolution
+        ? events.filter((event) => safeText(event.type) !== 'turn_skipped')
+        : events;
       if (hasQueuedResolution) this.playCinematicCurtain(frame);
-      events.slice(0, 7).forEach((event, index) => {
+      playbackEvents.slice(0, 7).forEach((event, index) => {
         if (safeText(event.type) === 'skill_resolved') actionNumber += 1;
         const visibleActionNumber = actionNumber || null;
         this.time.delayedCall(baseDelay + index * eventSpacing, () => this.playEvent(event, frame, visibleActionNumber));
@@ -109,7 +112,7 @@ export class CombatPlaybackScene extends BaseScene {
       ring.strokePath();
       nodes.push(ring);
 
-      nodes.push(this.add.text(cx, frame.height - 53, 'DOMAIN RESOLUTION', {
+      nodes.push(this.add.text(cx, frame.height - 53, 'TURN RESOLUTION', {
         fontFamily: TOKEN_TYPE.mono || '"JetBrains Mono", monospace',
         fontSize: '10px',
         fontStyle: '900',
@@ -131,68 +134,6 @@ export class CombatPlaybackScene extends BaseScene {
         ease: 'Cubic.easeOut',
         onComplete: () => nodes.forEach((node) => node.destroy()),
       }, 560);
-    }
-
-    playCinematicCutIn(frame, title, tone) {
-      if (this.activeCinematicCutInTween && this.activeCinematicCutInTween.stop) {
-        this.activeCinematicCutInTween.stop();
-      }
-      (this.activeCinematicCutInNodes || []).forEach((node) => {
-        if (node && node.destroy) node.destroy();
-      });
-      const cx = frame.x + frame.width / 2;
-      const y = frame.height * 0.205;
-      const w = Math.min(frame.width - 26, 352);
-      const panel = this.add.graphics({ x: cx - w / 2, y }).setDepth(27);
-      panel.fillStyle(COLORS.inkBlack, 0.92);
-      panel.fillRoundedRect(0, 0, w, 72, 18);
-      panel.fillStyle(tone, 0.18);
-      panel.fillTriangle(0, 0, w * 0.42, 0, 0, 72);
-      panel.fillStyle(0xffffff, 0.06);
-      panel.fillTriangle(w, 0, w - 80, 72, w, 72);
-      panel.lineStyle(2, tone, 0.82);
-      panel.strokeRoundedRect(0, 0, w, 72, 18);
-      for (let i = 0; i < 5; i += 1) {
-        panel.lineStyle(1, tone, 0.16);
-        panel.beginPath();
-        panel.moveTo(24 + i * 34, 7);
-        panel.lineTo(2 + i * 34, 65);
-        panel.strokePath();
-      }
-      const nodes = [panel];
-      nodes.push(this.add.text(cx - w / 2 + 18, y + 12, 'CINEMATIC CUT-IN', {
-        fontFamily: TOKEN_TYPE.mono || '"JetBrains Mono", monospace',
-        fontSize: '10px',
-        fontStyle: '900',
-        color: COLORS.paperText,
-      }).setDepth(28));
-      const cutInTitle = shortText(title, 34);
-      const titleNode = this.add.text(cx - w / 2 + 18, y + 31, cutInTitle, {
-        fontFamily: TOKEN_TYPE.display || 'Cinzel, Inter, serif',
-        fontSize: cutInTitle.length > 28 ? '14px' : '17px',
-        fontStyle: '900',
-        color: COLORS.text,
-        wordWrap: { width: w - 36 },
-      }).setDepth(28);
-      titleNode.setMaxLines(1);
-      nodes.push(titleNode);
-      this.activeCinematicCutInNodes = nodes;
-      const cleanup = () => {
-        nodes.forEach((node) => node.destroy());
-        if (this.activeCinematicCutInNodes === nodes) {
-          this.activeCinematicCutInNodes = null;
-          this.activeCinematicCutInTween = null;
-        }
-      };
-      this.activeCinematicCutInTween = this.animatePlayback({
-        targets: nodes,
-        x: '+=18',
-        alpha: 0,
-        duration: 520,
-        delay: 80,
-        ease: 'Cubic.easeIn',
-        onComplete: cleanup,
-      }, 680);
     }
 
     playRing(point, color, options) {
@@ -370,7 +311,6 @@ export class CombatPlaybackScene extends BaseScene {
 
       if (type === 'skill_resolved') {
         if (this.presentationLayer) this.presentationLayer.interactionCue(this, { cue: 'skill-resolve' });
-        this.playCinematicCutIn(frame, message, CULLING_COLORS.gold);
         if (casterPoint) this.playRing(casterPoint, CULLING_COLORS.gold, { radius: (casterPoint.size || 62) / 2 + 20, alpha: 0.86 });
         if (casterPoint && point) this.playSlashLine(casterPoint, point, CULLING_COLORS.gold);
         return;

@@ -1,5 +1,5 @@
-import { CULLING_COLORS } from './runtime-config.js?v=43';
-import { safeText, titleize } from './text.js?v=43';
+import { CULLING_COLORS } from './runtime-config.js?v=58';
+import { safeText, titleize } from './text.js?v=58';
 
 export function activeStatuses(character) {
   return [...((character && character.statuses) || [])]
@@ -18,14 +18,18 @@ export function statusCardLabel(status) {
   const payload = (status && status.payload) || {};
   const families = ((status && status.families) || []).map((family) => safeText(family).toLowerCase());
   const id = safeText(status && status.id).toLowerCase();
-  const name = safeText(status && (status.name || status.id), 'Effect').toUpperCase();
-  let label = name.length <= 13 ? name : '';
+  const name = safeText(status && (status.name || status.id), 'Effect').replaceAll('_', ' ').toUpperCase();
+  const words = name.split(/\s+/).filter(Boolean);
+  const twoWords = words.slice(0, 2).join(' ');
+  const compactName = name.length <= 13 ? name : twoWords.length <= 13 ? twoWords : safeText(words[0]).slice(0, 13);
+  let label = '';
   if (status && status.revealed) label = 'REVEALED';
   else if (status && status.invisible) label = 'HIDDEN';
   else if (payload.stun_harmful || (payload.stun_classes || []).length || families.includes('stun')) label = 'STUN';
   else if (id.includes('poison') || families.includes('affliction')) label = id.includes('poison') ? 'POISON' : 'AFFLICTION';
   else if (payload.invulnerable) label = 'WARD';
   else if (payload.destructible_defense) label = 'SHIELD';
+  else if (compactName && compactName !== 'EFFECT') label = compactName;
   else if (Number(payload.damage_output_delta || 0) < 0) label = 'DAMAGE DOWN';
   else if (Number(payload.damage_output_delta || 0) > 0) label = 'POWER UP';
   else if (families.includes('mark')) label = 'MARK';

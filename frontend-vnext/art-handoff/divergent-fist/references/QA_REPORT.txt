@@ -1,0 +1,31 @@
+Divergent Fist frozen-lab capture verification
+Date: 2026-08-03
+
+Clean exact captures
+- desktop: 10 PNG files, each 1440x900
+- laptop: 10 PNG files, each 1280x720
+- mobile: 10 PNG files, each 844x390
+
+Debug exact captures
+- delayed-impact-1440x900.png: 1440x900
+- delayed-impact-1280x720.png: 1280x720
+- delayed-impact-844x390.png: 844x390
+
+Reference strips
+- normal-10-state-strip-1440x416.png: 1440x416
+- mobile-10-state-strip-1690x368.png: 1690x368
+
+Live playback checks
+- Pause at 0.5x: paused-stable-a.png and paused-stable-b.png were captured
+  700 ms apart and are byte-identical.
+- SHA-256 for both paused frames:
+  8b91785cfc06d795eca4396d5413ef801499668a53aa34062ba1ae107851e1bd
+- Replay at 2x completed at planning-restored with camera wide at 1.00x.
+
+Visual inspection
+- Desktop and mobile ten-state strips retain the approved formation, readable
+  target intent, separate physical and delayed impacts, recovery, and restored
+  planning frame.
+- The mobile delayed-impact debug frame exposes asset IDs, anchors, effect
+  bounds, formation guides, and camera bounds without changing the clean frame.
+- All artwork shown remains placeholder art and is not production-ready.

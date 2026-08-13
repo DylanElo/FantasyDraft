@@ -1,7 +1,7 @@
-import { TOKEN_TYPE } from '../core/runtime-config.js?v=43';
-import { safeText } from '../core/text.js?v=43';
-import { Season3UI } from '../ui/season3-ui.js?v=43';
-import { BaseScene } from './base-scene.js?v=43';
+import { TOKEN_TYPE } from '../core/runtime-config.js?v=58';
+import { safeText } from '../core/text.js?v=58';
+import { IncidentCutLayouts, Season3UI } from '../ui/season3-ui.js?v=58';
+import { BaseScene } from './base-scene.js?v=58';
 
 const {
   colors: S3_COLORS,
@@ -19,17 +19,7 @@ export class MatchupScene extends BaseScene {
     }
 
     matchupLayout(frame) {
-      const x = frame.x + 10;
-      const w = frame.width - 20;
-      const header = { x, y: frame.top, w, h: 62 };
-      header.bottom = header.y + header.h;
-      const cta = { x, y: frame.bottom - 50, w, h: 50 };
-      const status = { x, y: cta.y - 58, w, h: 50 };
-      const player = { x, y: status.y - 190, w, h: 182 };
-      const objective = { x, y: player.y - 78, w, h: 70 };
-      const enemy = { x, y: objective.y - 190, w, h: 182 };
-      const mode = { x, y: header.bottom + 8, w, h: 54 };
-      return { frame, header, mode, enemy, objective, player, status, cta };
+      return IncidentCutLayouts.matchup(frame);
     }
 
     overlayRect(x, y, w, h, color, alpha = 1) {
@@ -213,6 +203,47 @@ export class MatchupScene extends BaseScene {
       sublineNode.setMaxLines(2);
     }
 
+    renderConfrontation(region, enemyIds, hidden, isCpu) {
+      const g = this.graphics;
+      const midY = region.y + region.h * 0.51;
+      g.fillStyle(S3_COLORS.red, 0.14);
+      g.fillTriangle(region.x, region.y, region.x + region.w, region.y, region.x + region.w, midY + 18);
+      g.fillStyle(S3_COLORS.cyan, 0.12);
+      g.fillTriangle(region.x, midY - 18, region.x + region.w, region.bottom, region.x, region.bottom);
+      g.lineStyle(4, S3_COLORS.bone, 0.86);
+      g.beginPath(); g.moveTo(region.x - 8, midY + 22); g.lineTo(region.x + region.w + 8, midY - 22); g.strokePath();
+      g.lineStyle(2, S3_COLORS.red, 0.9);
+      g.beginPath(); g.moveTo(region.x - 8, midY + 16); g.lineTo(region.x + region.w + 8, midY - 28); g.strokePath();
+
+      const drawTrio = (ids, enemy, sealed) => {
+        const top = enemy ? region.y + 22 : midY + 10;
+        const areaH = region.h * 0.43;
+        const cropW = region.w * 0.39;
+        const cropH = areaH * 0.9;
+        [0, 1, 2].forEach((index) => {
+          const x = region.x + (enemy ? index * region.w * 0.29 - 6 : region.w - cropW - index * region.w * 0.29 + 6);
+          const y = top + (index === 1 ? -8 : 10);
+          const id = ids[index];
+          if (sealed || !id) {
+            g.fillStyle(S3_COLORS.ink, 0.82); g.fillPoints([{ x: x + 10, y }, { x: x + cropW, y: y + 8 }, { x: x + cropW - 12, y: y + cropH }, { x, y: y + cropH - 10 }], true);
+            this.text(x + cropW / 2, y + cropH * 0.34, '?', { fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif', fontSize: '42px', fontStyle: '900', color: S3_COLORS.mutedText }).setOrigin(0.5, 0);
+            return;
+          }
+          const character = this.store.character(id);
+          this.portraitArtwork(character, x, y, cropW, cropH, { context: 'hero', alpha: index === 1 ? 1 : 0.9, depth: index === 1 ? 1 : 0 });
+          g.lineStyle(index === 1 ? 3 : 1.5, enemy ? S3_COLORS.red : S3_COLORS.cyan, 0.9);
+          g.beginPath(); g.moveTo(x + 4, y + cropH - 4); g.lineTo(x + cropW - 4, y + cropH - 14); g.strokePath();
+          this.mono(x + 4, y + cropH - 22, `0${index + 1} ${safeText(character.name, id).toUpperCase().slice(0, 14)}`, { color: S3_COLORS.whiteText, backgroundColor: enemy ? '#B91F1A' : '#101B36', fontSize: '9px', fontStyle: '900', padding: { x: 3, y: 2 } });
+        });
+      };
+      drawTrio(enemyIds, true, hidden);
+      drawTrio(this.store.playerTeam.slice(0, 3), false, false);
+      this.mono(region.x + 12, region.y + 8, hidden ? 'CHALLENGER / IDENTITIES SEALED' : 'RIVAL TRIO', { color: S3_COLORS.redText, fontSize: '11px', fontStyle: '900', backgroundColor: '#F2E8D5', padding: { x: 4, y: 2 } });
+      this.mono(region.x + region.w - 12, region.bottom - 24, 'YOUR TRIO', { color: S3_COLORS.cyanText, fontSize: '11px', fontStyle: '900', backgroundColor: '#F2E8D5', padding: { x: 4, y: 2 } }).setOrigin(1, 0);
+      this.text(region.x + region.w / 2, midY - 24, 'VS', { fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif', fontSize: '40px', fontStyle: '900', color: S3_COLORS.inkText, stroke: S3_COLORS.bone, strokeThickness: 5 }).setOrigin(0.5, 0);
+      this.mono(region.x + region.w / 2, midY + 18, isCpu ? 'CPU PRACTICE' : 'PRIVATE PVP', { color: S3_COLORS.inkText, backgroundColor: '#D8BF68', fontSize: '10px', fontStyle: '900', padding: { x: 5, y: 2 } }).setOrigin(0.5, 0);
+    }
+
     render() {
       const frame = this.layout.frame();
       const layout = this.matchupLayout(frame);
@@ -221,6 +252,7 @@ export class MatchupScene extends BaseScene {
       const connectionError = !!this.store.matchLaunchError;
       const waiting = !isCpu && !!(this.store.lobbyStatus && this.store.lobbyStatus.status !== 'cancelled');
       const enemyIds = isCpu ? this.store.enemyTeam.slice(0, 3) : [];
+      const hidden = !isCpu;
       this.clearSurface();
       drawS3World(this, frame, MATCHUP_WORLD_KEY, { imageAlpha: 0.46, washAlpha: 0.5 });
       drawS3Header(this, frame, {
@@ -229,18 +261,7 @@ export class MatchupScene extends BaseScene {
         accent: waiting ? S3_COLORS.gold : S3_COLORS.cyan,
         backHandler: pending ? null : () => this.store.returnFromMatchup(),
       });
-      this.renderMode(layout.mode, isCpu);
-      this.renderTeam(layout.enemy, enemyIds, {
-        label: isCpu ? 'RIVAL TRIO' : 'CHALLENGER TRIO',
-        accent: S3_COLORS.red,
-        enemy: true,
-        hidden: !isCpu,
-      });
-      this.renderObjective(layout.objective, isCpu);
-      this.renderTeam(layout.player, this.store.playerTeam.slice(0, 3), {
-        label: 'YOUR TRIO',
-        accent: S3_COLORS.cyan,
-      });
+      this.renderConfrontation(layout.confrontation, enemyIds, hidden, isCpu);
       this.renderStatus(layout.status, isCpu, waiting, pending);
 
       const label = waiting

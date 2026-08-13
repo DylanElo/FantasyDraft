@@ -1,7 +1,7 @@
-import { TOKEN_TYPE } from '../core/runtime-config.js?v=43';
-import { safeText } from '../core/text.js?v=43';
-import { Season3UI } from '../ui/season3-ui.js?v=43';
-import { DraftRosterScene } from './draft-roster-scene.js?v=43';
+import { TOKEN_TYPE } from '../core/runtime-config.js?v=58';
+import { safeText } from '../core/text.js?v=58';
+import { Season3UI } from '../ui/season3-ui.js?v=58';
+import { DraftRosterScene } from './draft-roster-scene.js?v=58';
 
 const {
   colors: S3_COLORS,

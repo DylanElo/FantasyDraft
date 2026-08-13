@@ -1,7 +1,7 @@
-import { TOKEN_TYPE } from '../core/runtime-config.js?v=43';
-import { clamp, safeText, titleize } from '../core/text.js?v=43';
-import { Season3UI } from '../ui/season3-ui.js?v=43';
-import { FirstCreationScene } from './first-creation-scene.js?v=43';
+import { TOKEN_TYPE } from '../core/runtime-config.js?v=58';
+import { clamp, safeText, titleize } from '../core/text.js?v=58';
+import { Season3UI } from '../ui/season3-ui.js?v=58';
+import { FirstCreationScene } from './first-creation-scene.js?v=58';
 
 const {
   colors: S3_COLORS,

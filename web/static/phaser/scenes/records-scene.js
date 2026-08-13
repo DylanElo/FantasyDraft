@@ -1,7 +1,7 @@
-import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=43';
-import { safeText, shortText } from '../core/text.js?v=43';
-import { Season3UI } from '../ui/season3-ui.js?v=43';
-import { BaseScene } from './base-scene.js?v=43';
+import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=58';
+import { safeText, shortText } from '../core/text.js?v=58';
+import { Season3UI } from '../ui/season3-ui.js?v=58';
+import { BaseScene } from './base-scene.js?v=58';
 
 const {
   colors: S3_COLORS,
@@ -23,13 +23,10 @@ function recordsComposition(frame) {
   const w = frame.width - gutter * 2;
   const header = { x, y: frame.top, w, h: 58 };
   const profile = { x, y: header.y + header.h + gap, w, h: compact ? 204 : 228 };
-  const summary = { x, y: profile.y + profile.h + gap, w, h: compact ? 64 : 70 };
   const pager = { x, y: frame.bottom - 46, w, h: 46 };
-  const timelineY = summary.y + summary.h + gap + 20;
-  const timeline = { x, y: timelineY, w, h: Math.max(104, pager.y - gap - timelineY), rowGap: 7 };
-  timeline.rowH = compact ? 88 : 96;
-  timeline.maxRows = Math.max(1, Math.min(3, Math.floor((timeline.h + timeline.rowGap) / (timeline.rowH + timeline.rowGap))));
-  return { compact, header, profile, summary, timeline, pager };
+  const featured = { x, y: profile.y + profile.h + gap, w, h: compact ? 166 : 184 };
+  const rail = { x, y: featured.y + featured.h + gap + 16, w, h: Math.max(52, pager.y - gap - featured.y - featured.h - 16) };
+  return { compact, header, profile, featured, rail, pager };
 }
 
 function teamIds(record) {
@@ -293,7 +290,7 @@ export class RecordsScene extends BaseScene {
     }
 
     renderPager(region, model, rowCount) {
-      const pageCount = Math.max(1, Math.ceil(model.records.length / Math.max(1, rowCount)));
+      const pageCount = Math.max(1, model.records.length);
       this.recordsPage = Math.max(0, Math.min(pageCount - 1, this.recordsPage));
       drawS3Button(this, region.x, region.y, 82, region.h, 'PREVIOUS', () => {
         this.recordsPage = Math.max(0, this.recordsPage - 1);
@@ -322,6 +319,43 @@ export class RecordsScene extends BaseScene {
       });
     }
 
+    renderFeaturedRecord(region, model) {
+      const record = model.records[this.recordsPage];
+      if (!record) {
+        drawS3Panel(this, region.x, region.y, region.w, region.h, { fill: S3_COLORS.bone, accent: S3_COLORS.cyan, cut: 10 });
+        this.text(region.x + 16, region.y + 24, 'NO INCIDENTS RECORDED', { fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif', fontSize: '22px', fontStyle: '900', color: S3_COLORS.text });
+        this.mono(region.x + 16, region.y + 58, 'FINISH A SERVER-AUTHORITATIVE BATTLE TO START THE REEL.', { color: S3_COLORS.mutedText, fontSize: '10px', fontStyle: '800', wordWrap: { width: region.w - 32 } });
+        return;
+      }
+      const visual = outcomeVisual(record.outcome);
+      drawS3Panel(this, region.x, region.y, region.w, region.h, { fill: S3_COLORS.bone, accent: visual.accent, cut: 12, strokeWidth: 2.5 });
+      this.graphics.fillStyle(visual.accent, 0.94);
+      this.graphics.fillTriangle(region.x, region.y, region.x + region.w * 0.62, region.y, region.x, region.y + region.h * 0.56);
+      this.text(region.x + 14, region.y + 12, safeText(record.result, 'Result').toUpperCase(), { fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif', fontSize: '34px', fontStyle: '900', color: S3_COLORS.inverseText, stroke: '#101B36', strokeThickness: 4 });
+      this.mono(region.x + 16, region.y + 57, `${localRecordDate(record.at)} // ${Math.ceil(Number(record.turns || 1) / 2)} ROUNDS`, { color: S3_COLORS.inverseText, fontSize: '10px', fontStyle: '900' });
+      this.text(region.x + 16, region.y + 83, shortText(record.winner || 'Recorded match', 36), { fontSize: '13px', fontStyle: '900', color: S3_COLORS.text, wordWrap: { width: region.w - 32 } }).setMaxLines(2);
+      const impact = Array.isArray(record.biggest) ? record.biggest[0] : null;
+      this.mono(region.x + 16, region.y + region.h - 38, impact ? `IMPACT // ${shortText(safeText(impact.message), 35)}` : 'IMPACT // NO RECORDED DAMAGE EVENT', { color: '#B91F1A', fontSize: '10px', fontStyle: '900', wordWrap: { width: region.w - 32 } }).setMaxLines(2);
+      this.mono(region.x + region.w - 14, region.y + region.h - 22, `${Number(record.damage || 0)} DMG`, { color: S3_COLORS.text, fontSize: '11px', fontStyle: '900' }).setOrigin(1, 0);
+    }
+
+    renderIncidentRail(region, model) {
+      this.mono(region.x, region.y - 15, 'INCIDENT REEL // LATEST FIRST', { color: S3_COLORS.inverseText, fontSize: '10px', fontStyle: '900', stroke: '#101B36', strokeThickness: 3 });
+      const visible = model.records.slice(0, Math.min(4, model.records.length));
+      const rowH = Math.max(44, Math.min(52, region.h / Math.max(1, visible.length)));
+      visible.forEach((record, index) => {
+        const y = region.y + index * rowH;
+        const active = index === this.recordsPage;
+        this.graphics.fillStyle(active ? S3_COLORS.bone : S3_COLORS.ink, active ? 0.94 : 0.58);
+        this.graphics.fillRect(region.x, y, region.w, rowH - 3);
+        this.graphics.fillStyle(outcomeVisual(record.outcome).accent, 0.96);
+        this.graphics.fillRect(region.x, y, active ? 8 : 3, rowH - 3);
+        this.mono(region.x + 14, y + 8, `${localRecordDate(record.at)}  ${safeText(record.result, 'Result').toUpperCase()}`, { color: active ? S3_COLORS.text : S3_COLORS.inverseText, fontSize: '10px', fontStyle: '900' });
+        this.mono(region.x + 14, y + 25, `${Math.ceil(Number(record.turns || 1) / 2)}R // ${Number(record.damage || 0)} DMG`, { color: active ? S3_COLORS.mutedText : '#D4D8E0', fontSize: '10px', fontStyle: '800' });
+        this.registerHitTarget(region.x, y, region.w, Math.max(44, rowH - 3), `Feature record ${index + 1}, ${record.result}`, () => { this.recordsPage = index; }, { accessibilityId: `record-${index + 1}` });
+      });
+    }
+
     render() {
       const frame = this.layout.frame();
       const layout = recordsComposition(frame);
@@ -332,9 +366,10 @@ export class RecordsScene extends BaseScene {
       const trio = favoriteTrio(this.store.records, this.store.playerTeam);
       this.renderHeader(layout.header);
       this.renderProfile(layout.profile, model, trio);
-      this.renderSummary(layout.summary, model);
-      this.renderTimeline(layout.timeline, model);
-      this.renderPager(layout.pager, model, layout.timeline.maxRows);
+      this.recordsPage = Math.max(0, Math.min(Math.max(0, model.records.length - 1), this.recordsPage));
+      this.renderFeaturedRecord(layout.featured, model);
+      this.renderIncidentRail(layout.rail, model);
+      this.renderPager(layout.pager, model, 1);
       this.toast(frame, { y: layout.pager.y - 48, theme: 'light' });
       this.renderPresentationSettingsSheet(frame, { onExit: () => this.store.changeScene('LobbyScene') });
     }

@@ -1,10 +1,9 @@
-import { CULLING_COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=43';
-import { safeText, shortText } from '../core/text.js?v=43';
-import { Season3UI } from '../ui/season3-ui.js?v=43';
-import { BaseScene } from './base-scene.js?v=43';
+import { CULLING_COLORS, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=58';
+import { safeText, shortText } from '../core/text.js?v=58';
+import { IncidentCutLayouts, Season3UI } from '../ui/season3-ui.js?v=58';
+import { BaseScene } from './base-scene.js?v=58';
 
-const HOME_WORLD_KEY = 'culling-current-home-hero';
-const HOME_PROMOTIONAL_HERO_LABEL = 'PROMOTIONAL KEY ART';
+const HOME_WORLD_KEY = 'culling-current-home';
 const { world: drawCurrentWorld } = Season3UI.current;
 
 function clippedSlab(x, y, w, h, cut = 12) {
@@ -22,6 +21,7 @@ function clippedSlab(x, y, w, h, cut = 12) {
 export class LobbyScene extends BaseScene {
     constructor() {
       super('LobbyScene');
+      this.modeOpen = false;
     }
 
     editIdentity(type) {
@@ -44,30 +44,8 @@ export class LobbyScene extends BaseScene {
     }
 
     homeLayout(frame) {
-      const profileH = 56;
-      const navH = 64;
-      const featureH = frame.height < 830 ? 88 : 94;
-      const battleH = frame.height < 830 ? 88 : 96;
-      const profileY = frame.top;
-      const navY = frame.bottom - navH;
-      const featureY = navY - featureH - 8;
-      const battleY = featureY - battleH - 8;
-      const titleY = profileY + profileH + 9;
-      const heroY = titleY + 64;
-      return {
-        frame,
-        profile: { x: frame.x + 8, y: profileY, w: frame.width - 16, h: profileH },
-        title: { x: frame.x + 16, y: titleY, w: frame.width - 32, h: 76 },
-        hero: {
-          x: frame.x,
-          y: heroY,
-          w: frame.width,
-          h: Math.max(284, battleY - heroY + 18),
-        },
-        battle: { x: frame.x + 8, y: battleY, w: frame.width - 16, h: battleH },
-        features: { x: frame.x + 8, y: featureY, w: frame.width - 16, h: featureH },
-        nav: { x: frame.x, y: navY, w: frame.width, h: navH },
-      };
+      const layout = IncidentCutLayouts.home(frame);
+      return { ...layout, profile: layout.top, hero: layout.stage, battle: layout.deploy };
     }
 
     drawClippedSurface(x, y, w, h, options) {
@@ -169,25 +147,6 @@ export class LobbyScene extends BaseScene {
       this.registerHitTarget(roomX - 2, region.y + 2, roomW, region.h - 4, `Edit room code ${this.store.roomId}`, () => this.editIdentity('room'), {
         accessibilityId: 'identity-room',
       });
-    }
-
-    renderPromotionalHeroLabel(region) {
-      const w = 164;
-      const x = region.x + region.w - w - 8;
-      const y = region.y + 34;
-      this.drawClippedSurface(x, y, w, 26, {
-        fill: CULLING_COLORS.ivory,
-        alpha: 0.84,
-        stroke: CULLING_COLORS.cobalt,
-        strokeAlpha: 0.48,
-        shadowAlpha: 0.08,
-        cut: 6,
-      });
-      this.mono(x + w / 2, y + 7, HOME_PROMOTIONAL_HERO_LABEL, {
-        fontSize: `${TYPE_SCALE.micro}px`,
-        fontStyle: '900',
-        color: CULLING_COLORS.cobaltText,
-      }).setOrigin(0.5, 0);
     }
 
     renderEditorialTitle(region) {
@@ -424,6 +383,73 @@ export class LobbyScene extends BaseScene {
       });
     }
 
+    renderTrioStage(region) {
+      const ids = this.store.playerTeam.slice(0, 3);
+      if (!ids.length) {
+        this.mono(region.x + 18, region.y + region.h * 0.7, 'NO ACTIVE TRIO', {
+          color: CULLING_COLORS.inverseText, backgroundColor: '#101B36', fontSize: '12px', fontStyle: '900', padding: { x: 6, y: 4 },
+        });
+        this.text(region.x + 18, region.y + region.h * 0.7 + 30, 'CAST YOUR FIRST TEAM', {
+          fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif', fontSize: '24px', fontStyle: '900', color: CULLING_COLORS.inverseText,
+          stroke: CULLING_COLORS.cobalt, strokeThickness: 5,
+        });
+        return;
+      }
+      const sizes = [0.5, 0.47, 0.52];
+      const xRatios = [-0.04, 0.25, 0.52];
+      ids.forEach((id, index) => {
+        const w = region.w * sizes[index];
+        const h = Math.min(region.h * (index === 1 ? 0.86 : 0.74), w * 1.52);
+        const x = region.x + region.w * xRatios[index];
+        const y = region.y + region.h - h - (index === 1 ? 20 : 0);
+        this.portraitArtwork(this.store.character(id), x, y, w, h, { context: 'hero', alpha: index === 1 ? 1 : 0.94, depth: index === 1 ? 1 : 0 });
+        this.graphics.lineStyle(index === 1 ? 3 : 1.5, index === 1 ? CULLING_COLORS.cyan : CULLING_COLORS.ivory, 0.86);
+        this.graphics.beginPath();
+        this.graphics.moveTo(x + 8, y + h - 6);
+        this.graphics.lineTo(x + w - 8, y + h - 18);
+        this.graphics.strokePath();
+      });
+    }
+
+    renderSceneRail(region) {
+      const items = [
+        ['TEAM', () => this.store.openFirstCreation()],
+        ['MISSIONS', () => this.store.changeScene('MissionMapScene')],
+        ['RECORDS', () => this.store.changeScene('RecordsScene')],
+      ];
+      this.graphics.fillStyle(CULLING_COLORS.cobalt, 0.72);
+      this.graphics.fillRect(region.x, region.y, region.w, region.h);
+      const itemH = region.h / items.length;
+      items.forEach(([label, onClick], index) => {
+        const y = region.y + index * itemH;
+        this.graphics.lineStyle(1, index === 1 ? CULLING_COLORS.gold : CULLING_COLORS.cyan, 0.76);
+        this.graphics.beginPath(); this.graphics.moveTo(region.x + 8, y + itemH - 1); this.graphics.lineTo(region.x + region.w - 8, y + itemH - 1); this.graphics.strokePath();
+        this.mono(region.x + 10, y + 12, `0${index + 1}`, { color: CULLING_COLORS.concrete, fontSize: '10px', fontStyle: '900' });
+        this.text(region.x + 10, y + 30, label, { fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif', fontSize: region.w < 86 ? '12px' : '13px', fontStyle: '900', color: CULLING_COLORS.inverseText }).setAngle(-2);
+        this.registerHitTarget(region.x, y, region.w, Math.max(44, itemH), label, onClick, { accessibilityId: `scene-${label.toLowerCase()}` });
+      });
+    }
+
+    renderDeploy(region) {
+      if (!this.modeOpen) {
+        this.graphics.fillStyle(CULLING_COLORS.vermilion, 0.94);
+        this.graphics.fillTriangle(region.x, region.y + 8, region.x + region.w, region.y, region.x, region.y + region.h);
+        this.text(region.x + 10, region.y + 6, 'DEPLOY', { fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif', fontSize: region.w < 250 ? '38px' : '44px', fontStyle: '900', color: CULLING_COLORS.inverseText, stroke: CULLING_COLORS.cobalt, strokeThickness: 4 });
+        this.mono(region.x + 14, region.y + region.h - 24, 'CHOOSE BATTLE MODE  ›', { color: CULLING_COLORS.inverseText, fontSize: '11px', fontStyle: '900' });
+        this.registerHitTarget(region.x, region.y, region.w, region.h, 'Deploy: choose battle mode', () => { this.modeOpen = true; }, { accessibilityId: 'deploy' });
+        return;
+      }
+      const gap = 6;
+      const w = (region.w - gap) / 2;
+      [['CPU PRACTICE', 'cpu'], ['PRIVATE PVP', 'pvp']].forEach(([label, mode], index) => {
+        const x = region.x + index * (w + gap);
+        this.drawClippedSurface(x, region.y, w, region.h, { fill: index ? CULLING_COLORS.vermilion : CULLING_COLORS.cobalt, stroke: CULLING_COLORS.ivory, strokeAlpha: 0.8, cut: 9 });
+        this.text(x + 10, region.y + 11, label, { fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif', fontSize: '17px', fontStyle: '900', color: CULLING_COLORS.inverseText, wordWrap: { width: w - 18 } }).setMaxLines(2);
+        this.mono(x + 10, region.y + region.h - 21, index ? 'ROOM CODE' : 'SERVER RIVAL', { color: index ? '#FFD2CF' : '#9AF7FF', fontSize: '10px', fontStyle: '900' });
+        this.registerHitTarget(x, region.y, w, region.h, label, () => { this.store.setMatchMode(mode); this.store.changeScene('DraftScene'); }, { accessibilityId: `deploy-${mode}` });
+      });
+    }
+
     render() {
       const frame = this.layout.frame();
       const layout = this.homeLayout(frame);
@@ -435,10 +461,9 @@ export class LobbyScene extends BaseScene {
       });
       this.renderEditorialTitle(layout.title);
       this.renderProfileStrip(layout.profile);
-      this.renderPromotionalHeroLabel(layout.hero);
-      this.renderBattleSlab(layout.battle);
-      this.renderFeatureTiles(layout.features);
-      this.renderBottomNav(layout.nav);
+      this.renderTrioStage(layout.stage);
+      this.renderSceneRail(layout.rail);
+      this.renderDeploy(layout.deploy);
       this.toast(frame, { y: layout.battle.y - 54, theme: 'light' });
       this.presentSurface(frame, { moteCount: 8, parallax: 4 });
     }

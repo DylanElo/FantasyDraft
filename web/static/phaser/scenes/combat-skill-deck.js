@@ -1,13 +1,7 @@
-import { CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_TYPE } from '../core/runtime-config.js?v=43';
-import { clamp, safeText } from '../core/text.js?v=43';
-import { clippedPoints } from '../core/shape.js?v=43';
-import { SKILL_ART_BY_ENERGY } from '../core/asset-registry.js?v=43';
-import { Season3UI } from '../ui/season3-ui.js?v=43';
-
-const {
-  button: drawCurrentButton,
-  energyPip: drawEnergyPip,
-} = Season3UI.current;
+import { CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_TYPE } from '../core/runtime-config.js?v=58';
+import { safeText, shortText } from '../core/text.js?v=58';
+import { clippedPoints } from '../core/shape.js?v=58';
+import { SKILL_ART_BY_ENERGY } from '../core/asset-registry.js?v=58';
 
 const COMPACT_DISABLED_REASONS = Object.freeze([
   [': this skill class is disabled.', 'Skill class disabled.'],
@@ -18,11 +12,15 @@ const COMPACT_DISABLED_REASONS = Object.freeze([
 ]);
 
 // Re-exported from combat-scene.js (`export { compactSkillCardDisabledReason }
-// from './combat-skill-deck.js?v=43';`) because
+// from './combat-skill-deck.js?v=58';`) because
 // tests/test_phaser_authority_readability.py dynamically imports the
 // combat-scene module itself and destructures this function off it.
 export function compactSkillCardDisabledReason(reason) {
   const fullReason = safeText(reason, 'Unavailable.');
+  if (fullReason.startsWith('Not enough ')) return 'No energy';
+  if (fullReason === 'No legal targets.') return 'No target';
+  if (fullReason === 'Target is invulnerable.') return 'Invulnerable';
+  if (fullReason === 'Controls locked') return 'Locked';
   const compact = COMPACT_DISABLED_REASONS.find(([suffix]) => fullReason.endsWith(suffix));
   return compact ? compact[1] : fullReason;
 }
@@ -84,6 +82,7 @@ export function renderTechniqueArtwork(skill, index, x, y, w, h, tone, disabled,
     disabled,
     state: disabled ? 'disabled' : selected ? 'selected' : 'available',
     sheen: selected,
+    icon: false,
   });
   if (integrated) {
     g.fillStyle(CULLING_COLORS.cobalt, disabled ? 0.3 : 0.06);
@@ -162,171 +161,64 @@ export function renderSkillButton(skill, caster, index, x, y, w, h) {
   const selected = this.store.selectedSkillId === skill.id;
   const cost = this.store.adjustedCost(caster, skill);
   const firstCost = cost[0];
+  const costLabel = cost.length ? cost.map((color) => ENERGY_LABELS[color] || 'X').join(' ') : 'FREE';
   const tone = selected ? CULLING_COLORS.selected : (ENERGY_COLORS[firstCost] || CULLING_COLORS.cobalt);
-  const artW = clamp(Math.round(w * 0.3), 48, 58);
-  const contentX = x + artW + 7;
-  const contentW = Math.max(72, w - artW - 12);
+  const artH = h;
+  const stateLabel = state.disabled
+    ? compactSkillCardDisabledReason(state.reason).toUpperCase()
+    : selected
+      ? 'CHOOSE TARGET'
+      : state.casterQueued
+        ? `Q${state.queuedIndex + 1} QUEUED`
+        : skill.effective_skill_id
+          ? 'REPLACED'
+          : this.store.targetLabel(skill).toUpperCase();
+  const compactStateLabel = shortText(stateLabel, w < 84 ? 10 : 14);
 
-  this.graphics.fillStyle(CULLING_COLORS.shadow, selected ? 0.28 : 0.16);
-  this.graphics.fillPoints(clippedPoints(x + 2, y + 4, w, h, 7), true);
-  this.graphics.fillStyle(CULLING_COLORS.ivory, state.disabled ? 0.82 : 0.98);
-  this.graphics.fillPoints(clippedPoints(x, y, w, h, 7), true);
-  this.renderTechniqueArtwork(skill, index, x + 2, y + 2, artW, h - 4, tone, state.disabled, cost, selected);
-  this.graphics.fillStyle(CULLING_COLORS.ivory, state.disabled ? 0.88 : 0.97);
-  this.graphics.fillPoints([
-    { x: x + artW - 4, y: y + 2 },
-    { x: x + w - 2, y: y + 2 },
-    { x: x + w - 2, y: y + h - 2 },
-    { x: x + artW + 3, y: y + h - 2 },
-  ], true);
-  this.graphics.fillStyle(tone, selected ? 0.98 : state.disabled ? 0.3 : 0.76);
-  this.graphics.fillRect(x + artW, y + 2, 3, h - 4);
-  this.graphics.lineStyle(selected ? 3 : 1.25, tone, state.disabled ? 0.34 : selected ? 1 : 0.86);
-  this.graphics.strokePoints(clippedPoints(x, y, w, h, 7), true);
+  const iconX = x + 3;
+  const iconW = w - 6;
+  this.graphics.fillStyle(CULLING_COLORS.shadow, selected ? 0.34 : 0.18);
+  this.graphics.fillPoints(clippedPoints(iconX + 2, y + 3, iconW, artH, 11), true);
+  this.renderTechniqueArtwork(skill, index, iconX, y, iconW, artH, tone, state.disabled, cost, selected);
+  this.graphics.lineStyle(selected ? 4 : 2, tone, state.disabled ? 0.32 : 0.96);
+  this.graphics.strokePoints(clippedPoints(iconX, y, iconW, artH, 11), true);
 
-  const numberX = x + 12;
-  const numberY = y + 12;
-  // Gap 1: cooldown badge — Aged Gold CD chip replaces the plain diamond fill
-  // when the skill is on cooldown so players can scan remaining turns at a glance.
-  const hasCooldown = state.cooldown > 0;
-  this.graphics.fillStyle(
-    hasCooldown ? CULLING_COLORS.gold : (selected ? CULLING_COLORS.gold : CULLING_COLORS.charcoal),
-    0.96,
-  );
-  this.graphics.fillPoints([
-    { x: numberX, y: numberY - 9 },
-    { x: numberX + 9, y: numberY },
-    { x: numberX, y: numberY + 9 },
-    { x: numberX - 9, y: numberY },
-  ], true);
-  if (hasCooldown) {
-    // Two-line CD badge inside the Aged Gold diamond: "CD" label + count.
-    // Both lines must be ≥ 10px per the mobile typography contract.
-    this.mono(numberX, numberY - 9, 'CD', {
-      color: CULLING_COLORS.text,
-      fontSize: '10px',
-      fontStyle: '900',
-    }).setOrigin(0.5, 0);
-    this.mono(numberX, numberY - 1, String(state.cooldown), {
-      color: CULLING_COLORS.text,
-      fontSize: '10px',
-      fontStyle: '900',
-    }).setOrigin(0.5, 0);
-  } else {
-    this.mono(numberX, numberY - 5, String(index + 1), {
-      color: selected ? CULLING_COLORS.text : CULLING_COLORS.inverseText,
-      fontSize: '10px',
-      fontStyle: '700',
-    }).setOrigin(0.5, 0);
-  }
+  this.mono(x + 7, y + 5, state.cooldown > 0 ? `CD ${state.cooldown}` : String(index + 1), {
+    color: CULLING_COLORS.inverseText,
+    backgroundColor: state.cooldown > 0 ? '#B58B5B' : '#17191E',
+    fontSize: '12px',
+    fontStyle: '900',
+    padding: { x: 3, y: 2 },
+  }).setDepth(1);
+  this.mono(x + w - 6, y + 5, costLabel, {
+    color: CULLING_COLORS.inverseText,
+    backgroundColor: '#17191E',
+    fontSize: '10px',
+    fontStyle: '900',
+    padding: { x: 3, y: 2 },
+  }).setOrigin(1, 0).setDepth(1);
 
-  if (skill.effective_skill_id || state.casterQueued) {
-    const ribbonW = artW - 4;
-    const ribbonLabel = skill.effective_skill_id
-      ? state.casterQueued ? `REPLACED / Q${state.queuedIndex + 1}` : 'REPLACED'
-      : `QUEUED Q${state.queuedIndex + 1}`;
-    this.graphics.fillStyle(skill.effective_skill_id ? CULLING_COLORS.vermilion : CULLING_COLORS.queued, 0.94);
-    this.graphics.fillRect(x + 2, y + h - 37, ribbonW, 17);
-    const ribbonNode = this.text(x + 2 + ribbonW / 2, y + h - 35, ribbonLabel, {
-      fontFamily: TOKEN_TYPE.mono || 'monospace',
-      color: CULLING_COLORS.inverseText,
-      fontSize: '10px',
-      fontStyle: '700',
-      align: 'center',
-      wordWrap: { width: ribbonW - 4 },
-    }).setOrigin(0.5, 0);
-    ribbonNode.setMaxLines(1);
-  }
-
-  const skillName = this.text(contentX, y + 5, skill.name, {
+  this.graphics.fillStyle(CULLING_COLORS.charcoal, 0.88);
+  this.graphics.fillRect(x + 3, y + h - 53, w - 6, 50);
+  const skillName = this.text(x + w / 2, y + h - 49, skill.name, {
     fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
     fontSize: '12px',
     fontStyle: '900',
-    color: state.disabled ? CULLING_COLORS.mutedText : CULLING_COLORS.text,
-    align: 'left',
-    lineSpacing: -1,
-    wordWrap: { width: contentW },
+    color: state.disabled ? '#B7B5AD' : CULLING_COLORS.inverseText,
+    align: 'center',
+    lineSpacing: -2,
+    wordWrap: { width: w - 10 },
   });
+  skillName.setOrigin(0.5, 0);
   skillName.setMaxLines(2);
-
-  // Gap 2: class tags — show up to 2 abbreviated class names on available cards
-  // so players can quickly identify PIERCING, COUNTER, DOMAIN, etc. in the grid.
-  const classTags = (skill.classes || []).slice(0, 2);
-  if (classTags.length && !state.disabled && !selected && h >= 158) {
-    const tagLine = classTags.map((c) => String(c).toUpperCase()).join('  ·  ');
-    this.mono(contentX, y + 29, tagLine, {
-      color: CULLING_COLORS.mutedText,
-      fontSize: '10px',
-      fontStyle: '700',
-      wordWrap: { width: contentW },
-    }).setMaxLines(1);
-  }
-  // Gap 3: split "StatusName: reason." into two card lines.
-  const ruleReasonParts = (state.ruleReason && state.ruleReason.includes(': ')) ? state.ruleReason.split(': ') : null;
-  const statusLine2 = ruleReasonParts ? compactSkillCardDisabledReason(state.ruleReason) : '';
-  const statusTone = state.disabled ? (ruleReasonParts ? '#C8B07A' : CULLING_COLORS.redText) : selected ? CULLING_COLORS.text : CULLING_COLORS.cobaltText;
-  const statusRowY = state.disabled ? y + 31 : (classTags.length && !selected && h >= 158) ? y + 41 : y + 31;
-  const statusLine = state.disabled
-    ? ruleReasonParts ? ruleReasonParts[0].toUpperCase() : compactSkillCardDisabledReason(state.reason)
-    : selected ? 'SELECTED / TAP AGAIN FOR INFO' : `${this.store.targetLabel(skill).toUpperCase()} / READY`;
-  const reasonNode = this.text(contentX, statusRowY, statusLine, {
-    fontFamily: TOKEN_TYPE.mono || 'monospace',
-    fontSize: '12px',
-    fontStyle: '800',
-    color: statusTone,
-    align: 'left',
-    lineSpacing: state.disabled ? -4 : -2,
-    wordWrap: { width: contentW },
-  });
-  reasonNode.setMaxLines(state.disabled ? 4 : 3);
-  // Selection highlight drawn after the text node so it appears behind it.
-  if (selected && !state.disabled) {
-    this.graphics.fillStyle(CULLING_COLORS.gold, 0.22);
-    this.graphics.fillRect(contentX - 3, statusRowY - 2, contentW + 3, Math.max(22, h - statusRowY + y - 16));
-  }
-  if (statusLine2) {
-    const reason2Node = this.text(contentX, statusRowY + 14, statusLine2, {
-      fontFamily: TOKEN_TYPE.mono || 'monospace',
-      fontSize: '12px',
-      fontStyle: '800',
-      color: CULLING_COLORS.redText,
-      align: 'left',
-      lineSpacing: -4,
-      wordWrap: { width: contentW },
-    });
-    reason2Node.setMaxLines(3);
-  }
-
-  const pipY = y + h - 10;
-  const pipCount = Math.max(1, cost.length);
-  const pipGap = Math.min(12, (artW - 14) / pipCount);
-  const pipStart = x + 2 + artW / 2 - ((pipCount - 1) * pipGap) / 2;
-  this.graphics.fillStyle(CULLING_COLORS.charcoal, 0.78);
-  this.graphics.fillRect(x + 2, y + h - 20, artW, 18);
-  if (!cost.length) {
-    this.mono(x + 2 + artW / 2, pipY - 4, 'FREE', {
-      color: CULLING_COLORS.inverseText,
-      fontSize: '10px',
-      fontStyle: '700',
-    }).setOrigin(0.5, 0);
-  }
-  cost.forEach((color, costIndex) => {
-    const px = pipStart + costIndex * pipGap;
-    drawEnergyPip(this, px, pipY, color, {
-      backingColor: CULLING_COLORS.charcoal,
-      backingAlpha: 0.22,
-      backingRadius: 6,
-      radius: 4.8,
-      fillAlpha: state.disabled ? 0.34 : color === 'white' ? 0.94 : 0.98,
-      strokeRadius: 5.6,
-      strokeAlpha: 0.82,
-      label: ENERGY_LABELS[color] || 'X',
-      labelFontStyle: '700',
-      labelOffsetY: -4.7,
-    });
-  });
-
-  const costLabel = cost.length ? cost.map((color) => ENERGY_LABELS[color] || 'X').join(' ') : 'FREE';
+  skillName.setDepth(1);
+  this.mono(x + w / 2, y + h - 20, compactStateLabel, {
+    color: state.disabled ? '#FFB0AA' : selected ? CULLING_COLORS.text : CULLING_COLORS.inverseText,
+    backgroundColor: state.disabled ? '#7E2320' : selected ? CULLING_COLORS.gold : CULLING_COLORS.charcoal,
+    fontSize: '10px',
+    fontStyle: '900',
+    padding: { x: 3, y: 2 },
+  }).setOrigin(0.5, 0).setDepth(1);
 
   this.registerHitTarget(
     x,
@@ -360,13 +252,6 @@ export function renderSkillButton(skill, caster, index, x, y, w, h) {
     },
   );
 
-  drawCurrentButton(this, x + w - 28, y - 2, 26, 26, 'i', () => this.store.openSkillDetail(skill.id), {
-    fill: CULLING_COLORS.concrete,
-    stroke: tone,
-    color: CULLING_COLORS.text,
-    fontSize: '14px',
-    radius: 13,
-  });
 }
 
 export function renderBottomActions(frame, layout) {
@@ -467,6 +352,44 @@ export function renderBottomActions(frame, layout) {
 export function renderMiniTimeline(frame, layout) {
   const state = this.store.state;
   if (!state || !['planning', 'queue_review'].includes(state.phase)) return;
+  const actions = this.store.actions || [];
+  const me = this.store.me();
+  const foe = this.store.foe();
+  const gap = 4;
+  const panelW = (layout.contentW - gap * 2) / 3;
+  const y = layout.timelineY;
+  const h = layout.timelineH;
+  [0, 1, 2].forEach((index) => {
+    const x = layout.contentX + index * (panelW + gap);
+    const action = actions[index];
+    this.graphics.fillStyle(action ? CULLING_COLORS.ivory : CULLING_COLORS.charcoal, action ? 0.94 : 0.24);
+    this.graphics.fillPoints(clippedPoints(x, y, panelW, h, 5), true);
+    this.graphics.lineStyle(1.5, action ? (index === 0 ? CULLING_COLORS.gold : CULLING_COLORS.cyan) : CULLING_COLORS.ivory, action ? 0.92 : 0.2);
+    this.graphics.strokePoints(clippedPoints(x, y, panelW, h, 5), true);
+    this.mono(x + 5, y + 4, `0${index + 1}`, { color: action ? CULLING_COLORS.redText : CULLING_COLORS.mutedText, fontSize: '12px', fontStyle: '900' });
+    if (!action) {
+      this.mono(x + panelW / 2, y + h / 2 - 6, 'OPEN', { color: '#D4D8E0', fontSize: '12px', fontStyle: '900' }).setOrigin(0.5, 0);
+      return;
+    }
+    const caster = me && me.team && me.team[action.caster_slot];
+    const skill = caster && this.store.skillFor(caster, action.skill_id);
+    const targetPlayer = action.target_player_id === this.store.mineId() ? me : foe;
+    const target = action.target_slot != null && targetPlayer && targetPlayer.team ? targetPlayer.team[action.target_slot] : null;
+    const cost = skill ? this.store.adjustedCost(caster, skill) : [];
+    const wild = (this.store.actionWildPays[action.id] || []).map((value) => ENERGY_LABELS[value] || '?');
+    this.text(x + 24, y + 3, shortText(skill ? skill.name : action.skill_id, 15), {
+      fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif', fontSize: '12px', fontStyle: '900', color: CULLING_COLORS.text,
+      wordWrap: { width: panelW - 29 },
+    }).setMaxLines(1);
+    this.mono(x + 6, y + 23, `${shortText(caster && caster.name, 7)} > ${shortText(target && target.name || 'TEAM', 7)}`, { color: CULLING_COLORS.cobaltText, fontSize: '12px', fontStyle: '800' }).setMaxLines(1);
+    this.mono(x + panelW - 5, y + h - 15, `${cost.map((value) => ENERGY_LABELS[value] || 'X').join('') || '0'}${wild.length ? ` / X>${wild.join('')}` : ''}`, { color: CULLING_COLORS.redText, fontSize: '12px', fontStyle: '900' }).setOrigin(1, 0);
+    this.registerHitTarget(x, y, panelW, h, `Review queue action ${index + 1}, ${skill ? skill.name : action.skill_id}`, () => this.store.openQueueReview(), { accessibilityId: `storyboard-${index + 1}` });
+  });
+}
+
+function renderMiniTimelineLegacy(frame, layout) {
+  const state = this.store.state;
+  if (!state || !['planning', 'queue_review'].includes(state.phase)) return;
 
   const actions = this.store.actions || [];
   if (actions.length === 0) return;
@@ -541,26 +464,86 @@ export function renderMiniTimeline(frame, layout) {
 }
 
 export function renderCommandDeck(frame, layout, selected) {
-  this.renderIdentityStrip(frame, layout, selected);
+  const selectedSkill = this.store.selectedSkill();
+  if (selected && selectedSkill) {
+    const x = layout.contentX + 8;
+    const y = layout.commandY + 8;
+    const w = layout.contentW - 16;
+    const h = layout.commandH - 20;
+    const artW = Math.min(108, Math.round(w * 0.3));
+    const cost = this.store.adjustedCost(selected, selectedSkill);
+    const costLabel = cost.length ? cost.map((color) => ENERGY_LABELS[color] || 'X').join(' + ') : 'FREE';
+    const legal = [];
+    const blocked = [];
+    [['enemy', this.store.foe()], ['mine', this.store.me()]].forEach(([side, player]) => {
+      ((player && player.team) || []).slice(0, 3).forEach((fighter, slot) => {
+        if (this.store.canTarget(fighter, slot, side)) legal.push(fighter.name);
+        else if (this.store.targetBlocksSkill(fighter, selectedSkill)) blocked.push(fighter.name);
+      });
+    });
+
+    this.graphics.fillStyle(CULLING_COLORS.charcoal, 0.96);
+    this.graphics.fillPoints(clippedPoints(x, y, w, h, 14), true);
+    this.graphics.lineStyle(2, CULLING_COLORS.target, 0.94);
+    this.graphics.strokePoints(clippedPoints(x, y, w, h, 14), true);
+    this.renderIntegratedSkillArtwork(selectedSkill, { x: x + 8, y: y + 8, w: artW, h: h - 16 }, {
+      context: 'targeting-receipt', caster: selected, cost, depth: 0.5, state: 'selected', sheen: true,
+    });
+    const textX = x + artW + 20;
+    const textW = w - artW - 30;
+    this.text(textX, y + 12, selectedSkill.name, {
+      fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif', fontSize: '16px', fontStyle: '900',
+      color: CULLING_COLORS.inverseText, wordWrap: { width: textW },
+    }).setMaxLines(2);
+    this.mono(textX, y + 50, `COST ${costLabel}`, { color: '#F2E8D5', fontSize: '12px', fontStyle: '900' });
+    this.mono(textX, y + 72, `TARGET  ${this.store.targetLabel(selectedSkill).toUpperCase()}`, { color: '#35DDE8', fontSize: '12px', fontStyle: '900' });
+    this.text(textX, y + 96, `LEGAL  ${legal.join(' · ') || 'NONE'}`, {
+      fontFamily: TOKEN_TYPE.mono || 'monospace', fontSize: '12px', fontStyle: '800', color: CULLING_COLORS.inverseText,
+      wordWrap: { width: textW },
+    }).setMaxLines(2);
+    if (blocked.length) this.mono(textX, y + h - 28, `BLOCKED  ${blocked.join(' · ')}`, {
+      color: '#FF938C', fontSize: '12px', fontStyle: '900', wordWrap: { width: textW },
+    }).setMaxLines(1);
+
+    const actionY = layout.reviewY;
+    const cancelW = 82;
+    this.graphics.fillStyle(CULLING_COLORS.ivory, 0.98);
+    this.graphics.fillRect(frame.x + 6, actionY, cancelW, layout.reviewH - 4);
+    this.graphics.lineStyle(2, CULLING_COLORS.gold, 0.92);
+    this.graphics.strokeRect(frame.x + 6, actionY, cancelW, layout.reviewH - 4);
+    this.mono(frame.x + 6 + cancelW / 2, actionY + 15, 'CANCEL', { color: CULLING_COLORS.text, fontSize: '12px', fontStyle: '900' }).setOrigin(0.5, 0);
+    this.registerHitTarget(frame.x + 6, actionY, cancelW, layout.reviewH - 4, 'Cancel targeting', () => this.store.selectCaster(this.store.selectedCasterSlot), { accessibilityId: 'cancel-targeting' });
+    const promptX = frame.x + 94;
+    const promptW = frame.width - 100;
+    this.graphics.fillStyle(CULLING_COLORS.target, 0.98);
+    this.graphics.fillPoints(clippedPoints(promptX, actionY, promptW, layout.reviewH - 4, 10), true);
+    this.text(promptX + promptW / 2, actionY + 10, 'TAP A LEGAL TARGET  →', {
+      fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif', fontSize: '17px', fontStyle: '900', color: CULLING_COLORS.text,
+    }).setOrigin(0.5, 0);
+    return;
+  }
   if (selected) {
     this.store.skillsFor(selected).slice(0, 4).forEach((skill, index) => {
       const column = index % layout.skillColumns;
       const row = Math.floor(index / layout.skillColumns);
       const x = layout.skillX + column * (layout.skillW + layout.skillGap);
-      const y = layout.skillY + row * (layout.skillCardH + layout.skillGap);
-      this.renderSkillButton(skill, selected, index, x, y, layout.skillW, layout.skillCardH);
+      const fanOffset = [14, 7, 0, 11][index] || 0;
+      const y = layout.skillY + row * (layout.skillCardH + layout.skillGap) + fanOffset;
+      this.renderSkillButton(skill, selected, index, x, y, layout.skillW, layout.skillCardH - fanOffset);
     });
   } else {
     [0, 1, 2, 3].forEach((index) => {
       const column = index % layout.skillColumns;
       const row = Math.floor(index / layout.skillColumns);
       const x = layout.skillX + column * (layout.skillW + layout.skillGap);
-      const y = layout.skillY + row * (layout.skillCardH + layout.skillGap);
+      const fanOffset = [14, 7, 0, 11][index] || 0;
+      const y = layout.skillY + row * (layout.skillCardH + layout.skillGap) + fanOffset;
+      const cardH = layout.skillCardH - fanOffset;
       this.graphics.fillStyle(CULLING_COLORS.ivory, 0.74);
-      this.graphics.fillPoints(clippedPoints(x, y, layout.skillW, layout.skillCardH, 8), true);
+      this.graphics.fillPoints(clippedPoints(x, y, layout.skillW, cardH, 8), true);
       this.graphics.lineStyle(1, CULLING_COLORS.charcoal, 0.2);
-      this.graphics.strokePoints(clippedPoints(x, y, layout.skillW, layout.skillCardH, 8), true);
-      this.mono(x + layout.skillW / 2, y + layout.skillCardH / 2 - 5, `SLOT ${index + 1}`, {
+      this.graphics.strokePoints(clippedPoints(x, y, layout.skillW, cardH, 8), true);
+      this.mono(x + layout.skillW / 2, y + cardH / 2 - 5, `SLOT ${index + 1}`, {
         color: CULLING_COLORS.mutedText,
         fontSize: '10px',
         fontStyle: '700',

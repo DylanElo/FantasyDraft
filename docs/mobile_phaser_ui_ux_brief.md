@@ -4,6 +4,13 @@
 
 Build JJK Arena as a portrait-first mobile tactical game. The browser remains the delivery shell, but the player experience should feel like a native mobile battler: one canvas, one-handed controls, bold tactile feedback, readable combat, and cinematic cursed-energy presentation.
 
+The maintained implementation now ships the internal `Incident Cut` system.
+The battlefield and character crops establish hierarchy; contextual controls
+enter only for the current decision. Home uses a scene rail, selection uses a
+featured fighter, Matchup uses a diagonal confrontation, Combat uses a
+four-technique cut rail and compact three-shot storyboard, and Queue Review
+expands only over the lower 35% of the stage.
+
 The current app already contains a Phaser shell with these scene concepts:
 
 - `LobbyScene`
@@ -12,13 +19,20 @@ The current app already contains a Phaser shell with these scene concepts:
 - `ResultScene`
 - `RecordsScene`
 
-The next UI/UX step is to turn that shell from a functional developer interface into a production mobile game interface.
+These scenes are production compositions, not placeholders for a later DOM or
+dashboard layer.
 
 ## Core References
 
 - Naruto Arena combat flow: 3v3 teams, one skill per living character, queue review, wildcard/random energy payment, and left-to-right resolution.
 - First Creation identity: Student Era + Hidden Inventory + JJK0. The first roster should feel like "Welcome to Jujutsu High," not endgame apocalypse.
-- Approved visual direction (internal codename `Culling Current`): the locked Season 3 Culling Game system in `docs/season3_visual_system.md`, with sharp ink/hatch work, hard cel shadows, storm-lit painted cities, light bone/smoke routine UI, and darkness reserved for Domain, damage, or finisher punctuation. This is a visual system, not a roster-era or progression rename.
+- Shipped visual direction (internal codename `Incident Cut`): the
+  environment-first editorial system in `docs/season3_visual_system.md`, with
+  cinematic painterly illustration, mood-graded colour, light bone routine
+  UI, contextual barrier geometry, and darkness reserved for Domain, damage,
+  or finisher punctuation. Restrained ink and hatch remain UI-chrome accents,
+  not an illustration grammar. This is a visual system, not a roster-era or
+  progression rename.
 
 ## Design Pillars
 

@@ -1,22 +1,55 @@
-# Season 3 visual system
+# Incident Cut visual system
 
-Status: locked product direction, 2026-07-18.
+Status: implemented maintained-client direction, 2026-08-02.
+Illustration grammar superseded 2026-08-12 — see the correction notice below.
+
+> ## ⚠ Illustration direction correction (2026-08-12)
+>
+> **The ink-hatch illustration grammar previously described in this document was
+> rejected by the user on 2026-08-02 and must not be regenerated.**
+>
+> That grammar — hand-inked cross-hatch texture, flat hard-edge cel shadow, and
+> comic-panel framing — was inferred from this document's own wording rather
+> than researched against the aired anime. Research on 2026-08-02 into the real
+> Jujutsu Kaisen Season 3 (Culling Game arc, MAPPA, dir. Shōta Goshozono)
+> established the actual direction, and the user confirmed it as:
+> **"cinematic/painterly, mood-graded color, no ink hatching."**
+>
+> The corrected illustration grammar is in [Visual grammar](#visual-grammar)
+> below. Two consequences for anyone picking this work up:
+>
+> - **The generation prompts recorded in `web/static/assets/*/PROVENANCE.md`
+>   describe the rejected pass.** Do not copy them for new art "for
+>   consistency". They are retained as lineage, not as a template.
+> - **The corrected direction has never been rendered.** Scenario's free-tier
+>   generation cap was reached immediately after the corrected prompt was
+>   written, before it could be tested, and the prompt was not persisted. It
+>   must be rebuilt and test-rendered on a small sample before committing to a
+>   19-character roster regeneration.
+>
+> **Scope of this correction:** it governs generated *illustration* — character
+> portraits, environment plates, and skill/effect art. It does not by itself
+> change the UI chrome rules in [UI contract](#ui-contract), which still specify
+> thick ink borders and sparse hatching on panels. Whether the chrome should
+> follow the illustration away from hatching is an open question for the user
+> and has deliberately not been decided here.
 
 This document defines the visual source of truth for the maintained Phaser
-client. `Culling Current` remains the internal implementation codename. The
+client. `Incident Cut` is the internal implementation codename and supersedes
+the earlier Culling Current screen compositions. The semantic palette, asset
+provenance, accessibility, viewer privacy, and server-authority rules remain.
+The
 player-facing game is not renamed, the starter era is not changed, and the
 visual direction does not unlock Culling Game characters or alter progression.
 
 ## Direction
 
 Every visible screen, character illustration, environment, transition, VFX
-layer, and routine UI surface must belong to one coherent Season 3 Culling Game
-art system. The reference traits were distilled from current official material,
-including the [official Season 3 site](https://jujutsukaisen.jp/shimetsukaiyu/)
-and official [Culling Game key-visual announcement](https://jujutsukaisen.jp/news/20260109_04.php).
-Those links are design-context citations only; they do not imply affiliation,
-endorsement, licensing, or that official images were supplied as generator
-inputs.
+layer, and routine UI surface belongs to one coherent environment-first
+editorial system. Navigation behaves like authored scene changes; selection
+stages a fighter; targeting draws barrier geometry; the queue reads as a
+left-to-right three-shot storyboard; resolution retracts commands; and Results
+lands as an episode-ending title card.
 
 The game uses fresh generated or appropriately licensed compositions. Do not
 paste, trace, or regenerate official frames, key visuals, manga panels, logos,
@@ -25,21 +58,29 @@ to ship unlicensed source art.
 
 ## Visual grammar
 
-- Sharp hand-inked contours with occasional raw pencil, brush, and
-  cross-hatched stress marks.
-- Large, flat, high-contrast cel-shadow masses instead of soft glossy airbrush.
-- Painted urban depth with a photographic sense of architecture, weather, and
-  perspective.
-- Bright saturated blue sky and cold bone-gray concrete lead routine Home and
-  Combat worlds; storm ochre is a weather accent rather than a default color
-  cast. Deep indigo structure, barrier-red geometry, and selective curse-cyan
-  emission provide contrast.
-- Asymmetric editorial composition, aggressive diagonals, cropped scale shifts,
-  and occasional tilted/inverted fragments where readability permits.
-- Stark black/red danger frames are brief punctuation for damage, Domains, and
-  finishers; ordinary navigation is not a near-black dashboard.
-- Paper/concrete grain, ink hatching, clipped corners, and red barrier cuts
-  connect UI chrome to the illustrated world.
+Corrected 2026-08-12. This section governs generated illustration.
+
+- **Painterly MAPPA-house digital cel-shading.** Soft, controlled light falloff
+  and blended tonal transitions. **No hand-inked hatch texture, no cross-hatch
+  stress marks, no raw pencil grain on the artwork itself.** Contours are clean
+  and confident rather than scratchy.
+- **Cinematic camera and shot composition.** Real lens logic — depth of field,
+  considered focal length, dramatic and occasionally off-kilter angles. The
+  reference point is film cinematography, not flat manga-panel framing.
+- **Mood-graded colour that shifts per scene, location, and emotional beat.**
+  This is the largest departure from the previous grammar: a single rigid
+  palette must not be applied uniformly to every illustration. The semantic
+  palette below still governs *interface state*; it does not flatten the art.
+- **Painted urban depth** with a photographic sense of architecture, weather,
+  and perspective.
+- **Psychological unease as undertone, not horror.** Symbolic, slightly
+  off-kilter, art-referencing composition. Restraint over gore or darkness.
+- **High-end blended 2D/3D polish.** Smooth, film-quality finish.
+- Stark black/red danger frames remain brief punctuation for damage, Domains,
+  and finishers; ordinary navigation is not a near-black dashboard.
+
+Interface chrome is specified separately in [UI contract](#ui-contract) and is
+not changed by this correction.
 
 ## Locked palette
 
@@ -60,6 +101,13 @@ T/J/S/B energy colors and labels remain gameplay semantics and may not be
 reinterpreted to fit the art palette. X remains a Wild cost placeholder, not a
 fifth generated resource.
 
+**Scope (clarified 2026-08-12).** This table is the *interface* palette: it
+governs UI chrome, state colour, and semantic meaning, and it stays locked.
+It is **not** a uniform grade to be applied across every illustration. Per the
+correction above, generated art is mood-graded per scene, location, and beat.
+Art and interface should stay in the same family and remain readable together,
+but an environment plate is not required to match these hex values.
+
 ## Illustration contract
 
 - One coherent production treatment applies to all 19 locked starter
@@ -74,6 +122,20 @@ fifth generated resource.
   designated character-led hero composition may include generated character
   art, but still contains no baked UI, title, labels, icons, or controls and
   requires its own provenance and release-rights review.
+
+## Shipped composition contract
+
+- Home is a full-screen trio staging scene with an edge navigation rail and a
+  contextual Deploy mode cut. It has no feature-card grid or bottom app bar.
+- First Creation and Team Setup share a featured-fighter browser and the same
+  authoritative Character Study treatment.
+- Mission nodes live directly on the painted route map.
+- Matchup is a diagonal confrontation with layered trios; unrevealed PvP
+  opponents remain sealed.
+- Combat reserves at least 55% of the mobile frame for the stage. HUD, four
+  technique cuts, storyboard, and next action stay within approximately 35%.
+- Queue Review expands across the lower 35% while the battlefield remains
+  visible. Results and Records use outcome/reel compositions, not dashboards.
 
 ## UI contract
 
@@ -185,8 +247,8 @@ implementation of this direction.
 
 | Runtime plate | Screens |
 |---|---|
-| `culling-current-home.webp` | Boot |
-| `culling-current-home-hero-v2.webp` | Home |
+| `culling-current-home.webp` | Boot, Home |
+| `culling-current-home-hero-v2.webp` | Retained prototype plate; not loaded at runtime |
 | `culling-current-campus.webp` | Draft, First Creation, Records |
 | `culling-current-map.webp` | Mission Map |
 | `culling-current-rooftop-v2.webp` | Combat, Queue Review, Result |
@@ -293,7 +355,7 @@ identifiers, hashes, processing, and limitations are recorded under
 `web/static/assets/skills/PROVENANCE.md`, and
 `artifacts/ui-redesign/s3-style/PROMPTS.md`.
 
-The maintained Phaser cache version for this structural and vocabulary pass is `v42`.
+The maintained Phaser cache version for this Incident Cut pass is `v58`.
 
 ## Gameplay invariants
 

@@ -9,10 +9,35 @@
   "release_rule": "Only entries marked cleared may be described as commercially release-cleared. Runtime use does not imply clearance.",
   "summary": {
     "cleared_groups": 0,
-    "generated_review_required_groups": 5,
-    "prototype_only_groups": 1
+    "generated_review_required_groups": 6,
+    "prototype_only_groups": 2
   },
   "groups": [
+    {
+      "id": "interaction_audio_pack",
+      "runtime": true,
+      "runtime_note": "Loaded per cue after the first trusted gesture; failed or unavailable samples fall back to live WebAudio synthesis in core/interaction-sfx.js.",
+      "origin": "synthesized_from_project_source",
+      "clearance_status": "generated_review_required",
+      "provenance": "audio/PROVENANCE.md",
+      "paths": [
+        "audio/press.wav",
+        "audio/select.wav",
+        "audio/target.wav",
+        "audio/queue.wav",
+        "audio/reorder.wav",
+        "audio/confirm.wav",
+        "audio/error.wav",
+        "audio/skill.wav",
+        "audio/impact.wav",
+        "audio/heal.wav",
+        "audio/status.wav",
+        "audio/reveal.wav",
+        "audio/turn.wav",
+        "audio/result.wav"
+      ],
+      "release_caution": "Lowest-risk group in this manifest, but still not cleared. Every sample is computed by tools/generate_audio_pack.py using standard-library oscillator and filter maths: no recording, sample library, third-party audio, or generative model is involved, and output is byte-reproducible from source. Review is therefore a confirmation of that claim rather than an asset-trail investigation. Only the rights owner or a qualified reviewer may move this to cleared."
+    },
     {
       "id": "runtime_boot_and_world_environments",
       "runtime": true,
@@ -95,6 +120,21 @@
         "skills/culling-current/curse.webp"
       ],
       "release_caution": "Fallbacks used a franchise screenshot as style/intensity context and are not release-cleared."
+    },
+    {
+      "id": "starter_trio_production_proof",
+      "runtime": false,
+      "origin": "generated_with_existing_identity_references",
+      "clearance_status": "prototype_only",
+      "provenance": "production-proof/README.md",
+      "path_globs": [
+        "portraits/culling-current/production-proof/**",
+        "skills/culling-current/production-proof/**",
+        "production-proof/**",
+        "../../../artifacts/production-proof-sources/**",
+        "../../../artifacts/ui-redesign/s3-structure-v2/qa/current-proof/**"
+      ],
+      "release_caution": "Named character likenesses and generated visual assets require explicit rights and commercial-release review before any runtime promotion."
     },
     {
       "id": "concept_and_qa_artifacts",

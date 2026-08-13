@@ -1,6 +1,6 @@
-import { CULLING_COLORS, ENERGY_LABELS, TOKEN_TYPE } from '../core/runtime-config.js?v=43';
-import { clockLabel, safeText, shortText } from '../core/text.js?v=43';
-import { clippedPoints } from '../core/shape.js?v=43';
+import { CULLING_COLORS, ENERGY_LABELS, TOKEN_TYPE } from '../core/runtime-config.js?v=58';
+import { clockLabel, safeText, shortText } from '../core/text.js?v=58';
+import { clippedPoints } from '../core/shape.js?v=58';
 
 // Called via `.call(this, ...)` from a one-line delegator method on
 // CombatScene -- see web/static/phaser/scenes/combat-sheets.js's docstring
@@ -17,6 +17,8 @@ export function renderTopHud(frame, state, me, layout) {
   const mine = this.store.isMyTurn();
   const queueCount = this.store.actions.length;
   const interactionStage = this.store.interactionStage();
+  const visiblePlayback = typeof this.store.currentVisibleAction === 'function'
+    && !!this.store.currentVisibleAction();
   const authoritativeSeconds = Number(state.phase_seconds_remaining);
   const phaseSeconds = typeof this.store.phaseSecondsRemaining === 'function'
     ? this.store.phaseSecondsRemaining()
@@ -30,7 +32,7 @@ export function renderTopHud(frame, state, me, layout) {
     : disconnectSeconds !== null
       ? `PAUSED ${disconnectSeconds}S`
       : null;
-  const moveLabel = warning || interactionStage.hudLabel;
+  const moveLabel = warning || (visiblePlayback ? 'PLAYBACK' : interactionStage.hudLabel);
 
   const turnW = frame.width < 380 ? 68 : 76;
   const moveW = frame.width < 380 ? 94 : 106;
@@ -86,7 +88,7 @@ export function renderTopHud(frame, state, me, layout) {
     color: CULLING_COLORS.text,
   });
 
-  this.mono(moveX + 8, y + 5, interactionStage.label.toUpperCase(), {
+  this.mono(moveX + 8, y + 5, visiblePlayback ? 'RESOLUTION' : interactionStage.label.toUpperCase(), {
     color: CULLING_COLORS.inverseText,
     fontSize: '12px',
     fontStyle: '700',
@@ -104,18 +106,20 @@ export function renderTopHud(frame, state, me, layout) {
     : queueCount ? '#BCEECB' : '#D4D8E0';
   this.mono(moveX + 8, y + h - 15, queueStatusText, {
     color: queueStatusColor,
-    fontSize: queueSubmitStatus ? '9px' : '12px',
+    fontSize: queueSubmitStatus ? '10px' : '12px',
     fontStyle: '700',
     align: 'left',
     wordWrap: { width: moveW - 10 },
   }).setMaxLines(1);
 
-  const controlsLocked = this.store.controlsLocked();
+  const controlsLocked = this.store.controlsLocked() || visiblePlayback;
   const transmuteDisabled = controlsLocked
     || !!this.store.actions.length
     || !!(me && me.energy_converted_this_turn);
   const transmuteDisabledReason = controlsLocked
-    ? 'Transmutation is available only during unlocked Planning.'
+    ? visiblePlayback
+      ? 'Transmutation is unavailable during resolution playback.'
+      : 'Transmutation is available only during unlocked Planning.'
     : this.store.actions.length
       ? 'Clear the queued actions before transmuting energy.'
       : me && me.energy_converted_this_turn
@@ -167,20 +171,90 @@ export function renderTopHud(frame, state, me, layout) {
   this.registerHitTarget(clockX, y, clockW, h, 'Open sound and battle settings', () => this.togglePresentationSettings(true));
 }
 
+export function renderCompactStatusHud(frame, state, me, layout) {
+  const x = frame.x;
+  const y = frame.top;
+  const w = frame.width;
+  const h = layout.topH;
+  const phase = this.store.interactionStage();
+  const connection = this.store.combatConnectionStatus();
+  const seconds = typeof this.store.phaseSecondsRemaining === 'function'
+    ? this.store.phaseSecondsRemaining()
+    : Number(state.phase_seconds_remaining);
+  const urgent = Number.isFinite(seconds) && seconds <= 10;
+  const offline = connection.key !== 'connected';
+  const soundW = 58;
+  const energyW = Math.min(196, w - soundW - 20);
+  const energyX = x + (w - energyW) / 2;
+
+  this.graphics.fillStyle(CULLING_COLORS.charcoal, 0.9);
+  this.graphics.fillPoints(clippedPoints(x, y, w, h, 8), true);
+  this.graphics.fillStyle(this.store.isMyTurn() ? CULLING_COLORS.gold : CULLING_COLORS.vermilion, 0.96);
+  this.graphics.fillRect(x, y + h - 3, w, 3);
+  this.graphics.lineStyle(1, CULLING_COLORS.ivory, 0.24);
+  this.graphics.strokePoints(clippedPoints(x, y, w, h, 8), true);
+
+  const phaseLabel = offline ? 'RECONNECTING' : phase.label.toUpperCase();
+  this.text(x + w / 2, y + 7, `TURN ${String(state.turn_number || 1).padStart(2, '0')}  ·  ${phaseLabel}  ·  ${clockLabel(seconds)}`, {
+    fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
+    fontSize: frame.width < 380 ? '12px' : '13px',
+    fontStyle: '900',
+    color: urgent ? '#FF938C' : offline ? '#FFE19A' : CULLING_COLORS.inverseText,
+  }).setOrigin(0.5, 0);
+
+  const colors = ['green', 'blue', 'white', 'red'];
+  const step = energyW / colors.length;
+  colors.forEach((color, index) => {
+    const count = Number((me && me.energy && me.energy[color]) || 0);
+    const cx = energyX + step * (index + 0.5);
+    this.mono(cx, y + 34, `${ENERGY_LABELS[color]}  ${count}`, {
+      color: color === 'white' ? CULLING_COLORS.text : CULLING_COLORS.inverseText,
+      backgroundColor: color === 'green' ? '#3F8B53' : color === 'blue' ? '#3576B8' : color === 'red' ? '#B6423C' : '#F2E8D5',
+      fontSize: '12px',
+      fontStyle: '900',
+      padding: { x: 5, y: 3 },
+    }).setOrigin(0.5, 0);
+  });
+  const controlsLocked = this.store.controlsLocked();
+  const transmuteDisabled = controlsLocked || !!this.store.actions.length || !!(me && me.energy_converted_this_turn);
+  this.registerHitTarget(energyX, y, energyW, h, 'Transmute energy 5 to 1', () => this.store.convertEnergy(), {
+    disabled: transmuteDisabled,
+    disabledReason: controlsLocked
+      ? 'Transmutation is available only during unlocked Planning.'
+      : this.store.actions.length
+        ? 'Clear the queued actions before transmuting energy.'
+        : 'Transmutation has already been used this player turn.',
+    accessibilityId: 'transmute-energy',
+  });
+
+  const presentationSettings = this.presentationLayer && this.presentationLayer.settings;
+  const soundLabel = presentationSettings && presentationSettings.muted ? 'MUTED' : 'SOUND';
+  this.mono(x + w - soundW / 2 - 4, y + 36, soundLabel, {
+    color: CULLING_COLORS.inverseText,
+    fontSize: '12px',
+    fontStyle: '900',
+  }).setOrigin(0.5, 0);
+  this.registerHitTarget(x + w - soundW, y + 24, soundW, h - 24, 'Open sound and battle settings', () => this.togglePresentationSettings(true));
+}
+
 export function visibleActionSummary(action) {
   const payload = action && action.payload ? action.payload : {};
   const payloadActionId = safeText(payload.action_id);
-  const payloadPlayerId = safeText(payload.player_id, this.store ? this.store.mineId() : null);
+  const payloadPlayerId = safeText(payload.player_id || payload.source_player_id);
   const store = this.store;
   if (!store) return { message: action && action.message ? action.message : 'Visible skill resolved' };
   const mineId = typeof store.mineId === 'function' ? store.mineId() : null;
   const foe = typeof store.foe === 'function' ? store.foe() : null;
   const me = typeof store.me === 'function' ? store.me() : null;
-  const localPending = (store.state && store.state.pending_actions && store.state.pending_actions[payloadPlayerId]) || [];
+  const localPending = (store.state && store.state.pending_actions && store.state.pending_actions[payloadPlayerId || mineId]) || [];
   const matchAction = (store.actions || []).find((entry) => entry && entry.id === payloadActionId)
     || (Array.isArray(localPending) ? localPending.find((entry) => entry && entry.id === payloadActionId) : null);
-  if (!matchAction) return { message: action && action.message ? action.message : 'Visible skill resolved' };
-  const isOpponent = payloadPlayerId !== mineId;
+  const actionMessage = safeText(action && action.message);
+  const opponentNamed = ((foe && foe.team) || []).some((fighter) => (
+    fighter && actionMessage.startsWith(`${safeText(fighter.name)} used `)
+  ));
+  const isOpponent = payloadPlayerId ? payloadPlayerId !== mineId : opponentNamed;
+  if (!matchAction) return { message: action && action.message ? action.message : 'Visible skill resolved', isOpponent };
   const casterPool = isOpponent ? foe : me;
   const caster = casterPool && casterPool.team ? casterPool.team[matchAction.caster_slot] : null;
   const skill = caster ? store.skillFor(caster, matchAction.skill_id) : null;
@@ -234,4 +308,50 @@ export function renderVisibleActionBanner(frame, layout) {
     fontStyle: '900',
     wordWrap: { width: w - headingW - 14 },
   }).setMaxLines(1);
+}
+
+export function renderResolutionReceipt(frame, layout) {
+  const action = typeof this.store.currentVisibleAction === 'function' ? this.store.currentVisibleAction() : null;
+  const summary = action ? this.visibleActionSummary(action) : null;
+  const events = [];
+  const seenMessages = new Set();
+  for (const event of this.store.recentEvents || []) {
+    const message = safeText(event && (event.message || event.type)).trim();
+    const damage = message.match(/^(.+?) dealt (\d+) damage to (.+)$/i);
+    const label = damage
+      ? `${shortText(damage[1], 18)} -${damage[2]} → ${shortText(damage[3], 14)}`
+      : shortText(message, 42);
+    if (!label || seenMessages.has(label)) continue;
+    seenMessages.add(label);
+    events.push({ event, label });
+    if (events.length === 3) break;
+  }
+  const x = layout.contentX + 8;
+  const y = layout.commandY + 12;
+  const w = layout.contentW - 16;
+  const h = layout.commandH - 24;
+  const tone = summary && summary.isOpponent ? CULLING_COLORS.vermilion : CULLING_COLORS.target;
+
+  this.graphics.fillStyle(CULLING_COLORS.charcoal, 0.96);
+  this.graphics.fillPoints(clippedPoints(x, y, w, h, 14), true);
+  this.graphics.lineStyle(2, tone, 0.92);
+  this.graphics.strokePoints(clippedPoints(x, y, w, h, 14), true);
+  this.mono(x + 16, y + 12, 'TURN RECEIPT', { color: tone, fontSize: '12px', fontStyle: '900' });
+  this.text(x + 16, y + 35, summary ? summary.message : 'Resolving queued actions', {
+    fontFamily: TOKEN_TYPE.impact || TOKEN_TYPE.ui || 'Impact, sans-serif',
+    color: CULLING_COLORS.inverseText,
+    fontSize: '17px',
+    fontStyle: '900',
+    wordWrap: { width: w - 32 },
+    lineSpacing: -2,
+  }).setMaxLines(2);
+  events.forEach(({ event, label }, index) => {
+    const eventToneKey = safeText(event && event.type).includes('damage') ? CULLING_COLORS.redText : CULLING_COLORS.inverseText;
+    this.mono(x + 16, y + 88 + index * 24, `0${index + 1}  ${label.toUpperCase()}`, {
+      color: eventToneKey,
+      fontSize: '12px',
+      fontStyle: index === 0 ? '900' : '700',
+      wordWrap: { width: w - 32 },
+    }).setMaxLines(1);
+  });
 }

@@ -1,7 +1,7 @@
-import { SocketClient } from './network/socket-client.js?v=43';
-import { GameStore } from './store/game-store.js?v=43';
-import { SCENE_LIST } from './scenes/scene-registry.js?v=43';
-import { DomUiBridge } from './core/dom-ui-bridge.js?v=43';
+import { SocketClient } from './network/socket-client.js?v=58';
+import { GameStore } from './store/game-store.js?v=58';
+import { SCENE_LIST } from './scenes/scene-registry.js?v=58';
+import { DomUiBridge } from './core/dom-ui-bridge.js?v=58';
 
 function startShell() {
   const element = document.getElementById('v2-phaser-shell');
@@ -26,11 +26,28 @@ function startShell() {
     scene: SCENE_LIST,
   });
   window.JJKPhaserShell.game = game;
+  let resizeQueued = false;
+  const refreshSize = () => {
+    if (resizeQueued) return;
+    resizeQueued = true;
+    window.requestAnimationFrame(() => {
+      resizeQueued = false;
+      const width = Math.max(320, Math.round(element.clientWidth || window.innerWidth || 390));
+      const height = Math.max(640, Math.round(element.clientHeight || window.innerHeight || 844));
+      if (game.scale && (game.scale.width !== width || game.scale.height !== height)) {
+        game.scale.resize(width, height);
+      }
+    });
+  };
+  window.addEventListener('resize', refreshSize, { passive: true });
   if (game.canvas) {
     game.canvas.setAttribute('aria-hidden', 'true');
     game.canvas.tabIndex = -1;
   }
-  if (game.events && game.events.once) game.events.once('destroy', () => domUI.destroy());
+  if (game.events && game.events.once) game.events.once('destroy', () => {
+    window.removeEventListener('resize', refreshSize);
+    domUI.destroy();
+  });
   store.onChange(() => {
     if (!window.JJKPhaserShell.bootReady) return;
     if (game.scene && game.scene.isActive('BootScene')) return;

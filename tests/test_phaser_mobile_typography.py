@@ -58,8 +58,7 @@ def test_critical_combat_and_queue_state_stays_at_readable_mobile_sizes() -> Non
         "stateLabel, {",
         "fighterName, {",
         "hpLabel, {",
-        "statusLine, {",
-        "this.store.targetLabel(skill).toUpperCase()",
+        "stateLabel, {",
         "`1 / CHOOSE SACRIFICE",
         "ENERGY_NAMES[color].toUpperCase()",
         "`RESULT  ${selectedCount}/5 SPENT",
@@ -67,9 +66,9 @@ def test_critical_combat_and_queue_state_stays_at_readable_mobile_sizes() -> Non
         _assert_nearby_size(combat, marker, 12)
 
     for marker in (
-        "'POOL / AFTER'",
+        "'ENERGY  NOW > AFTER'",
         "const errorNode = this.text",
-        "'LEFT > RIGHT / READY' : 'PAYMENT INVALID'",
+        "`RESOLVES ${resolutionOrder}`",
         "fontSize: confirmW",
     ):
         _assert_nearby_size(queue, marker, 12)
@@ -88,16 +87,15 @@ def test_character_study_tactical_identity_wraps_inside_small_phone_cards() -> N
     _assert_nearby_size(creation, marker, 12)
 
 
-def test_disabled_skill_reason_keeps_four_readable_lines_on_two_column_cards() -> None:
+def test_disabled_skill_reason_is_compact_on_the_four_skill_command_rail() -> None:
     combat = _source(SCENE_PATHS[1])
-    marker = "const statusLine = state.disabled"
-    reason = combat[combat.index(marker) : combat.index(marker) + 700]
+    marker = "const stateLabel = state.disabled"
+    reason = combat[combat.index(marker) : combat.index(marker) + 1800]
 
-    assert "state.reason" in reason
+    assert "compactSkillCardDisabledReason(state.reason)" in reason
     assert "fontSize: '12px'" in reason
-    assert "lineSpacing: state.disabled ? -4 : -2" in combat
-    assert "reasonNode.setMaxLines(state.disabled ? 4 : 3);" in combat
-    _assert_nearby_size(combat, "const reasonNode = this.text", 12)
+    assert "if (selected || state.disabled) this.store.openSkillDetail(skill.id);" in combat
+    _assert_nearby_size(combat, "stateLabel, {", 12)
 
 
 def test_replay_ticker_uses_its_own_lane_below_the_battlefield_prompt() -> None:
@@ -110,8 +108,9 @@ def test_replay_ticker_uses_its_own_lane_below_the_battlefield_prompt() -> None:
     assert "this.mono(frame.x + frame.width / 2, layout.fieldTop + 3," not in replay
 
 
-def test_queue_order_marks_clear_the_ally_state_chip_band() -> None:
+def test_queue_timeline_owns_a_separate_band_above_the_ally_tokens() -> None:
     combat = _source(SCENE_PATHS[1])
 
-    assert "this.renderQueueMarks(frame, layout, layout.fieldBottom - 42);" in combat
-    assert "this.renderQueueMarks(frame, layout, layout.fieldBottom - 13);" not in combat
+    assert "const y = layout.timelineY;" in combat
+    assert "this.renderMiniTimeline(frame, layout);" in combat
+    assert "this.renderQueueMarks(frame, layout" not in combat

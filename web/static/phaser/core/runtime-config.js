@@ -4,6 +4,11 @@ const CURRENT_TOKEN_COLORS = DESIGN_TOKENS.cullingCurrentPhaser || {};
 const CURRENT_TEXT_COLORS = DESIGN_TOKENS.cullingCurrent || {};
 const bootstrap = globalThis.JJK_BOOTSTRAP || {};
 
+export function localProductionProofArtEnabled(locationLike = globalThis.location) {
+  if (!locationLike || !['localhost', '127.0.0.1', '::1'].includes(locationLike.hostname)) return false;
+  return new URLSearchParams(locationLike.search || '').get('art') === 'proof';
+}
+
 export const TOKEN_TYPE = DESIGN_TOKENS.type || {};
 export const TOKEN_RADIUS = DESIGN_TOKENS.radius || {};
 export const TOKEN_FRAMES = DESIGN_TOKENS.frames || {};

@@ -19,13 +19,12 @@ def test_combat_scene_is_a_battlefield_composition_not_the_old_dashboard():
         + combat_fighter_field.read_text(encoding="utf-8")
     )
 
-    assert "const cardW = (contentW - gap * 2) / 3;" in source
+    layout_source = (ROOT / "web/static/phaser/ui/incident-cut/layout.js").read_text(encoding="utf-8")
+    assert "IncidentCutLayouts.combat(frame)" in source
     assert "(team || []).slice(0, 3).forEach" in source
-    assert "const identityW = clamp(Math.round(frame.width * 0.245), 86, 106);" in source
-    assert "const skillColumns = 2;" in source
-    assert "const skillRows = 2;" in source
-    assert "const skillW = (contentW - skillGap) / skillColumns;" in source
-    assert "const skillCardH = (skillH - skillGap) / skillRows;" in source
+    assert "skillColumns: 4" in layout_source
+    assert "skillRows: 1" in layout_source
+    assert "skillW: (w - 9) / 4" in layout_source
     assert "this.store.skillsFor(selected).slice(0, 4)" in source
     assert "renderFighterLane(foe && foe.team, 'enemy'" in source
     assert "renderFighterLane(me && me.team, 'mine'" in source
@@ -33,19 +32,23 @@ def test_combat_scene_is_a_battlefield_composition_not_the_old_dashboard():
     assert "renderIdentityStrip(frame, layout, selected)" in source
     assert "renderBottomActions(frame, layout)" in source
     assert "REVIEW ${this.store.actions.length}/3" in source
-    assert "identityArtH = layout.identityH" in source
+    assert "renderSquadToken.call(this" in source
+    assert "this.store.canTarget(character, slot, side)" in source
+    assert "this.graphics.lineTo(targetX, targetY)" in source
+    assert "renderCompactStatusHud.call(this" in source
     assert "context: 'hero'" in source
-    assert "'SELECTED FIGHTER'" in source
+    assert "'CHOOSE YOUR FIGHTER'" in source
     assert "'ORDER / WILD / CONFIRM'" in source
 
-    # Regression guards for removed dashboard/dock traces. Fighter art and the
-    # open targeting lane carry hierarchy without lane-header prompt panels.
+    # Regression guards for the rejected card-lane/dashboard composition.
     assert "index % layout.skillColumns" in source
     assert "Math.floor(index / layout.skillColumns)" in source
     assert "CLEAR QUEUE" not in source
     assert "gridY" not in source
     assert "'ENEMY TEAM'" not in source
     assert "'YOUR FIELD'" not in source
+    assert "this.renderFighterPlate(character, side, slot, x, y, layout.cardW" not in source
+    assert "const ringRadius = Math.min(42" not in source
 
 
 def test_combat_scene_preserves_authoritative_state_affordances():
@@ -113,15 +116,13 @@ def test_combat_skill_hand_uses_the_shipping_season_three_art():
     assert "skill.description || this.store.effectLine(skill)" in source
     assert "const classTag = (skill.classes || [])" not in source
     assert "const compactSummary = this.store.effectLine(skill)" not in source
-    assert "const statusLine = state.disabled" in source
+    assert "const stateLabel = state.disabled" in source
     assert "state.reason" in source
-    assert "SELECTED / TAP AGAIN FOR INFO" in source
+    assert "CHOOSE TARGET" in source
     assert "this.renderIntegratedSkillArtwork(skill" in source
     assert "layer.skillVisualFor(skill" in source
     assert "'planning-card'" in source
-    assert "`QUEUED Q${state.queuedIndex + 1}`" in source
-    assert "lineSpacing: state.disabled ? -4 : -2" in source
-    assert "reasonNode.setMaxLines(state.disabled ? 4 : 3)" in source
+    assert "`Q${state.queuedIndex + 1} QUEUED`" in source
     assert "if (selected || state.disabled) this.store.openSkillDetail(skill.id);" in source
 
 
@@ -159,11 +160,11 @@ console.log(JSON.stringify({{ frame, layout }}));
     skills_bottom = layout["skillY"] + layout["skillH"]
     review_bottom = layout["reviewY"] + layout["reviewH"]
     cards_right = layout["contentX"] + layout["cardW"] * 3 + layout["gap"] * 2
-    skills_right = layout["skillX"] + layout["skillW"] * layout["skillColumns"] + layout["skillGap"]
+    skills_right = layout["skillX"] + layout["skillW"] * layout["skillColumns"] + layout["skillGap"] * (layout["skillColumns"] - 1)
     skill_rows_bottom = (
         layout["skillY"]
         + layout["skillCardH"] * layout["skillRows"]
-        + layout["skillGap"]
+        + layout["skillGap"] * (layout["skillRows"] - 1)
     )
 
     assert frame["top"] + layout["topH"] < layout["enemyY"]
@@ -175,19 +176,21 @@ console.log(JSON.stringify({{ frame, layout }}));
     assert skills_bottom < layout["reviewY"]
     assert review_bottom <= frame["bottom"]
 
-    # The six fighters and all four techniques remain presentation cards. The
-    # command deck is a readable 2x2 grid rather than four narrow columns.
-    assert layout["cardW"] >= 107
-    assert layout["cardH"] >= 118
-    assert layout["skillColumns"] == 2
-    assert layout["skillRows"] == 2
-    assert layout["skillW"] >= 164
-    assert layout["skillCardH"] >= 75
-    assert layout["skillH"] >= 158
-    assert 86 <= layout["identityW"] <= 106
-    assert layout["identityH"] >= 48
+    # Figma combat cards remain portrait-readable while the four-card hand
+    # stays thumb-reachable without restoring the old identity panel.
+    assert layout["cardW"] >= 105
+    assert 118 <= layout["cardH"] <= 126
+    assert layout["skillColumns"] == 4
+    assert layout["skillRows"] == 1
+    assert layout["skillW"] >= 80
+    assert layout["skillCardH"] >= 82
+    assert layout["skillH"] >= 82
+    assert 62 <= layout["identityW"] <= 68
+    assert layout["identityH"] == 0
+    assert layout["fieldH"] >= 176
     assert layout["reviewH"] >= 44
-    assert cards_right <= frame["width"] - 10 + 0.01
+    assert layout["commandH"] + layout["reviewH"] <= layout["usableH"] * 0.35 + 1
+    assert cards_right <= frame["width"] - 8 + 0.01
     assert skills_right <= layout["contentX"] + layout["contentW"] + 0.01
     assert skill_rows_bottom == pytest.approx(skills_bottom)
 
@@ -204,7 +207,7 @@ console.log(JSON.stringify({{ frame, layout }}));
             }
         )
     assert len({(rect["x"], rect["y"]) for rect in technique_rects}) == 4
-    assert all(rect["w"] >= 164 and rect["h"] >= 75 for rect in technique_rects)
+    assert all(rect["w"] >= 80 and rect["h"] >= 82 for rect in technique_rects)
     assert all(rect["x"] >= layout["contentX"] for rect in technique_rects)
     assert all(rect["x"] + rect["w"] <= layout["contentX"] + layout["contentW"] + 0.01 for rect in technique_rects)
     assert all(rect["y"] >= layout["skillY"] for rect in technique_rects)
@@ -241,6 +244,7 @@ console.log(JSON.stringify(cases));
         assert layout["allyY"] + layout["cardH"] < layout["identityY"]
         assert layout["identityY"] + layout["identityH"] == layout["skillY"]
         assert layout["skillY"] + layout["skillH"] < layout["reviewY"]
-        assert layout["skillW"] >= 164
-        assert layout["skillCardH"] >= 75
+        assert layout["skillW"] >= 80
+        assert layout["skillCardH"] >= 82
+        assert layout["fieldH"] >= 176
         assert layout["reviewY"] + layout["reviewH"] <= frame["bottom"]

@@ -3,9 +3,9 @@ import {
   portraitEntryForTextureKey,
   portraitFocalFor,
   portraitTextureKeyFor,
-} from './portrait-registry.js?v=43';
-import { COLORS, CULLING_COLORS } from './runtime-config.js?v=43';
-import { safeText } from './text.js?v=43';
+} from './portrait-registry.js?v=58';
+import { COLORS, CULLING_COLORS } from './runtime-config.js?v=58';
+import { safeText } from './text.js?v=58';
 
 // ponytail: was duplicated verbatim (under two different local names) in
 // combat-scene.js and combat-queue-review-scene.js.
@@ -33,14 +33,14 @@ export const ENVIRONMENT_ASSETS = Object.freeze({
     'culling-current-home.webp',
     773,
     1672,
-    ['BootScene'],
+    ['BootScene', 'LobbyScene'],
   ),
   'culling-current-home-hero': environmentAsset(
     'culling-current-home-hero',
     'culling-current-home-hero-v2.webp',
     853,
     1844,
-    ['LobbyScene'],
+    [],
   ),
   'culling-current-campus': environmentAsset(
     'culling-current-campus',
@@ -69,7 +69,6 @@ export const ENVIRONMENT_ASSETS = Object.freeze({
 // other worlds are queued by the drawing helper for the scene that needs them.
 export const INITIAL_ENVIRONMENT_KEYS = Object.freeze([
   'culling-current-home',
-  'culling-current-home-hero',
 ]);
 
 const ENVIRONMENT_ASSET_FLIGHTS = new Map();

@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "generator": "tools/generate_audio_pack.py",
+  "origin": "synthesized_from_project_source",
+  "sample_rate_hz": 44100,
+  "bit_depth": 16,
+  "channels": 1,
+  "peak_ceiling": 0.72,
+  "deterministic": true,
+  "cues": {
+    "press": {
+      "file": "press.wav",
+      "duration_ms": 110.0,
+      "bytes": 9746,
+      "peak": 0.2716
+    },
+    "select": {
+      "file": "select.wav",
+      "duration_ms": 200.0,
+      "bytes": 17684,
+      "peak": 0.3201
+    },
+    "target": {
+      "file": "target.wav",
+      "duration_ms": 190.0,
+      "bytes": 16802,
+      "peak": 0.2522
+    },
+    "queue": {
+      "file": "queue.wav",
+      "duration_ms": 170.0,
+      "bytes": 15038,
+      "peak": 0.3824
+    },
+    "reorder": {
+      "file": "reorder.wav",
+      "duration_ms": 200.0,
+      "bytes": 17684,
+      "peak": 0.1898
+    },
+    "confirm": {
+      "file": "confirm.wav",
+      "duration_ms": 340.0,
+      "bytes": 30032,
+      "peak": 0.3535
+    },
+    "error": {
+      "file": "error.wav",
+      "duration_ms": 280.0,
+      "bytes": 24740,
+      "peak": 0.26
+    },
+    "skill": {
+      "file": "skill.wav",
+      "duration_ms": 420.0,
+      "bytes": 37088,
+      "peak": 0.488
+    },
+    "impact": {
+      "file": "impact.wav",
+      "duration_ms": 300.0,
+      "bytes": 26504,
+      "peak": 0.5348
+    },
+    "heal": {
+      "file": "heal.wav",
+      "duration_ms": 340.0,
+      "bytes": 30032,
+      "peak": 0.201
+    },
+    "status": {
+      "file": "status.wav",
+      "duration_ms": 300.0,
+      "bytes": 26504,
+      "peak": 0.2318
+    },
+    "reveal": {
+      "file": "reveal.wav",
+      "duration_ms": 420.0,
+      "bytes": 37088,
+      "peak": 0.2368
+    },
+    "turn": {
+      "file": "turn.wav",
+      "duration_ms": 400.0,
+      "bytes": 35324,
+      "peak": 0.28
+    },
+    "result": {
+      "file": "result.wav",
+      "duration_ms": 520.0,
+      "bytes": 45908,
+      "peak": 0.2586
+    }
+  },
+  "total_bytes": 370174
+}

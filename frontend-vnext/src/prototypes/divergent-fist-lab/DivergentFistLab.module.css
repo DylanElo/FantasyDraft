@@ -1,0 +1,86 @@
+.lab {
+  --bone: #f2e8d5;
+  --smoke: #b7b5ad;
+  --indigo: #101b36;
+  --ink: #17191e;
+  --red: #e32620;
+  --cyan: #35dde8;
+  --gold: #d8bf68;
+  min-height: 100vh;
+  background: var(--bone);
+  color: var(--ink);
+}
+
+.stage {
+  position: relative;
+  width: 100%;
+  height: min(100vh, 62.5vw);
+  min-height: 390px;
+  overflow: hidden;
+  background: var(--indigo);
+}
+
+.stage > div, .stage canvas { width: 100% !important; height: 100% !important; }
+.loading { display: grid; height: 100%; place-items: center; color: var(--bone); font: 800 24px/1 'Barlow Condensed', sans-serif; }
+
+.workbench { padding: 28px clamp(18px, 4vw, 64px) 48px; border-top: 8px solid var(--red); }
+.labHeader { display: flex; gap: 24px; align-items: start; justify-content: space-between; }
+.labHeader p { margin: 0 0 5px; color: var(--red); font-size: 11px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+.labHeader h1 { margin: 0; font: 800 clamp(34px, 5vw, 64px)/.95 'Barlow Condensed', sans-serif; text-transform: uppercase; }
+.labHeader span { display: block; max-width: 850px; margin-top: 12px; color: #5f625f; line-height: 1.5; }
+.labHeader a { min-height: 44px; padding: 12px 16px; border: 2px solid var(--ink); color: var(--ink); font: 800 15px/1 'Barlow Condensed', sans-serif; text-decoration: none; text-transform: uppercase; }
+
+.statusGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 28px 0 16px; }
+.statusGrid article { min-height: 96px; padding: 14px; border-top: 4px solid var(--ink); background: #e6dcc9; }
+.statusGrid span, .statusGrid strong, .statusGrid small { display: block; }
+.statusGrid span { font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.statusGrid strong { margin: 8px 0 4px; overflow-wrap: anywhere; font: 800 22px/1 'Barlow Condensed', sans-serif; text-transform: uppercase; }
+.statusGrid small { color: #5f625f; }
+.queueStatus { border-top-color: #4fb06d !important; }
+
+.controlGroups { display: grid; grid-template-columns: 2fr 1.2fr 1fr; gap: 12px; }
+.controlGroups fieldset { display: flex; gap: 8px; align-content: start; flex-wrap: wrap; margin: 0; padding: 14px; border: 2px solid var(--ink); }
+.controlGroups legend { padding: 0 8px; font: 800 15px/1 'Barlow Condensed', sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+.controlGroups button, .controlGroups select, .controlGroups label {
+  min-height: 44px;
+  font: 700 14px/1.15 Inter, sans-serif;
+}
+.controlGroups button { padding: 0 14px; border: 0; background: var(--indigo); color: var(--bone); cursor: pointer; }
+.controlGroups button:hover:not(:disabled), .controlGroups button:focus-visible { background: var(--red); }
+.controlGroups button:disabled { cursor: not-allowed; opacity: .35; }
+.controlGroups label { display: flex; gap: 8px; align-items: center; padding: 0 8px; }
+.controlGroups input { width: 22px; height: 22px; accent-color: var(--cyan); }
+.controlGroups select { min-width: 84px; border: 2px solid var(--ink); background: white; }
+.live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.artistReview { width: max-content; min-width: 100%; overflow: hidden; background: var(--indigo); }
+.artistReview .stage { max-width: none; }
+.artistToolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-height: 56px;
+  padding: 8px 14px;
+  border-top: 4px solid var(--red);
+  background: var(--bone);
+}
+.artistToolbar label { display: flex; gap: 6px; align-items: center; font-weight: 700; }
+.artistToolbar select, .artistToolbar button { min-height: 40px; border: 2px solid var(--ink); background: white; font: 700 13px/1 Inter, sans-serif; }
+.artistToolbar button { padding: 0 14px; background: var(--indigo); color: var(--bone); cursor: pointer; }
+
+@media (max-width: 900px) {
+  .workbench { padding: 22px 16px 36px; }
+  .labHeader { display: block; }
+  .labHeader a { display: inline-block; margin-top: 18px; }
+  .statusGrid { grid-template-columns: 1fr 1fr; }
+  .controlGroups { grid-template-columns: 1fr; }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .stage { height: 100vh; min-height: 390px; }
+  .workbench { min-height: 100vh; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .controlGroups button { scroll-behavior: auto; }
+}

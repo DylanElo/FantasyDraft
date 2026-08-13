@@ -214,7 +214,7 @@ def test_private_matchup_never_renders_the_local_cpu_roster_as_the_opponent():
     source = (ROOT / "web/static/phaser/scenes/matchup-scene.js").read_text(encoding="utf-8")
 
     assert "const enemyIds = isCpu ? this.store.enemyTeam.slice(0, 3) : [];" in source
-    assert "hidden: !isCpu" in source
+    assert "const hidden = !isCpu;" in source
     assert "OPPONENT ROSTER HIDDEN" in source
     assert "this.store.returnFromMatchup()" in source
     assert "else this.store.changeScene('DraftScene')" not in source

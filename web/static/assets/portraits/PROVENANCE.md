@@ -1,5 +1,15 @@
 # Season 3 starter portrait provenance
 
+> **⚠ These prompts describe a REJECTED art direction (noted 2026-08-12).**
+>
+> The ink-hatch / cross-hatch / hard-edge-cel grammar recorded below was
+> rejected by the user on 2026-08-02. It is retained here as lineage for the
+> assets that already shipped — **do not copy it when generating new art.**
+> The corrected direction (cinematic, painterly, mood-graded, no ink hatching)
+> is in `docs/season3_visual_system.md`, which also notes that the corrected
+> prompt has never been rendered and must be rebuilt and tested first.
+
+
 The 19 files under `culling-current/` are original generated runtime
 illustrations for the exact locked First Creation roster. They were created on
 2026-07-18 with OpenAI built-in image generation. Official anime frames, key

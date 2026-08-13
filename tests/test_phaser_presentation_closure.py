@@ -351,9 +351,7 @@ def test_combat_presentation_closes_readability_motion_and_target_vfx_gaps():
 
     assert playback.count("this.tweens.add(") == 1
     assert "if (!this.playbackReducedMotion()) this.cameras.main.shake" in playback
-    assert "this.activeCinematicCutInTween.stop()" in playback
-    assert "this.activeCinematicCutInNodes === nodes" in playback
-    assert "titleNode.setMaxLines(1)" in playback
+    assert "activeCinematicCutIn" not in playback
     assert "this.activeActionBannerTween.stop()" in playback
     assert "this.activeActionBannerNodes === nodes" in playback
     assert "bannerTitle.setMaxLines(1)" in playback

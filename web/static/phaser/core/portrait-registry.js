@@ -1,3 +1,5 @@
+import { localProductionProofArtEnabled } from './runtime-config.js?v=58';
+
 export const PORTRAIT_BASE_URL = '/static/assets/portraits/culling-current';
 export const PORTRAIT_SOURCE_WIDTH = 600;
 export const PORTRAIT_SOURCE_HEIGHT = 800;
@@ -30,6 +32,9 @@ const STARTER_DEFINITIONS = Object.freeze([
   ['yuta_okkotsu_jjk0', 'Yuta Okkotsu (JJK 0)', 0x101b36],
 ]);
 
+const PRODUCTION_PROOF_IDS = new Set(['yuji_itadori', 'megumi_fushiguro', 'nobara_kugisaki']);
+const USE_PRODUCTION_PROOF_ART = localProductionProofArtEnabled();
+
 function normalizedPortraitId(value) {
   return String(value || '').trim().replace(/[^a-z0-9_]+/gi, '_');
 }
@@ -39,14 +44,17 @@ function portraitFileName(id) {
 }
 
 function portraitEntry(id, name, accent) {
-  const file = portraitFileName(id);
+  const proof = USE_PRODUCTION_PROOF_ART && PRODUCTION_PROOF_IDS.has(id);
+  const file = proof ? 'portrait-runtime.webp' : portraitFileName(id);
   const textureKey = `portrait_${id}`;
   return Object.freeze({
     id,
     name,
     starter: true,
     file,
-    url: `${PORTRAIT_BASE_URL}/${file}`,
+    url: proof
+      ? `${PORTRAIT_BASE_URL}/production-proof/${id.replace(/_/g, '-')}/${file}`
+      : `${PORTRAIT_BASE_URL}/${file}`,
     mime: 'image/webp',
     width: PORTRAIT_SOURCE_WIDTH,
     height: PORTRAIT_SOURCE_HEIGHT,

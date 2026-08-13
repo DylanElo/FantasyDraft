@@ -1,5 +1,15 @@
 # Season 3 semantic skill-art provenance
 
+> **⚠ These prompts describe a REJECTED art direction (noted 2026-08-12).**
+>
+> The ink-hatch / cross-hatch / hard-edge-cel grammar recorded below was
+> rejected by the user on 2026-08-02. It is retained here as lineage for the
+> assets that already shipped — **do not copy it when generating new art.**
+> The corrected direction (cinematic, painterly, mood-graded, no ink hatching)
+> is in `docs/season3_visual_system.md`, which also notes that the corrected
+> prompt has never been rendered and must be rebuilt and tested first.
+
+
 ## Unique per-skill action atlases v3
 
 Five character-free 4x4 atlases generated on 2026-07-18 replace the repeated

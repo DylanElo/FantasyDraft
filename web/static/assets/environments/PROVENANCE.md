@@ -1,5 +1,15 @@
 # Season 3 environment provenance
 
+> **⚠ These prompts describe a REJECTED art direction (noted 2026-08-12).**
+>
+> The ink-hatch / cross-hatch / hard-edge-cel grammar recorded below was
+> rejected by the user on 2026-08-02. It is retained here as lineage for the
+> assets that already shipped — **do not copy it when generating new art.**
+> The corrected direction (cinematic, painterly, mood-graded, no ink hatching)
+> is in `docs/season3_visual_system.md`, which also notes that the corrected
+> prompt has never been rendered and must be rebuilt and tested first.
+
+
 The three retained original `culling-current-{home,campus,map}.webp` files are
 generated environment plates created on 2026-07-18 with OpenAI built-in image
 generation. The superseded first rooftop binary was removed; its lineage

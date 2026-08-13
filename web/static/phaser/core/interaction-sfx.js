@@ -45,6 +45,39 @@ export const SFX_MIXER_CONFIG = Object.freeze({
   }),
 });
 
+// The optional sample pack in /static/assets/audio is peak-normalised to a 0.72
+// ceiling for authoring headroom. Synthesised voices peak around 0.044. Playing
+// a sample at unity gain would therefore hit roughly 12x the loudest synth cue
+// and pump the compressor on every impact, so playback is scaled to sit at a
+// comparable perceived level. Relative dynamics between cues are preserved
+// because a single scalar is applied, and the result is still clamped to the
+// mixer's per-cue input budget. See docs/phaser_audio_system.md.
+//
+// 0.10 puts the loudest sample (impact, 0.535 peak) at 0.054 and the quietest
+// (reorder, 0.190) at 0.019, which brackets the synthesised reference range.
+// It must stay at or below maximumCueInputPeak, otherwise the clamp below
+// fires on every cue and this constant stops meaning anything.
+export const SFX_SAMPLE_CALIBRATION = 0.10;
+
+export const DEFAULT_SFX_SAMPLE_BASE_URL = '/static/assets/audio/';
+
+export const INTERACTION_SFX_SAMPLES = Object.freeze({
+  press: 'press.wav',
+  select: 'select.wav',
+  target: 'target.wav',
+  queue: 'queue.wav',
+  reorder: 'reorder.wav',
+  confirm: 'confirm.wav',
+  error: 'error.wav',
+  skill: 'skill.wav',
+  impact: 'impact.wav',
+  heal: 'heal.wav',
+  status: 'status.wav',
+  reveal: 'reveal.wav',
+  turn: 'turn.wav',
+  result: 'result.wav',
+});
+
 export const INTERACTION_SFX_CUES = Object.freeze({
   // Soft physical contact: a low tap plus a tiny paper-texture transient.
   press: cue('ui', 36, [
@@ -229,6 +262,15 @@ export class InteractionSfx {
     this.haptics = settingValue ? settingValue.haptics : options.haptics !== false;
     this.lastPlayed = new Map();
     this.destroyed = false;
+    // Optional sample pack. Empty until loadSamplePack() succeeds, so the
+    // synthesised palette remains the default and the only behaviour on boot.
+    this.sampleBuffers = new Map();
+    this.samplePackStatus = 'idle';
+    this.sampleBaseUrl = options.sampleBaseUrl || DEFAULT_SFX_SAMPLE_BASE_URL;
+    this.sampleCalibration = Number.isFinite(Number(options.sampleCalibration))
+      ? Number(options.sampleCalibration)
+      : SFX_SAMPLE_CALIBRATION;
+    this.autoLoadSamples = options.autoLoadSamples !== false;
     this.mixBus = null;
     this.masterGain = null;
     this.compressor = null;
@@ -358,7 +400,16 @@ export class InteractionSfx {
         await this.context.resume();
       }
       this.unlocked = this.context.state === 'running';
-      if (this.unlocked) this.ensureMixer();
+      if (this.unlocked) {
+        this.ensureMixer();
+        // Fetch the sample pack on the first trusted gesture, without blocking
+        // it. The cue that triggered the unlock still plays synthesised; later
+        // cues use samples once decoding finishes. If there is no fetch, or the
+        // request fails, every cue simply stays synthesised.
+        if (this.autoLoadSamples && this.samplePackStatus === 'idle') {
+          Promise.resolve(this.loadSamplePack()).catch(() => {});
+        }
+      }
       return this.unlocked;
     } catch (_error) {
       this.unlocked = false;
@@ -386,7 +437,16 @@ export class InteractionSfx {
     const minimumInterval = Math.max(0, Number(options.minimumInterval == null ? spec.minimumInterval : options.minimumInterval));
     if (nowMs - (this.lastPlayed.get(cueName) || 0) < minimumInterval) return false;
     try {
-      const scheduled = spec.voices.reduce((count, voice) => count + (this.playVoice(voice, spec, options) ? 1 : 0), 0);
+      // A decoded sample replaces the synthesised voices for that cue only.
+      // Everything downstream — bus, compressor, master mute and volume — is
+      // shared, so mute still drops an active tail immediately.
+      let scheduled = 0;
+      if (this.sampleBuffers.has(cueName)) {
+        scheduled = this.playSample(cueName, spec, options) ? 1 : 0;
+      }
+      if (!scheduled) {
+        scheduled = spec.voices.reduce((count, voice) => count + (this.playVoice(voice, spec, options) ? 1 : 0), 0);
+      }
       if (!scheduled) return false;
       this.lastPlayed.set(cueName, nowMs);
       return true;
@@ -410,6 +470,100 @@ export class InteractionSfx {
     const sounded = this.play(cueName, options);
     const vibrated = options.haptic === false ? false : this.haptic(cueName);
     return sounded || vibrated;
+  }
+
+  hasSample(cueName) {
+    return this.sampleBuffers.has(cueName);
+  }
+
+  decodeArrayBuffer(bytes) {
+    const context = this.context;
+    if (!context || typeof context.decodeAudioData !== 'function') return Promise.resolve(null);
+    // Safari's older callback signature returns undefined instead of a promise.
+    return new Promise((resolve) => {
+      let settled = false;
+      const done = (value) => { if (!settled) { settled = true; resolve(value || null); } };
+      try {
+        const maybe = context.decodeAudioData(bytes, done, () => done(null));
+        if (maybe && typeof maybe.then === 'function') maybe.then(done, () => done(null));
+      } catch (_error) {
+        done(null);
+      }
+    });
+  }
+
+  /**
+   * Fetch and decode the original sample pack. Requires an unlocked context,
+   * because decoding needs one and the service must never create a context
+   * before a trusted gesture. Each cue loads independently: a cue that fails to
+   * fetch or decode simply keeps its synthesised voices, so partial failure
+   * degrades instead of silencing the game.
+   */
+  async loadSamplePack(options = {}) {
+    if (this.destroyed) return { loaded: 0, failed: 0, status: 'destroyed' };
+    if (this.samplePackStatus === 'loading') return { loaded: 0, failed: 0, status: 'loading' };
+    if (!this.isUnlocked()) return { loaded: 0, failed: 0, status: 'locked' };
+    const fetchImpl = options.fetch
+      || (this.environment && typeof this.environment.fetch === 'function'
+        ? this.environment.fetch.bind(this.environment)
+        : null);
+    if (!fetchImpl) return { loaded: 0, failed: 0, status: 'unsupported' };
+
+    this.samplePackStatus = 'loading';
+    const base = options.baseUrl || this.sampleBaseUrl;
+    const manifest = options.samples || INTERACTION_SFX_SAMPLES;
+    let loaded = 0;
+    let failed = 0;
+
+    await Promise.all(Object.entries(manifest).map(async ([cueName, file]) => {
+      if (!INTERACTION_SFX_CUES[cueName] || this.sampleBuffers.has(cueName)) return;
+      try {
+        const response = await fetchImpl(`${base}${file}`);
+        if (!response || response.ok === false) { failed += 1; return; }
+        const bytes = await response.arrayBuffer();
+        const buffer = await this.decodeArrayBuffer(bytes);
+        if (buffer) { this.sampleBuffers.set(cueName, buffer); loaded += 1; }
+        else failed += 1;
+      } catch (_error) {
+        failed += 1;
+      }
+    }));
+
+    if (this.destroyed) return { loaded: 0, failed: 0, status: 'destroyed' };
+    this.samplePackStatus = loaded > 0 ? (failed > 0 ? 'partial' : 'ready') : 'failed';
+    return { loaded, failed, status: this.samplePackStatus };
+  }
+
+  playSample(cueName, spec, options = {}) {
+    if (this.activeSources.size >= SFX_MIXER_CONFIG.maximumActiveVoices) return false;
+    const context = this.context;
+    const buffer = this.sampleBuffers.get(cueName);
+    if (!buffer || !context || typeof context.createBufferSource !== 'function') return false;
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    const pitch = Math.max(0.65, Math.min(1.55, Number(options.pitch) || 1));
+    if (source.playbackRate) setParam(source.playbackRate, pitch, this.currentTime());
+
+    const gainNode = context.createGain();
+    const optionLevel = clamp01(options.volume == null ? 1 : options.volume, 1);
+    const level = Math.min(
+      SFX_MIXER_CONFIG.maximumCueInputPeak,
+      Math.max(0.0002, this.sampleCalibration * optionLevel),
+    );
+    const start = this.currentTime();
+    setParam(gainNode.gain, level, start);
+    connect(source, gainNode);
+    connect(gainNode, this.busNodes.get(spec.bus) || this.mixBus);
+
+    const cleanup = () => {
+      this.activeSources.delete(source);
+      try { if (source.disconnect) source.disconnect(); } catch (_error) { /* Best effort. */ }
+      try { if (gainNode.disconnect) gainNode.disconnect(); } catch (_error) { /* Best effort. */ }
+    };
+    source.onended = cleanup;
+    this.activeSources.add(source);
+    source.start(start);
+    return true;
   }
 
   makeNoiseSource(voice, duration) {
@@ -522,6 +676,9 @@ export class InteractionSfx {
     this.compressor = null;
     this.busNodes.clear();
     this.lastPlayed.clear();
+    // Decoded buffers belong to the closed context and must not outlive it.
+    this.sampleBuffers.clear();
+    this.samplePackStatus = 'idle';
     if (this.unsubscribeSettings) this.unsubscribeSettings();
     this.unsubscribeSettings = null;
   }

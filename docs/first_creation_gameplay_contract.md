@@ -10,6 +10,9 @@
 
 ## Completed mechanics
 
+- First Creation Divergent Fist resolves two ordered authoritative damage
+  events in one action: 20 physical, then 10 delayed. It applies non-damaging
+  Soul Bruise only when missing and never creates a later status-damage tick.
 - Explicit cleanse effects, delayed damage, conditional target/caster branches, stack consumption, selected-target effects, turn-end energy drain, controlled redirects, no-redirect defense, class-scoped damage modifiers, retaliation, and replacement-skill interactions.
 - Completed the formerly empty Flowing Red Scale, Remote Puppet Net, Rainbow Dragon Guard, and Cleanse Protocol skills.
 - Completed the requested Yuji, Megumi, Maki, Panda, Todo, Momo, Mai, Miwa, Mechamaru, Junpei, Young Gojo, Young Geto, Utahime, Young Shoko, Kamo, and Yuta contract gaps.

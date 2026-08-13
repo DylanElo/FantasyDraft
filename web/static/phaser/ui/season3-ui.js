@@ -1,10 +1,10 @@
-import * as PostMatch from './season3-master-ui.js?v=57';
-import { drawEnergyPip } from './energy-pip.js?v=57';
-import { renderModalSheetChrome } from './modal-sheet.js?v=57';
-import { S3_TOKENS } from './season3-tokens.js?v=57';
-import { bootS3Layout } from './season-three-ui.js?v=57';
-import { INCIDENT } from './incident-cut/tokens.js?v=57';
-import { incidentCombatLayout, incidentHomeLayout, incidentMatchupLayout } from './incident-cut/layout.js?v=57';
+import * as PostMatch from './season3-master-ui.js?v=58';
+import { drawEnergyPip } from './energy-pip.js?v=58';
+import { renderModalSheetChrome } from './modal-sheet.js?v=58';
+import { S3_TOKENS } from './season3-tokens.js?v=58';
+import { bootS3Layout } from './season-three-ui.js?v=58';
+import { INCIDENT } from './incident-cut/tokens.js?v=58';
+import { incidentCombatLayout, incidentHomeLayout, incidentMatchupLayout } from './incident-cut/layout.js?v=58';
 import {
   drawIncidentButton,
   drawIncidentChip,
@@ -15,7 +15,7 @@ import {
   drawIncidentProgress,
   drawIncidentSurface,
   drawIncidentWorld,
-} from './incident-cut/presentation.js?v=57';
+} from './incident-cut/presentation.js?v=58';
 
 // This is the only scene-facing presentation entrypoint. The compatibility
 // modules remain private implementation variants so the approved Current,
@@ -66,6 +66,6 @@ export const IncidentCutLayouts = Object.freeze({
   matchup: incidentMatchupLayout,
 });
 
-export { S3_TOKENS } from './season3-tokens.js?v=57';
+export { S3_TOKENS } from './season3-tokens.js?v=58';
 
 export const Season3Components = Season3UI;

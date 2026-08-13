@@ -1,7 +1,7 @@
-import { CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_TYPE } from '../core/runtime-config.js?v=57';
-import { safeText, shortText } from '../core/text.js?v=57';
-import { clippedPoints } from '../core/shape.js?v=57';
-import { SKILL_ART_BY_ENERGY } from '../core/asset-registry.js?v=57';
+import { CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_TYPE } from '../core/runtime-config.js?v=58';
+import { safeText, shortText } from '../core/text.js?v=58';
+import { clippedPoints } from '../core/shape.js?v=58';
+import { SKILL_ART_BY_ENERGY } from '../core/asset-registry.js?v=58';
 
 const COMPACT_DISABLED_REASONS = Object.freeze([
   [': this skill class is disabled.', 'Skill class disabled.'],
@@ -12,7 +12,7 @@ const COMPACT_DISABLED_REASONS = Object.freeze([
 ]);
 
 // Re-exported from combat-scene.js (`export { compactSkillCardDisabledReason }
-// from './combat-skill-deck.js?v=57';`) because
+// from './combat-skill-deck.js?v=58';`) because
 // tests/test_phaser_authority_readability.py dynamically imports the
 // combat-scene module itself and destructures this function off it.
 export function compactSkillCardDisabledReason(reason) {

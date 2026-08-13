@@ -1,7 +1,7 @@
 // Presentation-only metadata keyed by the authoritative Battle v2 skill id.
 // Nothing in this registry decides legality, cost, targeting, or effects.
 
-import { localProductionProofArtEnabled } from './runtime-config.js?v=57';
+import { localProductionProofArtEnabled } from './runtime-config.js?v=58';
 
 const PALETTES = Object.freeze({
   body: Object.freeze({ surface: 0x101b36, ink: 0x17191e, accent: 0x4fb06d, flare: 0x35dde8, paper: 0xf2e8d5 }),

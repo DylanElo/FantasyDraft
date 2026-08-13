@@ -1,10 +1,10 @@
-import { focalCoverCrop, portraitEntryFor, starterPortraitEntries } from '../core/portrait-registry.js?v=57';
-import { COLORS, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=57';
-import { initials, safeText } from '../core/text.js?v=57';
-import { LayoutService } from '../core/layout-service.js?v=57';
-import { costColors } from '../core/roster.js?v=57';
-import { SKILL_ACTION_ATLASES, createPresentationLayer } from '../core/presentation-layer.js?v=57';
-import { Season3UI } from '../ui/season3-ui.js?v=57';
+import { focalCoverCrop, portraitEntryFor, starterPortraitEntries } from '../core/portrait-registry.js?v=58';
+import { COLORS, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, TOKEN_RADIUS, TOKEN_TOUCH, TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=58';
+import { initials, safeText } from '../core/text.js?v=58';
+import { LayoutService } from '../core/layout-service.js?v=58';
+import { costColors } from '../core/roster.js?v=58';
+import { SKILL_ACTION_ATLASES, createPresentationLayer } from '../core/presentation-layer.js?v=58';
+import { Season3UI } from '../ui/season3-ui.js?v=58';
 
 const { energyPip: drawEnergyPip } = Season3UI.current;
 

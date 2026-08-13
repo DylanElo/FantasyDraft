@@ -1,4 +1,4 @@
-import { localProductionProofArtEnabled } from './runtime-config.js?v=57';
+import { localProductionProofArtEnabled } from './runtime-config.js?v=58';
 
 export const PORTRAIT_BASE_URL = '/static/assets/portraits/culling-current';
 export const PORTRAIT_SOURCE_WIDTH = 600;

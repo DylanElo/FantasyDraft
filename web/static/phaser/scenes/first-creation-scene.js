@@ -1,9 +1,9 @@
-import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=57';
-import { firstCreationRoster } from '../core/roster.js?v=57';
-import { skillVisualFor } from '../core/skill-visual-registry.js?v=57';
-import { clamp, safeText, titleize } from '../core/text.js?v=57';
-import { Season3UI } from '../ui/season3-ui.js?v=57';
-import { BaseScene } from './base-scene.js?v=57';
+import { TOKEN_TYPE, TYPE_SCALE } from '../core/runtime-config.js?v=58';
+import { firstCreationRoster } from '../core/roster.js?v=58';
+import { skillVisualFor } from '../core/skill-visual-registry.js?v=58';
+import { clamp, safeText, titleize } from '../core/text.js?v=58';
+import { Season3UI } from '../ui/season3-ui.js?v=58';
+import { BaseScene } from './base-scene.js?v=58';
 
 const {
   colors: S3_COLORS,

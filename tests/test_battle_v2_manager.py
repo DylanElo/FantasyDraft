@@ -400,7 +400,7 @@ def test_submit_update_confirm_queue_resolves_and_advances_turn():
 
     assert serialized["turn_player_id"] == "p2"
     assert serialized["phase"] == "planning"
-    assert serialized["players"]["p2"]["team"][0]["hp"] == 80
+    assert serialized["players"]["p2"]["team"][0]["hp"] == 70
     assert serialized["players"]["p2"]["team"][1]["hp"] == 80
     assert serialized["pending_actions"]["p1"] == []
     assert sum(serialized["players"]["p2"]["energy"].values()) == p2_energy_before + 3
@@ -1238,7 +1238,7 @@ def test_hard_cpu_partial_queue_avoids_targets_yuji_already_killed():
 
     damage_events = [event for event in state.event_log if event.type == "damage"]
     assert [(event.payload["source_slot"], event.payload["target_slot"]) for event in damage_events] == [
-        (0, 0), (1, 1), (2, 1),
+        (0, 0), (0, 0), (1, 1), (2, 1),
     ]
     assert state.players["p1"].team[0].alive is False
 
@@ -1695,7 +1695,7 @@ def test_first_creation_todo_redirects_next_harmful_direct_skill():
     )
     serialized = manager.confirm_queue("first", "p2")
 
-    assert serialized["players"]["p1"]["team"][0]["hp"] == 80
+    assert serialized["players"]["p1"]["team"][0]["hp"] == 70
     assert serialized["players"]["p1"]["team"][1]["hp"] == 100
     assert any(event["type"] == "skill_redirected" for event in serialized["event_log"])
 

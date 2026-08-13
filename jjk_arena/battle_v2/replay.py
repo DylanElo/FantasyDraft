@@ -15,7 +15,7 @@ from .timers import BattleTimerPolicy
 
 
 REPLAY_FORMAT_VERSION = 2
-RULES_VERSION = "battle-v2-2026-07-accounting-cpu-transmute-6"
+RULES_VERSION = "battle-v2-2026-08-divergent-fist-20-10"
 HASH_EXCLUDED_FIELDS = {"phase_deadline", "room_id"}
 
 

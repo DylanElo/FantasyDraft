@@ -4594,3 +4594,27 @@ changed.
 **Remaining / delivery.** Commercial/IP review, fresh v58 mobile browser
 evidence, and physical iOS Safari / Android Chrome listening remain release
 gates. They are not claimed by this documentation and manifest closure.
+
+## 2026-08-14 — Recover authoritative Divergent Fist 20+10 rule
+
+**Done.** Recovered the previously accepted but uncommitted First Creation
+Divergent Fist rule onto merged `main`: one confirmed action emits ordered 20
+physical and 10 delayed damage, then applies non-damaging Soul Bruise only when
+missing. Existing Soul Bruise is neither consumed nor used for duplicate or
+later status damage. The player-facing skill text now matches that behavior.
+
+**Replay contract.** Because identical commands now produce different
+authoritative state, `RULES_VERSION` was bumped to
+`battle-v2-2026-08-divergent-fist-20-10`; the no-action golden replay records
+the new version while retaining its unchanged state hashes.
+
+**Verified.** The focused temporal, branch, manager, socket, idempotency,
+skill-audit, and replay suite passed 148 tests. The full repository suite
+passed 689 tests with 2 optional skips; Python compilation and
+`git diff --check` passed. A fresh six-fighter manager proof emitted `[20, 10]`,
+left Maki at 70 HP with Soul Bruise present, and produced no later
+`status_damage` or HP change at turn end.
+
+**Remaining.** The provisional v58 browser captures were discarded because
+they came from the superseded rule. Fresh release evidence must be captured
+from the corrected commit after this backend change passes review.

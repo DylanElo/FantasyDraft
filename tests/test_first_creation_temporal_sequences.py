@@ -111,7 +111,7 @@ def test_todo_redirect_uses_selected_alternate_and_no_redirect_payoff_is_exclusi
     state = sequence_state(["aoi_todo", "ally", "ally2"], ["yuji_itadori", "enemy2", "enemy3"])
     act(state, "p1", 0, "fc_aoi_todo_boogie_woogie", "p2", 0, alternate_target_player_id="p1", alternate_target_slot=2)
     act(state, "p2", 0, "fc_yuji_itadori_divergent_fist", "p1", 1)
-    assert state.players["p1"].team[2].hp == 80
+    assert state.players["p1"].team[2].hp == 70
     assert state.players["p1"].team[1].hp == 100
     assert not has_status(state.players["p1"].team[0], "boogie_woogie_redirect_guard")
 
@@ -146,16 +146,33 @@ def test_venom_bloom_primary_secondary_and_no_poison_team_branch():
     assert all(has_status(enemy, "poison") for enemy in state.players["p2"].team)
 
 
-def test_divergent_fist_existing_soul_bruise_triggers_once_and_is_consumed():
+def test_divergent_fist_deals_ordered_physical_and_delayed_damage_then_marks():
     state = sequence_state(["yuji_itadori", "ally", "ally2"], ["enemy", "enemy2", "enemy3"])
     target = state.players["p2"].team[0]
-    mark(target, "soul_bruise", families=[StatusFamily.SOUL, StatusFamily.MARK], turn_end_damage=10)
+
     events = act(state, "p1", 0, "fc_yuji_itadori_divergent_fist", "p2", 0)
-    assert sum(event.payload.get("amount", 0) for event in events if event.type == "damage") == 30
-    assert not has_status(target, "soul_bruise")
+
+    assert [event.payload["amount"] for event in events if event.type == "damage"] == [20, 10]
+    assert target.hp == 70
+    assert has_status(target, "soul_bruise")
     hp = target.hp
-    finish_turn(state, "p2")
+    later_events = finish_turn(state, "p2")
     assert target.hp == hp
+    assert not any(event.type == "status_damage" for event in later_events)
+
+
+def test_divergent_fist_existing_soul_bruise_never_double_dips_or_ticks_later():
+    state = sequence_state(["yuji_itadori", "ally", "ally2"], ["enemy", "enemy2", "enemy3"])
+    target = state.players["p2"].team[0]
+    mark(target, "soul_bruise", families=[StatusFamily.SOUL, StatusFamily.MARK])
+    events = act(state, "p1", 0, "fc_yuji_itadori_divergent_fist", "p2", 0)
+    assert [event.payload["amount"] for event in events if event.type == "damage"] == [20, 10]
+    assert target.hp == 70
+    assert has_status(target, "soul_bruise")
+    hp = target.hp
+    later_events = finish_turn(state, "p2")
+    assert target.hp == hp
+    assert not any(event.type == "status_damage" for event in later_events)
 
 
 def test_cleanse_removes_affliction_or_soul_but_preserves_other_hostile_debuffs():

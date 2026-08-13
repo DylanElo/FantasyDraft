@@ -59,8 +59,7 @@ effect it gates or modifies; there is no parallel skill-level condition model.
 Supported gates are `condition_status`, `condition_statuses`,
 `condition_missing_status`, `condition_user_status`, `condition_user_stacks`,
 `condition_target_hp_below`, `condition_original_has_status`,
-`condition_original_missing_status`, `condition_recipient_has_status`,
-`condition_recipient_missing_status`,
+`condition_original_missing_status`, `condition_recipient_missing_status`,
 `condition_ally_damaged_target_this_turn`, `condition_scope="original_target"`,
 and the registered `conditional_targeting="venom_bloom"` contract.
 
@@ -83,7 +82,7 @@ use (see `prepare_conditions` in
 - `condition_user_stacks` — a `(status_id, minimum_stacks)` pair the caster must meet.
 - `condition_target_hp_below` — target's HP must be below this value.
 - `condition_original_has_status` / `condition_original_missing_status` — gates against the skill's original (pre-redirect) target.
-- `condition_recipient_has_status` / `condition_recipient_missing_status` — gates against the specific effect recipient in a multi-target skill.
+- `condition_recipient_missing_status` — gates against the specific effect recipient in a multi-target skill when that status is absent.
 - `condition_ally_damaged_target_this_turn` — an ally must have damaged this target already this turn.
 - `condition_scope` — narrows which of the above checks against (e.g. `"original_target"`).
 - `bonus_status` / `bonus_user_status` / `bonus_user_missing_status` / `bonus_amount` — payoff-only variants that add `bonus_amount` to an effect (typically `damage`) rather than gating legality.

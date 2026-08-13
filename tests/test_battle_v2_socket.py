@@ -1031,7 +1031,7 @@ def test_battle_v2_human_confirm_does_not_run_cpu_turn(monkeypatch):
     update = received_payload(p1_client, "battle_v2_update")
 
     assert update["turn_player_id"] == "p2"
-    assert update["players"]["p2"]["team"][0]["hp"] == 80
+    assert update["players"]["p2"]["team"][0]["hp"] == 70
     assert update["phase"] == "planning"
 
 

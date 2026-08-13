@@ -96,11 +96,13 @@ def test_promised_cleanse_skills_remove_an_affliction(skill_id, caster_id):
 
 def test_divergent_delay_nue_fallback_panda_bonus_and_mechamaru_branch():
     state = make_state("yuji_itadori")
-    execute(state, "fc_yuji_itadori_divergent_fist")
+    events = execute(state, "fc_yuji_itadori_divergent_fist")
     target = state.players["p2"].team[0]
-    assert target.hp == 80 and has_status(target, "soul_bruise")
-    finish_turn(state, "p2")
+    assert [event.payload["amount"] for event in events if event.type == "damage"] == [20, 10]
+    assert target.hp == 70 and has_status(target, "soul_bruise")
+    later_events = finish_turn(state, "p2")
     assert target.hp == 70
+    assert not any(event.type == "status_damage" for event in later_events)
 
     state = make_state("megumi_fushiguro")
     execute(state, "fc_megumi_fushiguro_nue_dive")

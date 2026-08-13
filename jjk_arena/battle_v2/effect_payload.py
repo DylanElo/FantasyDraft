@@ -16,7 +16,6 @@ class ConditionalEffectPayload(TypedDict, total=False):
     condition_target_hp_below: int
     condition_original_has_status: str
     condition_original_missing_status: str
-    condition_recipient_has_status: str
     condition_recipient_missing_status: str
     condition_ally_damaged_target_this_turn: bool
     condition_scope: Literal["original_target"]

@@ -138,3 +138,37 @@ def test_invalid_command_rolls_back_all_authoritative_state():
 
     assert manager.serialize_for_player("room", "p1") == before
     assert "bad-plan" not in manager.command_receipts["room"].get("p1", {})
+
+
+def test_first_creation_divergent_fist_confirm_is_ordered_and_retry_safe():
+    manager = BattleV2Manager(rng_seed=1)
+    manager.start_first_creation_match(
+        "first",
+        [
+            {"id": "p1", "name": "P1", "team": ["yuji_itadori", "megumi_fushiguro", "nobara_kugisaki"]},
+            {"id": "p2", "name": "P2", "team": ["maki_zenin", "panda", "junpei_yoshino"]},
+        ],
+    )
+    state = manager.get_state("first")
+    state.players["p1"].energy = {energy: 0 for energy in EnergyType}
+    state.players["p1"].energy[EnergyType.GREEN] = 1
+    action = {
+        "id": "divergent-fist",
+        "caster_slot": 0,
+        "skill_id": "fc_yuji_itadori_divergent_fist",
+        "target_player_id": "p2",
+        "target_slot": 0,
+    }
+
+    assert manager.execute_player_command("first", "p1", "submit_plan", 0, "plan", {"actions": [action]}) is False
+    assert manager.execute_player_command("first", "p1", "confirm_queue", 1, "confirm", {}) is False
+    confirmed = deepcopy(manager.serialize_for_player("first", "p1"))
+    assert manager.execute_player_command("first", "p1", "confirm_queue", 1, "confirm", {}) is True
+
+    damage_events = [event for event in confirmed["event_log"] if event["type"] == "damage"]
+    assert [event["payload"]["amount"] for event in damage_events] == [20, 10]
+    assert confirmed["players"]["p2"]["team"][0]["hp"] == 70
+    assert manager.serialize_for_player("first", "p1") == confirmed
+    later = manager.end_turn("first", "p2")
+    assert later["players"]["p2"]["team"][0]["hp"] == 70
+    assert not any(event["type"] == "status_damage" for event in later["event_log"])

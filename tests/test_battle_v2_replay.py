@@ -141,7 +141,7 @@ def test_captured_cpu_replay_replays_an_authoritative_transmutation_decision():
     )
 
     assert conversion.payload["player_id"] == "a"
-    assert conversion.payload["sources"] == {"white": 5}
+    assert conversion.payload["sources"] == {"red": 3, "white": 2}
     assert conversion.payload["target"] == "blue"
     assert run_replay(document)["final_state_hash"] == document["final_state_hash"]
 
@@ -173,6 +173,7 @@ def test_replay_detects_command_hash_tampering():
 @pytest.mark.parametrize("old_version", [
     "battle-v2-2026-07-aggregate-dr",
     "battle-v2-2026-07-transmute-5",
+    "battle-v2-2026-07-accounting-cpu-transmute-6",
 ])
 def test_replay_rejects_superseded_rules_versions(old_version):
     document = replay_document()

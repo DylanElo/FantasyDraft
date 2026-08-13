@@ -40,3 +40,14 @@ Machine-readable QA:
 Comparison:
 
 - `comparison/390-before-after.png`
+
+## Interaction prototype
+
+`incident-cut-prototype/` — a self-contained playable prototype of the full
+mobile flow, 2026-08-12. Design reference only: vanilla canvas/DOM rather than
+Phaser scenes, and it resolves combat locally, so it is not a port target.
+
+Useful for its Queue Review treatment with player-assigned Wild costs, its
+measured stage/command split, and its motion inventory. **Its character art
+uses the illustration grammar rejected on 2026-08-02** — see that directory's
+README before treating any of its rendering as a target.

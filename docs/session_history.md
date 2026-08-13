@@ -4578,3 +4578,19 @@ changed JavaScript files passed `node --check`; the full Python suite passed
 no gameplay, authority, UI layout, art, or audio behavior. Current visual
 release approval still requires the documented v58 browser capture set. The
 primary working tree and its unrelated local changes were not touched.
+
+## 2026-08-14 — PR #66 audit closure
+
+**Done.** Reconciled the Phaser and mobile visual instructions with the locked
+cinematic/painterly illustration direction while preserving restrained ink and
+hatch as UI-chrome accents. Added the 15 relocated production-proof source PNGs
+to the machine-readable clearance inventory, corrected the rights dossier's
+completed-remediation status, and corrected the sample pack's runtime metadata.
+
+**Verified.** The clearance test now proves the moved source glob resolves to
+exactly 15 `*-source.png` files. No runtime, gameplay, art, or audio binary was
+changed.
+
+**Remaining / delivery.** Commercial/IP review, fresh v58 mobile browser
+evidence, and physical iOS Safari / Android Chrome listening remain release
+gates. They are not claimed by this documentation and manifest closure.

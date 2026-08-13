@@ -26,7 +26,13 @@ dashboard layer.
 
 - Naruto Arena combat flow: 3v3 teams, one skill per living character, queue review, wildcard/random energy payment, and left-to-right resolution.
 - First Creation identity: Student Era + Hidden Inventory + JJK0. The first roster should feel like "Welcome to Jujutsu High," not endgame apocalypse.
-- Shipped visual direction (internal codename `Incident Cut`): the environment-first editorial system in `docs/season3_visual_system.md`, with sharp ink/hatch work, hard cel shadows, painted cities, light bone routine UI, contextual barrier geometry, and darkness reserved for Domain, damage, or finisher punctuation. This is a visual system, not a roster-era or progression rename.
+- Shipped visual direction (internal codename `Incident Cut`): the
+  environment-first editorial system in `docs/season3_visual_system.md`, with
+  cinematic painterly illustration, mood-graded colour, light bone routine
+  UI, contextual barrier geometry, and darkness reserved for Domain, damage,
+  or finisher punctuation. Restrained ink and hatch remain UI-chrome accents,
+  not an illustration grammar. This is a visual system, not a roster-era or
+  progression rename.
 
 ## Design Pillars
 

@@ -1,5 +1,6 @@
 import json
 import re
+from glob import glob
 from pathlib import Path
 
 from conftest import run_node
@@ -184,6 +185,13 @@ def test_asset_clearance_manifest_never_equates_generation_with_clearance():
             assert (ASSET_ROOT / relative).is_file(), relative
         if group["runtime"] and group["paths"]:
             assert group["clearance_status"] == "generated_review_required"
+
+    source_group = next(group for group in manifest["groups"] if group["id"] == "starter_trio_production_proof")
+    source_glob = "../../../artifacts/production-proof-sources/**"
+    assert source_glob in source_group["path_globs"]
+    source_files = [Path(path) for path in glob(str(ASSET_ROOT / source_glob), recursive=True) if Path(path).is_file()]
+    assert len(source_files) == 15
+    assert all(path.name.endswith("-source.png") for path in source_files)
 
 
 def test_runtime_texture_budget_matches_checkout_and_stays_under_startup_caps():

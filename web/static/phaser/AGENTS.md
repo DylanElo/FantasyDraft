@@ -51,7 +51,10 @@ Do not combine onboarding, locked progression, presets, roster browsing, team co
 ## Visual hierarchy
 
 - `Culling Current` is the internal codename for the locked Season 3 Culling Game visual system, not a product-era or progression rename. Follow `docs/season3_visual_system.md`.
-- Every visible screen, illustration, environment, transition, VFX layer, and routine surface must use the same sharp-ink, raw-hatch, hard cel-shadow, painted-city system.
+- Generated illustrations and environments use the cinematic/painterly,
+  mood-graded system in `docs/season3_visual_system.md`: clean contours,
+  controlled tonal transitions, and no ink hatching on the artwork itself.
+  UI chrome remains distinct and may use the restrained ink accents below.
 - Routine surfaces use bone `#F2E8D5`, smoke `#B7B5AD`, storm ochre `#B58B5B`, deep indigo `#101B36`, barrier red `#E32620`, curse cyan `#35DDE8`, aged gold `#D8BF68`, and ink charcoal `#17191E`.
 - Routine navigation stays predominantly bone/smoke and world-led. Reserve deep darkness and black/red frames for Domains, finishers, damage, and brief cinematic punctuation.
 - Aged gold indicates current selection/commitment.
@@ -59,7 +62,9 @@ Do not combine onboarding, locked progression, presets, roster browsing, team co
 - Barrier red indicates danger/damage.
 - Green indicates queued actions.
 - Violet is reserved for Domain/cinematic states, not routine chrome.
-- Ink brush strokes, cross-hatching, barrier diagonals, hard cel-shadow cuts, and concrete/print texture are restrained accents, not substitutes for hierarchy.
+- Ink brush strokes, sparse hatching, barrier diagonals, and concrete/print
+  texture are restrained UI-chrome accents, not illustration requirements or
+  substitutes for hierarchy.
 - Decoration must support hierarchy. Do not cover weak information architecture with smoke, borders, or particles.
 - Portraits and environments must use one coherent original or appropriately licensed production system. Preserve aspect ratio with focal cover crops; never stretch illustration art.
 - Do not paste, trace, or regenerate official frames, manga panels, key visuals, logos, poses, or typography. Record prompts, result IDs, dimensions, processing, and hashes for generated runtime art.

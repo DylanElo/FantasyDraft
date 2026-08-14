@@ -1,7 +1,7 @@
-import { CORE_ENERGY, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, ENERGY_NAMES, TOKEN_TYPE } from '../core/runtime-config.js?v=57';
-import { SKILL_ART_BY_ENERGY } from '../core/asset-registry.js?v=57';
-import { CombatPlaybackScene } from '../fx/combat-playback-scene.js?v=57';
-import { Season3UI } from '../ui/season3-ui.js?v=57';
+import { CORE_ENERGY, CULLING_COLORS, ENERGY_COLORS, ENERGY_LABELS, ENERGY_NAMES, TOKEN_TYPE } from '../core/runtime-config.js?v=58';
+import { SKILL_ART_BY_ENERGY } from '../core/asset-registry.js?v=58';
+import { CombatPlaybackScene } from '../fx/combat-playback-scene.js?v=58';
+import { Season3UI } from '../ui/season3-ui.js?v=58';
 
 const {
   button: drawCurrentButton,

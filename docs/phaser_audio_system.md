@@ -1,6 +1,6 @@
 # Phaser combat audio system
 
-Status: maintained synthesized fallback, 2026-07-19.
+Status: maintained sample-backed cues with synthesized fallback, 2026-08-14.
 
 ## Purpose and authority boundary
 
@@ -11,8 +11,9 @@ infers hidden information.
 
 The maintained implementation is
 `web/static/phaser/core/interaction-sfx.js`. It has no production dependency
-and ships no copied or third-party audio. A future licensed/original asset pack
-may replace the synthesis while keeping the same semantic cue names.
+and ships no copied or third-party audio. The original sample pack replaces
+synthesis per successfully decoded cue after the first trusted gesture; the
+synthesized palette remains the per-cue fallback.
 
 ## Semantic cue set
 

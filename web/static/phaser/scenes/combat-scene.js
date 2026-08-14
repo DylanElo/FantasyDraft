@@ -3,25 +3,25 @@ import {
   CULLING_COLORS,
   ENERGY_COLORS,
   ENERGY_LABELS,
-} from '../core/runtime-config.js?v=57';
-import { clamp, safeText } from '../core/text.js?v=57';
+} from '../core/runtime-config.js?v=58';
+import { clamp, safeText } from '../core/text.js?v=58';
 import {
   activeStatuses,
   statusCardLabel,
-} from '../core/status-presentation.js?v=57';
+} from '../core/status-presentation.js?v=58';
 import {
   renderCombatLogSheet,
   renderConnecting,
   renderFighterStatusSheet,
   renderSkillDetailSheet,
   renderTransmuteSheet,
-} from './combat-sheets.js?v=57';
+} from './combat-sheets.js?v=58';
 import {
   renderCompactStatusHud,
   renderResolutionReceipt,
   renderVisibleActionBanner,
   visibleActionSummary,
-} from './combat-hud.js?v=57';
+} from './combat-hud.js?v=58';
 import {
   compactSkillCardDisabledReason,
   renderBottomActions,
@@ -31,7 +31,7 @@ import {
   renderSkillButton,
   renderTechniqueArtwork,
   skillPresentation,
-} from './combat-skill-deck.js?v=57';
+} from './combat-skill-deck.js?v=58';
 import {
   actionTargetMark,
   renderBattlefield,
@@ -41,9 +41,9 @@ import {
   renderPortraitPlate,
   renderQueueMarks,
   renderReplayLine,
-} from './combat-fighter-field.js?v=57';
-import { IncidentCutLayouts, Season3UI } from '../ui/season3-ui.js?v=57';
-import { CombatQueueReviewScene } from './combat-queue-review-scene.js?v=57';
+} from './combat-fighter-field.js?v=58';
+import { IncidentCutLayouts, Season3UI } from '../ui/season3-ui.js?v=58';
+import { CombatQueueReviewScene } from './combat-queue-review-scene.js?v=58';
 
 export { compactSkillCardDisabledReason };
 

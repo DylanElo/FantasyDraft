@@ -78,23 +78,18 @@ is `generated_review_required`. That guard is deliberate and good. It will need
 updating in the same change that records a real clearance — do not weaken it
 beforehand.
 
-## Immediate exposure issue, independent of the review
+## Source-art exposure remediation
 
-`web/app.py` constructs `Flask(__name__)` with default settings, so
-`web/static/` is served at `/static/`. That means **42 MB of high-resolution,
-un-cleared source PNGs are currently publicly downloadable**, for example:
+The 15 high-resolution, un-cleared `*-source.png` development files were moved
+from Flask's publicly served `web/static/` tree to
+`artifacts/production-proof-sources/`. The runtime `.webp` variants remain in
+place. This removes approximately 42 MB from the deployed static payload while
+retaining the sources for review.
 
-```
-/static/assets/skills/culling-current/production-proof/yuji-itadori/divergent-fist-source.png
-```
-
-There are 15 such `*-source.png` files. They are development sources, not
-runtime assets — the runtime uses the small `.webp` variants beside them. They
-should move to `artifacts/` (outside the served tree) regardless of what the
-rights review concludes. This also removes ~42 MB from the deployed payload.
-
-This is the one item on this page that is worth doing today, whatever the
-licensing answer turns out to be.
+The `starter_trio_production_proof` group in
+`web/static/assets/asset-clearance-manifest.json` explicitly inventories the
+moved directory. Relocation prevents public delivery; it does not grant rights
+or change the files' `prototype_only` status.
 
 ## Evidence already available to the reviewer
 

@@ -1,5 +1,6 @@
 import json
 import re
+from glob import glob
 from pathlib import Path
 
 from conftest import run_node
@@ -116,10 +117,10 @@ def test_incident_cut_facade_keeps_models_tokens_and_pure_layouts():
 globalThis.JJK_MOBILE_TOKENS = {};
 globalThis.JJK_BOOTSTRAP = {};
 const facade = await import('./web/static/phaser/ui/season3-ui.js');
-const flow = await import('./web/static/phaser/ui/season-three-ui.js?v=57');
-const post = await import('./web/static/phaser/ui/season3-master-ui.js?v=57');
-const incident = await import('./web/static/phaser/ui/incident-cut/presentation.js?v=57');
-const incidentTokens = await import('./web/static/phaser/ui/incident-cut/tokens.js?v=57');
+const flow = await import('./web/static/phaser/ui/season-three-ui.js?v=58');
+const post = await import('./web/static/phaser/ui/season3-master-ui.js?v=58');
+const incident = await import('./web/static/phaser/ui/incident-cut/presentation.js?v=58');
+const incidentTokens = await import('./web/static/phaser/ui/incident-cut/tokens.js?v=58');
 console.log(JSON.stringify({
   frozen: Object.isFrozen(facade.Season3UI),
   tokenFrozen: Object.isFrozen(facade.S3_TOKENS.palette),
@@ -166,7 +167,7 @@ def test_scenes_only_import_the_canonical_season_three_facade():
     for path in (ROOT / "web" / "static" / "phaser" / "scenes").rglob("*.js"):
         source = path.read_text(encoding="utf-8")
         for specifier in ui_import_pattern.findall(source):
-            if specifier != "../ui/season3-ui.js?v=57":
+            if specifier != "../ui/season3-ui.js?v=58":
                 offenders.append((path.name, specifier))
     assert offenders == []
 
@@ -184,6 +185,13 @@ def test_asset_clearance_manifest_never_equates_generation_with_clearance():
             assert (ASSET_ROOT / relative).is_file(), relative
         if group["runtime"] and group["paths"]:
             assert group["clearance_status"] == "generated_review_required"
+
+    source_group = next(group for group in manifest["groups"] if group["id"] == "starter_trio_production_proof")
+    source_glob = "../../../artifacts/production-proof-sources/**"
+    assert source_glob in source_group["path_globs"]
+    source_files = [Path(path) for path in glob(str(ASSET_ROOT / source_glob), recursive=True) if Path(path).is_file()]
+    assert len(source_files) == 15
+    assert all(path.name.endswith("-source.png") for path in source_files)
 
 
 def test_runtime_texture_budget_matches_checkout_and_stays_under_startup_caps():
@@ -208,12 +216,12 @@ def test_runtime_texture_budget_matches_checkout_and_stays_under_startup_caps():
     assert maximum["decoded_rgba8_bytes"] <= budget["startup_policy"]["decoded_rgba8_budget_bytes"]
 
 
-def test_runtime_cache_chain_and_delivery_manifest_agree_on_v43():
+def test_runtime_cache_chain_and_delivery_manifest_agree_on_v58():
     budget = json.loads((ASSET_ROOT / "runtime-texture-budget.json").read_text(encoding="utf-8"))
     template = (ROOT / "web" / "templates" / "index.html").read_text(encoding="utf-8")
-    assert budget["runtime_cache_version"] == "43"
-    assert "phaser/index.js') }}?v=57" in template
-    assert "phaser-design-tokens.js') }}?v=57" in template
+    assert budget["runtime_cache_version"] == "58"
+    assert "phaser/index.js') }}?v=58" in template
+    assert "phaser-design-tokens.js') }}?v=58" in template
 
     mismatches = []
     specifier_pattern = re.compile(
@@ -222,7 +230,7 @@ def test_runtime_cache_chain_and_delivery_manifest_agree_on_v43():
     for path in (ROOT / "web" / "static" / "phaser").rglob("*.js"):
         source = path.read_text(encoding="utf-8")
         for specifier in specifier_pattern.findall(source):
-            if specifier.startswith(".") and not specifier.endswith("?v=57"):
+            if specifier.startswith(".") and not specifier.endswith("?v=58"):
                 mismatches.append((str(path.relative_to(ROOT)), specifier))
     assert mismatches == []
 

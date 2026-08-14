@@ -1,8 +1,8 @@
-import { CULLING_COLORS, ENERGY_LABELS, TOKEN_TYPE } from '../core/runtime-config.js?v=57';
-import { clamp, initials, shortText } from '../core/text.js?v=57';
-import { clippedPoints } from '../core/shape.js?v=57';
-import { eventTone } from '../fx/event-metrics.js?v=57';
-import { activeStatuses, statusTone } from '../core/status-presentation.js?v=57';
+import { CULLING_COLORS, ENERGY_LABELS, TOKEN_TYPE } from '../core/runtime-config.js?v=58';
+import { clamp, initials, shortText } from '../core/text.js?v=58';
+import { clippedPoints } from '../core/shape.js?v=58';
+import { eventTone } from '../fx/event-metrics.js?v=58';
+import { activeStatuses, statusTone } from '../core/status-presentation.js?v=58';
 
 // Called via `.call(this, ...)` from a one-line delegator method on
 // CombatScene -- see web/static/phaser/scenes/combat-sheets.js's docstring

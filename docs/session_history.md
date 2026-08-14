@@ -4562,3 +4562,35 @@ bytes, all 12 required freeze deliverables, 30 clean captures, three debug
 captures, two pause-evidence frames, two reference strips, the frozen baseline
 SHA, the art-drop command, and pause-safe camera methods. Forbidden dependency,
 Git, cache, log, nested-archive, and unrelated-artifact entries were zero.
+## 2026-08-14 — PR #66 Phaser v58 cache-chain repair
+
+**Done.** Reconciled the partially committed cache migration without changing
+runtime behavior: the Flask HTML entrypoint, every maintained Phaser module
+import, runtime texture-budget manifest, current QA contracts, and cache-chain
+tests now consistently use version `58`.
+
+**Verified.** The focused cache/entrypoint/result suite passed 21 tests. All
+changed JavaScript files passed `node --check`; the full Python suite passed
+686 tests with 2 skipped; `python -m compileall -q jjk_arena web/app.py` and
+`git diff --check` passed.
+
+**Remaining / delivery.** This pass creates no new visual evidence and changes
+no gameplay, authority, UI layout, art, or audio behavior. Current visual
+release approval still requires the documented v58 browser capture set. The
+primary working tree and its unrelated local changes were not touched.
+
+## 2026-08-14 — PR #66 audit closure
+
+**Done.** Reconciled the Phaser and mobile visual instructions with the locked
+cinematic/painterly illustration direction while preserving restrained ink and
+hatch as UI-chrome accents. Added the 15 relocated production-proof source PNGs
+to the machine-readable clearance inventory, corrected the rights dossier's
+completed-remediation status, and corrected the sample pack's runtime metadata.
+
+**Verified.** The clearance test now proves the moved source glob resolves to
+exactly 15 `*-source.png` files. No runtime, gameplay, art, or audio binary was
+changed.
+
+**Remaining / delivery.** Commercial/IP review, fresh v58 mobile browser
+evidence, and physical iOS Safari / Android Chrome listening remain release
+gates. They are not claimed by this documentation and manifest closure.

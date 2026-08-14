@@ -3,18 +3,18 @@ import {
   PORTRAIT_SOURCE_WIDTH,
   starterPortraitContractIssues,
   starterPortraitEntries,
-} from '../core/portrait-registry.js?v=57';
-import { TOKEN_MOTION, TOKEN_TYPE } from '../core/runtime-config.js?v=57';
-import { LayoutService } from '../core/layout-service.js?v=57';
-import { firstCreationRoster } from '../core/roster.js?v=57';
-import { getPersistentPresentationSettings } from '../core/presentation-settings.js?v=57';
+} from '../core/portrait-registry.js?v=58';
+import { TOKEN_MOTION, TOKEN_TYPE } from '../core/runtime-config.js?v=58';
+import { LayoutService } from '../core/layout-service.js?v=58';
+import { firstCreationRoster } from '../core/roster.js?v=58';
+import { getPersistentPresentationSettings } from '../core/presentation-settings.js?v=58';
 import {
   INITIAL_ENVIRONMENT_KEYS,
   environmentAssetFor,
   registerEnvironmentTextureAttempt,
-} from '../core/asset-registry.js?v=57';
-import { Season3UI } from '../ui/season3-ui.js?v=57';
-import { BaseScene } from './base-scene.js?v=57';
+} from '../core/asset-registry.js?v=58';
+import { Season3UI } from '../ui/season3-ui.js?v=58';
+import { BaseScene } from './base-scene.js?v=58';
 
 const {
   colors: S3_COLORS,

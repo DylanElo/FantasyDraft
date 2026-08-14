@@ -15,8 +15,8 @@
   "groups": [
     {
       "id": "interaction_audio_pack",
-      "runtime": false,
-      "runtime_note": "Authored and staged. Not yet loaded; the client still uses live WebAudio synthesis in core/interaction-sfx.js.",
+      "runtime": true,
+      "runtime_note": "Loaded per cue after the first trusted gesture; failed or unavailable samples fall back to live WebAudio synthesis in core/interaction-sfx.js.",
       "origin": "synthesized_from_project_source",
       "clearance_status": "generated_review_required",
       "provenance": "audio/PROVENANCE.md",
@@ -131,6 +131,7 @@
         "portraits/culling-current/production-proof/**",
         "skills/culling-current/production-proof/**",
         "production-proof/**",
+        "../../../artifacts/production-proof-sources/**",
         "../../../artifacts/ui-redesign/s3-structure-v2/qa/current-proof/**"
       ],
       "release_caution": "Named character likenesses and generated visual assets require explicit rights and commercial-release review before any runtime promotion."

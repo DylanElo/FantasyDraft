@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { CHARACTERS, ENERGY, characterById } from './data'
-import { createBattle, queueAction, resolveQueue, skillOptions } from './mockAuthority'
+import { authoritativeSkill, authoritativeSkillOptions, buildDivergentFistSequence, createAuthorityAdapter, toBattleSnapshot } from './authorityAdapter'
+import type { AuthorityClient, AuthorityState, ServerBattleSnapshot } from './authorityAdapter'
 import type { BattleSnapshot, CoreEnergy, ResolutionFrame, Screen, Skill } from './types'
 import styles from './App.module.css'
 
@@ -33,7 +34,7 @@ function TitleScreen({ onEnter, onProfile }: { onEnter: () => void; onProfile: (
         <button className={styles.primaryButton} onClick={onEnter}>Enter the barrier</button>
         <button className={styles.textButton} onClick={onProfile}>Meet Yuji</button>
       </div>
-      <small>Frontend VNext · mocked authoritative battle snapshot</small>
+      <small>Frontend VNext · Python-authoritative battle</small>
     </section>
   </main>
 }
@@ -111,8 +112,10 @@ function MatchupScreen({ player, enemy, onBack, onFight }: { player: string[]; e
   </main>
 }
 
-function BattleScreen({ initial, onFinish }: { initial: BattleSnapshot; onFinish: (snapshot: BattleSnapshot) => void }) {
-  const [battle, setBattle] = useState(initial)
+function BattleScreen({ authority, authorityState, onFinish }: { authority: AuthorityClient; authorityState: AuthorityState; onFinish: (snapshot: BattleSnapshot) => void }) {
+  const serverSnapshot = authorityState.snapshot!
+  const playerId = authorityState.playerId!
+  const [battle, setBattle] = useState(() => toBattleSnapshot(serverSnapshot, playerId))
   const [selectedCaster, setSelectedCaster] = useState<string | null>(null)
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null)
   const [pendingTarget, setPendingTarget] = useState<string | null>(null)
@@ -120,13 +123,21 @@ function BattleScreen({ initial, onFinish }: { initial: BattleSnapshot; onFinish
   const [playback, setPlayback] = useState('Select a fighter to begin planning')
   const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false)
   const commandRef = useRef<HTMLElement>(null)
-  const options = useMemo(() => selectedCaster ? skillOptions(battle, selectedCaster) : [], [battle, selectedCaster])
+  const resolvingRef = useRef(false)
+  const confirmContextRef = useRef<{ before: ServerBattleSnapshot; actionId: string } | null>(null)
+  const submittedActionRef = useRef<string | null>(null)
+  const playedRevisionRef = useRef(-1)
+  const options = useMemo(() => selectedCaster ? authoritativeSkillOptions(serverSnapshot, playerId, selectedCaster) : [], [serverSnapshot, playerId, selectedCaster])
   const selectedOption = options.find((option) => option.skill.id === selectedSkill)
   const legalTargets = selectedOption?.legalTargets ?? []
   const queuedCasters = new Set(battle.queue.map((action) => action.casterId))
+  const wildActions = battle.queue.filter((action) => authoritativeSkill(serverSnapshot, playerId, action.casterId, action.skillId)?.cost.includes('black'))
+
+  const canMutate = authorityState.connected && !authorityState.error && !authorityState.pendingCommand
+    && serverSnapshot.turn_player_id === playerId && serverSnapshot.phase !== 'finished'
 
   const selectFighter = (id: string) => {
-    if (battle.phase === 'RESOLVING') return
+    if (!canMutate || battle.phase === 'RESOLVING') return
     if (legalTargets.includes(id)) {
       setPendingTarget(id)
       setPlayback(`${characterById(id).name} targeted. Confirm the target.`)
@@ -142,21 +153,32 @@ function BattleScreen({ initial, onFinish }: { initial: BattleSnapshot; onFinish
 
   const confirmTarget = () => {
     if (!selectedCaster || !selectedOption || !pendingTarget) return
-    const next = queueAction(battle, { casterId: selectedCaster, skillId: selectedOption.skill.id, targetId: pendingTarget })
-    setBattle(next)
-    setPlayback(`${selectedOption.skill.name} queued on ${characterById(pendingTarget).name}`)
-    setSelectedSkill(null)
-    setPendingTarget(null)
+    const target = selectedOption.targetPayloads.find((payload) => payload.characterId === pendingTarget)
+    if (!target) return
+    const { characterId: _characterId, ...targetPayload } = target
+    const actionId = authority.submitAction({ caster_slot: selectedOption.casterSlot, skill_id: selectedOption.skillId, ...targetPayload })
+    if (actionId) {
+      submittedActionRef.current = actionId
+      setPlayback(`Submitting ${selectedOption.skill.name} on ${characterById(pendingTarget).name}…`)
+      setSelectedSkill(null)
+      setPendingTarget(null)
+    }
   }
 
   const confirm = () => {
-    const frames = resolveQueue(battle)
-    setBattle({ ...battle, phase: 'RESOLVING' })
-    setPlayback('Resolution committed')
-    setSequence(frames)
+    const actionId = submittedActionRef.current
+    if (resolvingRef.current || battle.queue.length === 0 || !actionId) return
+    confirmContextRef.current = { before: serverSnapshot, actionId }
+    if (authority.confirmQueue()) {
+      submittedActionRef.current = null
+      resolvingRef.current = true
+      setBattle({ ...battle, phase: 'RESOLVING' })
+      setPlayback('Resolution committed to Python authority')
+    } else confirmContextRef.current = null
   }
 
   const sequenceComplete = (frame: ResolutionFrame) => {
+    resolvingRef.current = false
     setBattle(frame.snapshot)
     setSequence(null)
     setSelectedCaster(null)
@@ -168,12 +190,42 @@ function BattleScreen({ initial, onFinish }: { initial: BattleSnapshot; onFinish
 
   useEffect(() => { if (selectedCaster) commandRef.current?.querySelector('button')?.focus() }, [selectedCaster])
 
-  return <main className={cx(styles.screen, styles.battleScreen)} data-stage={sequence?.[0]?.stage ?? (pendingTarget ? 'targeted' : selectedSkill ? 'targeting' : selectedCaster ? 'selected' : 'planning')}>
+  useEffect(() => {
+    const latest = authorityState.snapshot
+    if (!latest || !authorityState.playerId) return
+    const final = toBattleSnapshot(latest, authorityState.playerId)
+    const context = confirmContextRef.current
+    if (context && authorityState.pendingCommand !== 'confirm_queue' && latest.state_revision > context.before.state_revision) {
+      confirmContextRef.current = null
+      if (latest.state_revision <= playedRevisionRef.current) {
+        if (!sequence) resolvingRef.current = false
+        return
+      }
+      const frames = buildDivergentFistSequence(context.before, latest, authorityState.playerId, context.actionId, authorityState.events)
+      playedRevisionRef.current = latest.state_revision
+      if (frames) {
+        setSequence(frames)
+        return
+      }
+      resolvingRef.current = false
+      setBattle(final)
+      setPlayback(final.phase === 'FINISHED' ? 'Barrier verdict confirmed' : 'Authoritative resolution completed without a matching Divergent Fist sequence.')
+      if (final.phase === 'FINISHED') onFinish(final)
+      return
+    }
+    if (!sequence && !resolvingRef.current) {
+      setBattle(final)
+      if (final.phase === 'FINISHED' && battle.phase !== 'FINISHED') { onFinish(final); return }
+      if (final.queue.length > 0) setPlayback('Authoritative queue ready for review')
+    }
+  }, [authorityState, sequence])
+
+  return <main className={cx(styles.screen, styles.battleScreen)} data-stage={sequence?.[0]?.stage ?? (pendingTarget ? 'targeted' : selectedSkill ? 'targeting' : selectedCaster ? 'selected' : 'planning')} data-queue-open={battle.queue.length > 0 ? 'true' : undefined}>
     <Suspense fallback={null}><Battlefield snapshot={battle} selectedId={selectedCaster} legalTargetIds={legalTargets} pendingTargetId={pendingTarget} queuedIds={[...queuedCasters]} sequence={sequence} reducedMotion={reducedMotion} onFighterSelect={selectFighter} onSequenceStage={(frame) => { setPlayback(frame.message); setBattle(frame.snapshot) }} onSequenceComplete={sequenceComplete} /></Suspense>
     <header className={styles.battleHud}>
       <div><b>TURN {String(battle.turn).padStart(2, '0')}</b><span>{battle.phase === 'PLANNING' ? 'Your move' : battle.phase === 'QUEUE_REVIEW' ? 'Orders open' : battle.phase.replace('_', ' ')}</span></div>
       <div className={styles.energy} aria-label="Available energy">{(Object.keys(ENERGY) as CoreEnergy[]).map((color) => <span key={color}><i data-energy={color}>{ENERGY[color].letter}</i><b>{battle.energy[color]}</b></span>)}</div>
-      <div><button className={styles.motionButton} aria-pressed={reducedMotion} onClick={() => setReducedMotion((value) => !value)}>Motion {reducedMotion ? 'reduced' : 'full'}</button><span>Mock authority</span></div>
+      <div><button className={styles.motionButton} aria-pressed={reducedMotion} onClick={() => setReducedMotion((value) => !value)}>Motion {reducedMotion ? 'reduced' : 'full'}</button><span>Python authority</span></div>
     </header>
 
     <div className={styles.battlePrompt} role="status" aria-live="polite"><span>{playback}</span></div>
@@ -182,26 +234,46 @@ function BattleScreen({ initial, onFinish }: { initial: BattleSnapshot; onFinish
       {[...battle.playerTeam, ...battle.enemyTeam].map((fighter) => {
         const legal = legalTargets.includes(fighter.characterId)
         const ally = battle.playerTeam.includes(fighter)
-        return <button key={fighter.characterId} disabled={fighter.hp <= 0 || (!ally && !legal)} onClick={() => selectFighter(fighter.characterId)}>{legal ? `Target ${characterById(fighter.characterId).name}, legal target, ${fighter.hp} health` : `Select ${characterById(fighter.characterId).name}, ${fighter.hp} health`}</button>
+        return <button key={fighter.characterId} disabled={!canMutate || fighter.hp <= 0 || (!ally && !legal)} onClick={() => selectFighter(fighter.characterId)}>{legal ? `Target ${characterById(fighter.characterId).name}, legal target, ${fighter.hp} health` : `Select ${characterById(fighter.characterId).name}, ${fighter.hp} health`}</button>
       })}
     </div>
 
     {selectedCaster && !sequence && <section ref={commandRef} className={styles.commandCluster} aria-label="Technique commands">
       <header><span>Active sorcerer</span><b>{characterById(selectedCaster).name}</b></header>
-      <div className={styles.techniqueRail}>{options.map((option, index) => <button key={option.skill.id} aria-pressed={selectedSkill === option.skill.id} disabled={Boolean(option.disabledReason)} title={option.disabledReason} onClick={() => { setSelectedSkill(option.skill.id); setPendingTarget(null); setPlayback(`${option.skill.name} selected. Choose a highlighted target.`) }}>
-        <b>0{index + 1}</b><span>{option.skill.name}</span><EnergyCost cost={option.skill.cost} />
+      <div className={styles.techniqueRail}>{options.map((option, index) => <button key={option.skill.id} aria-pressed={selectedSkill === option.skill.id} disabled={!canMutate || Boolean(option.disabledReason)} title={option.disabledReason} onClick={() => { setSelectedSkill(option.skill.id); setPendingTarget(null); setPlayback(`${option.skill.name} selected. Choose a highlighted target.`) }}>
+        <b>0{index + 1}</b><span>{option.skill.name}{option.disabledReason && <small>{option.disabledReason}</small>}</span><EnergyCost cost={option.skill.cost} />
       </button>)}</div>
       {selectedOption && <article className={styles.techniqueDetail}><div><strong>{selectedOption.skill.name}</strong><small>{selectedOption.skill.target.replace('_', ' ')} · {selectedOption.skill.tags.join(' · ')}</small></div><p>{selectedOption.skill.description}</p></article>}
     </section>}
 
-    {pendingTarget && selectedOption && <section className={styles.targetConfirm} aria-label="Confirm target"><span>Target locked</span><b>{characterById(pendingTarget).name}</b><button className={styles.primaryButton} onClick={confirmTarget}>Confirm {characterById(pendingTarget).shortName}</button></section>}
+    {pendingTarget && selectedOption && <section className={styles.targetConfirm} aria-label="Confirm target"><span>Target locked</span><b>{characterById(pendingTarget).name}</b><button className={styles.primaryButton} disabled={!canMutate} onClick={confirmTarget}>Confirm {characterById(pendingTarget).shortName}</button></section>}
 
     {battle.queue.length > 0 && !sequence && <section className={styles.cinematicQueue} aria-label="Action queue"><ol>{battle.queue.map((action, index) => {
       const caster = characterById(action.casterId)
       const target = characterById(action.targetId)
-      const skill = caster.skills.find((entry) => entry.id === action.skillId)!
-      return <li key={action.id}><b>0{index + 1}</b><Portrait id={action.casterId} /><span><strong>{skill.name}</strong><small>{caster.shortName} → {target.shortName}</small></span><i>→</i></li>
-    })}</ol><button className={styles.primaryButton} onClick={confirm}>Confirm resolution</button></section>}
+      const skill = authoritativeSkill(serverSnapshot, playerId, action.casterId, action.skillId)
+      if (!skill) return null
+      return <li key={action.id}><b>0{index + 1}</b><Portrait id={action.casterId} /><span><strong>{skill.name}</strong><small>{caster.shortName} → {target.shortName}</small></span><span className={styles.queueCost}><EnergyCost cost={skill.cost} /></span><i>→</i></li>
+    })}</ol>
+    {wildActions.length > 0 && <div className={styles.wildPay} role="group" aria-label="Assign Wild energy">
+      {wildActions.map((action) => <span key={action.id}>
+        <b>{characterById(action.casterId).shortName}</b>
+        {(Object.keys(ENERGY) as CoreEnergy[]).map((color) => <button key={color} type="button" aria-pressed={action.wildPay === color} disabled={!canMutate || battle.energy[color] <= 0} onClick={() => authority.payWildcard(action.id, color)}><i data-energy={color}>{ENERGY[color].letter}</i></button>)}
+      </span>)}
+    </div>}
+    <button className={styles.primaryButton} disabled={!canMutate || wildActions.some((action) => !action.wildPay)} onClick={confirm}>Confirm resolution</button></section>}
+  </main>
+}
+
+function AuthorityGate({ state, onRetry, onLeave }: { state: AuthorityState; onRetry: () => void; onLeave: () => void }) {
+  return <main className={cx(styles.screen, styles.battleScreen)}>
+    <div className={styles.battlePrompt} role={state.error ? 'alert' : 'status'} aria-live="polite">
+      <span>{state.error ?? 'Connecting to Python battle authority…'}</span>
+    </div>
+    {state.error && <div className={styles.actions}>
+      <button className={styles.primaryButton} onClick={onRetry}>Try again</button>
+      <button className={styles.textButton} onClick={onLeave}>Back to menu</button>
+    </div>}
   </main>
 }
 
@@ -219,17 +291,29 @@ function ResultsScreen({ battle, onRematch, onNewTeam }: { battle: BattleSnapsho
   </main>
 }
 
-export default function App() {
+export default function App({ authority: injectedAuthority }: { authority?: AuthorityClient }) {
+  const [authority] = useState(() => injectedAuthority ?? createAuthorityAdapter())
+  const [authorityState, setAuthorityState] = useState(() => authority.getState())
   const [screen, setScreen] = useState<Screen>('title')
   const [playerTeam, setPlayerTeam] = useState(DEFAULT_TEAM)
   const [battle, setBattle] = useState<BattleSnapshot | null>(null)
   const enemyTeam = useMemo(() => CHARACTERS.map((character) => character.id).filter((id) => !playerTeam.includes(id)), [playerTeam])
-  const startBattle = () => { setBattle(createBattle(playerTeam, enemyTeam)); setScreen('battle') }
+  const startBattle = () => { authority.startBattle(playerTeam, enemyTeam); setScreen('battle') }
+
+  useEffect(() => {
+    const unsubscribe = authority.subscribe(setAuthorityState)
+    return () => { unsubscribe(); authority.disconnect() }
+  }, [authority])
 
   if (screen === 'profile') return <ProfileScreen onBack={() => setScreen('title')} onSelect={() => setScreen('selection')} />
   if (screen === 'selection') return <SelectionScreen initial={playerTeam} onBack={() => setScreen('title')} onConfirm={(ids) => { setPlayerTeam(ids); setScreen('matchup') }} />
   if (screen === 'matchup') return <MatchupScreen player={playerTeam} enemy={enemyTeam} onBack={() => setScreen('selection')} onFight={startBattle} />
-  if (screen === 'battle' && battle) return <BattleScreen key={`battle-${battle.revision}`} initial={battle} onFinish={(final) => { setBattle(final); setScreen('results') }} />
-  if (screen === 'results' && battle) return <ResultsScreen battle={battle} onRematch={() => { setBattle(createBattle(playerTeam, enemyTeam)); setScreen('matchup') }} onNewTeam={() => setScreen('selection')} />
+  if (screen === 'battle') {
+    if (!authorityState.snapshot || !authorityState.playerId || authorityState.error) {
+      return <AuthorityGate state={authorityState} onRetry={startBattle} onLeave={() => { authority.leaveMatch(); setScreen('matchup') }} />
+    }
+    return <BattleScreen authority={authority} authorityState={authorityState} onFinish={(final) => { setBattle(final); setScreen('results') }} />
+  }
+  if (screen === 'results' && battle) return <ResultsScreen battle={battle} onRematch={() => setScreen('matchup')} onNewTeam={() => setScreen('selection')} />
   return <TitleScreen onEnter={() => setScreen('selection')} onProfile={() => setScreen('profile')} />
 }

@@ -396,8 +396,17 @@
 .cinematicQueue li strong, .cinematicQueue li small { display: block; }
 .cinematicQueue li strong { font-size: 13px; text-transform: uppercase; }
 .cinematicQueue li small { color: var(--smoke); font-size: 9px; }
+.queueCost { display: none; }
 .cinematicQueue li > i { color: var(--cyan); font-style: normal; }
 .cinematicQueue .primaryButton { min-height: 50px; padding: 0 18px; font-size: 14px; }
+
+.wildPay { position: absolute; right: 0; bottom: 100%; margin-bottom: 8px; display: flex; flex-direction: column; align-items: end; gap: 4px; }
+.wildPay span { display: flex; align-items: center; gap: 4px; padding: 4px 6px; background: rgba(7,12,24,.9); border-top: 2px solid #ede9d5; }
+.wildPay span > b { font-size: 10px; text-transform: uppercase; color: var(--smoke); margin-right: 2px; }
+.wildPay button { display: inline-flex; padding: 0; border: 0; background: transparent; }
+.wildPay button:disabled { opacity: .35; }
+.wildPay i { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; font: 700 11px/1 Inter; }
+.wildPay button[aria-pressed='true'] i { outline: 2px solid var(--cyan); outline-offset: 1px; }
 
 @media (max-width: 900px) and (orientation: landscape) {
   .battleHud { grid-template-columns: 1fr auto 1fr; min-height: 42px; padding: 4px 12px; }
@@ -423,4 +432,27 @@
   .cinematicQueue li > img { width: 34px; height: 34px; }
   .cinematicQueue li > i { display: none; }
   .cinematicQueue .primaryButton { min-height: 44px; padding: 0 12px; font-size: 11px; }
+}
+
+@media (max-width: 560px) and (orientation: portrait) {
+  .battleHud { grid-template-columns: auto 1fr auto; gap: 6px; padding-right: 8px; padding-left: 8px; }
+  .battleHud > div:first-child, .battleHud > div:last-child { gap: 4px; }
+  .battleHud > div:first-child span, .battleHud > div:last-child span { display: none; }
+  .battleHud b { font-size: 14px; }
+  .energy { justify-content: center; gap: 4px; }
+  .energy > span { gap: 2px; }
+  .energy i { width: 19px; height: 19px; }
+  .energy > span b { font-size: 10px; }
+  .motionButton { min-height: 34px; padding: 0 7px; font-size: 9px; }
+  .battleScreen[data-queue-open='true'] .commandCluster { display: none; }
+  .battleScreen[data-queue-open='true'] .cinematicQueue { right: max(12px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); left: max(12px, env(safe-area-inset-left)); display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-items: stretch; }
+  .battleScreen[data-queue-open='true'] .cinematicQueue ol { display: grid; width: 100%; }
+  .battleScreen[data-queue-open='true'] .cinematicQueue li { grid-template-columns: 24px 42px minmax(0, 1fr) auto; width: 100%; min-width: 0; min-height: 58px; height: auto; }
+  .battleScreen[data-queue-open='true'] .cinematicQueue li > span:not(.queueCost) { min-width: 0; }
+  .battleScreen[data-queue-open='true'] .cinematicQueue li strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .battleScreen[data-queue-open='true'] .wildPay { position: static; margin-bottom: 0; align-items: stretch; }
+  .battleScreen[data-queue-open='true'] .wildPay span { justify-content: space-between; }
+  .battleScreen[data-queue-open='true'] .queueCost { display: block; }
+  .battleScreen[data-queue-open='true'] .cinematicQueue li > i { display: none; }
+  .battleScreen[data-queue-open='true'] .cinematicQueue .primaryButton { width: 100%; min-height: 48px; }
 }
